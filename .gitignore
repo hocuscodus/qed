@@ -1,0 +1,12 @@
+*.exe
+qed 
+qed.html
+qed.js
+qed.wasm
+*.d
+.vscode
+obj
+packages*
+www
+build
+astgen

@@ -1,0 +1,17 @@
+void Button(String text) {
+  int color = 0xE0000000
+
+  <out: rect; bgcol: color; onpress: color = 0xB0000000;>// onrelease: {color = 0xE0000000; return}>
+  <fontSize: 40; out: text; width: 35; alignx: 50; aligny: 50; zoomheight: 100; textcol: 0x90000000;>
+}
+
+int count = 0
+var decButton = new Button("-") -> count--
+var incButton = new Button("+") -> count++
+
+<out: oval; height: 80; bgcol: (count >= 0 ? 0x00FF00 : 0) | (count <= 0 ? 0xFF0000 : 0);>
+<cdir: WIDTH;// <-<_<|<\
+  <out: decButton;>
+  <out: count; width: 100; fontSize: 50; alignx: 50; aligny: 50; textcol: 0x80000000;>
+  <out: incButton;>
+>
