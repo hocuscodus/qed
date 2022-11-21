@@ -16,6 +16,7 @@
  * along with this program.  If not, see <http: *www.gnu.org/licenses/>.
  */
 #include "sizer.hpp"
+#include "object.hpp"
 
 Sizer::Sizer(int index) {
   this->index = index;
@@ -115,25 +116,28 @@ Sizer *Sizer::put(SizerType sizerType, int index, int offset, int maxDirs, int d
   return child;
 }
 
-IntTreeUnit *Sizer::parseResize(LocationUnit **areaUnits, const Path &path, int dir, Point limits) {/*
-  IntTreeUnit tree = new IntTreeUnit(0);
-  IntTreeUnit previous = null;
+IntTreeUnit *Sizer::parseResize(LocationUnit **areaUnits, const Path &path, int dir, const Point &limits) {
+  IntTreeUnit *tree = new IntTreeUnit(0);
+  IntTreeUnit *previous = NULL;
 
   for (int index = 0; index < getNumSizers(); index++) {
-    Sizer sizer = children[index];
-    IntTreeUnit subTree = sizer.parseResize(areas, path, dir, limits);
+    Sizer *sizer = operator[](index);
+    IntTreeUnit *subTree = sizer->parseResize(areaUnits, path, dir, limits);
 
-    if (previous != null)
-      subTree.value = process(previous.value, subTree.value);
+    if (previous != NULL)
+      subTree->value = process(previous->value, subTree->value);
 
-    tree.add(subTree);
+    tree->add(subTree);
     previous = subTree;
   }
 
-  tree.value = previous != null ? previous.value : 0;
+  tree->value = previous != NULL ? previous->value : 0;
 
-  return tree;*/
-  return NULL;
+  return tree;
+}
+
+int Sizer::process(int area1, int area2) {
+  return 0;
 }
 /*
 void adjustPos(Path posPath, Path path, LayoutContext layoutContext) {
@@ -144,10 +148,6 @@ void adjustPos(Path posPath, Path path, LayoutContext layoutContext) {
     children[index].adjustPos(posPath.trimRange(0, 1), path, layoutContext);
   }
 }
-
-  int process(int area1, int area2) {
-    return 0;
-  }
 
   Sizer getZoneSizer(int zone) {
     if (zone >= 0) {
@@ -230,33 +230,33 @@ Getter::Getter(int index, int offset, int maxDirs, int dirs) : Sizer(index) {
   this->maxDirs = maxDirs;
   this->dirs = dirs;
 }
-/*
-IntTreeUnit Getter::parseResize(List areas, Path path, int dir, List<int> limits) {
-  return new IntTreeUnit(_getMaxSize(maxDirs, areas[offset], path, dir, limits));
+
+IntTreeUnit *Getter::parseResize(LocationUnit **areaUnits, const Path &path, int dir, const Point &limits) {
+  return new IntTreeUnit(_getMaxSize(maxDirs, &areaUnits[offset], path, dir, limits));
 }
 
-int Getter::_getMaxSize(int maxDirs, Object areas, Path path, int dir, List<int> limits) {
-  var dom = [maxDirs];
-  int dim = ctz(dom);
+int Getter::_getMaxSize(int maxDirs, LocationUnit **areaUnits, const Path &path, int dir, const Point &limits) {
+  IndexList dom(maxDirs);
+  int dim = dom.getNext(-1);
   int size = 0;
 
   if (dim != -1)
     for (int index = 0; index < limits[dim]; index++) {
-      path.values[dim] = index;
-      size = max(_getMaxSize(dom[0], areas, path, dir, limits), size);
+//      path[dim] = index;
+      size = std::max(_getMaxSize(maxDirs & ~(1 << dim), areaUnits, path, dir, limits), size);
     }
   else
-    size = _getSize(dirs, areas, path, dir);
+    size = _getSize(dirs, areaUnits, path, dir);
 
   return size;
 }
 
-int Getter::_getSize(int dirs, Object areas, Path path, int dir) {
-  var dom = [dirs];
-  int dim = ctz(dom);
+int Getter::_getSize(int dirs, LocationUnit **areaUnits, const Path &path, int dir) {
+  IndexList dom(dirs);
+  int dim = dom.getNext(-1);
 
-  return dim != -1 ? _getSize(dom[0], (areas as List)[path.values[dim]], path, dir) : (areas as ListUnitAreas).getSize(dir);
-}*/
+  return dim;// != -1 ? _getSize(dirs & ~(1 << dim), (areaUnits as List)[path[dim]], path, dir) : (areaUnits as ListUnitAreas).getSize(dir);
+}
 
 Multiplier::Multiplier(int index) : Sizer(index) {
 }

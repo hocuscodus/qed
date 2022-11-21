@@ -39,7 +39,7 @@ struct Sizer : std::vector<Sizer *> {
   void adjust(Path path);
   int findIndex(int index, bool locationFlag);
   Sizer *put(SizerType sizerType, int index, int offset, int maxDirs, int dirs, bool byIndex, Path *sizerPath);
-  IntTreeUnit *parseResize(LocationUnit **areaUnits, const Path &path, int dir, Point limits);
+  IntTreeUnit *parseResize(LocationUnit **areaUnits, const Path &path, int dir, const Point &limits);
   void adjustPos(Path posPath, const Path &path, LayoutContext layoutContext);
   int process(int area1, int area2);
   Sizer getZoneSizer(int zone);

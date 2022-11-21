@@ -71,6 +71,12 @@ IndexList::IndexList() {
   array = NULL;
 }
 
+IndexList::IndexList(long indexes) {
+  size = 0;
+  array = (long *) malloc(sizeof(long));
+  *array = indexes;
+}
+
 IndexList::~IndexList() {
   if (array != NULL)
     free(array);

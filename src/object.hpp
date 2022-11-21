@@ -108,6 +108,7 @@ struct IndexList {
   long *array;
 
   IndexList();
+  IndexList(long indexes);
   ~IndexList();
 
   void set(int index);
