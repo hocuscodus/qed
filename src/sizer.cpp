@@ -22,6 +22,9 @@ Sizer::Sizer(int index) {
   this->index = index;
 }
 
+Sizer::~Sizer() {
+}
+
 int Sizer::getNumSizers() {
   return size();
 }
@@ -225,6 +228,9 @@ int Maxer::findIndexes(int location, IntTreeUnit tree) {
 ZoneMaxer::ZoneMaxer(int index) : Sizer(index), tree(-1) {
 }
 
+ZoneMaxer::~ZoneMaxer() {
+}
+
 Getter::Getter(int index, int offset, int maxDirs, int dirs) : Sizer(index) {
   this->offset = offset;
   this->maxDirs = maxDirs;
@@ -246,16 +252,16 @@ int Getter::_getMaxSize(int maxDirs, LocationUnit **areaUnits, const Path &path,
       size = std::max(_getMaxSize(maxDirs & ~(1 << dim), areaUnits, path, dir, limits), size);
     }
   else
-    size = _getSize(dirs, areaUnits, path, dir);
+    size = _getSize(dirs, *areaUnits, path, dir);
 
   return size;
 }
 
-int Getter::_getSize(int dirs, LocationUnit **areaUnits, const Path &path, int dir) {
+int Getter::_getSize(int dirs, LocationUnit *areaUnits, const Path &path, int dir) {
   IndexList dom(dirs);
   int dim = dom.getNext(-1);
 
-  return dim;// != -1 ? _getSize(dirs & ~(1 << dim), (areaUnits as List)[path[dim]], path, dir) : (areaUnits as ListUnitAreas).getSize(dir);
+  return dim != -1 ? _getSize(dirs & ~(1 << dim), areaUnits->getValue(path[dim]), path, dir) : ((ListUnitAreas *) areaUnits)->getSize(dir);
 }
 
 Multiplier::Multiplier(int index) : Sizer(index) {
