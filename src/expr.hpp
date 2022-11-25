@@ -122,9 +122,9 @@ struct VariableExpr : public Expr {
 struct AttributeExpr : public Expr {
   Token name;
   Expr* handler;
-  int index;
+  int _index;
 
-  AttributeExpr(Token name, Expr* handler, int index);
+  AttributeExpr(Token name, Expr* handler);
   void accept(ExprVisitor *visitor);
 };
 
@@ -134,6 +134,7 @@ struct AttributeListExpr : public Expr {
   int childrenCount;
   AttributeListExpr** children;
   ChildAttrSets* attrSets;
+  int _viewIndex;
 
   AttributeListExpr(int attCount, AttributeExpr** attributes, int childrenCount, AttributeListExpr** children, ChildAttrSets* attrSets);
   void accept(ExprVisitor *visitor);

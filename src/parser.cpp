@@ -418,7 +418,7 @@ AttributeExpr *Parser::attribute(TokenType endGroupType) {
   passSeparator();
   Expr *handler = statement(endGroupType);
 
-  return new AttributeExpr(identifier, handler, -1);
+  return new AttributeExpr(identifier, handler);
 }
 
 AttributeListExpr *Parser::attributeList(TokenType endGroupType) {

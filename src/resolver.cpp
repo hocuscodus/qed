@@ -193,39 +193,66 @@ void Resolver::visitAssignExpr(AssignExpr *expr)
 }
 
 static std::set<std::string> outAttrs({"out", "bgcol", "textcol", "fontSize", "width", "height", "alignx", "aligny", "zoomwidth", "zoomheight"});
+ValueStack<int> valueStack(-1);
 
-void Resolver::visitAttributeExpr(AttributeExpr *expr)
-{
-  if (expr->handler)
-  {
+void Resolver::visitAttributeExpr(AttributeExpr *expr) {
+  if (expr->handler) {
     bool outAttr = outAttrs.find(expr->name.getString()) != outAttrs.end();
 
-    if (outFlag) {
-      if (outAttr) {
+    if (outAttr) {
+      if (outFlag) {
         accept<int>(expr->handler, 0);
 
         Type type = removeLocal();
 
         if (type.valueType != VAL_VOID) {
-          expr->index = current->localCount;
+          expr->_index = current->localCount;
           current->addLocal(type);
         }
       }
     }
-    else if (!outAttr)
-    {
-      //        endCompiler();
-      //        accept<int>(expr->handler, 0);
-    }
+    else
+      ;
   }
 }
 
-void Resolver::visitAttributeListExpr(AttributeListExpr *expr)
-{
+void Resolver::visitAttributeListExpr(AttributeListExpr *expr) {
   for (int index = 0; index < expr->attCount; index++)
-    accept<int>(expr->attributes[index], 0);
+    if (outFlag)
+      accept<int>(expr->attributes[index], 0);
+    else
+      if (expr->attributes[index]->_index != -1) {
+        valueStack.push(expr->attributes[index]->name.getString(), expr->attributes[index]->_index);
+        if (!expr->attributes[index]->name.getString().compare("out"))
+          ;
+      }
 
-  int numAttrSets = expr->childrenCount; /*
+  int numAttrSets = expr->childrenCount;
+
+  if (!numAttrSets) {
+    if (!outFlag) {
+      int index = valueStack.get("out");
+
+      if (index != -1) {
+        Type &type = current->enclosing->locals[index].type;
+
+        if (type.valueType == VAL_OBJ)
+          switch (type.objType->type) {
+          case OBJ_COMPILER_INSTANCE:
+            expr->_viewIndex = current->localCount;
+            current->addLocal({VAL_INT});
+            break;
+
+          case OBJ_STRING:
+            expr->_viewIndex = current->localCount;
+            current->addLocal({VAL_OBJ, &newInternal()->obj});
+            break;
+          }
+      }
+    }
+  }
+  else
+  /*
    Point numZones;
    int offset = 0;
    std::array<long, NUM_DIRS> arrayDirFlags = {2L, 1L};
@@ -260,6 +287,10 @@ void Resolver::visitAttributeListExpr(AttributeListExpr *expr)
   //    subAttrsets = parent is ImplicitArrayDeclaration ? parseCreateSubSets(topSizers, new Path(), numZones) : createIntersection(-1, topSizers);
   //    subAttrsets = createIntersection(-1, topSizers);
   //  }
+
+  for (int index = 0; index < expr->attCount; index++)
+    if (!outFlag && expr->attributes[index]->_index != -1)
+      valueStack.pop(expr->attributes[index]->name.getString());
 }
 
 void Resolver::visitBinaryExpr(BinaryExpr *expr)
@@ -1146,8 +1177,7 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr)
   TokenType type = expr->name.type;
   bool parenFlag = type == TOKEN_RIGHT_PAREN;
 
-  for (int index = 0; index < expr->count; index++)
-  {
+  for (int index = 0; index < expr->count; index++) {
     Expr *subExpr = expr->expressions[index];
 
     acceptSubExpr(subExpr);
@@ -1156,8 +1186,7 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr)
       removeLocal();
   }
 
-  if (expr->ui != NULL && expr->ui->childrenCount)
-  {
+  if (expr->ui != NULL && expr->ui->childrenCount) {
     Compiler compiler(parser, current);
 
     compiler.function->type = {VAL_VOID};
@@ -1177,6 +1206,32 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr)
     outFlag = true;
     accept<int>(expr->ui, 0);
     outFlag = false;
+
+    {
+      Compiler areaCompiler(parser, &compiler);
+
+      areaCompiler.function->type = {VAL_VOID};
+      areaCompiler.function->name = copyString("recalc", 4);
+      areaCompiler.function->arity = 0;
+      areaCompiler.beginScope();
+      current = &areaCompiler;
+      accept<int>(expr->ui, 0);
+      areaCompiler.function->fieldCount = areaCompiler.localCount;
+      areaCompiler.function->fields = ALLOCATE(Field, areaCompiler.localCount);
+
+      for (int index = 0; index < areaCompiler.localCount; index++) {
+        Local *local = &areaCompiler.locals[index];
+
+        areaCompiler.function->fields[index].type = local->type;
+        areaCompiler.function->fields[index].name = copyString(local->name.start, local->name.length);
+      }
+
+      current = current->enclosing;
+
+      if (areaCompiler.localCount > 1)
+        current->function->uiFunctions->insert(std::pair<std::string, ObjFunction *>("recalc", areaCompiler.function));
+    }
+
     compiler.function->fieldCount = compiler.localCount;
     compiler.function->fields = ALLOCATE(Field, compiler.localCount);
 

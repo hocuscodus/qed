@@ -106,11 +106,11 @@ AttrSet::AttrSet(int *offset, Point &zoneOffsets, std::array<long, NUM_DIRS> &ar
       ExprType *returnType = NULL;//inputStream.read() != 0 ? listExpr->attributes[index]->type : NULL;
 
 //      str = str + " @" + prop + "(" + handler->name + ")";
-      initAttr(property, dimFlags, returnType, listExpr->attributes[index]->index);
+      initAttr(property, dimFlags, returnType, listExpr->attributes[index]->_index);
       refreshFlags |= dimFlags; // should not take into account useless attributes (make it two-pass in compiler)
 
       if (keys.find(property) != keys.end())
-        valueStack.push(property, {dimFlags, false, listExpr->attributes[index]->index});
+        valueStack.push(property, {dimFlags, false, listExpr->attributes[index]->_index});
     }
 
     refreshFlags ^= refreshFlags & parentRefreshFlags; // remove parentRefreshFlags part

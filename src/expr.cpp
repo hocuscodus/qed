@@ -18,10 +18,9 @@ void VariableExpr::accept(ExprVisitor *visitor) {
   return visitor->visitVariableExpr(this);
 }
 
-AttributeExpr::AttributeExpr(Token name, Expr* handler, int index) : Expr(EXPR_ATTRIBUTE) {
+AttributeExpr::AttributeExpr(Token name, Expr* handler) : Expr(EXPR_ATTRIBUTE) {
   this->name = name;
   this->handler = handler;
-  this->index = index;
 }
 
 void AttributeExpr::accept(ExprVisitor *visitor) {

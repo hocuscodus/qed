@@ -85,7 +85,12 @@ struct ValueStackElement {
 };
 
 template <typename T> struct ValueStack {
+  T defaultValue;
 	std::unordered_map<std::string, std::stack<T>> map;
+
+	ValueStack(T defaultValue = T()) {
+    this->defaultValue = defaultValue;
+  }
 
 	void push(std::string key, T value) {
     if (map.find(key) == map.end())
@@ -95,19 +100,26 @@ template <typename T> struct ValueStack {
   }
 
 	T pop(std::string key) {
-    std::stack<T> &stack = map[key];
-    T element = stack.top();
+    auto it = map.find(key);
 
-    stack.pop();
+    if (it != map.end()) {
+      T element = it->second.top();
 
-    if (stack.empty())
-      map.erase(key);
+      it->second.pop();
 
-    return element;
+      if (it->second.empty())
+        map.erase(key);
+
+      return element;
+    }
+
+    return defaultValue;
   }
 
 	T get(std::string key) {
-    return map[key].top();
+    auto it = map.find(key);
+
+    return it != map.end() ? it->second.top() : defaultValue;
   }
 };
 

@@ -220,11 +220,21 @@ public:
     for (int index = 0; fields[index] != NULL; index++) {
       char field[128];
       strcpy(field, trim(fields[index]));
-      fprintf(file, "  %s;\n", trim(field));
+      fprintf(file, "  %s;\n", field);
     }
 
     // Constructor.
-    fprintf(file, "\n  %s%s(%s);\n", className, baseName, fieldList);
+    fprintf(file, "\n  %s%s(", className, baseName);
+    for (int index = 0; fields[index] != NULL; index++) {
+      char field[128];
+      strcpy(field, trim(fields[index]));
+
+      char *term = strchr(field, ' ') + 1;
+
+      if (term[0] != '_')
+        fprintf(file, index == 0 ? "%s" : ", %s", field);
+    }
+    fprintf(file, ");\n");
 
     // Visitor pattern.
     fprintf(file, "  void accept(%sVisitor *visitor);\n", baseName);
@@ -232,16 +242,29 @@ public:
   }
 
   void defineType(FILE *file, char *baseName, char *className, char *fieldList) {
-    // Constructor.
-    fprintf(file, "\n%s%s::%s%s(%s) : %s(%s) {\n", className, baseName, className, baseName, fieldList, baseName, getEnum(className, baseName));
-
     char **fields = split(fieldList, ",");
+
+    // Constructor.
+    fprintf(file, "\n%s%s::%s%s(", className, baseName, className, baseName, fieldList, baseName, getEnum(className, baseName));
+    for (int index = 0; fields[index] != NULL; index++) {
+      char field[128];
+      strcpy(field, trim(fields[index]));
+
+      char *term = strchr(field, ' ') + 1;
+
+      if (term[0] != '_')
+        fprintf(file, index == 0 ? "%s" : ", %s", field);
+    }
+    fprintf(file, ") : %s(%s) {\n", baseName, getEnum(className, baseName));
+
     for (int index = 0; fields[index] != NULL; index++) {
       char field[128];
       strcpy(field, trim(fields[index]));
       strtok2(field, " ");
       char *name = strtok2(NULL, " ");
-      fprintf(file, "  this->%s = %s;\n", name, name);
+
+      if (name[0] != '_')
+        fprintf(file, "  this->%s = %s;\n", name, name);
     }
 
     fprintf(file, "}\n");
@@ -263,8 +286,8 @@ int main(int argc, const char *argv[]) {
 
   const char *array1[] = {
     "Variable    : Token name, int8_t index, bool upvalueFlag",
-    "Attribute   : Token name, Expr* handler, int index",
-    "AttributeList : int attCount, AttributeExpr** attributes, int childrenCount, AttributeListExpr** children, ChildAttrSets* attrSets",
+    "Attribute   : Token name, Expr* handler, int _index",
+    "AttributeList : int attCount, AttributeExpr** attributes, int childrenCount, AttributeListExpr** children, ChildAttrSets* attrSets, int _viewIndex",
     "Assign      : VariableExpr* varExp, Token op, Expr* value",
     "Binary      : Expr* left, Token op, Expr* right, OpCode opCode, bool notFlag",
     "Grouping    : Token name, int count, Expr** expressions, int popLevels, AttributeListExpr* ui, ChildAttrSets* attrSets",

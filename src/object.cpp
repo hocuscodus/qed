@@ -710,32 +710,7 @@ UnitArea *ObjInstance::recalculate(VM &vm, ValueStack<Value *> &valueStack) {
   if (coThread->getFormFlag()) {
     initValues();/*
 //    memset(totalSize, NUM_DIRS, sizeof(int));
-
-    for (int ndx = 0; ndx < frameCount; ndx++) {
-      CallFrame &frame = frames[ndx];
-      ObjClosure *outClosure = (*frame.closure->uiClosures)["$out"];
-
-      if (!outClosure) {
-        ObjFunction *outFunction = (*frame.closure->function->uiFunctions)["$out"];
-
-        outClosure = newClosure(outFunction);
-        (*frame.closure->uiClosures)["$out"] = outClosure;
-
-        for (int i = 0; i < outClosure->upvalueCount; i++) {
-          uint8_t isLocal = outFunction->upvalues[i].isLocal;
-          uint8_t index = outFunction->upvalues[i].index;
-
-          outClosure->upvalues[i] = isLocal ? captureUpvalue(frame.slots + index) : frame.closure->upvalues[index];
-        }
-      }
-
-      instance->viewValueThread->push(OBJ_VAL(outClosure));
-      instance->viewValueThread->call(outClosure, 0, -1);
-      instance->viewValueThread->run();
-
-      for (int ndx2 = -1; (ndx2 = frame.closure->function->instanceIndexes->getNext(ndx2)) != -1;)
-        ((ObjInstance *) frame.slots[ndx2].as.obj)->initValues(vm);
-    }*/
+*/
 //      Obj *obj = layoutObject.obj;
 /*
       if (obj is Obj && obj.returnHandler is CallReturnHandler) {
