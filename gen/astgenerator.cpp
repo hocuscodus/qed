@@ -287,10 +287,10 @@ int main(int argc, const char *argv[]) {
   const char *array1[] = {
     "Variable    : Token name, int8_t index, bool upvalueFlag",
     "Attribute   : Token name, Expr* handler, int _index",
-    "AttributeList : int attCount, AttributeExpr** attributes, int childrenCount, AttributeListExpr** children, ChildAttrSets* attrSets, int _viewIndex",
+    "AttributeList : int attCount, AttributeExpr** attributes, int childrenCount, AttributeListExpr** children, ChildAttrSets* attrSets, int _viewIndex, int _offsets[2]",
     "Assign      : VariableExpr* varExp, Token op, Expr* value",
     "Binary      : Expr* left, Token op, Expr* right, OpCode opCode, bool notFlag",
-    "Grouping    : Token name, int count, Expr** expressions, int popLevels, AttributeListExpr* ui, ChildAttrSets* attrSets",
+    "Grouping    : Token name, int count, Expr** expressions, int popLevels, Expr* ui, ChildAttrSets* attrSets",
     "Call        : Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler, GroupingExpr* groupingExpr",
     "Declaration : Type type, Token name, Expr* initExpr",
     "Function    : Type type, Token name, int count, Expr** params, Expr* body, ObjFunction* function",

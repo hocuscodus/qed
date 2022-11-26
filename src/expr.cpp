@@ -61,7 +61,7 @@ void BinaryExpr::accept(ExprVisitor *visitor) {
   return visitor->visitBinaryExpr(this);
 }
 
-GroupingExpr::GroupingExpr(Token name, int count, Expr** expressions, int popLevels, AttributeListExpr* ui, ChildAttrSets* attrSets) : Expr(EXPR_GROUPING) {
+GroupingExpr::GroupingExpr(Token name, int count, Expr** expressions, int popLevels, Expr* ui, ChildAttrSets* attrSets) : Expr(EXPR_GROUPING) {
   this->name = name;
   this->count = count;
   this->expressions = expressions;

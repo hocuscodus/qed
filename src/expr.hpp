@@ -135,6 +135,7 @@ struct AttributeListExpr : public Expr {
   AttributeListExpr** children;
   ChildAttrSets* attrSets;
   int _viewIndex;
+  int _offsets[2];
 
   AttributeListExpr(int attCount, AttributeExpr** attributes, int childrenCount, AttributeListExpr** children, ChildAttrSets* attrSets);
   void accept(ExprVisitor *visitor);
@@ -165,10 +166,10 @@ struct GroupingExpr : public Expr {
   int count;
   Expr** expressions;
   int popLevels;
-  AttributeListExpr* ui;
+  Expr* ui;
   ChildAttrSets* attrSets;
 
-  GroupingExpr(Token name, int count, Expr** expressions, int popLevels, AttributeListExpr* ui, ChildAttrSets* attrSets);
+  GroupingExpr(Token name, int count, Expr** expressions, int popLevels, Expr* ui, ChildAttrSets* attrSets);
   void accept(ExprVisitor *visitor);
 };
 

@@ -191,12 +191,77 @@ void Resolver::visitAssignExpr(AssignExpr *expr)
 
   current->addLocal(type2);
 }
+/*
+Expr *Parser::forStatement(TokenType endGroupType) {
+  consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
 
+  Expr *initializer = NULL;
+
+  if (!match(TOKEN_SEPARATOR))
+    initializer = match(TOKEN_VAR) ? varDeclaration(endGroupType) : expressionStatement(endGroupType);
+
+  TokenType tokens[] = {TOKEN_SEPARATOR, TOKEN_EOF};
+  Expr *condition = check(TOKEN_SEPARATOR) ? createBooleanExpr(true) : expression(tokens);
+
+  consume(TOKEN_SEPARATOR, "Expect ';' or newline after loop condition.");
+
+  TokenType tokens2[] = {TOKEN_RIGHT_PAREN, TOKEN_SEPARATOR, TOKEN_EOF};
+  Expr *increment = check(TOKEN_RIGHT_PAREN) ? NULL : expression(tokens2);
+
+  consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
+
+  Expr *body = statement(endGroupType);
+
+  if (increment != NULL) {
+    Expr **expList = RESIZE_ARRAY(Expr *, NULL, 0, 2);
+
+    expList[0] = new UnaryExpr(buildToken(TOKEN_PRINT, "print", 5, -1), body);
+    expList[1] = new UnaryExpr(buildToken(TOKEN_PRINT, "print", 5, -1), increment);
+    body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 2, expList, 0, NULL, NULL);
+  }
+
+  body = new BinaryExpr(condition, buildToken(TOKEN_WHILE, "while", 5, -1), body, OP_FALSE, false);
+
+  if (initializer != NULL) {
+    Expr **expList = RESIZE_ARRAY(Expr *, NULL, 0, 2);
+
+    expList[0] = initializer;
+    expList[1] = body;
+    body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 2, expList, 0, NULL, NULL);
+  }
+
+  return body;
+}
+*/
 static std::set<std::string> outAttrs({"out", "bgcol", "textcol", "fontSize", "width", "height", "alignx", "aligny", "zoomwidth", "zoomheight"});
 ValueStack<int> valueStack(-1);
+std::set<Expr *> outExprs;
 
 void Resolver::visitAttributeExpr(AttributeExpr *expr) {
   if (expr->handler) {
+    bool outAttr = outAttrs.find(expr->name.getString()) != outAttrs.end();
+
+    if (outAttr) {
+      if (outFlag) {
+        accept<int>(expr->handler, 0);
+
+        Type type = removeLocal();
+
+        if (type.valueType != VAL_VOID) {
+          if (!expr->name.getString().compare("out")) {
+            if (type.valueType != VAL_OBJ || (type.objType->type != OBJ_COMPILER_INSTANCE && type.objType->type != OBJ_FUNCTION))
+              expr->handler = convertToString(expr->handler, type, parser);
+          }
+          expr->_index = outExprs.size();
+          outExprs.insert(expr);
+        }
+      }
+    }
+    else
+      ;
+  }
+//////////////
+/*  if (expr->handler) {
     bool outAttr = outAttrs.find(expr->name.getString()) != outAttrs.end();
 
     if (outAttr) {
@@ -213,19 +278,33 @@ void Resolver::visitAttributeExpr(AttributeExpr *expr) {
     }
     else
       ;
-  }
+  }*/
 }
 
 void Resolver::visitAttributeListExpr(AttributeListExpr *expr) {
-  for (int index = 0; index < expr->attCount; index++)
-    if (outFlag)
+  if (outFlag)
+    for (int index = 0; index < expr->attCount; index++)
       accept<int>(expr->attributes[index], 0);
-    else
-      if (expr->attributes[index]->_index != -1) {
+  else
+    for (int index = 0; index < expr->attCount; index++)
+      if (expr->attributes[index]->_index != -1)
         valueStack.push(expr->attributes[index]->name.getString(), expr->attributes[index]->_index);
-        if (!expr->attributes[index]->name.getString().compare("out"))
-          ;
-      }
+
+  for (int index = 0; index < expr->childrenCount; index++)
+    accept<int>(expr->children[index], 0);
+
+  if (!outFlag)
+    for (int index = 0; index < expr->attCount; index++)
+      if (expr->attributes[index]->_index != -1)
+        valueStack.pop(expr->attributes[index]->name.getString());
+////////////////////
+/*  if (outFlag)
+    for (int index = 0; index < expr->attCount; index++)
+      accept<int>(expr->attributes[index], 0);
+  else
+    for (int index = 0; index < expr->attCount; index++)
+      if (expr->attributes[index]->_index != -1)
+        valueStack.push(expr->attributes[index]->name.getString(), expr->attributes[index]->_index);
 
   int numAttrSets = expr->childrenCount;
 
@@ -252,20 +331,20 @@ void Resolver::visitAttributeListExpr(AttributeListExpr *expr) {
     }
   }
   else
-  /*
+  / *
    Point numZones;
    int offset = 0;
    std::array<long, NUM_DIRS> arrayDirFlags = {2L, 1L};
-   ValueStack valueStack;*/
-  for (int index = 0; index < numAttrSets; index++)
-    accept<int>(expr->children[index], 0);
+   ValueStack valueStack;* /
+    for (int index = 0; index < numAttrSets; index++)
+      accept<int>(expr->children[index], 0);
 
   //  expr->attrSets = numAttrSets != 0 ? new ChildAttrSets(&offset, numZones, 0, arrayDirFlags, valueStack, expr, 0) : NULL;
   //  function->attrSets = expr->attrSets;
 
   //  if (expr->attrSets != NULL) {
   //    Sizer *topSizers[NUM_DIRS];
-  /*
+  / *
       for (int dir = 0; dir < NUM_DIRS; dir++) {
         int *zone = NULL;
 
@@ -283,14 +362,15 @@ void Resolver::visitAttributeListExpr(AttributeListExpr *expr) {
         expr->attrSets->parseAdjustPaths(topSizers, dir);
         numZones[dir] = zone != NULL ? zone[0] + 1 : 1;
       }
-  */
+  * /
   //    subAttrsets = parent is ImplicitArrayDeclaration ? parseCreateSubSets(topSizers, new Path(), numZones) : createIntersection(-1, topSizers);
   //    subAttrsets = createIntersection(-1, topSizers);
   //  }
 
-  for (int index = 0; index < expr->attCount; index++)
-    if (!outFlag && expr->attributes[index]->_index != -1)
-      valueStack.pop(expr->attributes[index]->name.getString());
+  if (!outFlag)
+    for (int index = 0; index < expr->attCount; index++)
+      if (expr->attributes[index]->_index != -1)
+        valueStack.pop(expr->attributes[index]->name.getString());*/
 }
 
 void Resolver::visitBinaryExpr(BinaryExpr *expr)
@@ -402,8 +482,7 @@ void Resolver::visitBinaryExpr(BinaryExpr *expr)
   switch (expr->op.type)
   {
   case TOKEN_PLUS:
-    if (type1.valueType == VAL_OBJ)
-    {
+    if (type1.valueType == VAL_OBJ) {
       expr->right = convertToString(expr->right, type2, parser);
       current->addLocal(VAL_OBJ);
       return;
@@ -1186,7 +1265,32 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr)
       removeLocal();
   }
 
-  if (expr->ui != NULL && expr->ui->childrenCount) {
+  if (expr->ui != NULL) {
+    outFlag = true;
+    accept<int>(expr->ui, 0);
+    outFlag = false;
+
+    int numAttrs = outExprs.size();
+
+    if (numAttrs) {
+      int index = 0;
+      Expr **bodyExprs = new Expr *[numAttrs];
+
+      for(auto outExpr : outExprs)
+        bodyExprs[index++] = outExpr;
+
+      outExprs.clear();
+
+      VariableExpr *outNameExpr = new VariableExpr(buildToken(TOKEN_STRING, "$out", 4, -1), -1, false);
+      Expr **outFunctionExprs = new Expr *[3];
+//      outFunctionExprs[0] = void;
+      outFunctionExprs[1] = new CallExpr(outNameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), 0, NULL, false, NULL, NULL);
+      outFunctionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, ")", 1, -1), numAttrs, bodyExprs, 0, NULL, NULL);
+      delete expr->ui;
+      expr->ui = new ListExpr(numAttrs, outFunctionExprs, EXPR_LIST, NULL);
+//      accept<int>(expr->ui, 0);
+    }
+  /*
     Compiler compiler(parser, current);
 
     compiler.function->type = {VAL_VOID};
@@ -1194,15 +1298,7 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr)
     compiler.function->arity = 0;
     compiler.beginScope();
     current = &compiler;
-    /*
-        if (bodyExpr)
-          if (bodyExpr->type == EXPR_GROUPING && ((GroupingExpr *)bodyExpr)->name.type == TOKEN_RIGHT_BRACE)
-            acceptGroupingExprUnits((GroupingExpr *)bodyExpr);
-          else {
-            accept<int>(bodyExpr, 0);
-            removeLocal();
-          }
-    */
+
     outFlag = true;
     accept<int>(expr->ui, 0);
     outFlag = false;
@@ -1211,7 +1307,7 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr)
       Compiler areaCompiler(parser, &compiler);
 
       areaCompiler.function->type = {VAL_VOID};
-      areaCompiler.function->name = copyString("recalc", 4);
+      areaCompiler.function->name = copyString("recalc", 6);
       areaCompiler.function->arity = 0;
       areaCompiler.beginScope();
       current = &areaCompiler;
@@ -1245,7 +1341,7 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr)
     current = current->enclosing;
 
     if (compiler.localCount > 1)
-      current->function->uiFunctions->insert(std::pair<std::string, ObjFunction *>("$out", compiler.function));
+      current->function->uiFunctions->insert(std::pair<std::string, ObjFunction *>("$out", compiler.function));*/
   }
 }
 

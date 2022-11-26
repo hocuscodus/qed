@@ -39,6 +39,8 @@ void CodeGenerator::visitAssignExpr(AssignExpr *expr) {
 
 static std::set<std::string> outAttrs({"out", "bgcol", "textcol", "fontSize", "width", "height", "alignx", "aligny", "zoomwidth", "zoomheight"});
 
+ValueStack<ValueStackElement> valueStack2;
+
 void CodeGenerator::visitAttributeExpr(AttributeExpr *expr) {
   if (expr->handler) {
     bool outAttr = outAttrs.find(expr->name.getString()) != outAttrs.end();
@@ -165,6 +167,9 @@ void CodeGenerator::visitGetExpr(GetExpr *expr) {
 }
 
 void CodeGenerator::visitGroupingExpr(GroupingExpr *expr) {
+  if (expr->ui)
+    accept<int>(expr->ui, 0);
+
   for (int index = 0; index < expr->count; index++)
     accept<int>(expr->expressions[index], 0);
 
@@ -175,27 +180,37 @@ void CodeGenerator::visitGroupingExpr(GroupingExpr *expr) {
     emitByte(OP_POP);
     emitBytes(OP_GET_LOCAL, expr->popLevels);
   }
-
+/*
   if (expr->ui != NULL && expr->ui->childrenCount) {
     ObjFunction *function = this->function->uiFunctions->operator[]("$out");
 
-    if (function) {{
-      CodeGenerator generator(parser, function);
+    if (function) {
+      {
+        CodeGenerator generator(parser, function);
 
-      outFlag = true;
-      generator.emitCode(expr->ui);
-      generator.endCompiler();
-      outFlag = false;
+        outFlag = true;
+        generator.emitCode(expr->ui);
+        generator.endCompiler();
+        outFlag = false;
 
-      if (parser.hadError)
-        return;
+        if (parser.hadError)
+          return;
 
-      Point numZones;
-      int offset = 0;
-      std::array<long, NUM_DIRS> arrayDirFlags = {2L, 1L};
-      ValueStack<ValueStackElement> valueStack;
+        ObjFunction *viewFunction = function->uiFunctions->operator[]("recalc");
 
-      expr->ui->attrSets = new ChildAttrSets(&offset, numZones, 0, arrayDirFlags, valueStack, expr->ui, 0, function);
+        if (viewFunction) {
+          CodeGenerator generator(parser, viewFunction);
+
+          generator.emitCode(expr->ui);
+          generator.endCompiler();
+        }
+
+        Point numZones;
+        int offset = 0;
+        std::array<long, NUM_DIRS> arrayDirFlags = {2L, 1L};
+        ValueStack<ValueStackElement> valueStack;
+
+        expr->ui->attrSets = new ChildAttrSets(&offset, numZones, 0, arrayDirFlags, valueStack, expr->ui, 0, function);
       }
 
       this->function->attrSets = expr->ui->attrSets;
@@ -205,7 +220,7 @@ void CodeGenerator::visitGroupingExpr(GroupingExpr *expr) {
           int *zone = NULL;
 
           this->function->topSizers[dir] = new Maxer(-1);
-/*
+/ *
       if (parent is ImplicitArrayDeclaration) {
 //					int zFlags = attrSets.zFlags[dir];
 
@@ -213,7 +228,7 @@ void CodeGenerator::visitGroupingExpr(GroupingExpr *expr) {
         topSizers[dir]->put(SizerType.maxer, -1, 0, 0, 0, false, {Path()});
         topSizers[dir]->children.add(new Adder(-1));
       }
-*/
+* /
           expr->ui->attrSets->parseCreateSizers(this->function->topSizers, dir, zone, Path(), Path());
           expr->ui->attrSets->parseAdjustPaths(this->function->topSizers, dir);
 //          numZones[dir] = zone != NULL ? zone[0] + 1 : 1;
@@ -225,7 +240,7 @@ void CodeGenerator::visitGroupingExpr(GroupingExpr *expr) {
 
       // generate input functions code here
     }
-  }
+  }*/
 }
 
 void CodeGenerator::visitListExpr(ListExpr *expr) {
