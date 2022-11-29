@@ -75,8 +75,8 @@ ObjFunction *Compiler::compile() {
   else {
     disassembleChunk(&function->chunk, function->name != NULL ? function->name->chars : "<script>");
 
-    for(auto i : *function->uiFunctions)
-      disassembleChunk(&i.second->chunk, i.first.c_str());
+    if (function->uiFunction)
+      disassembleChunk(&function->uiFunction->chunk, "UI$");
   }
 #endif
 

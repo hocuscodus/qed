@@ -681,13 +681,13 @@ bool CoThread::getFormFlag() {
 void ObjInstance::initValues() {
   for (int ndx = 0; ndx < coThread->frameCount; ndx++) {
     CallFrame &frame = coThread->frames[ndx];
-    ObjClosure *outClosure = (*frame.closure->uiClosures)["$out"];
+    ObjClosure *outClosure = frame.closure->uiClosure;
 
     if (!outClosure) {
-      ObjFunction *outFunction = (*frame.closure->function->uiFunctions)["$out"];
+      ObjFunction *outFunction = frame.closure->function->uiFunction;
 
       outClosure = newClosure(outFunction);
-      (*frame.closure->uiClosures)["$out"] = outClosure;
+      frame.closure->uiClosure = outClosure;
 
       for (int i = 0; i < outClosure->upvalueCount; i++) {
         uint8_t isLocal = outFunction->upvalues[i].isLocal;
@@ -697,12 +697,18 @@ void ObjInstance::initValues() {
       }
     }
 
+    viewValueThread->callValue(OBJ_VAL(outClosure), 0, true, -1);/*
     viewValueThread->push(OBJ_VAL(outClosure));
     viewValueThread->call(outClosure, 0, -1);
-    viewValueThread->run();
+    viewValueThread->run();*/
+    CoThread *instanceThread = ((ObjInstance *) AS_OBJ(viewValueThread->pop()))->coThread;
 
-    for (int ndx2 = -1; (ndx2 = viewValueThread->frames[ndx].closure->function->instanceIndexes->getNext(ndx2)) != -1;)
-      ((ObjInstance *) viewValueThread->frames[ndx].slots[ndx2].as.obj)->initValues();
+    instanceThread->run();
+
+    for (int ndx2 = -1; (ndx2 = instanceThread->frames[0].closure->function->instanceIndexes->getNext(ndx2)) != -1;)
+      ((ObjInstance *) instanceThread->frames[0].slots[ndx2].as.obj)->initValues();
+//    for (int ndx2 = -1; (ndx2 = viewValueThread->frames[ndx].closure->function->instanceIndexes->getNext(ndx2)) != -1;)
+//      ((ObjInstance *) viewValueThread->frames[ndx].slots[ndx2].as.obj)->initValues();
   }
 }
 
@@ -803,7 +809,7 @@ ObjClosure *newClosure(ObjFunction *function) {
   closure->function = function;
   closure->upvalues = upvalues;
   closure->upvalueCount = function->upvalueCount;
-  closure->uiClosures = new std::unordered_map<std::string, ObjClosure*>();
+  closure->uiClosure = NULL;
   return closure;
 }
 
@@ -816,7 +822,8 @@ ObjFunction *newFunction() {
   function->chunk.init();
   function->native = NULL;
   function->instanceIndexes = new IndexList();
-  function->uiFunctions = new std::unordered_map<std::string, ObjFunction*>();
+  function->uiFunction = NULL;
+//  function->uiFunctions = new std::unordered_map<std::string, ObjFunction*>();
   return function;
 }
 

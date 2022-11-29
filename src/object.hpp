@@ -124,7 +124,8 @@ struct ObjFunction : ObjCallable {
   IndexList *instanceIndexes;
   ChildAttrSets *attrSets;
   DirSizers topSizers;
-  std::unordered_map<std::string, ObjFunction*> *uiFunctions;
+  ObjFunction *uiFunction;
+//  std::unordered_map<std::string, ObjFunction*> *uiFunctions;
 //  void parseCreateUIValues(VM &vm, Object value, int flags, List<int> dimIndexes, ValueTree valueTree);
 
   LayoutUnitArea *parseCreateAreasTree(VM &vm, ValueStack<Value *> &valueStack, Value *values, IndexList *instanceIndexes, int dimFlags);
@@ -190,7 +191,7 @@ struct ObjClosure {
   ObjFunction *function;
   ObjUpvalue **upvalues;
   int upvalueCount;
-  std::unordered_map<std::string, ObjClosure*> *uiClosures;
+  ObjClosure *uiClosure;
 };
 
 struct CallFrame {

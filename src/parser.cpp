@@ -418,6 +418,14 @@ AttributeExpr *Parser::attribute(TokenType endGroupType) {
   passSeparator();
   Expr *handler = statement(endGroupType);
 
+  if (handler->type == EXPR_STATEMENT) {
+    StatementExpr *oldHandler = (StatementExpr *) handler;
+
+    handler = oldHandler->expr;
+    oldHandler->expr = NULL;
+    delete oldHandler;
+  }
+
   return new AttributeExpr(identifier, handler);
 }
 

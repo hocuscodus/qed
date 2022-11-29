@@ -160,11 +160,20 @@ void ASTPrinter::visitAssignExpr(AssignExpr *expr) {
 }
 
 void ASTPrinter::visitAttributeExpr(AttributeExpr *expr) {
+  printf("%.*s=(", expr->name.length, expr->name.start);
   if (expr->handler)
     accept<int>(expr->handler, 0);
+  printf(")");
 }
 
 void ASTPrinter::visitAttributeListExpr(AttributeListExpr *expr) {
+  printf("AttList(");
+  for (int index = 0; index < expr->attCount; index++)
+    accept<int>(expr->attributes[index], 0);
+
+  for (int index = 0; index < expr->childrenCount; index++)
+    accept<int>(expr->children[index], 0);
+  printf(")");
 }
 
 void ASTPrinter::visitBinaryExpr(BinaryExpr *expr) {
@@ -211,6 +220,8 @@ void ASTPrinter::visitGroupingExpr(GroupingExpr *expr) {
     printf(", ");
     expr->expressions[index]->accept(this);
   }
+  if (expr->ui)
+    accept<int>(expr->ui, 0);
   printf(")");
 }
 

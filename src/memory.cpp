@@ -57,7 +57,7 @@ static void freeObject(Obj *object) {
 
     case OBJ_CLOSURE: {
       ObjClosure *closure = (ObjClosure *) object;
-      delete closure->uiClosures;
+//      delete closure->uiClosure;
       FREE_ARRAY(ObjUpvalue*, closure->upvalues, closure->upvalueCount);
       FREE(ObjClosure, object);
       break;
@@ -65,7 +65,7 @@ static void freeObject(Obj *object) {
 
     case OBJ_FUNCTION: {
       ObjFunction *function = (ObjFunction *)object;
-      delete function->uiFunctions;
+//      delete function->uiFunction;
       function->chunk.uninit();
       delete function->instanceIndexes;
       FREE(ObjFunction, object);

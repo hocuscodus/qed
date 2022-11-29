@@ -167,9 +167,6 @@ void CodeGenerator::visitGetExpr(GetExpr *expr) {
 }
 
 void CodeGenerator::visitGroupingExpr(GroupingExpr *expr) {
-  if (expr->ui)
-    accept<int>(expr->ui, 0);
-
   for (int index = 0; index < expr->count; index++)
     accept<int>(expr->expressions[index], 0);
 
@@ -179,6 +176,12 @@ void CodeGenerator::visitGroupingExpr(GroupingExpr *expr) {
   if (expr->name.type == TOKEN_RIGHT_PAREN) {
     emitByte(OP_POP);
     emitBytes(OP_GET_LOCAL, expr->popLevels);
+  }
+
+  if (expr->ui) {
+    outFlag = true;
+    accept<int>(expr->ui, 0);
+    outFlag = false;
   }
 /*
   if (expr->ui != NULL && expr->ui->childrenCount) {
@@ -266,8 +269,8 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
       else {
         disassembleChunk(&expr->function->chunk, expr->function->name->chars);
 
-        for(auto i : *expr->function->uiFunctions)
-          disassembleChunk(&i.second->chunk, i.first.c_str());
+        if(expr->function->uiFunction)
+          disassembleChunk(&expr->function->uiFunction->chunk, "UI$");
       }
 #endif
       emitBytes(OP_CLOSURE, makeConstant(OBJ_VAL(expr->function)));

@@ -17,6 +17,7 @@
  */
 #include <stdio.h>
 #include <string.h>
+#include <list>
 #include <set>
 #include "resolver.hpp"
 #include "memory.h"
@@ -235,7 +236,7 @@ Expr *Parser::forStatement(TokenType endGroupType) {
 */
 static std::set<std::string> outAttrs({"out", "bgcol", "textcol", "fontSize", "width", "height", "alignx", "aligny", "zoomwidth", "zoomheight"});
 ValueStack<int> valueStack(-1);
-std::set<Expr *> outExprs;
+//std::list<AttributeExpr *> attExprs;
 
 void Resolver::visitAttributeExpr(AttributeExpr *expr) {
   if (expr->handler) {
@@ -248,13 +249,18 @@ void Resolver::visitAttributeExpr(AttributeExpr *expr) {
         Type type = removeLocal();
 
         if (type.valueType != VAL_VOID) {
-          if (!expr->name.getString().compare("out")) {
-            if (type.valueType != VAL_OBJ || (type.objType->type != OBJ_COMPILER_INSTANCE && type.objType->type != OBJ_FUNCTION))
+          if (!expr->name.getString().compare("out"))
+            if (type.valueType != VAL_OBJ || (type.objType->type != OBJ_COMPILER_INSTANCE && type.objType->type != OBJ_FUNCTION)) {
               expr->handler = convertToString(expr->handler, type, parser);
-          }
-          expr->_index = outExprs.size();
-          outExprs.insert(expr);
+              type = {VAL_OBJ};
+            }
         }
+        else
+          parser.error("Value must not be void");
+//        attExprs.push_back(expr);
+        current->addLocal(type);
+      }
+      else {
       }
     }
     else
@@ -870,8 +876,10 @@ void Resolver::visitListExpr(ListExpr *expr)
         if (varExp->index != -1 && !varExp->upvalueFlag)
           parser.error("Already a variable with this name in this scope.");
 
-        current->addLocal(VAL_OBJ);
-        current->setLocalName(&varExp->name);
+        if (!outFlag) {
+          current->addLocal(VAL_OBJ);
+          current->setLocalName(&varExp->name);
+        }
 
         Compiler compiler(parser, current);
 
@@ -933,7 +941,10 @@ void Resolver::visitListExpr(ListExpr *expr)
         }
 
         current = current->enclosing;
-        current->setLocalObjType(compiler.function);
+        if (outFlag)
+          current->function->uiFunction = compiler.function;
+        else
+          current->setLocalObjType(compiler.function);
         expr->function = compiler.function;
       }
       break;
@@ -1265,30 +1276,44 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr)
       removeLocal();
   }
 
-  if (expr->ui != NULL) {
+  if (expr->ui != NULL) {/*
     outFlag = true;
     accept<int>(expr->ui, 0);
     outFlag = false;
 
-    int numAttrs = outExprs.size();
+    std::list<Expr *> outExprs;
 
-    if (numAttrs) {
-      int index = 0;
-      Expr **bodyExprs = new Expr *[numAttrs];
+    for(auto attExpr : attExprs) {
+      accept<int>(attExpr->handler, 0);
 
-      for(auto outExpr : outExprs)
-        bodyExprs[index++] = outExpr;
+      Type type = removeLocal();
 
-      outExprs.clear();
+      if (type.valueType != VAL_VOID) {
+        if (!attExpr->name.getString().compare("out")) {
+          if (type.valueType != VAL_OBJ || (type.objType->type != OBJ_COMPILER_INSTANCE && type.objType->type != OBJ_FUNCTION))
+            attExpr->handler = convertToString(attExpr->handler, type, parser);
+        }
 
-      VariableExpr *outNameExpr = new VariableExpr(buildToken(TOKEN_STRING, "$out", 4, -1), -1, false);
-      Expr **outFunctionExprs = new Expr *[3];
-//      outFunctionExprs[0] = void;
-      outFunctionExprs[1] = new CallExpr(outNameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), 0, NULL, false, NULL, NULL);
-      outFunctionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, ")", 1, -1), numAttrs, bodyExprs, 0, NULL, NULL);
+        attExpr->_index = outExprs.size() + 1;
+        outExprs.push_back(expr->handler);
+      }
+      else
+        parser.error("Value must not be void");
+    }
+*/
+    VariableExpr *outNameExpr = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "UI$", 3, -1), -1, false);
+    Expr **outFunctionExprs = new Expr *[3];
+    outFunctionExprs[0] = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "void", 4, -1), VAL_VOID, false);
+    outFunctionExprs[1] = new CallExpr(outNameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), 0, NULL, false, NULL, NULL);
+    outFunctionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 1/*2*/, new Expr *[] {expr->ui/*, viewFunctionExpr*/}, 0, NULL, NULL);
+    expr->ui = new ListExpr(3, outFunctionExprs, EXPR_LIST, NULL);
+    outFlag = true;
+    accept<int>(expr->ui, 0);
+    outFlag = false;
+
+    if (false/*nothing to show*/) {
       delete expr->ui;
-      expr->ui = new ListExpr(numAttrs, outFunctionExprs, EXPR_LIST, NULL);
-//      accept<int>(expr->ui, 0);
+      expr->ui = NULL;
     }
   /*
     Compiler compiler(parser, current);
