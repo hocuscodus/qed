@@ -249,16 +249,21 @@ void Resolver::visitAttributeExpr(AttributeExpr *expr) {
         Type type = removeLocal();
 
         if (type.valueType != VAL_VOID) {
-          if (!expr->name.getString().compare("out"))
+          if (!expr->name.getString().compare("out")) {
             if (type.valueType != VAL_OBJ || (type.objType->type != OBJ_COMPILER_INSTANCE && type.objType->type != OBJ_FUNCTION)) {
               expr->handler = convertToString(expr->handler, type, parser);
               type = {VAL_OBJ};
             }
+          }
+          expr->_index = current->localCount;
+          current->addLocal(type);
+
+          if (type.valueType == VAL_OBJ && type.objType && type.objType->type == OBJ_COMPILER_INSTANCE)
+            current->function->instanceIndexes->set(expr->_index);
         }
         else
           parser.error("Value must not be void");
 //        attExprs.push_back(expr);
-        current->addLocal(type);
       }
       else {
       }
@@ -1277,36 +1282,94 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr)
   }
 
   if (expr->ui != NULL) {/*
-    outFlag = true;
-    accept<int>(expr->ui, 0);
-    outFlag = false;
+void AttrSet::parseCreateAreasTree(VM &vm, ValueStack<Value *> &valueStack, int dimFlags, const Path &path, Value *values, IndexList *instanceIndexes, LocationUnit **areaUnits) {
+  for (std::string key : flagsMap) {
+//    int flags = attrs[key]->flags;
 
-    std::list<Expr *> outExprs;
+//    if ((flags & dimFlags) == flags) {
+//      Path filteredPath = path.filterPathWrong(dimFlags, flags);
+      int localIndex = attrs[key]->localIndex;
+      Value *value = &values[localIndex];//filteredPath.getValue(valueTree.getValue(key));
 
-    for(auto attExpr : attExprs) {
-      accept<int>(attExpr->handler, 0);
+      valueStack.push(key, value);
 
-      Type type = removeLocal();
+      if (!key.compare("out"))
+        (dimFlags <<= 1) |= instanceIndexes->get(localIndex);
+//    }
+  }
 
-      if (type.valueType != VAL_VOID) {
-        if (!attExpr->name.getString().compare("out")) {
-          if (type.valueType != VAL_OBJ || (type.objType->type != OBJ_COMPILER_INSTANCE && type.objType->type != OBJ_FUNCTION))
-            attExpr->handler = convertToString(attExpr->handler, type, parser);
-        }
+  if (children != NULL)
+    children->parseCreateAreasTree(vm, valueStack, dimFlags, path, values, instanceIndexes, areaUnits);
+  else {
+    Value *value = valueStack.get("out");
 
-        attExpr->_index = outExprs.size() + 1;
-        outExprs.push_back(expr->handler);
+    if (value != NULL) {
+      LocationUnit *unitArea;
+
+      if (dimFlags & 1)
+        unitArea = AS_INSTANCE(*value)->recalculate(vm, valueStack);
+      else {
+//        LambdaDeclaration func = Op.getPredefinedType(value);
+
+        unitArea = new UnitArea({10, 10});
+//vm.getStringSize(AS_OBJ(*value), valueStack);
       }
-      else
-        parser.error("Value must not be void");
+
+      areaUnits[offset] = LocationUnit::addValue(&areaUnits[offset], path, unitArea);
     }
-*/
-    VariableExpr *outNameExpr = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "UI$", 3, -1), -1, false);
-    Expr **outFunctionExprs = new Expr *[3];
-    outFunctionExprs[0] = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "void", 4, -1), VAL_VOID, false);
-    outFunctionExprs[1] = new CallExpr(outNameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), 0, NULL, false, NULL, NULL);
-    outFunctionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 1/*2*/, new Expr *[] {expr->ui/*, viewFunctionExpr*/}, 0, NULL, NULL);
-    expr->ui = new ListExpr(3, outFunctionExprs, EXPR_LIST, NULL);
+  }
+
+  for (std::string key : flagsMap) {
+//    int flags = attrs[key]->flags;
+
+//    if ((flags & dimFlags) == flags)
+      valueStack.pop(key);
+  }
+}
+
+void ChildAttrSets::parseCreateAreasTree(VM &vm, ValueStack<Value *> &valueStack, int dimFlags, const Path &path, Value *values, IndexList *instanceIndexes, LocationUnit **areaUnits) {
+  for (int index = 0; index < size(); index++) {
+    AttrSet *attrSet = operator[](index);
+
+    if ((attrSet->areaParseFlags & (1 << dimFlags)) != 0)
+      attrSet->parseCreateAreasTree(vm, valueStack, dimFlags, path, values, instanceIndexes, areaUnits);
+  }
+}
+
+LayoutUnitArea *ObjFunction::parseCreateAreasTree(VM &vm, ValueStack<Value *> &valueStack, Value *values, IndexList *instanceIndexes, int dimFlags) {
+  LocationUnit **subAreas = new LocationUnit *[attrSets->numAreas];
+
+  memset(subAreas, 0, attrSets->numAreas * sizeof(LocationUnit *));
+  attrSets->parseCreateAreasTree(vm, valueStack, 0, Path(), values, instanceIndexes, subAreas);
+
+  DirType<IntTreeUnit *> sizeTrees;
+
+  for (int dir = 0; dir < NUM_DIRS; dir++)
+    sizeTrees[dir] = parseResize(dir, {0, 0}, *subAreas, 0);
+
+  return new LayoutUnitArea(sizeTrees, subAreas);
+}
+
+IntTreeUnit *ObjFunction::parseResize(int dir, const Point &limits, LocationUnit *areas, int offset) {
+  return topSizers[dir]->parseResize(&areas, Path(limits.size()), dir, limits);
+}
+*//*
+    // Perform the UI AST magic
+    VariableExpr *layoutNameExpr = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "Layout", 3, -1), -1, false);
+    Expr **layoutFunctionExprs = new Expr *[3];
+
+    layoutFunctionExprs[0] = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "void", 4, -1), VAL_VOID, false);
+    layoutFunctionExprs[1] = new CallExpr(layoutNameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), 0, NULL, false, NULL, NULL);
+    layoutFunctionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 1, new Expr *[] {expr->ui}, 0, NULL, NULL);
+
+    Expr *layoutFunction = new ListExpr(3, layoutFunctionExprs, EXPR_LIST, NULL);*/
+    VariableExpr *valuesNameExpr = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "UI$", 3, -1), -1, false);
+    Expr **valuesFunctionExprs = new Expr *[3];
+
+    valuesFunctionExprs[0] = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "void", 4, -1), VAL_VOID, false);
+    valuesFunctionExprs[1] = new CallExpr(valuesNameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), 0, NULL, false, NULL, NULL);
+    valuesFunctionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 1, new Expr *[] {expr->ui}, 0, NULL, NULL);
+    expr->ui = new ListExpr(3, valuesFunctionExprs, EXPR_LIST, NULL);
     outFlag = true;
     accept<int>(expr->ui, 0);
     outFlag = false;
