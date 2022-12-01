@@ -170,10 +170,9 @@ static void resolveVariableExpr(VariableExpr *expr)
     }
 }
 
-Resolver::Resolver(Parser &parser, Expr *exp) : ExprVisitor(), parser(parser)
-{
+Resolver::Resolver(Parser &parser, Expr *exp) : ExprVisitor(), parser(parser) {
   this->exp = exp;
-  outFlag = false;
+  startExpr = NULL;
 }
 
 void Resolver::visitAssignExpr(AssignExpr *expr)
@@ -243,7 +242,7 @@ void Resolver::visitAttributeExpr(AttributeExpr *expr) {
     bool outAttr = outAttrs.find(expr->name.getString()) != outAttrs.end();
 
     if (outAttr) {
-      if (outFlag) {
+      if (!uiParseCount) {
         accept<int>(expr->handler, 0);
 
         Type type = removeLocal();
@@ -293,7 +292,15 @@ void Resolver::visitAttributeExpr(AttributeExpr *expr) {
 }
 
 void Resolver::visitAttributeListExpr(AttributeListExpr *expr) {
-  if (outFlag)
+  if (!startExpr) {
+    startExpr = expr;
+    uiParseCount = -1;
+  }
+
+  if (startExpr == expr)
+    uiParseCount++;
+
+  if (!uiParseCount)
     for (int index = 0; index < expr->attCount; index++)
       accept<int>(expr->attributes[index], 0);
   else
@@ -304,7 +311,7 @@ void Resolver::visitAttributeListExpr(AttributeListExpr *expr) {
   for (int index = 0; index < expr->childrenCount; index++)
     accept<int>(expr->children[index], 0);
 
-  if (!outFlag)
+  if (uiParseCount)
     for (int index = 0; index < expr->attCount; index++)
       if (expr->attributes[index]->_index != -1)
         valueStack.pop(expr->attributes[index]->name.getString());
@@ -881,7 +888,7 @@ void Resolver::visitListExpr(ListExpr *expr)
         if (varExp->index != -1 && !varExp->upvalueFlag)
           parser.error("Already a variable with this name in this scope.");
 
-        if (!outFlag) {
+        if (!varExp->name.equal("UI$")) {
           current->addLocal(VAL_OBJ);
           current->setLocalName(&varExp->name);
         }
@@ -946,10 +953,11 @@ void Resolver::visitListExpr(ListExpr *expr)
         }
 
         current = current->enclosing;
-        if (outFlag)
+        if (varExp->name.equal("UI$"))
           current->function->uiFunction = compiler.function;
         else
           current->setLocalObjType(compiler.function);
+
         expr->function = compiler.function;
       }
       break;
@@ -1110,8 +1118,7 @@ void Resolver::visitStatementExpr(StatementExpr *expr)
 
   acceptSubExpr(expr->expr);
 
-  if (!outFlag && (expr->expr->type != EXPR_LIST || ((ListExpr *)expr->expr)->listType == EXPR_LIST))
-  {
+  if ((!current->function->name || strcmp(current->function->name->chars, "UI$")) && (expr->expr->type != EXPR_LIST || ((ListExpr *)expr->expr)->listType == EXPR_LIST)) {
     Type type = removeLocal();
 
     if (oldLocalCount != current->localCount)
@@ -1353,26 +1360,26 @@ LayoutUnitArea *ObjFunction::parseCreateAreasTree(VM &vm, ValueStack<Value *> &v
 IntTreeUnit *ObjFunction::parseResize(int dir, const Point &limits, LocationUnit *areas, int offset) {
   return topSizers[dir]->parseResize(&areas, Path(limits.size()), dir, limits);
 }
-*//*
+*/
     // Perform the UI AST magic
     VariableExpr *layoutNameExpr = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "Layout", 3, -1), -1, false);
     Expr **layoutFunctionExprs = new Expr *[3];
 
     layoutFunctionExprs[0] = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "void", 4, -1), VAL_VOID, false);
     layoutFunctionExprs[1] = new CallExpr(layoutNameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), 0, NULL, false, NULL, NULL);
-    layoutFunctionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 1, new Expr *[] {expr->ui}, 0, NULL, NULL);
+    layoutFunctionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 1/*2*/, new Expr *[] {expr->ui/*, viewFunctionExpr*/}, 0, NULL, NULL);
 
-    Expr *layoutFunction = new ListExpr(3, layoutFunctionExprs, EXPR_LIST, NULL);*/
+    Expr *layoutFunction = new ListExpr(3, layoutFunctionExprs, EXPR_LIST, NULL);
     VariableExpr *valuesNameExpr = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "UI$", 3, -1), -1, false);
     Expr **valuesFunctionExprs = new Expr *[3];
 
     valuesFunctionExprs[0] = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "void", 4, -1), VAL_VOID, false);
     valuesFunctionExprs[1] = new CallExpr(valuesNameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), 0, NULL, false, NULL, NULL);
     valuesFunctionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 1, new Expr *[] {expr->ui}, 0, NULL, NULL);
+//    valuesFunctionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 2, new Expr *[] {expr->ui, layoutFunction}, 0, NULL, NULL);
     expr->ui = new ListExpr(3, valuesFunctionExprs, EXPR_LIST, NULL);
-    outFlag = true;
     accept<int>(expr->ui, 0);
-    outFlag = false;
+    startExpr = NULL;
 
     if (false/*nothing to show*/) {
       delete expr->ui;

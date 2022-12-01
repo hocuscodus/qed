@@ -23,7 +23,8 @@
 class Resolver : public ExprVisitor {
   Parser &parser;
   Expr *exp;
-  bool outFlag;
+  AttributeListExpr *startExpr;
+  int uiParseCount;
 public:
   Resolver(Parser &parser, Expr *exp);
 

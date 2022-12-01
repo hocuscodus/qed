@@ -51,7 +51,7 @@ std::string Token::getString() {
 }
 
 bool Token::equal(char *string) {
-  return memcmp(start, string, length) && string[length] == '\0';
+  return !memcmp(start, string, length) && string[length] == '\0';
 }
 
 void Token::declareError(const char *message) {
