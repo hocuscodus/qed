@@ -45,11 +45,15 @@ static void freeObject(Obj *object) {
     case OBJ_INSTANCE: {
       ObjInstance *instance = (ObjInstance *) object;
 
+      if (instance->numValuesInstances) {
+        for (int ndx = 0; ndx < instance->numValuesInstances; ndx++)
+          FREE(OBJ_INSTANCE, instance->uiValuesInstances[ndx]);
+
+        delete[] instance->uiValuesInstances;
+      }
+
       if (instance->coThread)
         delete instance->coThread;
-
-      if (instance->viewValueThread)
-        delete instance->viewValueThread;
 
       FREE(ObjInstance, object);
       break;

@@ -191,7 +191,6 @@ struct ObjClosure {
   ObjFunction *function;
   ObjUpvalue **upvalues;
   int upvalueCount;
-  ObjClosure *uiClosure;
 };
 
 struct CallFrame {
@@ -199,6 +198,7 @@ struct CallFrame {
   uint8_t *ip;
   Value *slots;
   int handlerIp;
+  ObjClosure *uiClosure;
 
 	LocationUnit *init(VM &vm, Value *values, IndexList *instanceIndexes, ValueStack<Value *> &valueStack);/*
 	void refresh(VM &process, const Point &pos, const Point &size, const Point &clipPos, const Point &clipSize);
@@ -253,9 +253,11 @@ struct ObjCompilerInstance {
 struct ObjInstance {
   Obj obj;
   CoThread *coThread;
-  CoThread *viewValueThread;
+  int numValuesInstances;
+  ObjInstance **uiValuesInstances;
 
   void initValues();
+  void uninitValues();
   UnitArea *recalculate(VM &vm, ValueStack<Value *> &valueStack);
 };
 

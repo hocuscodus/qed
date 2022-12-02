@@ -201,10 +201,22 @@ bool CoThread::call(ObjClosure *closure, int argCount, int handlerIp) {
   }
 
   CallFrame *frame = &frames[frameCount++];
+  ObjFunction *outFunction = closure->function->uiFunction;
+
   frame->closure = closure;
   frame->ip = closure->function->chunk.code;
   frame->slots = stackTop - argCount - 1;
   frame->handlerIp = handlerIp;
+  frame->uiClosure = outFunction ? newClosure(outFunction) : NULL;
+
+  if (outFunction)
+    for (int i = 0; i < outFunction->upvalueCount; i++) {
+      uint8_t isLocal = outFunction->upvalues[i].isLocal;
+      uint8_t index = outFunction->upvalues[i].index;
+
+      frame->uiClosure->upvalues[i] = isLocal ? captureUpvalue(frame->slots + index) : frame->closure->upvalues[index];
+    }
+
   return true;
 }
 
@@ -679,36 +691,42 @@ bool CoThread::getFormFlag() {
 }
 
 void ObjInstance::initValues() {
+  numValuesInstances = coThread->frameCount;
+  uiValuesInstances = new ObjInstance *[numValuesInstances];
+
   for (int ndx = 0; ndx < coThread->frameCount; ndx++) {
     CallFrame &frame = coThread->frames[ndx];
-    ObjClosure *outClosure = frame.closure->uiClosure;
+    ObjClosure *outClosure = frame.uiClosure;
 
-    if (!outClosure) {
-      ObjFunction *outFunction = frame.closure->function->uiFunction;
+    uiValuesInstances[ndx] = newInstance(coThread);
 
-      outClosure = newClosure(outFunction);
-      frame.closure->uiClosure = outClosure;
+    CoThread *instanceThread = uiValuesInstances[ndx]->coThread;
 
-      for (int i = 0; i < outClosure->upvalueCount; i++) {
-        uint8_t isLocal = outFunction->upvalues[i].isLocal;
-        uint8_t index = outFunction->upvalues[i].index;
-
-        outClosure->upvalues[i] = isLocal ? coThread->captureUpvalue(frame.slots + index) : frame.closure->upvalues[index];
-      }
-    }
-
-    viewValueThread->callValue(OBJ_VAL(outClosure), 0, true, -1);/*
-    viewValueThread->push(OBJ_VAL(outClosure));
-    viewValueThread->call(outClosure, 0, -1);
-    viewValueThread->run();*/
-    CoThread *instanceThread = ((ObjInstance *) AS_OBJ(viewValueThread->pop()))->coThread;
-
+    *instanceThread->stackTop++ = OBJ_VAL(outClosure);
+    instanceThread->call(outClosure, 0, -1);
     instanceThread->run();
 
-    for (int ndx2 = -1; (ndx2 = instanceThread->frames[0].closure->function->instanceIndexes->getNext(ndx2)) != -1;)
+    for (int ndx2 = -1; (ndx2 = outClosure->function->instanceIndexes->getNext(ndx2)) != -1;)
       ((ObjInstance *) instanceThread->frames[0].slots[ndx2].as.obj)->initValues();
-//    for (int ndx2 = -1; (ndx2 = viewValueThread->frames[ndx].closure->function->instanceIndexes->getNext(ndx2)) != -1;)
-//      ((ObjInstance *) viewValueThread->frames[ndx].slots[ndx2].as.obj)->initValues();
+  }
+}
+
+void ObjInstance::uninitValues() {
+  for (int ndx = 0; ndx < numValuesInstances; ndx++) {
+    CallFrame &frame = uiValuesInstances[ndx]->coThread->frames[0];
+    ObjClosure *outClosure = frame.uiClosure;
+
+    for (int ndx2 = -1; (ndx2 = outClosure->function->instanceIndexes->getNext(ndx2)) != -1;)
+      ((ObjInstance *) uiValuesInstances[ndx]->coThread->frames[0].slots[ndx2].as.obj)->uninitValues();
+  }
+
+  if (uiValuesInstances) {
+    for (int ndx = 0; ndx < coThread->frameCount; ndx++)
+      FREE(OBJ_INSTANCE, uiValuesInstances[ndx]);
+
+    delete[] uiValuesInstances;
+    uiValuesInstances = NULL;
+    numValuesInstances = 0;
   }
 }
 
@@ -726,7 +744,7 @@ UnitArea *ObjInstance::recalculate(VM &vm, ValueStack<Value *> &valueStack) {
 //          if (layoutObject != NULL)
 //            ; //							call.layoutObject.uninit(new Env(this));
     for (int ndx = 0; ndx < coThread->frameCount; ndx++) {
-      CallFrame *viewFrame = viewValueThread->getFrame(ndx);
+      CallFrame *viewFrame = uiValuesInstances[ndx]->coThread->getFrame(0);
 
       coThread->frames[ndx].init(vm, viewFrame->slots, viewFrame->closure->function->instanceIndexes, valueStack);
 //        }
@@ -785,7 +803,7 @@ ObjInstance *newInstance(CoThread *caller) {
   ObjInstance *instance = ALLOCATE_OBJ(ObjInstance, OBJ_INSTANCE);
 
   instance->coThread = new CoThread(instance);
-  instance->viewValueThread = new CoThread(instance);
+  instance->uiValuesInstances= NULL;
   instance->coThread->caller = caller;
   return instance;
 }
@@ -809,7 +827,6 @@ ObjClosure *newClosure(ObjFunction *function) {
   closure->function = function;
   closure->upvalues = upvalues;
   closure->upvalueCount = function->upvalueCount;
-  closure->uiClosure = NULL;
   return closure;
 }
 
