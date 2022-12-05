@@ -691,14 +691,13 @@ bool CoThread::getFormFlag() {
 }
 
 void ObjInstance::initValues() {
-  numValuesInstances = coThread->frameCount;
-  uiValuesInstances = new ObjInstance *[numValuesInstances];
+  uiValuesInstances = new ObjInstance *[coThread->frameCount];
 
   for (int ndx = 0; ndx < coThread->frameCount; ndx++) {
     CallFrame &frame = coThread->frames[ndx];
     ObjClosure *outClosure = frame.uiClosure;
 
-    uiValuesInstances[ndx] = newInstance(coThread);
+    uiValuesInstances[numValuesInstances++] = newInstance(coThread);
 
     CoThread *instanceThread = uiValuesInstances[ndx]->coThread;
 
@@ -732,24 +731,30 @@ void ObjInstance::uninitValues() {
 
 UnitArea *ObjInstance::recalculate(VM &vm, ValueStack<Value *> &valueStack) {
   if (coThread->getFormFlag()) {
-    initValues();/*
-//    memset(totalSize, NUM_DIRS, sizeof(int));
-*/
-//      Obj *obj = layoutObject.obj;
+    uninitValues();
+    initValues();
 /*
-      if (obj is Obj && obj.returnHandler is CallReturnHandler) {
-        FunctionDeclaration func = obj.func;
-
-        if (!func.isPredefined() && obj.instPointer == ((CodeExecuter) func.executer).cleanupOffset) {*/
-//          if (layoutObject != NULL)
-//            ; //							call.layoutObject.uninit(new Env(this));
-    for (int ndx = 0; ndx < coThread->frameCount; ndx++) {
+    for (int ndx = 0; ndx < numValuesInstances; ndx++) {
       CallFrame *viewFrame = uiValuesInstances[ndx]->coThread->getFrame(0);
 
       coThread->frames[ndx].init(vm, viewFrame->slots, viewFrame->closure->function->instanceIndexes, valueStack);
-//        }
-//      }
     }
+
+    for (int ndx = 0; ndx < numValuesInstances; ndx++) {
+      CallFrame &frame = *uiValuesInstances[ndx]->coThread->getFrame(0);
+      ObjClosure *outClosure = frame.uiClosure;
+
+      uiValuesInstances[numValuesInstances++] = newInstance(coThread);
+
+      CoThread *instanceThread = uiValuesInstances[ndx]->coThread;
+
+      *instanceThread->stackTop++ = OBJ_VAL(outClosure);
+      instanceThread->call(outClosure, 0, -1);
+      instanceThread->run();
+
+      for (int ndx2 = -1; (ndx2 = outClosure->function->instanceIndexes->getNext(ndx2)) != -1;)
+        ((ObjInstance *) instanceThread->frames[0].slots[ndx2].as.obj)->initValues();
+    }*/
   }
 
   return new UnitArea({100, 100});
@@ -803,6 +808,7 @@ ObjInstance *newInstance(CoThread *caller) {
   ObjInstance *instance = ALLOCATE_OBJ(ObjInstance, OBJ_INSTANCE);
 
   instance->coThread = new CoThread(instance);
+  instance->numValuesInstances = 0;
   instance->uiValuesInstances= NULL;
   instance->coThread->caller = caller;
   return instance;
