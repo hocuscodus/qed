@@ -172,7 +172,6 @@ static void resolveVariableExpr(VariableExpr *expr)
 
 Resolver::Resolver(Parser &parser, Expr *exp) : ExprVisitor(), parser(parser) {
   this->exp = exp;
-  startExpr = NULL;
 }
 
 void Resolver::visitAssignExpr(AssignExpr *expr)
@@ -233,8 +232,10 @@ Expr *Parser::forStatement(TokenType endGroupType) {
   return body;
 }
 */
+static std::list<Expr *> uiExprs;
 static std::set<std::string> outAttrs({"out", "bgcol", "textcol", "fontSize", "width", "height", "alignx", "aligny", "zoomwidth", "zoomheight"});
 ValueStack<int> valueStack(-1);
+ValueStack<ValueStackElement> valueStack2;
 //std::list<AttributeExpr *> attExprs;
 
 void Resolver::visitAttributeExpr(AttributeExpr *expr) {
@@ -254,7 +255,9 @@ void Resolver::visitAttributeExpr(AttributeExpr *expr) {
               type = {VAL_OBJ};
             }
           }
+
           expr->_index = current->localCount;
+          uiExprs.push_back(expr->handler);
           current->addLocal(type);
 
           if (type.valueType == VAL_OBJ && type.objType && type.objType->type == OBJ_COMPILER_INSTANCE)
@@ -292,14 +295,6 @@ void Resolver::visitAttributeExpr(AttributeExpr *expr) {
 }
 
 void Resolver::visitAttributeListExpr(AttributeListExpr *expr) {
-  if (!startExpr) {
-    startExpr = expr;
-    uiParseCount = -1;
-  }
-
-  if (startExpr == expr)
-    uiParseCount++;
-
   if (!uiParseCount)
     for (int index = 0; index < expr->attCount; index++)
       accept<int>(expr->attributes[index], 0);
@@ -1281,11 +1276,32 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr)
 
   for (int index = 0; index < expr->count; index++) {
     Expr *subExpr = expr->expressions[index];
+    bool uiFlag = index == 0 && subExpr->type == EXPR_ATTRIBUTELIST;
+
+    if (uiFlag)
+      uiParseCount++;
 
     acceptSubExpr(subExpr);
 
-    if (current->peekLocal(0)->type.valueType == VAL_VOID && (!parenFlag || index < expr->count - 1))
-      removeLocal();
+    if (uiFlag) {
+      int count = 0;
+      Expr **newExpressions = new Expr *[uiExprs.size() + expr->count - 1];
+
+      for (Expr *expr : uiExprs)
+        newExpressions[count++] = expr;
+
+      while (++index < expr->count)
+        newExpressions[count++] = expr->expressions[index];
+
+      index = uiExprs.size();
+      expr->count = count;
+      uiExprs.clear();
+      delete[] expr->expressions;
+      expr->expressions = newExpressions;
+    }
+    else
+      if (current->peekLocal(0)->type.valueType == VAL_VOID && (!parenFlag || index < expr->count - 1))
+        removeLocal();
   }
 
   if (expr->ui != NULL) {/*
@@ -1377,14 +1393,11 @@ IntTreeUnit *ObjFunction::parseResize(int dir, const Point &limits, LocationUnit
     valuesFunctionExprs[1] = new CallExpr(valuesNameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), 0, NULL, false, NULL, NULL);
     valuesFunctionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 1, new Expr *[] {expr->ui}, 0, NULL, NULL);
 //    valuesFunctionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 2, new Expr *[] {expr->ui, layoutFunction}, 0, NULL, NULL);
-    expr->ui = new ListExpr(3, valuesFunctionExprs, EXPR_LIST, NULL);
-    accept<int>(expr->ui, 0);
-    startExpr = NULL;
-
-    if (false/*nothing to show*/) {
-      delete expr->ui;
-      expr->ui = NULL;
-    }
+    Expr *valueFunction = new ListExpr(3, valuesFunctionExprs, EXPR_LIST, NULL);
+    uiParseCount = -1;
+    accept<int>(valueFunction, 0);
+    delete expr->ui;
+    expr->ui = valueFunction;
   /*
     Compiler compiler(parser, current);
 

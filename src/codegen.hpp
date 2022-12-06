@@ -24,7 +24,6 @@
 class CodeGenerator : public ExprVisitor {
   Parser &parser;
   ObjFunction *function;
-  bool outFlag;
 public:
   CodeGenerator(Parser &parser, ObjFunction *function);
 

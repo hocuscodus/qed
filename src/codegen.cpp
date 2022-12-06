@@ -37,55 +37,12 @@ void CodeGenerator::visitAssignExpr(AssignExpr *expr) {
   }
 }
 
-static std::set<std::string> outAttrs({"out", "bgcol", "textcol", "fontSize", "width", "height", "alignx", "aligny", "zoomwidth", "zoomheight"});
-
-ValueStack<ValueStackElement> valueStack2;
-
 void CodeGenerator::visitAttributeExpr(AttributeExpr *expr) {
-  if (expr->handler) {
-    bool outAttr = outAttrs.find(expr->name.getString()) != outAttrs.end();
-
-    if (outFlag) {
-      if (outAttr)
-        accept<int>(expr->handler, 0);
-    } else
-      if (!outAttr) {
-        endCompiler();
-        accept<int>(expr->handler, 0);
-      }
-  }
+  parser.error("Cannot generate UI code from UI expression.");
 }
 
 void CodeGenerator::visitAttributeListExpr(AttributeListExpr *expr) {
-  for (int index = 0; index < expr->attCount; index++)
-    accept<int>(expr->attributes[index], 0);
-
-  for (int index = 0; index < expr->childrenCount; index++)
-    accept<int>(expr->children[index], 0);
-/*  function->attrSets = expr->attrSets;
-
-  if (expr->attrSets != NULL) {
-    for (int dir = 0; dir < NUM_DIRS; dir++) {
-      int *zone = NULL;
-
-      function->topSizers[dir] = new Maxer(-1);
-/ *
-      if (parent is ImplicitArrayDeclaration) {
-//					int zFlags = attrSets.zFlags[dir];
-
-        zone = {0};//{zFlags > 0 ? zFlags != 1 ? 1 : 0 : ctz({-zFlags - 1})};
-        topSizers[dir]->put(SizerType.maxer, -1, 0, 0, 0, false, {Path()});
-        topSizers[dir]->children.add(new Adder(-1));
-      }
-* /
-      expr->attrSets->parseCreateSizers(function->topSizers, dir, zone, Path(), Path());
-      expr->attrSets->parseAdjustPaths(function->topSizers, dir);
-      numZones[dir] = zone != NULL ? zone[0] + 1 : 1;
-    }
-
-//    subAttrsets = parent is ImplicitArrayDeclaration ? parseCreateSubSets(topSizers, new Path(), numZones) : createIntersection(-1, topSizers);
-//    subAttrsets = createIntersection(-1, topSizers);
-  }*/
+  parser.error("Cannot generate UI code from UI expression.");
 }
 
 void CodeGenerator::visitBinaryExpr(BinaryExpr *expr) {
@@ -178,11 +135,8 @@ void CodeGenerator::visitGroupingExpr(GroupingExpr *expr) {
     emitBytes(OP_GET_LOCAL, expr->popLevels);
   }
 
-  if (expr->ui) {
-    outFlag = true;
+  if (expr->ui)
     accept<int>(expr->ui, 0);
-    outFlag = false;
-  }
 /*
   if (expr->ui != NULL && expr->ui->childrenCount) {
     ObjFunction *function = this->function->uiFunctions->operator[]("$out");
