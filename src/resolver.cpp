@@ -1228,6 +1228,25 @@ bool Resolver::resolve(Compiler *compiler)
 
 static std::list<Expr *> uiExprs;
 
+static Expr *generateUIFunction(const char *name, Expr *uiExpr, int count, int restLength, Expr **rest) {
+    // Perform the UI AST magic
+    VariableExpr *nameExpr = new VariableExpr(buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1), -1, false);
+    Expr **bodyExprs = new Expr *[count + restLength];
+    Expr **functionExprs = new Expr *[3];
+
+    for (int index = 0; index < count; index++)
+      bodyExprs[index] = uiExpr;
+
+    for (int index = 0; index < restLength; index++)
+      bodyExprs[count + index] = rest[index];
+
+    functionExprs[0] = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "void", 4, -1), VAL_VOID, false);
+    functionExprs[1] = new CallExpr(nameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), 0, NULL, false, NULL, NULL);
+    functionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), count + restLength, bodyExprs, 0, NULL, NULL);
+
+    return new ListExpr(3, functionExprs, EXPR_LIST, NULL);
+}
+
 void Resolver::acceptGroupingExprUnits(GroupingExpr *expr)
 {
   TokenType type = expr->name.type;
@@ -1260,7 +1279,24 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr)
         removeLocal();
   }
 
-  if (expr->ui != NULL) {/*
+  if (expr->ui != NULL)
+    if (((AttributeListExpr *) expr->ui)->childrenCount) {
+      // Perform the UI AST magic
+      Expr *layoutFunction = generateUIFunction("Layout", expr->ui, 3, 0, NULL);
+      Expr *valueFunction = generateUIFunction("UI$", expr->ui, 1, 0, new Expr *[] {layoutFunction});
+
+      uiParseCount = 0;
+      accept<int>(valueFunction, 0);
+//      accept<int>(valueFunction, 0);
+      delete expr->ui;
+      expr->ui = valueFunction;
+    }
+  else {
+    delete expr->ui;
+    expr->ui = NULL;
+  }
+}
+/*
 void AttrSet::parseCreateAreasTree(VM &vm, ValueStack<Value *> &valueStack, int dimFlags, const Path &path, Value *values, IndexList *instanceIndexes, LocationUnit **areaUnits) {
   for (std::string key : flagsMap) {
 //    int flags = attrs[key]->flags;
@@ -1333,82 +1369,6 @@ IntTreeUnit *ObjFunction::parseResize(int dir, const Point &limits, LocationUnit
   return topSizers[dir]->parseResize(&areas, Path(limits.size()), dir, limits);
 }
 */
-    // Perform the UI AST magic
-    VariableExpr *layoutNameExpr = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "Layout", 3, -1), -1, false);
-    Expr **layoutFunctionExprs = new Expr *[3];
-
-    layoutFunctionExprs[0] = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "void", 4, -1), VAL_VOID, false);
-    layoutFunctionExprs[1] = new CallExpr(layoutNameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), 0, NULL, false, NULL, NULL);
-    layoutFunctionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 1/*4*/, new Expr *[] {expr->ui, expr->ui, expr->ui/*, viewFunctionExpr*/}, 0, NULL, NULL);
-
-    Expr *layoutFunction = new ListExpr(3, layoutFunctionExprs, EXPR_LIST, NULL);
-    VariableExpr *valuesNameExpr = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "UI$", 3, -1), -1, false);
-    Expr **valuesFunctionExprs = new Expr *[3];
-
-    valuesFunctionExprs[0] = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "void", 4, -1), VAL_VOID, false);
-    valuesFunctionExprs[1] = new CallExpr(valuesNameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), 0, NULL, false, NULL, NULL);
-    valuesFunctionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 1, new Expr *[] {expr->ui}, 0, NULL, NULL);
-//    valuesFunctionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 2, new Expr *[] {expr->ui, layoutFunction}, 0, NULL, NULL);
-    Expr *valueFunction = new ListExpr(3, valuesFunctionExprs, EXPR_LIST, NULL);
-    uiParseCount = 0;
-    accept<int>(valueFunction, 0);
-    delete expr->ui;
-    expr->ui = valueFunction;
-  /*
-    Compiler compiler(parser, current);
-
-    compiler.function->type = {VAL_VOID};
-    compiler.function->name = copyString("$out", 4);
-    compiler.function->arity = 0;
-    compiler.beginScope();
-    current = &compiler;
-
-    outFlag = true;
-    accept<int>(expr->ui, 0);
-    outFlag = false;
-
-    {
-      Compiler areaCompiler(parser, &compiler);
-
-      areaCompiler.function->type = {VAL_VOID};
-      areaCompiler.function->name = copyString("recalc", 6);
-      areaCompiler.function->arity = 0;
-      areaCompiler.beginScope();
-      current = &areaCompiler;
-      accept<int>(expr->ui, 0);
-      areaCompiler.function->fieldCount = areaCompiler.localCount;
-      areaCompiler.function->fields = ALLOCATE(Field, areaCompiler.localCount);
-
-      for (int index = 0; index < areaCompiler.localCount; index++) {
-        Local *local = &areaCompiler.locals[index];
-
-        areaCompiler.function->fields[index].type = local->type;
-        areaCompiler.function->fields[index].name = copyString(local->name.start, local->name.length);
-      }
-
-      current = current->enclosing;
-
-      if (areaCompiler.localCount > 1)
-        current->function->uiFunctions->insert(std::pair<std::string, ObjFunction *>("recalc", areaCompiler.function));
-    }
-
-    compiler.function->fieldCount = compiler.localCount;
-    compiler.function->fields = ALLOCATE(Field, compiler.localCount);
-
-    for (int index = 0; index < compiler.localCount; index++) {
-      Local *local = &compiler.locals[index];
-
-      compiler.function->fields[index].type = local->type;
-      compiler.function->fields[index].name = copyString(local->name.start, local->name.length);
-    }
-
-    current = current->enclosing;
-
-    if (compiler.localCount > 1)
-      current->function->uiFunctions->insert(std::pair<std::string, ObjFunction *>("$out", compiler.function));*/
-  }
-}
-
 void Resolver::acceptSubExpr(Expr *expr)
 {
   accept<int>(expr, 0);
