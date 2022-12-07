@@ -23,6 +23,23 @@
 #include "memory.h"
 #include "qni.hpp"
 
+#define NUM_DIRS 2
+
+typedef void (Resolver::*ParseUIFn)(AttributeListExpr *expr);
+typedef void (Resolver::*ParseUIAttrFn)(AttributeExpr *expr);
+
+typedef struct {
+  ParseUIFn pushFn;
+  ParseUIFn popFn;
+  ParseUIAttrFn attrFn;
+} ResolverUIRule;
+
+#define UI_PARSE_DEF( identifier, push, pop, attr )  { push, pop, attr }
+ResolverUIRule resolverUIRules[] = { UI_PARSES_DEF };
+#undef UI_PARSE_DEF
+
+extern ParseExpRule expRules[];
+
 /*
 #ifdef DEBUG_PRINT_CODE
 #include "debug.hpp"
@@ -232,84 +249,24 @@ Expr *Parser::forStatement(TokenType endGroupType) {
   return body;
 }
 */
-static std::list<Expr *> uiExprs;
-static std::set<std::string> outAttrs({"out", "bgcol", "textcol", "fontSize", "width", "height", "alignx", "aligny", "zoomwidth", "zoomheight"});
-ValueStack<int> valueStack(-1);
-ValueStack<ValueStackElement> valueStack2;
-//std::list<AttributeExpr *> attExprs;
-
 void Resolver::visitAttributeExpr(AttributeExpr *expr) {
-  if (expr->handler) {
-    bool outAttr = outAttrs.find(expr->name.getString()) != outAttrs.end();
+  int step = getParseStep();
 
-    if (outAttr) {
-      if (!uiParseCount) {
-        accept<int>(expr->handler, 0);
-
-        Type type = removeLocal();
-
-        if (type.valueType != VAL_VOID) {
-          if (!expr->name.getString().compare("out")) {
-            if (type.valueType != VAL_OBJ || (type.objType->type != OBJ_COMPILER_INSTANCE && type.objType->type != OBJ_FUNCTION)) {
-              expr->handler = convertToString(expr->handler, type, parser);
-              type = {VAL_OBJ};
-            }
-          }
-
-          expr->_index = current->localCount;
-          uiExprs.push_back(expr->handler);
-          current->addLocal(type);
-
-          if (type.valueType == VAL_OBJ && type.objType && type.objType->type == OBJ_COMPILER_INSTANCE)
-            current->function->instanceIndexes->set(expr->_index);
-        }
-        else
-          parser.error("Value must not be void");
-//        attExprs.push_back(expr);
-      }
-      else {
-      }
-    }
-    else
-      ;
-  }
-//////////////
-/*  if (expr->handler) {
-    bool outAttr = outAttrs.find(expr->name.getString()) != outAttrs.end();
-
-    if (outAttr) {
-      if (outFlag) {
-        accept<int>(expr->handler, 0);
-
-        Type type = removeLocal();
-
-        if (type.valueType != VAL_VOID) {
-          expr->_index = current->localCount;
-          current->addLocal(type);
-        }
-      }
-    }
-    else
-      ;
-  }*/
+  if (resolverUIRules[step].attrFn)
+    (this->*resolverUIRules[step].attrFn)(expr);
 }
 
 void Resolver::visitAttributeListExpr(AttributeListExpr *expr) {
-  if (!uiParseCount)
-    for (int index = 0; index < expr->attCount; index++)
-      accept<int>(expr->attributes[index], 0);
-  else
-    for (int index = 0; index < expr->attCount; index++)
-      if (expr->attributes[index]->_index != -1)
-        valueStack.push(expr->attributes[index]->name.getString(), expr->attributes[index]->_index);
+  int step = getParseStep();
+
+  if (resolverUIRules[step].pushFn)
+    (this->*resolverUIRules[step].pushFn)(expr);
 
   for (int index = 0; index < expr->childrenCount; index++)
     accept<int>(expr->children[index], 0);
 
-  if (uiParseCount)
-    for (int index = 0; index < expr->attCount; index++)
-      if (expr->attributes[index]->_index != -1)
-        valueStack.pop(expr->attributes[index]->name.getString());
+  if (resolverUIRules[step].popFn)
+    (this->*resolverUIRules[step].popFn)(expr);
 ////////////////////
 /*  if (outFlag)
     for (int index = 0; index < expr->attCount; index++)
@@ -1269,6 +1226,8 @@ bool Resolver::resolve(Compiler *compiler)
   return !parser.hadError;
 }
 
+static std::list<Expr *> uiExprs;
+
 void Resolver::acceptGroupingExprUnits(GroupingExpr *expr)
 {
   TokenType type = expr->name.type;
@@ -1276,14 +1235,10 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr)
 
   for (int index = 0; index < expr->count; index++) {
     Expr *subExpr = expr->expressions[index];
-    bool uiFlag = index == 0 && subExpr->type == EXPR_ATTRIBUTELIST;
-
-    if (uiFlag)
-      uiParseCount++;
 
     acceptSubExpr(subExpr);
 
-    if (uiFlag) {
+    if (subExpr->type == EXPR_ATTRIBUTELIST) {
       int count = 0;
       Expr **newExpressions = new Expr *[uiExprs.size() + expr->count - 1];
 
@@ -1298,6 +1253,7 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr)
       uiExprs.clear();
       delete[] expr->expressions;
       expr->expressions = newExpressions;
+      uiParseCount++;
     }
     else
       if (current->peekLocal(0)->type.valueType == VAL_VOID && (!parenFlag || index < expr->count - 1))
@@ -1383,7 +1339,7 @@ IntTreeUnit *ObjFunction::parseResize(int dir, const Point &limits, LocationUnit
 
     layoutFunctionExprs[0] = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "void", 4, -1), VAL_VOID, false);
     layoutFunctionExprs[1] = new CallExpr(layoutNameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), 0, NULL, false, NULL, NULL);
-    layoutFunctionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 1/*2*/, new Expr *[] {expr->ui/*, viewFunctionExpr*/}, 0, NULL, NULL);
+    layoutFunctionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 1/*4*/, new Expr *[] {expr->ui, expr->ui, expr->ui/*, viewFunctionExpr*/}, 0, NULL, NULL);
 
     Expr *layoutFunction = new ListExpr(3, layoutFunctionExprs, EXPR_LIST, NULL);
     VariableExpr *valuesNameExpr = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "UI$", 3, -1), -1, false);
@@ -1394,7 +1350,7 @@ IntTreeUnit *ObjFunction::parseResize(int dir, const Point &limits, LocationUnit
     valuesFunctionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 1, new Expr *[] {expr->ui}, 0, NULL, NULL);
 //    valuesFunctionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 2, new Expr *[] {expr->ui, layoutFunction}, 0, NULL, NULL);
     Expr *valueFunction = new ListExpr(3, valuesFunctionExprs, EXPR_LIST, NULL);
-    uiParseCount = -1;
+    uiParseCount = 0;
     accept<int>(valueFunction, 0);
     delete expr->ui;
     expr->ui = valueFunction;
@@ -1472,4 +1428,71 @@ void Resolver::acceptSubExpr(Expr *expr)
 
     current->addLocal(type);
   }*/
+}
+
+ParseStep Resolver::getParseStep() {
+  return uiParseCount <= PARSE_AREAS ? (ParseStep) uiParseCount : uiParseCount < PARSE_AREAS + NUM_DIRS ? PARSE_AREAS : (ParseStep) (uiParseCount - NUM_DIRS - 1);
+}
+
+int Resolver::getParseDir() {
+  return uiParseCount - PARSE_AREAS;
+}
+
+static std::set<std::string> outAttrs({"out", "bgcol", "textcol", "fontSize", "width", "height", "alignx", "aligny", "zoomwidth", "zoomheight"});
+ValueStack<int> valueStack(-1);
+ValueStack<ValueStackElement> valueStack2;
+//std::list<AttributeExpr *> attExprs;
+
+void Resolver::processAttrs(AttributeListExpr *expr) {
+  for (int index = 0; index < expr->attCount; index++)
+    accept<int>(expr->attributes[index], 0);
+}
+
+void Resolver::pushAreas(AttributeListExpr *expr) {/*
+  for (int index = 0; index < expr->attCount; index++)
+    if (expr->attributes[index]->_index != -1)
+      valueStack.push(expr->attributes[index]->name.getString(), expr->attributes[index]->_index);*/
+}
+
+void Resolver::popAreas(AttributeListExpr *expr) {/*
+  for (int index = 0; index < expr->attCount; index++)
+    if (expr->attributes[index]->_index != -1)
+      valueStack.pop(expr->attributes[index]->name.getString());*/
+}
+
+void Resolver::evalValue(AttributeExpr *expr) {
+  if (expr->handler) {
+    bool outAttr = outAttrs.find(expr->name.getString()) != outAttrs.end();
+
+    if (outAttr) {
+      if (!uiParseCount) {
+        accept<int>(expr->handler, 0);
+
+        Type type = removeLocal();
+
+        if (type.valueType != VAL_VOID) {
+          if (!expr->name.getString().compare("out")) {
+            if (type.valueType != VAL_OBJ || (type.objType->type != OBJ_COMPILER_INSTANCE && type.objType->type != OBJ_FUNCTION)) {
+              expr->handler = convertToString(expr->handler, type, parser);
+              type = {VAL_OBJ};
+            }
+          }
+
+          expr->_index = current->localCount;
+          uiExprs.push_back(expr->handler);
+          current->addLocal(type);
+
+          if (type.valueType == VAL_OBJ && type.objType && type.objType->type == OBJ_COMPILER_INSTANCE)
+            current->function->instanceIndexes->set(expr->_index);
+        }
+        else
+          parser.error("Value must not be void");
+//        attExprs.push_back(expr);
+      }
+      else {
+      }
+    }
+    else
+      ;
+  }
 }
