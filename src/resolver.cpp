@@ -25,16 +25,15 @@
 
 #define NUM_DIRS 2
 
-typedef void (Resolver::*ParseUIFn)(AttributeListExpr *expr);
-typedef void (Resolver::*ParseUIAttrFn)(AttributeExpr *expr);
+typedef void (Resolver::*FttrListFn)(AttributeListExpr *expr);
+typedef void (Resolver::*AttrFn)(AttributeExpr *expr);
 
 typedef struct {
-  ParseUIFn pushFn;
-  ParseUIFn popFn;
-  ParseUIAttrFn attrFn;
+  FttrListFn attrListFn;
+  AttrFn attrFn;
 } ResolverUIRule;
 
-#define UI_PARSE_DEF( identifier, push, pop, attr )  { push, pop, attr }
+#define UI_PARSE_DEF( identifier, push, attr )  { push, attr }
 ResolverUIRule resolverUIRules[] = { UI_PARSES_DEF };
 #undef UI_PARSE_DEF
 
@@ -207,48 +206,7 @@ void Resolver::visitAssignExpr(AssignExpr *expr)
 
   current->addLocal(type2);
 }
-/*
-Expr *Parser::forStatement(TokenType endGroupType) {
-  consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
 
-  Expr *initializer = NULL;
-
-  if (!match(TOKEN_SEPARATOR))
-    initializer = match(TOKEN_VAR) ? varDeclaration(endGroupType) : expressionStatement(endGroupType);
-
-  TokenType tokens[] = {TOKEN_SEPARATOR, TOKEN_EOF};
-  Expr *condition = check(TOKEN_SEPARATOR) ? createBooleanExpr(true) : expression(tokens);
-
-  consume(TOKEN_SEPARATOR, "Expect ';' or newline after loop condition.");
-
-  TokenType tokens2[] = {TOKEN_RIGHT_PAREN, TOKEN_SEPARATOR, TOKEN_EOF};
-  Expr *increment = check(TOKEN_RIGHT_PAREN) ? NULL : expression(tokens2);
-
-  consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
-
-  Expr *body = statement(endGroupType);
-
-  if (increment != NULL) {
-    Expr **expList = RESIZE_ARRAY(Expr *, NULL, 0, 2);
-
-    expList[0] = new UnaryExpr(buildToken(TOKEN_PRINT, "print", 5, -1), body);
-    expList[1] = new UnaryExpr(buildToken(TOKEN_PRINT, "print", 5, -1), increment);
-    body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 2, expList, 0, NULL, NULL);
-  }
-
-  body = new BinaryExpr(condition, buildToken(TOKEN_WHILE, "while", 5, -1), body, OP_FALSE, false);
-
-  if (initializer != NULL) {
-    Expr **expList = RESIZE_ARRAY(Expr *, NULL, 0, 2);
-
-    expList[0] = initializer;
-    expList[1] = body;
-    body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 2, expList, 0, NULL, NULL);
-  }
-
-  return body;
-}
-*/
 void Resolver::visitAttributeExpr(AttributeExpr *expr) {
   int step = getParseStep();
 
@@ -259,14 +217,8 @@ void Resolver::visitAttributeExpr(AttributeExpr *expr) {
 void Resolver::visitAttributeListExpr(AttributeListExpr *expr) {
   int step = getParseStep();
 
-  if (resolverUIRules[step].pushFn)
-    (this->*resolverUIRules[step].pushFn)(expr);
-
-  for (int index = 0; index < expr->childrenCount; index++)
-    accept<int>(expr->children[index], 0);
-
-  if (resolverUIRules[step].popFn)
-    (this->*resolverUIRules[step].popFn)(expr);
+  if (resolverUIRules[step].attrListFn)
+    (this->*resolverUIRules[step].attrListFn)(expr);
 ////////////////////
 /*  if (outFlag)
     for (int index = 0; index < expr->attCount; index++)
@@ -1261,13 +1213,15 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr)
       int count = 0;
       Expr **newExpressions = new Expr *[uiExprs.size() + expr->count - 1];
 
-      for (Expr *expr : uiExprs)
+      for (Expr *expr : uiExprs) {
         newExpressions[count++] = expr;
+//        accept<int>(newExpressions[count - 1], 0);
+      }
 
       while (++index < expr->count)
         newExpressions[count++] = expr->expressions[index];
 
-      index = uiExprs.size();
+      index = uiExprs.size() - 1;
       expr->count = count;
       uiExprs.clear();
       delete[] expr->expressions;
@@ -1282,19 +1236,23 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr)
   if (expr->ui != NULL)
     if (((AttributeListExpr *) expr->ui)->childrenCount) {
       // Perform the UI AST magic
-      Expr *layoutFunction = generateUIFunction("Layout", expr->ui, 3, 0, NULL);
+      Expr *paintFunction = generateUIFunction("paint", expr->ui, 1, 0, NULL);
+      Expr **uiFunctions = new Expr *[1];
+
+      uiFunctions[0] = paintFunction;
+
+      Expr *layoutFunction = generateUIFunction("Layout", expr->ui, 1, 0, uiFunctions);
       Expr *valueFunction = generateUIFunction("UI$", expr->ui, 1, 0, new Expr *[] {layoutFunction});
 
       uiParseCount = 0;
       accept<int>(valueFunction, 0);
-//      accept<int>(valueFunction, 0);
       delete expr->ui;
       expr->ui = valueFunction;
     }
-  else {
-    delete expr->ui;
-    expr->ui = NULL;
-  }
+    else {
+      delete expr->ui;
+      expr->ui = NULL;
+    }
 }
 /*
 void AttrSet::parseCreateAreasTree(VM &vm, ValueStack<Value *> &valueStack, int dimFlags, const Path &path, Value *values, IndexList *instanceIndexes, LocationUnit **areaUnits) {
@@ -1398,61 +1356,119 @@ int Resolver::getParseDir() {
   return uiParseCount - PARSE_AREAS;
 }
 
-static std::set<std::string> outAttrs({"out", "bgcol", "textcol", "fontSize", "width", "height", "alignx", "aligny", "zoomwidth", "zoomheight"});
-ValueStack<int> valueStack(-1);
-ValueStack<ValueStackElement> valueStack2;
-//std::list<AttributeExpr *> attExprs;
+void Resolver::parseChildren(AttributeListExpr *expr) {
+  for (int index = 0; index < expr->childrenCount; index++)
+    accept<int>(expr->children[index], 0);
+}
 
 void Resolver::processAttrs(AttributeListExpr *expr) {
   for (int index = 0; index < expr->attCount; index++)
     accept<int>(expr->attributes[index], 0);
+
+  parseChildren(expr);
 }
 
-void Resolver::pushAreas(AttributeListExpr *expr) {/*
-  for (int index = 0; index < expr->attCount; index++)
-    if (expr->attributes[index]->_index != -1)
-      valueStack.push(expr->attributes[index]->name.getString(), expr->attributes[index]->_index);*/
-}
-
-void Resolver::popAreas(AttributeListExpr *expr) {/*
-  for (int index = 0; index < expr->attCount; index++)
-    if (expr->attributes[index]->_index != -1)
-      valueStack.pop(expr->attributes[index]->name.getString());*/
-}
+static std::set<std::string> outAttrs({"out", "bgcol", "textcol", "fontSize", "width", "height", "alignx", "aligny", "zoomwidth", "zoomheight"});
 
 void Resolver::evalValue(AttributeExpr *expr) {
-  if (expr->handler) {
-    bool outAttr = outAttrs.find(expr->name.getString()) != outAttrs.end();
+  if (outAttrs.find(expr->name.getString()) != outAttrs.end())
+    if (expr->handler) {
+      accept<int>(expr->handler, 0);
 
-    if (outAttr) {
-      if (!uiParseCount) {
-        accept<int>(expr->handler, 0);
+      Type type = removeLocal();
 
-        Type type = removeLocal();
-
-        if (type.valueType != VAL_VOID) {
-          if (!expr->name.getString().compare("out")) {
-            if (type.valueType != VAL_OBJ || (type.objType->type != OBJ_COMPILER_INSTANCE && type.objType->type != OBJ_FUNCTION)) {
-              expr->handler = convertToString(expr->handler, type, parser);
-              type = {VAL_OBJ};
-            }
+      if (type.valueType != VAL_VOID) {
+        if (!expr->name.getString().compare("out")) {
+          if (type.valueType != VAL_OBJ || (type.objType->type != OBJ_COMPILER_INSTANCE && type.objType->type != OBJ_FUNCTION)) {
+            expr->handler = convertToString(expr->handler, type, parser);
+            type = {VAL_OBJ};
           }
-
-          expr->_index = current->localCount;
-          uiExprs.push_back(expr->handler);
-          current->addLocal(type);
-
-          if (type.valueType == VAL_OBJ && type.objType && type.objType->type == OBJ_COMPILER_INSTANCE)
-            current->function->instanceIndexes->set(expr->_index);
         }
-        else
-          parser.error("Value must not be void");
-//        attExprs.push_back(expr);
+
+        expr->_index = current->localCount;
+        uiExprs.push_back(expr->handler);
+        current->addLocal(type);
+
+        if (type.valueType == VAL_OBJ && type.objType && type.objType->type == OBJ_COMPILER_INSTANCE)
+          current->function->instanceIndexes->set(expr->_index);
       }
-      else {
-      }
+      else
+        parser.error("Value must not be void");
+//          attExprs.push_back(expr);
     }
     else
       ;
-  }
 }
+
+ValueStack<int> valueStack(-1);
+ValueStack<ValueStackElement> valueStack2;
+//std::list<AttributeExpr *> attExprs;
+
+void Resolver::pushAreas(AttributeListExpr *expr) {
+  for (int index = 0; index < expr->attCount; index++)
+    if (expr->attributes[index]->_index != -1)
+      valueStack.push(expr->attributes[index]->name.getString(), expr->attributes[index]->_index);
+
+  if (!expr->childrenCount) {
+    int outAttrIt = valueStack.get("out");
+
+    if (outAttrIt != -1) {
+//      Type type = (*outAttrIt);
+
+      expr->_viewIndex = current->localCount;
+      uiExprs.push_back(NULL);
+      current->addLocal({VAL_INT});
+
+//      if (type.valueType == VAL_OBJ && type.objType && type.objType->type == OBJ_COMPILER_INSTANCE)
+//        current->function->instanceIndexes->set(expr->_index);
+    }
+  }
+
+  parseChildren(expr);
+
+  for (int index = 0; index < expr->attCount; index++)
+    if (expr->attributes[index]->_index != -1)
+      valueStack.pop(expr->attributes[index]->name.getString());
+}
+/*
+Expr *Parser::forStatement(TokenType endGroupType) {
+  consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
+
+  Expr *initializer = NULL;
+
+  if (!match(TOKEN_SEPARATOR))
+    initializer = match(TOKEN_VAR) ? varDeclaration(endGroupType) : expressionStatement(endGroupType);
+
+  TokenType tokens[] = {TOKEN_SEPARATOR, TOKEN_EOF};
+  Expr *condition = check(TOKEN_SEPARATOR) ? createBooleanExpr(true) : expression(tokens);
+
+  consume(TOKEN_SEPARATOR, "Expect ';' or newline after loop condition.");
+
+  TokenType tokens2[] = {TOKEN_RIGHT_PAREN, TOKEN_SEPARATOR, TOKEN_EOF};
+  Expr *increment = check(TOKEN_RIGHT_PAREN) ? NULL : expression(tokens2);
+
+  consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
+
+  Expr *body = statement(endGroupType);
+
+  if (increment != NULL) {
+    Expr **expList = RESIZE_ARRAY(Expr *, NULL, 0, 2);
+
+    expList[0] = new UnaryExpr(buildToken(TOKEN_PRINT, "print", 5, -1), body);
+    expList[1] = new UnaryExpr(buildToken(TOKEN_PRINT, "print", 5, -1), increment);
+    body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 2, expList, 0, NULL, NULL);
+  }
+
+  body = new BinaryExpr(condition, buildToken(TOKEN_WHILE, "while", 5, -1), body, OP_FALSE, false);
+
+  if (initializer != NULL) {
+    Expr **expList = RESIZE_ARRAY(Expr *, NULL, 0, 2);
+
+    expList[0] = initializer;
+    expList[1] = body;
+    body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 2, expList, 0, NULL, NULL);
+  }
+
+  return body;
+}
+*/

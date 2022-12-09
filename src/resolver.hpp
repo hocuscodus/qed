@@ -21,13 +21,13 @@
 #include "compiler.hpp"
 
 #define UI_PARSES_DEF \
-    UI_PARSE_DEF( PARSE_VALUES, &Resolver::processAttrs, NULL, &Resolver::evalValue ),  \
-    UI_PARSE_DEF( PARSE_AREAS, &Resolver::pushAreas, &Resolver::popAreas, NULL ),  \
-    UI_PARSE_DEF( PARSE_LAYOUT, NULL, NULL, NULL ),  \
-    UI_PARSE_DEF( PARSE_REFRESH, NULL, NULL, NULL ), // \
-//    UI_PARSE_DEF( PARSE_EVENTS, &Resolver::grouping, NULL, PREC_NONE ), 
+    UI_PARSE_DEF( PARSE_VALUES, &Resolver::processAttrs, &Resolver::evalValue ),  \
+    UI_PARSE_DEF( PARSE_AREAS, &Resolver::pushAreas, NULL ),  \
+    UI_PARSE_DEF( PARSE_LAYOUT, NULL, NULL ),  \
+    UI_PARSE_DEF( PARSE_REFRESH, NULL, NULL ), // \
+    UI_PARSE_DEF( PARSE_EVENTS, NULL, NULL ), 
 
-#define UI_PARSE_DEF( identifier, push, pop, attr )  identifier
+#define UI_PARSE_DEF( identifier, push, attr )  identifier
 typedef enum { UI_PARSES_DEF } ParseStep;
 
 #undef UI_PARSE_DEF
@@ -73,7 +73,7 @@ public:
 
   void processAttrs(AttributeListExpr *expr);
   void pushAreas(AttributeListExpr *expr);
-  void popAreas(AttributeListExpr *expr);
+  void parseChildren(AttributeListExpr *expr);
   void evalValue(AttributeExpr *expr);
 };
 
