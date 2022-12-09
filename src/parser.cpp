@@ -16,9 +16,6 @@
  * along with this program.  If not, see <http: *www.gnu.org/licenses/>.
  */
 #include "parser.hpp"
-#include "compiler.hpp"
-#include "resolver.hpp"
-#include "codegen.hpp"
 #include "memory.h"
 #include <stdio.h>
 #include <stdarg.h>
@@ -80,6 +77,7 @@ ParseExpRule expRules[] = {
 };
 */
 Obj objString = {OBJ_STRING, NULL};
+Type stringType = {VAL_OBJ, &objString};
 
 ParseExpRule *getExpRule(TokenType type) {
   return &expRules[type];
@@ -651,7 +649,7 @@ Type Parser::readType() {
     case 'b': return {VAL_BOOL};
     case 'i': return {VAL_INT};
     case 'f': return {VAL_FLOAT};
-    case 'S': return {VAL_OBJ, &objString};
+    case 'S': return stringType;
 //    default: return {VAL_VOID, &objString}; // Unreachable.
     }
   else {

@@ -46,14 +46,13 @@ extern ParseExpRule expRules[];
 */
 static Compiler *current = NULL;
 
-static Obj objStringType = {OBJ_STRING};
 static Obj objInternalType = {OBJ_INTERNAL};
 static Obj *primitives[] = {
     &newPrimitive("void", {VAL_VOID})->obj,
     &newPrimitive("bool", {VAL_BOOL})->obj,
     &newPrimitive("int", {VAL_INT})->obj,
     &newPrimitive("float", {VAL_FLOAT})->obj,
-    &newPrimitive("String", {VAL_OBJ, &objStringType})->obj,
+    &newPrimitive("String", stringType)->obj,
     &newPrimitive("var", {VAL_OBJ, &objInternalType})->obj};
 
 static bool identifiersEqual2(Token *a, ObjString *b)
@@ -1242,7 +1241,7 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr)
       uiFunctions[0] = paintFunction;
 
       Expr *layoutFunction = generateUIFunction("Layout", expr->ui, 1, 0, uiFunctions);
-      Expr *valueFunction = generateUIFunction("UI$", expr->ui, 1, 0, new Expr *[] {layoutFunction});
+      Expr *valueFunction = generateUIFunction("UI$", expr->ui, 1, 1, new Expr *[] {layoutFunction});
 
       uiParseCount = 0;
       accept<int>(valueFunction, 0);
@@ -1370,6 +1369,17 @@ void Resolver::processAttrs(AttributeListExpr *expr) {
 
 static std::set<std::string> outAttrs({"out", "bgcol", "textcol", "fontSize", "width", "height", "alignx", "aligny", "zoomwidth", "zoomheight"});
 
+static char *generateInternalVarName(const char *prefix, int suffix) {
+  char buffer[20];
+
+  sprintf(buffer, "%s%d", prefix, suffix);
+
+  char *str = new char[strlen(buffer) + 1];
+
+  strcpy(str, buffer);
+  return str;
+}
+
 void Resolver::evalValue(AttributeExpr *expr) {
   if (outAttrs.find(expr->name.getString()) != outAttrs.end())
     if (expr->handler) {
@@ -1381,16 +1391,21 @@ void Resolver::evalValue(AttributeExpr *expr) {
         if (!expr->name.getString().compare("out")) {
           if (type.valueType != VAL_OBJ || (type.objType->type != OBJ_COMPILER_INSTANCE && type.objType->type != OBJ_FUNCTION)) {
             expr->handler = convertToString(expr->handler, type, parser);
-            type = {VAL_OBJ};
+            type = stringType;
           }
         }
 
-        expr->_index = current->localCount;
-        uiExprs.push_back(expr->handler);
-        current->addLocal(type);
-
         if (type.valueType == VAL_OBJ && type.objType && type.objType->type == OBJ_COMPILER_INSTANCE)
-          current->function->instanceIndexes->set(expr->_index);
+          current->function->instanceIndexes->set(current->localCount);
+
+        char *name = generateInternalVarName("v", current->localCount);
+        DeclarationExpr *decExpr = new DeclarationExpr(type, buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1), expr->handler);
+
+        expr->handler = NULL;
+        expr->_index = current->localCount;
+        uiExprs.push_back(decExpr);
+        current->addLocal(type);
+        current->setLocalName(&decExpr->name);
       }
       else
         parser.error("Value must not be void");
@@ -1400,35 +1415,75 @@ void Resolver::evalValue(AttributeExpr *expr) {
       ;
 }
 
-ValueStack<int> valueStack(-1);
+int outAttrIndex = -1;
+//ValueStack<int> valueStack(-1);
 ValueStack<ValueStackElement> valueStack2;
 //std::list<AttributeExpr *> attExprs;
 
 void Resolver::pushAreas(AttributeListExpr *expr) {
+  int oldOutAttrIndex = outAttrIndex;
+
   for (int index = 0; index < expr->attCount; index++)
-    if (expr->attributes[index]->_index != -1)
-      valueStack.push(expr->attributes[index]->name.getString(), expr->attributes[index]->_index);
+    if (expr->attributes[index]->_index != -1 && expr->attributes[index]->name.equal("out"))
+      outAttrIndex = expr->attributes[index]->_index;
 
-  if (!expr->childrenCount) {
-    int outAttrIt = valueStack.get("out");
+  if (!expr->childrenCount && outAttrIndex != -1) {
+    char *name = generateInternalVarName("v", outAttrIndex);
+    VariableExpr *outVar = new VariableExpr(buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1), -1, false);
 
-    if (outAttrIt != -1) {
-//      Type type = (*outAttrIt);
+    resolveVariableExpr(outVar);
 
-      expr->_viewIndex = current->localCount;
-      uiExprs.push_back(NULL);
-      current->addLocal({VAL_INT});
+    Type outType = removeLocal();
+    VariableExpr *callee = NULL;
 
-//      if (type.valueType == VAL_OBJ && type.objType && type.objType->type == OBJ_COMPILER_INSTANCE)
-//        current->function->instanceIndexes->set(expr->_index);
+    if (outType.valueType == VAL_OBJ && outType.objType) {
+      switch (outType.objType->type) {
+        case OBJ_COMPILER_INSTANCE:
+//          current->function->instanceIndexes->set(expr->_index);
+          break;
+
+        case OBJ_STRING:
+          callee = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "getTextSize", 11, -1), -1, false);
+          break;
+
+        case OBJ_FUNCTION:
+          break;
+
+        default:
+          parser.error("Out value having an illegal type");
+          break;
+      }
+
+      if (callee) {
+        Expr **expList = NULL;
+        Expr *handler = NULL;
+
+        resolveVariableExpr(callee);
+        expList = RESIZE_ARRAY(Expr *, expList, 0, 1);
+        expList[0] = outVar;
+        Expr *callExp = new CallExpr(callee, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), 1, expList, false, NULL, NULL);
+
+        expr->_viewIndex = current->localCount;
+        uiExprs.push_back(callExp);
+        current->addLocal({VAL_INT});
+      }
+    }
+    else
+      parser.error("Out value having an illegal type");
+
+    if (!callee) {
+      delete outVar;
+      delete[] name;
     }
   }
-
-  parseChildren(expr);
+  else
+    parseChildren(expr);
 
   for (int index = 0; index < expr->attCount; index++)
     if (expr->attributes[index]->_index != -1)
-      valueStack.pop(expr->attributes[index]->name.getString());
+;//      valueStack.pop(expr->attributes[index]->name.getString());
+
+  outAttrIndex = oldOutAttrIndex;
 }
 /*
 Expr *Parser::forStatement(TokenType endGroupType) {
