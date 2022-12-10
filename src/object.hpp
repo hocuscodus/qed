@@ -255,10 +255,12 @@ struct ObjInstance {
   CoThread *coThread;
   int numValuesInstances;
   ObjInstance **uiValuesInstances;
+  ObjInstance **uiLayoutInstances;
 
   void initValues();
   void uninitValues();
-  UnitArea *recalculate(VM &vm, ValueStack<Value *> &valueStack);
+  UnitArea *recalculateLayout();
+  void paint();
 };
 
 struct Internal {

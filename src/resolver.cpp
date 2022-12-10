@@ -1434,16 +1434,16 @@ void Resolver::pushAreas(AttributeListExpr *expr) {
     resolveVariableExpr(outVar);
 
     Type outType = removeLocal();
-    VariableExpr *callee = NULL;
+    char *callee = NULL;
 
     if (outType.valueType == VAL_OBJ && outType.objType) {
       switch (outType.objType->type) {
         case OBJ_COMPILER_INSTANCE:
-//          current->function->instanceIndexes->set(expr->_index);
+          callee = "getInstanceSize";
           break;
 
         case OBJ_STRING:
-          callee = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "getTextSize", 11, -1), -1, false);
+          callee = "getTextSize";
           break;
 
         case OBJ_FUNCTION:
@@ -1457,11 +1457,12 @@ void Resolver::pushAreas(AttributeListExpr *expr) {
       if (callee) {
         Expr **expList = NULL;
         Expr *handler = NULL;
+        VariableExpr *calleeExpr = new VariableExpr(buildToken(TOKEN_IDENTIFIER, callee, strlen(callee), -1), -1, false);
 
-        resolveVariableExpr(callee);
+        resolveVariableExpr(calleeExpr);
         expList = RESIZE_ARRAY(Expr *, expList, 0, 1);
         expList[0] = outVar;
-        Expr *callExp = new CallExpr(callee, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), 1, expList, false, NULL, NULL);
+        Expr *callExp = new CallExpr(calleeExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), 1, expList, false, NULL, NULL);
 
         expr->_viewIndex = current->localCount;
         uiExprs.push_back(callExp);

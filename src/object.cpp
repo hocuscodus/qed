@@ -637,6 +637,7 @@ InterpretValue CoThread::run() {
         onReturn(result);
         frame = &frames[frameCount - 1];
 //        return {INTERPRET_CONTINUE};
+        break;
       }
       else
         return {INTERPRET_HALT};
@@ -729,35 +730,38 @@ void ObjInstance::uninitValues() {
   }
 }
 
-UnitArea *ObjInstance::recalculate(VM &vm, ValueStack<Value *> &valueStack) {
-  if (coThread->getFormFlag()) {
-    uninitValues();
-    initValues();
-/*
-    for (int ndx = 0; ndx < numValuesInstances; ndx++) {
-      CallFrame *viewFrame = uiValuesInstances[ndx]->coThread->getFrame(0);
+UnitArea *ObjInstance::recalculateLayout() {
+  uiLayoutInstances = new ObjInstance *[numValuesInstances];
 
-      coThread->frames[ndx].init(vm, viewFrame->slots, viewFrame->closure->function->instanceIndexes, valueStack);
-    }
+  for (int ndx = 0; ndx < numValuesInstances; ndx++) {
+    CoThread *valuesThread = uiValuesInstances[ndx]->coThread;
+    CallFrame &valuesFrame = valuesThread->frames[0];
+    ObjClosure *valuesClosure = AS_CLOSURE(valuesThread->fields[0]);
+    ObjClosure *layoutClosure = AS_CLOSURE(valuesThread->fields[valuesClosure->function->fieldCount - 1]);
 
-    for (int ndx = 0; ndx < numValuesInstances; ndx++) {
-      CallFrame &frame = *uiValuesInstances[ndx]->coThread->getFrame(0);
-      ObjClosure *outClosure = frame.uiClosure;
+    uiLayoutInstances[ndx] = newInstance(valuesThread);
 
-      uiValuesInstances[numValuesInstances++] = newInstance(coThread);
+    CoThread *instanceThread = uiLayoutInstances[ndx]->coThread;
 
-      CoThread *instanceThread = uiValuesInstances[ndx]->coThread;
-
-      *instanceThread->stackTop++ = OBJ_VAL(outClosure);
-      instanceThread->call(outClosure, 0, -1);
-      instanceThread->run();
-
-      for (int ndx2 = -1; (ndx2 = outClosure->function->instanceIndexes->getNext(ndx2)) != -1;)
-        ((ObjInstance *) instanceThread->frames[0].slots[ndx2].as.obj)->initValues();
-    }*/
+    *instanceThread->stackTop++ = OBJ_VAL(layoutClosure);
+    instanceThread->call(layoutClosure, 0, -1);
+    instanceThread->run();
   }
 
   return new UnitArea({100, 100});
+}
+
+void ObjInstance::paint() {
+  for (int ndx = 0; ndx < numValuesInstances; ndx++) {
+    CoThread *layoutThread = uiLayoutInstances[ndx]->coThread;
+    CallFrame &layoutFrame = layoutThread->frames[0];
+    ObjClosure *layoutClosure = AS_CLOSURE(layoutThread->fields[0]);
+    ObjClosure *paintClosure = AS_CLOSURE(layoutThread->fields[layoutClosure->function->fieldCount - 1]);
+
+    *layoutThread->stackTop++ = OBJ_VAL(paintClosure);
+    layoutThread->call(paintClosure, 0, -1);
+    layoutThread->run();
+  }
 }
 #if 0
 Object parseCreateUIValuesSub(QEDProcess process, Object value, Path path, int flags, LambdaDeclaration handler) {

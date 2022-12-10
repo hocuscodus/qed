@@ -454,10 +454,16 @@ void VM::onReturn(CoThread *current, Value &returnValue) {
   }
 */
 bool VM::recalculate() {
-  ValueStack<Value *> valueStack;
+  if (instance->coThread->getFormFlag()) {
+    ValueStack<Value *> valueStack;
 
-  totalSize = {0};
-  instance->recalculate(*this, valueStack);
+    instance->uninitValues();
+    instance->initValues();
+
+    totalSize = {0};
+    instance->recalculateLayout();
+//    instance->paint();
+  }
   return true;
 }
 #if 0

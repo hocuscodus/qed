@@ -36,6 +36,20 @@ QNI_FN(clock) {
   return FLOAT_VAL(((double) clock()) / CLOCKS_PER_SEC);
 }
 
+QNI_FN(getTextSize) {
+  const char *text = ((ObjString *) args[0].as.obj)->chars;
+
+  return INT_VAL(10);
+}
+
+QNI_FN(getInstanceSize) {
+  ObjInstance *instance = (ObjInstance *) args[0].as.obj;
+
+  instance->recalculateLayout();
+
+  return INT_VAL(10);
+}
+
 #ifdef __EMSCRIPTEN__
 void timerCallback(void *param)
 #else

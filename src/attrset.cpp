@@ -262,7 +262,7 @@ void AttrSet::parseCreateAreasTree(VM &vm, ValueStack<Value *> &valueStack, int 
       LocationUnit *unitArea;
 
       if (dimFlags & 1)
-        unitArea = AS_INSTANCE(*value)->recalculate(vm, valueStack);
+        unitArea = AS_INSTANCE(*value)->recalculateLayout();
       else {
 //        LambdaDeclaration func = Op.getPredefinedType(value);
 
