@@ -23,7 +23,7 @@
 #define UI_PARSES_DEF \
     UI_PARSE_DEF( PARSE_VALUES, &Resolver::processAttrs, &Resolver::evalValue ),  \
     UI_PARSE_DEF( PARSE_AREAS, &Resolver::pushAreas, NULL ),  \
-    UI_PARSE_DEF( PARSE_LAYOUT, NULL, NULL ),  \
+    UI_PARSE_DEF( PARSE_LAYOUT, &Resolver::recalcLayout, NULL ),  \
     UI_PARSE_DEF( PARSE_REFRESH, NULL, NULL ), // \
     UI_PARSE_DEF( PARSE_EVENTS, NULL, NULL ), 
 
@@ -72,9 +72,10 @@ public:
   int getParseDir();
 
   void processAttrs(AttributeListExpr *expr);
-  void pushAreas(AttributeListExpr *expr);
   void parseChildren(AttributeListExpr *expr);
   void evalValue(AttributeExpr *expr);
+  void pushAreas(AttributeListExpr *expr);
+  void recalcLayout(AttributeListExpr *expr);
 };
 
 #endif

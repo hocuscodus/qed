@@ -214,7 +214,7 @@ void Resolver::visitAttributeExpr(AttributeExpr *expr) {
 }
 
 void Resolver::visitAttributeListExpr(AttributeListExpr *expr) {
-  int step = getParseStep();
+  ParseStep step = getParseStep();
 
   if (resolverUIRules[step].attrListFn)
     (this->*resolverUIRules[step].attrListFn)(expr);
@@ -1209,18 +1209,21 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr)
     acceptSubExpr(subExpr);
 
     if (subExpr->type == EXPR_ATTRIBUTELIST) {
-      int count = 0;
-      Expr **newExpressions = new Expr *[uiExprs.size() + expr->count - 1];
+      int count;
+      Expr **newExpressions = new Expr *[index + uiExprs.size() + expr->count - 1];
 
-      for (Expr *expr : uiExprs) {
+      for (count = 0; count < index; count++)
+        newExpressions[count] = expr->expressions[count];
+
+      for (Expr *expr : uiExprs)
         newExpressions[count++] = expr;
-//        accept<int>(newExpressions[count - 1], 0);
-      }
+
+      int nextIndex = count - 1;
 
       while (++index < expr->count)
         newExpressions[count++] = expr->expressions[index];
 
-      index = uiExprs.size() - 1;
+      index = nextIndex;
       expr->count = count;
       uiExprs.clear();
       delete[] expr->expressions;
@@ -1240,7 +1243,7 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr)
 
       uiFunctions[0] = paintFunction;
 
-      Expr *layoutFunction = generateUIFunction("Layout", expr->ui, 1, 0, uiFunctions);
+      Expr *layoutFunction = generateUIFunction("Layout", expr->ui, 3, 0, uiFunctions);
       Expr *valueFunction = generateUIFunction("UI$", expr->ui, 1, 1, new Expr *[] {layoutFunction});
 
       uiParseCount = 0;
@@ -1348,11 +1351,11 @@ void Resolver::acceptSubExpr(Expr *expr)
 }
 
 ParseStep Resolver::getParseStep() {
-  return uiParseCount <= PARSE_AREAS ? (ParseStep) uiParseCount : uiParseCount < PARSE_AREAS + NUM_DIRS ? PARSE_AREAS : (ParseStep) (uiParseCount - NUM_DIRS - 1);
+  return uiParseCount <= PARSE_AREAS ? (ParseStep) uiParseCount : uiParseCount <= PARSE_AREAS + NUM_DIRS ? PARSE_LAYOUT : (ParseStep) (uiParseCount - NUM_DIRS + 1);
 }
 
 int Resolver::getParseDir() {
-  return uiParseCount - PARSE_AREAS;
+  return uiParseCount - PARSE_LAYOUT;
 }
 
 void Resolver::parseChildren(AttributeListExpr *expr) {
@@ -1485,6 +1488,15 @@ void Resolver::pushAreas(AttributeListExpr *expr) {
 ;//      valueStack.pop(expr->attributes[index]->name.getString());
 
   outAttrIndex = oldOutAttrIndex;
+}
+
+void Resolver::recalcLayout(AttributeListExpr *expr) {
+  int dir = getParseDir();
+
+  if (!expr->childrenCount && outAttrIndex != -1) {
+  }
+  else
+    ;//    parseChildren(expr);
 }
 /*
 Expr *Parser::forStatement(TokenType endGroupType) {
