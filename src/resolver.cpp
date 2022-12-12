@@ -1209,22 +1209,17 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr)
     acceptSubExpr(subExpr);
 
     if (subExpr->type == EXPR_ATTRIBUTELIST) {
-      int count;
-      Expr **newExpressions = new Expr *[index + uiExprs.size() + expr->count - 1];
+      int size = uiExprs.size();
+      Expr **newExpressions = new Expr *[size + expr->count - 1];
 
-      for (count = 0; count < index; count++)
-        newExpressions[count] = expr->expressions[count];
+      memcpy(newExpressions, expr->expressions, index * sizeof(Expr *));
+      memcpy(&newExpressions[index + size], &expr->expressions[index + 1], (--expr->count - index) * sizeof(Expr *));
 
       for (Expr *expr : uiExprs)
-        newExpressions[count++] = expr;
+        newExpressions[index++] = expr;
 
-      int nextIndex = count - 1;
-
-      while (++index < expr->count)
-        newExpressions[count++] = expr->expressions[index];
-
-      index = nextIndex;
-      expr->count = count;
+      expr->count += size;
+      index--;
       uiExprs.clear();
       delete[] expr->expressions;
       expr->expressions = newExpressions;
