@@ -25,7 +25,7 @@ NOWARNDIRS = imgui/ stb/
 LOCALWARN = -Wall -Wextra -pedantic -Wpointer-arith -Wshadow -Wfloat-conversion -Wfloat-equal -Wno-unused-function -Wno-unused-parameter
 # NOTE: also useful but noisy -Wconversion -Wshorten-64-to-32
 
-LOCALLIBS = -L/home/linuxbrew/.linuxbrew/lib -Wl,-rpath,/home/linuxbrew/.linuxbrew/lib -Wl,--enable-new-dtags -lSDL2 -lSDL2_image
+LOCALLIBS = -L/home/linuxbrew/.linuxbrew/lib -Wl,-rpath,/home/linuxbrew/.linuxbrew/lib -Wl,--enable-new-dtags -lSDL2 -lSDL2_image -lSDL2_ttf
 ifeq ($(UNAME),Darwin)
 	LOCALLIBS += -Wl,-dead_strip -framework OpenGL
 else

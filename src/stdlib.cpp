@@ -18,8 +18,15 @@
 #include <time.h>
 #include "qni.hpp"
 
+// std
+#include <assert.h>
+
+// opengl
+//#include <GL/glew.h>
+
 // sdl
 #include <SDL.h>
+#include <SDL_ttf.h>
 #include <SDL_image.h>
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -27,6 +34,38 @@
 #include <SDL_timer.h>
 #endif
 
+#define SCREEN_SIZE_X 512
+#define SCREEN_SIZE_Y 512
+
+// creates a renderer to render our images
+SDL_Renderer* rend2;
+SDL_Surface *background2;
+/*
+  if (SDL_MUSTLOCK(background)) SDL_LockSurface(background);
+
+  Uint8 * pixels = (Uint8 *) background->pixels;
+
+  for (int i=0; i < 1048576; i++) {
+    char randomByte = rand() % 255;
+    pixels[i] = randomByte;
+  }
+
+  if (SDL_MUSTLOCK(background)) SDL_UnlockSurface(background);
+
+  SDL_Texture *screenTexture = SDL_CreateTextureFromSurface(rend2, background2);
+
+  //    SDL_RenderClear(rend2);
+  SDL_RenderCopy(rend2, screenTexture, NULL, NULL);
+
+  // clears the screen
+  SDL_RenderCopy(rend2, tex, NULL, &dest);
+
+  // triggers the double buffers
+  // for multiple rendering
+  SDL_RenderPresent(rend2);
+
+  SDL_DestroyTexture(screenTexture);
+*/
 QNI_FN(println) {
   printf("%s\n", ((ObjString *) args[0].as.obj)->chars);
   return VOID_VAL;
@@ -34,6 +73,75 @@ QNI_FN(println) {
 
 QNI_FN(clock) {
   return FLOAT_VAL(((double) clock()) / CLOCKS_PER_SEC);
+}
+
+SDL_Window* win = NULL;
+
+void initDisplay() {
+  if (!win) {
+    // ----- Initialize SDL
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
+      fprintf(stderr, "SDL could not initialize: %s\n", SDL_GetError());
+      assert(false);
+    }
+
+    Uint32 ticks1 = SDL_GetTicks();
+    SDL_Delay(5); // busy-wait
+    Uint32 ticks2 = SDL_GetTicks();
+    assert(ticks2 >= ticks1 + 5);
+
+      // ----- Create window
+    SDL_GL_SetSwapInterval(1);
+
+    win = SDL_CreateWindow("QED", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_SIZE_X, SCREEN_SIZE_Y, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+
+    if (!win) {
+      fprintf(stderr, "Error creating window.\n");
+      assert(false);
+    }
+
+    // triggers the program that controls
+    // your graphics hardware and sets flags
+    Uint32 render_flags = SDL_RENDERER_ACCELERATED;
+
+    // creates a renderer to render our images
+    rend2 = SDL_CreateRenderer(win, -1, render_flags);
+    background2 = SDL_CreateRGBSurface(0, SCREEN_SIZE_X, SCREEN_SIZE_Y, 32, 0, 0, 0, 0);
+
+    const SDL_Rect* dstrect;
+    SDL_Color color;
+
+    TTF_Init();
+  }
+/*
+  #ifdef __EMSCRIPTEN__
+  emscripten_set_main_loop(mainLoop, 0, 1);
+  #else
+  while (quit == false) {
+    mainLoop();
+    SDL_Delay(1000 / 60);
+  }
+  #endif
+*/
+  return;
+}
+
+void uninitDisplay() {
+  if (win) {
+    TTF_Quit();
+
+    // destroy renderer
+    SDL_DestroyRenderer(rend2);
+
+    // destroy window
+    SDL_DestroyWindow(win);
+
+    // ----- Clean up
+  //    SDL_GL_DeleteContext(glContext);
+    win = NULL;
+  }
+
+  return;
 }
 
 QNI_FN(getTextSize) {
@@ -48,6 +156,31 @@ QNI_FN(getInstanceSize) {
   instance->recalculateLayout();
 
   return INT_VAL(10);
+}
+
+QNI_FN(displayText) {
+  const char *text = ((ObjString *) args[0].as.obj)->chars;
+  TTF_Font* font = TTF_OpenFont("./res/font/arial.ttf", 30);
+  SDL_Surface* textSurface = TTF_RenderText_Blended(font, text, {255,255,255});
+  SDL_Texture* textTexture = SDL_CreateTextureFromSurface(rend2, textSurface);
+  SDL_Rect rectangle;
+
+  rectangle.x = 0;
+  rectangle.y = 0;
+  rectangle.w = 100;
+  rectangle.h = 100;
+  SDL_RenderCopy(rend2, textTexture, NULL, &rectangle);
+//  SDL_FreeSurface(textSurface);
+//  SDL_DestroyTexture(textTexture);
+//  TTF_CloseFont(font);
+
+  return VOID_VAL;
+}
+
+QNI_FN(displayInstance) {
+  ObjInstance *instance = (ObjInstance *) args[0].as.obj;
+
+  return VOID_VAL;
 }
 
 #ifdef __EMSCRIPTEN__

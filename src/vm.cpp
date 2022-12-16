@@ -365,7 +365,6 @@ InterpretResult VM::run() {
         instance->coThread->closeUpvalues(instance->coThread->frames[0].slots);
         instance->coThread->pop();
         return INTERPRET_OK;
-
       }
       else
         onReturn(instance->coThread, value.as.returnValue);
@@ -453,8 +452,13 @@ void VM::onReturn(CoThread *current, Value &returnValue) {
 * /    return (true);
   }
 */
+extern void initDisplay();
+extern void uninitDisplay();
+
 bool VM::recalculate() {
-  if (instance->coThread->getFormFlag()) {
+  CoThread *coThread = instance->coThread;
+
+  if (coThread->getFormFlag()) {
     ValueStack<Value *> valueStack;
 
     instance->uninitValues();
@@ -462,7 +466,10 @@ bool VM::recalculate() {
 
     totalSize = {0};
     instance->recalculateLayout();
-//    instance->paint();
+
+    initDisplay();
+
+    instance->paint();
   }
   return true;
 }

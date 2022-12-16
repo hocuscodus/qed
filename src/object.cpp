@@ -782,6 +782,7 @@ void ObjInstance::paint() {
     *layoutThread->stackTop++ = OBJ_VAL(paintClosure);
     layoutThread->call(paintClosure, 0, -1);
     layoutThread->run();
+    layoutThread->stackTop--;
   }
 }
 #if 0

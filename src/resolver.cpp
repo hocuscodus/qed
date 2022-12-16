@@ -1180,7 +1180,6 @@ bool Resolver::resolve(Compiler *compiler)
 static std::list<Expr *> uiExprs;
 
 static Expr *generateUIFunction(const char *name, Expr *uiExpr, int count, int restLength, Expr **rest) {
-    // Perform the UI AST magic
     VariableExpr *nameExpr = new VariableExpr(buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1), -1, false);
     Expr **bodyExprs = new Expr *[count + restLength];
     Expr **functionExprs = new Expr *[3];
@@ -1198,8 +1197,7 @@ static Expr *generateUIFunction(const char *name, Expr *uiExpr, int count, int r
     return new ListExpr(3, functionExprs, EXPR_LIST, NULL);
 }
 
-void Resolver::acceptGroupingExprUnits(GroupingExpr *expr)
-{
+void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
   TokenType type = expr->name.type;
   bool parenFlag = type == TOKEN_RIGHT_PAREN;
 
@@ -1238,8 +1236,12 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr)
 
       uiFunctions[0] = paintFunction;
 
-      Expr *layoutFunction = generateUIFunction("Layout", expr->ui, 3, 0, uiFunctions);
-      Expr *valueFunction = generateUIFunction("UI$", expr->ui, 1, 1, new Expr *[] {layoutFunction});
+      Expr *layoutFunction = generateUIFunction("Layout", expr->ui, 3, 1, uiFunctions);
+      Expr **layoutExprs = new Expr *[1];
+
+      layoutExprs[0] = layoutFunction;
+
+      Expr *valueFunction = generateUIFunction("UI$", expr->ui, 1, 1, layoutExprs);
 
       uiParseCount = 0;
       accept<int>(valueFunction, 0);
@@ -1463,6 +1465,7 @@ void Resolver::pushAreas(AttributeListExpr *expr) {
         removeLocal();
         expList = RESIZE_ARRAY(Expr *, expList, 0, 1);
         expList[0] = outVar;
+
         Expr *callExp = new CallExpr(calleeExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), 1, expList, false, NULL, NULL);
 
         expr->_viewIndex = current->localCount;
@@ -1528,6 +1531,87 @@ void Resolver::recalcLayout(AttributeListExpr *expr) {
     subViewIndex = current->localCount;
     current->addLocal({VAL_INT});
   }
+}
+
+void Resolver::paint(AttributeListExpr *expr) {
+  int oldOutAttrIndex = outAttrIndex;
+
+  for (int index = 0; index < expr->attCount; index++)
+    if (expr->attributes[index]->_index != -1 && expr->attributes[index]->name.equal("out")) {
+      outAttrIndex = expr->attributes[index]->_index;
+      break;
+    }
+
+  if (!expr->childrenCount && outAttrIndex != -1) {
+    char *name = generateInternalVarName("v", outAttrIndex);
+    VariableExpr *outVar = new VariableExpr(buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1), -1, false);
+
+    resolveVariableExpr(outVar);
+
+    Type outType = removeLocal();
+    char *callee = NULL;
+
+    if (outType.valueType == VAL_OBJ && outType.objType) {
+      switch (outType.objType->type) {
+        case OBJ_COMPILER_INSTANCE:
+          callee = "displayInstance";
+          break;
+
+        case OBJ_STRING:
+          callee = "displayText";
+          break;
+
+        case OBJ_FUNCTION:
+          break;
+
+        default:
+          parser.error("Out value having an illegal type");
+          break;
+      }
+
+      if (callee) {
+        Expr **expList = NULL;
+        Expr *handler = NULL;
+        VariableExpr *calleeExpr = new VariableExpr(buildToken(TOKEN_IDENTIFIER, callee, strlen(callee), -1), -1, false);
+
+        resolveVariableExpr(calleeExpr);
+        removeLocal();
+        expList = RESIZE_ARRAY(Expr *, expList, 0, 1);
+        expList[0] = outVar;
+
+        Expr *callExp = new CallExpr(calleeExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), 1, expList, false, NULL, NULL);
+
+        uiExprs.push_back(callExp);
+      }
+    }
+    else
+      parser.error("Out value having an illegal type");
+
+    if (!callee) {
+      delete outVar;
+      delete[] name;
+    }
+  }
+  else {
+    IndexList indexList;
+
+    for (int index = 0; index < expr->childrenCount; index++) {
+      AttributeListExpr *subExpr = (AttributeListExpr *) expr->children[index];
+
+      accept<int>(subExpr, 0);
+
+      if (subExpr->_viewIndex != -1)
+        indexList.set(index);
+    }
+
+    expr->_viewIndex = indexList.size != -1 ? indexList.array[0] : -1;
+  }
+
+  for (int index = 0; index < expr->attCount; index++)
+    if (expr->attributes[index]->_index != -1)
+;//      valueStack.pop(expr->attributes[index]->name.getString());
+
+  outAttrIndex = oldOutAttrIndex;
 }
 /*
 Expr *Parser::forStatement(TokenType endGroupType) {
