@@ -276,7 +276,8 @@ void ASTPrinter::visitLogicalExpr(LogicalExpr *expr) {
 
 void ASTPrinter::visitOpcodeExpr(OpcodeExpr *expr) {
   printf("(Op %d ", expr->op);
-  expr->right->accept(this);
+  if (expr->right)
+    expr->right->accept(this);
   printf(")");
 }
 

@@ -1422,8 +1422,10 @@ void Resolver::pushAreas(AttributeListExpr *expr) {
   int oldOutAttrIndex = outAttrIndex;
 
   for (int index = 0; index < expr->attCount; index++)
-    if (expr->attributes[index]->_index != -1 && expr->attributes[index]->name.equal("out"))
+    if (expr->attributes[index]->_index != -1 && expr->attributes[index]->name.equal("out")) {
       outAttrIndex = expr->attributes[index]->_index;
+      break;
+    }
 
   if (!expr->childrenCount && outAttrIndex != -1) {
     char *name = generateInternalVarName("v", outAttrIndex);
@@ -1458,6 +1460,7 @@ void Resolver::pushAreas(AttributeListExpr *expr) {
         VariableExpr *calleeExpr = new VariableExpr(buildToken(TOKEN_IDENTIFIER, callee, strlen(callee), -1), -1, false);
 
         resolveVariableExpr(calleeExpr);
+        removeLocal();
         expList = RESIZE_ARRAY(Expr *, expList, 0, 1);
         expList[0] = outVar;
         Expr *callExp = new CallExpr(calleeExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), 1, expList, false, NULL, NULL);
@@ -1466,6 +1469,8 @@ void Resolver::pushAreas(AttributeListExpr *expr) {
         uiExprs.push_back(callExp);
         current->addLocal({VAL_INT});
       }
+      else
+        expr->_viewIndex = -1;
     }
     else
       parser.error("Out value having an illegal type");
@@ -1475,8 +1480,20 @@ void Resolver::pushAreas(AttributeListExpr *expr) {
       delete[] name;
     }
   }
-  else
-    parseChildren(expr);
+  else {
+    IndexList indexList;
+
+    for (int index = 0; index < expr->childrenCount; index++) {
+      AttributeListExpr *subExpr = (AttributeListExpr *) expr->children[index];
+
+      accept<int>(subExpr, 0);
+
+      if (subExpr->_viewIndex != -1)
+        indexList.set(index);
+    }
+
+    expr->_viewIndex = indexList.size != -1 ? indexList.array[0] : -1;
+  }
 
   for (int index = 0; index < expr->attCount; index++)
     if (expr->attributes[index]->_index != -1)
@@ -1485,13 +1502,32 @@ void Resolver::pushAreas(AttributeListExpr *expr) {
   outAttrIndex = oldOutAttrIndex;
 }
 
-void Resolver::recalcLayout(AttributeListExpr *expr) {
-  int dir = getParseDir();
+int subViewIndex;
 
-  if (!expr->childrenCount && outAttrIndex != -1) {
+void Resolver::recalcLayout(AttributeListExpr *expr) {
+  if (expr->childrenCount) {
+    int acc = -1;
+    IndexList indexList(expr->_viewIndex);
+
+    for (int index = -1; (index = indexList.getNext(index)) != -1;) {
+      accept<int>(expr->children[index], 0);
+
+      if (acc != -1) {
+        uiExprs.push_back(new OpcodeExpr((OpCode) subViewIndex, new OpcodeExpr((OpCode) acc, new OpcodeExpr(OP_ADD_LOCAL, NULL))));
+        acc = current->localCount;
+        current->addLocal({VAL_INT});
+      }
+      else
+        acc = subViewIndex;
+    }
+
+    subViewIndex = acc;
   }
-  else
-    ;//    parseChildren(expr);
+  else {
+    uiExprs.push_back(new OpcodeExpr((OpCode) expr->_viewIndex, new OpcodeExpr((OpCode) getParseDir(), new OpcodeExpr(OP_GET_LOCAL_DIR, NULL))));
+    subViewIndex = current->localCount;
+    current->addLocal({VAL_INT});
+  }
 }
 /*
 Expr *Parser::forStatement(TokenType endGroupType) {

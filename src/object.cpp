@@ -434,6 +434,27 @@ InterpretValue CoThread::run() {
       push(value);
       break;
     }
+    case OP_GET_LOCAL_DIR: {
+      int8_t dir = READ_BYTE();
+      int8_t slot = READ_BYTE();
+
+      push(INT_VAL(AS_INT(frame->slots[slot])));
+      break;
+    }
+    case OP_ADD_LOCAL: {
+      int8_t a = READ_BYTE();
+      int8_t b = READ_BYTE();
+
+      push(INT_VAL(AS_INT(frame->slots[a]) + AS_INT(frame->slots[b])));
+      break;
+    }
+    case OP_MAX_LOCAL: {
+      int8_t a = READ_BYTE();
+      int8_t b = READ_BYTE();
+
+      push(INT_VAL(std::max(AS_INT(frame->slots[a]), AS_INT(frame->slots[b]))));
+      break;
+    }
     case OP_GET_LOCAL: {
       int8_t slot = READ_BYTE();
 

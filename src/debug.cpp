@@ -49,6 +49,13 @@ static int byteInstruction(const char *name, Chunk *chunk, int offset) {
   return offset + 2; 
 }
 
+static int byte2Instruction(const char *name, Chunk *chunk, int offset) {
+  int8_t a = chunk->code[offset + 1];
+  int8_t b = chunk->code[offset + 2];
+  printf("%-16s %4d %4d\n", name, a, b);
+  return offset + 3; 
+}
+
 static int jumpInstruction(const char *name, int sign, Chunk *chunk, int offset) {
   uint16_t jump = (uint16_t)(chunk->code[offset + 1] << 8);
   jump |= chunk->code[offset + 2];
@@ -92,6 +99,15 @@ int disassembleInstruction(Chunk *chunk, int offset) {
 
     case OP_SET_PROPERTY:
       return byteInstruction("OP_SET_PROPERTY", chunk, offset);
+
+    case OP_GET_LOCAL_DIR:
+      return byte2Instruction("OP_GET_LOCAL_DIR", chunk, offset);
+
+    case OP_ADD_LOCAL:
+      return byte2Instruction("OP_ADD_LOCAL", chunk, offset);
+
+    case OP_MAX_LOCAL:
+      return byte2Instruction("OP_MAX_LOCAL", chunk, offset);
 
     case OP_GET_LOCAL:
       return byteInstruction("OP_GET_LOCAL", chunk, offset);

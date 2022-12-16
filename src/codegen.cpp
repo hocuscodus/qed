@@ -272,7 +272,9 @@ void CodeGenerator::visitLogicalExpr(LogicalExpr *expr) {
 }
 
 void CodeGenerator::visitOpcodeExpr(OpcodeExpr *expr) {
-  expr->right->accept(this);
+  if (expr->right != NULL)
+    expr->right->accept(this);
+
   emitByte(expr->op);
 }
 
