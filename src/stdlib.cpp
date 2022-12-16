@@ -76,6 +76,7 @@ QNI_FN(clock) {
 }
 
 SDL_Window* win = NULL;
+TTF_Font* font = NULL;
 
 void initDisplay() {
   if (!win) {
@@ -112,6 +113,7 @@ void initDisplay() {
     SDL_Color color;
 
     TTF_Init();
+    font = TTF_OpenFont("./res/font/arial.ttf", 30);
   }
 /*
   #ifdef __EMSCRIPTEN__
@@ -123,11 +125,15 @@ void initDisplay() {
   }
   #endif
 */
+  SDL_SetRenderDrawColor(rend2, 0, 0, 0, 0);
+  SDL_RenderClear(rend2);
+
   return;
 }
 
 void uninitDisplay() {
   if (win) {
+    TTF_CloseFont(font);
     TTF_Quit();
 
     // destroy renderer
@@ -160,19 +166,17 @@ QNI_FN(getInstanceSize) {
 
 QNI_FN(displayText) {
   const char *text = ((ObjString *) args[0].as.obj)->chars;
-  TTF_Font* font = TTF_OpenFont("./res/font/arial.ttf", 30);
-  SDL_Surface* textSurface = TTF_RenderText_Blended(font, text, {255,255,255});
-  SDL_Texture* textTexture = SDL_CreateTextureFromSurface(rend2, textSurface);
+  SDL_Surface *textSurface = TTF_RenderText_Blended(font, text, {255, 255, 255, 0});
+  SDL_Texture *textTexture = SDL_CreateTextureFromSurface(rend2, textSurface);
   SDL_Rect rectangle;
 
   rectangle.x = 0;
   rectangle.y = 0;
-  rectangle.w = 100;
-  rectangle.h = 100;
+  rectangle.w = textSurface->w;
+  rectangle.h = textSurface->h;
   SDL_RenderCopy(rend2, textTexture, NULL, &rectangle);
-//  SDL_FreeSurface(textSurface);
-//  SDL_DestroyTexture(textTexture);
-//  TTF_CloseFont(font);
+  SDL_FreeSurface(textSurface);
+  SDL_DestroyTexture(textTexture);
 
   return VOID_VAL;
 }

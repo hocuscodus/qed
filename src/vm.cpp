@@ -528,8 +528,10 @@ void VM::repaint() {
 //  });
 }
 
+extern SDL_Renderer *rend2;
 void VM::suspend() {
   repaint();
+  SDL_RenderPresent(rend2);
 
   SDL_Event event;
 
