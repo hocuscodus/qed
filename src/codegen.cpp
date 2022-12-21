@@ -220,12 +220,8 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
       if (parser.hadError)
         return;
 #ifdef DEBUG_PRINT_CODE
-      else {
+      else
         disassembleChunk(&expr->function->chunk, expr->function->name->chars);
-
-        if(expr->function->uiFunction)
-          disassembleChunk(&expr->function->uiFunction->chunk, "UI$");
-      }
 #endif
       emitBytes(OP_CLOSURE, makeConstant(OBJ_VAL(expr->function)));
 

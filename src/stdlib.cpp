@@ -184,6 +184,7 @@ QNI_FN(displayText) {
 QNI_FN(displayInstance) {
   ObjInstance *instance = (ObjInstance *) args[0].as.obj;
 
+  instance->paint();
   return VOID_VAL;
 }
 

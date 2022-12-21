@@ -37,7 +37,7 @@ const char *qedLib =
 "int getTextSize(String text);"
 "int getInstanceSize(int instance);"
 "void displayText(String text);"
-"int displayInstance(int instance);"
+"void displayInstance(int instance);"
 ""
 "void Timer(int timeoutMillis) {"
 "  var _timerObj;"

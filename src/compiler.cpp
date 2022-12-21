@@ -72,12 +72,8 @@ ObjFunction *Compiler::compile() {
   if (parser.hadError)
     function->chunk.reset();
 #ifdef DEBUG_PRINT_CODE
-  else {
+  else
     disassembleChunk(&function->chunk, function->name != NULL ? function->name->chars : "<script>");
-
-    if (function->uiFunction)
-      disassembleChunk(&function->uiFunction->chunk, "UI$");
-  }
 #endif
 
   return parser.hadError ? NULL : function;
