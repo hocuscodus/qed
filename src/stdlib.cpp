@@ -71,6 +71,14 @@ QNI_FN(println) {
   return VOID_VAL;
 }
 
+QNI_FN(rect) {
+  return VOID_VAL;
+}
+
+QNI_FN(oval) {
+  return VOID_VAL;
+}
+
 QNI_FN(clock) {
   return FLOAT_VAL(((double) clock()) / CLOCKS_PER_SEC);
 }

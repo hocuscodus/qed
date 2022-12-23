@@ -1547,6 +1547,13 @@ void Resolver::recalcLayout(AttributeListExpr *expr) {
   }
 }
 
+int nTabs = 1;
+
+static void insertTabs() {
+  for (int index = 0; index < nTabs; index++)
+    ss << "  ";
+}
+
 void Resolver::paint(AttributeListExpr *expr) {
   int oldOutAttrIndex = outAttrIndex;
 
@@ -1576,6 +1583,8 @@ void Resolver::paint(AttributeListExpr *expr) {
           break;
 
         case OBJ_FUNCTION:
+          insertTabs();
+          ss << ((ObjFunction *) outType.objType)->name->chars << "()\n";
           break;
 
         default:
@@ -1583,15 +1592,26 @@ void Resolver::paint(AttributeListExpr *expr) {
           break;
       }
 
-      if (callee)
-        ss << "  " << callee << "(" << name << ")\n";
+      if (callee) {
+        insertTabs();
+        ss << callee << "(" << name << ")\n";
+      }
     }
     else
       parser.error("Out value having an illegal type");
   }
-  else
+  else {
+    insertTabs();
+    ss << "{\n";
+    nTabs++;
+
     for (int index = 0; index < expr->childrenCount; index++)
       accept<int>(expr->children[index], 0);
+
+    --nTabs;
+    insertTabs();
+    ss << "}\n";
+  }
 
   for (int index = 0; index < expr->attCount; index++)
     if (expr->attributes[index]->_index != -1)
