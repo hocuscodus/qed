@@ -18,7 +18,14 @@
 #ifndef qed_value_h
 #define qed_value_h
 
+#include <array>
 #include "common.h"
+
+#define NUM_DIRS 2
+
+template <typename type> using DirType = std::array<type, NUM_DIRS>;
+
+typedef DirType<int> Point;
 
 typedef struct Obj Obj;
 
@@ -27,6 +34,7 @@ typedef enum {
   VAL_BOOL,
   VAL_INT,
   VAL_FLOAT,
+  VAL_POINT,
   VAL_OBJ,
 } ValueType;
 

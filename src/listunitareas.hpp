@@ -25,12 +25,6 @@
 #include "path.hpp"
 #include "value.h"
 
-#define NUM_DIRS 2
-
-template <typename type> using DirType = std::array<type, NUM_DIRS>;
-
-typedef DirType<int> Point;
-
 struct LocationUnit {
   virtual ~LocationUnit();
 

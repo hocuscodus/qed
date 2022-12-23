@@ -86,6 +86,10 @@ ParseExpRule *getExpRule(TokenType type) {
 static int scopeDepth = -1;
 
 Parser::Parser(Scanner &scanner) : scanner(scanner) {
+  hadError = false;
+  panicMode = false;
+
+  advance();
 }
 
 void Parser::advance() {
@@ -181,10 +185,6 @@ bool Parser::parse() {
       if (token.type == TOKEN_EOF) break;
     }
   */
-  hadError = false;
-  panicMode = false;
-
-  advance();
   expr = grouping(TOKEN_EOF, "Expect end of file.");
 
   return !hadError;

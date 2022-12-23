@@ -71,11 +71,11 @@ public:
   Parser(Scanner &scanner);
 private:
   void advance();
+public:
   void consume(TokenType type, const char *message);
   bool check(TokenType type);
   bool check(TokenType *endGroupTypes);
   bool match(TokenType type);
-public:
   void errorAtCurrent(const char *fmt, ...);
   void error(const char *fmt, ...);
   void compilerError(const char *fmt, ...);

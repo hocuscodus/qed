@@ -24,8 +24,6 @@
 #include "memory.h"
 #include "qni.hpp"
 
-#define NUM_DIRS 2
-
 typedef void (Resolver::*FttrListFn)(AttributeListExpr *expr);
 typedef void (Resolver::*AttrFn)(AttributeExpr *expr);
 
@@ -1180,10 +1178,27 @@ bool Resolver::resolve(Compiler *compiler)
 
 static std::list<Expr *> uiExprs;
 
-static Expr *generateUIFunction(const char *name, Expr *uiExpr, int count, int restLength, Expr **rest) {
+static Expr *generateUIFunction(const char *name, char *args, Expr *uiExpr, int count, int restLength, Expr **rest) {
     VariableExpr *nameExpr = new VariableExpr(buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1), -1, false);
     Expr **bodyExprs = new Expr *[count + restLength];
     Expr **functionExprs = new Expr *[3];
+    int nbParms = 0;
+    Expr **parms = NULL;
+
+    if (args != NULL) {
+      Scanner scanner(args);
+      Parser parser(scanner);
+      TokenType tokens[] = {TOKEN_COMMA, TOKEN_EOF};
+
+      do {
+        Expr *expr = parser.expression(tokens);
+
+        parms = RESIZE_ARRAY(Expr *, parms, nbParms, nbParms + 1);
+        parms[nbParms++] = expr;
+      } while (parser.match(TOKEN_COMMA));
+
+      parser.consume(TOKEN_EOF, "Expect EOF after arguments.");
+    }
 
     for (int index = 0; index < count; index++)
       bodyExprs[index] = uiExpr;
@@ -1192,7 +1207,7 @@ static Expr *generateUIFunction(const char *name, Expr *uiExpr, int count, int r
       bodyExprs[count + index] = rest[index];
 
     functionExprs[0] = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "void", 4, -1), VAL_VOID, false);
-    functionExprs[1] = new CallExpr(nameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), 0, NULL, false, NULL, NULL);
+    functionExprs[1] = new CallExpr(nameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), nbParms, parms, false, NULL, NULL);
     functionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), count + restLength, bodyExprs, 0, NULL, NULL);
 
     return new ListExpr(3, functionExprs, EXPR_LIST, NULL);
@@ -1262,17 +1277,17 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
   if (expr->ui != NULL)
     if (((AttributeListExpr *) expr->ui)->childrenCount) {
       // Perform the UI AST magic
-      Expr *paintFunction = generateUIFunction("paint", expr->ui, 1, 0, NULL);
+      Expr *paintFunction = generateUIFunction("paint", "int pos0, int pos1", expr->ui, 1, 0, NULL);
       Expr **uiFunctions = new Expr *[1];
 
       uiFunctions[0] = paintFunction;
 
-      Expr *layoutFunction = generateUIFunction("Layout", expr->ui, 3, 1, uiFunctions);
+      Expr *layoutFunction = generateUIFunction("Layout", NULL, expr->ui, 3, 1, uiFunctions);
       Expr **layoutExprs = new Expr *[1];
 
       layoutExprs[0] = layoutFunction;
 
-      Expr *valueFunction = generateUIFunction("UI$", expr->ui, 1, 1, layoutExprs);
+      Expr *valueFunction = generateUIFunction("UI$", NULL, expr->ui, 1, 1, layoutExprs);
 
       uiParseCount = 0;
       accept<int>(valueFunction, 0);
