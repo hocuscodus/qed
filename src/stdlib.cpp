@@ -161,7 +161,7 @@ void uninitDisplay() {
 QNI_FN(getTextSize) {
   const char *text = ((ObjString *) args[0].as.obj)->chars;
 
-  return INT_VAL(10);
+  return INT_VAL(15);
 }
 
 QNI_FN(getInstanceSize) {
@@ -174,12 +174,14 @@ QNI_FN(getInstanceSize) {
 
 QNI_FN(displayText) {
   const char *text = ((ObjString *) args[0].as.obj)->chars;
+  long posP = args[1].as.integer;
+  Point pos = {posP >> 32, posP & 0xFFFFFFFF};
   SDL_Surface *textSurface = TTF_RenderText_Blended(font, text, {255, 255, 255, 0});
   SDL_Texture *textTexture = SDL_CreateTextureFromSurface(rend2, textSurface);
   SDL_Rect rectangle;
 
-  rectangle.x = 0;
-  rectangle.y = 0;
+  rectangle.x = pos[0];
+  rectangle.y = pos[1];
   rectangle.w = textSurface->w;
   rectangle.h = textSurface->h;
   SDL_RenderCopy(rend2, textTexture, NULL, &rectangle);
@@ -191,8 +193,10 @@ QNI_FN(displayText) {
 
 QNI_FN(displayInstance) {
   ObjInstance *instance = (ObjInstance *) args[0].as.obj;
+  long posP = args[1].as.integer;
+  Point pos = {posP >> 32, posP & 0xFFFFFFFF};
 
-  instance->paint();
+  instance->paint(pos);
   return VOID_VAL;
 }
 

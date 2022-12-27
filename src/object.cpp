@@ -772,7 +772,7 @@ UnitArea *ObjInstance::recalculateLayout() {
   return new UnitArea({100, 100});
 }
 
-void ObjInstance::paint() {
+void ObjInstance::paint(Point pos) {
   for (int ndx = 0; ndx < numValuesInstances; ndx++) {
     CoThread *layoutThread = uiLayoutInstances[ndx]->coThread;
     CallFrame &layoutFrame = layoutThread->frames[0];
@@ -780,7 +780,11 @@ void ObjInstance::paint() {
     ObjClosure *paintClosure = AS_CLOSURE(layoutThread->fields[layoutClosure->function->fieldCount - 1]);
 
     *layoutThread->stackTop++ = OBJ_VAL(paintClosure);
-    layoutThread->call(paintClosure, 0, -1);
+
+    for (int dir = 0; dir < NUM_DIRS; dir++)
+      *layoutThread->stackTop++ = INT_VAL(pos[dir]);
+
+    layoutThread->call(paintClosure, NUM_DIRS, -1);
     layoutThread->run();
     layoutThread->stackTop--;
   }

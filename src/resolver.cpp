@@ -737,15 +737,10 @@ void Resolver::visitListExpr(ListExpr *expr)
     {
     case EXPR_ASSIGN:
     {
-      expr->listType = subExpr->type;
-
       AssignExpr *assignExpr = (AssignExpr *)subExpr;
 
-      resolveVariableExpr(assignExpr->varExp);
-
-      //        checkDeclaration(&expr->varExp->name);
-      if (assignExpr->varExp->index != -1 && !assignExpr->varExp->upvalueFlag)
-        parser.error("Already a variable with this name in this scope.");
+      expr->listType = subExpr->type;
+      checkDeclaration(&assignExpr->varExp->name);
 
       if (assignExpr->value != NULL)
       {
@@ -784,11 +779,7 @@ void Resolver::visitListExpr(ListExpr *expr)
       else {
         VariableExpr *varExp = (VariableExpr *)callExpr->callee;
 
-        resolveVariableExpr(varExp);
-
-        //          checkDeclaration(&varExp->name);
-        if (varExp->index != -1 && !varExp->upvalueFlag)
-          parser.error("Already a variable with this name in this scope.");
+        checkDeclaration(&varExp->name);
 
         if (!varExp->name.equal("UI$")) {
           current->addLocal(VAL_OBJ);
@@ -867,13 +858,12 @@ void Resolver::visitListExpr(ListExpr *expr)
     case EXPR_VARIABLE:
     {
       VariableExpr *varExpr = (VariableExpr *)subExpr;
-
+/*
       resolveVariableExpr(varExpr);
-
-      //        checkDeclaration(&expr->varExp->name);
-      if (varExpr->index != -1 && !varExpr->upvalueFlag)
-        parser.error("Already a variable with this name in this scope.");
-
+      if (expr->index != -1 && !expr->upvalueFlag)// && current->locals[expr->index].depth == current->scopeDepth)
+        if (current->locals[expr->index].depth == current->scopeDepth)
+        parser.error("Already a variable with this name in this scope.");*/
+      checkDeclaration(&varExpr->name);
       current->addLocal(returnType);
       current->setLocalName(&varExpr->name);
 
@@ -1245,6 +1235,10 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
         for (int index = 0; index < group->count; index++) {
           uiExprs.push_back(group->expressions[index]);
           acceptSubExpr(group->expressions[index]);
+
+          if (current->peekLocal(0)->type.valueType == VAL_VOID)
+            removeLocal();
+
           group->expressions[index] = NULL;
         }
 
@@ -1534,8 +1528,6 @@ void Resolver::pushAreas(AttributeListExpr *expr) {
   outAttrIndex = oldOutAttrIndex;
 }
 
-int subViewIndex;
-
 void Resolver::recalcLayout(AttributeListExpr *expr) {
   int parseDir = getParseDir();
 
@@ -1545,28 +1537,39 @@ void Resolver::recalcLayout(AttributeListExpr *expr) {
 
     for (int index = -1; (index = indexList.getNext(index)) != -1;) {
       accept<int>(expr->children[index], 0);
+      int subViewIndex = expr->children[index]->_offsets[parseDir];
 
       if (acc != -1) {
         ss << "  var l" << parseDir << "i" << aCount << " = l" << parseDir << "i" << acc << " + l" << parseDir << "i" << subViewIndex << "\n";
-        expr->_offsets[parseDir] = acc = aCount++;
+        expr->children[index]->_offsets[parseDir] = acc = aCount++;
       }
       else
         acc = subViewIndex;
     }
 
-    subViewIndex = acc;
+    expr->_offsets[parseDir] = acc;
   }
   else {
-    subViewIndex = aCount++;
-    ss << "  var l" << parseDir << "i" << subViewIndex << " = a" << expr->_viewIndex << "\n";
+    ss << "  var l" << parseDir << "i" << aCount << " = a" << expr->_viewIndex << "\n";
+    expr->_offsets[parseDir] = aCount++;
   }
 }
 
-int nTabs = 1;
+int nTabs = 0;
 
 static void insertTabs() {
   for (int index = 0; index < nTabs; index++)
     ss << "  ";
+}
+
+static void insertPoint(const char *prefix) {/*
+  ss << "new Point(";
+
+  for (int dir = 0; dir < NUM_DIRS; dir++)
+    ss << (dir == 0 ? "" : ", ") << prefix << dir;
+
+  ss << ")";*/
+  ss << "(" << prefix << "0 << 32 | " << prefix << "1)";
 }
 
 void Resolver::paint(AttributeListExpr *expr) {
@@ -1609,24 +1612,35 @@ void Resolver::paint(AttributeListExpr *expr) {
 
       if (callee) {
         insertTabs();
-        ss << callee << "(" << name << ")\n";
+        ss << callee << "(" << name << ", ";
+        insertPoint("pos");
+        ss << ")\n";
       }
     }
     else
       parser.error("Out value having an illegal type");
   }
-  else {
-    insertTabs();
-    ss << "{\n";
-    nTabs++;
+  else
+    for (int index = 0; index < expr->childrenCount; index++) {
+      if (index != 0) {
+        insertTabs();
+        ss << "{\n";
+        nTabs++;
 
-    for (int index = 0; index < expr->childrenCount; index++)
+        if (nTabs > 1) {
+          insertTabs();
+          ss << "int pos0 = pos0 + l" << 0 << "i" << expr->children[index - 1]->_offsets[0] << "\n";
+        }
+      }
+
       accept<int>(expr->children[index], 0);
 
-    --nTabs;
-    insertTabs();
-    ss << "}\n";
-  }
+      if (index != 0) {
+        --nTabs;
+        insertTabs();
+        ss << "}\n";
+      }
+   }
 
   for (int index = 0; index < expr->attCount; index++)
     if (expr->attributes[index]->_index != -1)

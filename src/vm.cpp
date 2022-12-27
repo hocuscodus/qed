@@ -469,7 +469,7 @@ bool VM::recalculate() {
 
     initDisplay();
 
-    instance->paint();
+    instance->paint({0, 0});
   }
   return true;
 }
