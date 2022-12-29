@@ -1271,10 +1271,12 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
   if (expr->ui != NULL)
     if (((AttributeListExpr *) expr->ui)->childrenCount) {
       // Perform the UI AST magic
+      Expr *clickFunction = generateUIFunction("onClick", "int pos0, int pos1", expr->ui, 1, 0, NULL);
       Expr *paintFunction = generateUIFunction("paint", "int pos0, int pos1", expr->ui, 1, 0, NULL);
-      Expr **uiFunctions = new Expr *[1];
+      Expr **uiFunctions = new Expr *[2];
 
       uiFunctions[0] = paintFunction;
+      uiFunctions[1] = clickFunction;
 
       Expr *layoutFunction = generateUIFunction("Layout", NULL, expr->ui, 3, 1, uiFunctions);
       Expr **layoutExprs = new Expr *[1];
@@ -1407,7 +1409,7 @@ void Resolver::processAttrs(AttributeListExpr *expr) {
   parseChildren(expr);
 }
 
-static std::set<std::string> outAttrs({"out", "bgcol", "textcol", "fontSize", "width", "height", "alignx", "aligny", "zoomwidth", "zoomheight"});
+static std::set<std::string> outAttrs({"out", "color", "fontSize", "width", "height", "alignX", "alignY", "zoomWidth", "zoomHeight"});
 
 static char *generateInternalVarName(const char *prefix, int suffix) {
   char buffer[20];
