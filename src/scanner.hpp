@@ -110,7 +110,7 @@ struct Token {
   int line;
 
   std::string getString();
-  bool equal(char *string);
+  bool equal(const char *string);
 
   virtual void declareError(const char *message);
 };

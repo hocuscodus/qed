@@ -186,6 +186,7 @@ static void resolveVariableExpr(VariableExpr *expr)
 
 Resolver::Resolver(Parser &parser, Expr *exp) : ExprVisitor(), parser(parser) {
   this->exp = exp;
+  uiParseCount = -1;
 }
 
 void Resolver::visitAssignExpr(AssignExpr *expr)
@@ -1094,11 +1095,19 @@ void Resolver::visitUnaryExpr(UnaryExpr *expr)
 
 void Resolver::visitVariableExpr(VariableExpr *expr)
 {
+  if (uiParseCount >= 0 && expr->name.getString().find("__ATT__", 0) == 0) {
+    int num;
+
+    sscanf(&expr->name.getString().c_str()[7], "%d", &num);
+    current->addLocal(VAL_INT);
+    num=num;
+    return;
+  }
+
   resolveVariableExpr(expr);
 
   if (expr->index == -1) {
     parser.error("Variable must be defined");
-    resolveVariableExpr(expr); //TODO: remove later, for debugging only
     current->addLocal(VAL_VOID);
   }
 }
@@ -1271,14 +1280,14 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
   if (expr->ui != NULL)
     if (((AttributeListExpr *) expr->ui)->childrenCount) {
       // Perform the UI AST magic
-      Expr *clickFunction = generateUIFunction("onClick", "int pos0, int pos1", expr->ui, 1, 0, NULL);
+      Expr *clickFunction = generateUIFunction("onEvent", "int pos0, int pos1", expr->ui, 1, 0, NULL);
       Expr *paintFunction = generateUIFunction("paint", "int pos0, int pos1", expr->ui, 1, 0, NULL);
       Expr **uiFunctions = new Expr *[2];
 
       uiFunctions[0] = paintFunction;
       uiFunctions[1] = clickFunction;
 
-      Expr *layoutFunction = generateUIFunction("Layout", NULL, expr->ui, 3, 1, uiFunctions);
+      Expr *layoutFunction = generateUIFunction("Layout", NULL, expr->ui, 3, 2, uiFunctions);
       Expr **layoutExprs = new Expr *[1];
 
       layoutExprs[0] = layoutFunction;
@@ -1289,6 +1298,7 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
       accept<int>(valueFunction, 0);
       delete expr->ui;
       expr->ui = valueFunction;
+      uiParseCount = -1;
     }
     else {
       delete expr->ui;
@@ -1458,18 +1468,23 @@ void Resolver::evalValue(AttributeExpr *expr) {
 }
 
 int outAttrIndex = -1;
+int eventAttrIndex = -1;
 //ValueStack<int> valueStack(-1);
-ValueStack<ValueStackElement> valueStack2;
+//ValueStack<ValueStackElement> valueStack2;
 //std::list<AttributeExpr *> attExprs;
+
+static int findAttrIndex(AttributeListExpr *expr, const char *name) {
+  for (int index = 0; index < expr->attCount; index++)
+    if (expr->attributes[index]->_index != -1 && expr->attributes[index]->name.equal(name))
+      return expr->attributes[index]->_index;
+
+  return -1;
+}
 
 void Resolver::pushAreas(AttributeListExpr *expr) {
   int oldOutAttrIndex = outAttrIndex;
 
-  for (int index = 0; index < expr->attCount; index++)
-    if (expr->attributes[index]->_index != -1 && expr->attributes[index]->name.equal("out")) {
-      outAttrIndex = expr->attributes[index]->_index;
-      break;
-    }
+  outAttrIndex = findAttrIndex(expr, "out");
 
   if (!expr->childrenCount && outAttrIndex != -1) {
     char name[20];
@@ -1577,11 +1592,7 @@ static void insertPoint(const char *prefix) {/*
 void Resolver::paint(AttributeListExpr *expr) {
   int oldOutAttrIndex = outAttrIndex;
 
-  for (int index = 0; index < expr->attCount; index++)
-    if (expr->attributes[index]->_index != -1 && expr->attributes[index]->name.equal("out")) {
-      outAttrIndex = expr->attributes[index]->_index;
-      break;
-    }
+  outAttrIndex = findAttrIndex(expr, "out");
 
   if (!expr->childrenCount && outAttrIndex != -1) {
     char name[20];
@@ -1648,6 +1659,76 @@ void Resolver::paint(AttributeListExpr *expr) {
     if (expr->attributes[index]->_index != -1)
 ;//      valueStack.pop(expr->attributes[index]->name.getString());
 
+  outAttrIndex = oldOutAttrIndex;
+}
+
+void Resolver::onEvent(AttributeListExpr *expr) {
+  int oldOutAttrIndex = outAttrIndex;
+  int oldEventAttrIndex = eventAttrIndex;
+
+  outAttrIndex = findAttrIndex(expr, "out");
+  eventAttrIndex = findAttrIndex(expr, "onRelease");
+
+  if (!expr->childrenCount && eventAttrIndex != -1 && outAttrIndex != -1) {
+    char name[20];
+
+    sprintf(name, "v%d", outAttrIndex);
+
+    Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
+    Type outType = current->enclosing->enclosing->locals[current->enclosing->enclosing->resolveLocal(&token)].type;
+
+    if (outType.valueType == VAL_OBJ && outType.objType) {
+      switch (outType.objType->type) {
+        case OBJ_COMPILER_INSTANCE:
+          insertTabs();
+          ss << "onEvent(";
+          insertPoint("pos");
+          ss << ")\n";
+          break;
+
+        case OBJ_STRING:
+        case OBJ_FUNCTION:
+          insertTabs();
+          ss << "__ATT__" << eventAttrIndex << "(";
+          insertPoint("pos");
+          ss << ")\n";
+          break;
+
+        default:
+          parser.error("Out value having an illegal type");
+          break;
+      }
+    }
+    else
+      parser.error("Out value having an illegal type");
+  }
+  else
+    for (int index = 0; index < expr->childrenCount; index++) {
+      if (index != 0) {
+        insertTabs();
+        ss << "{\n";
+        nTabs++;
+
+        if (nTabs > 1) {
+          insertTabs();
+          ss << "int pos0 = pos0 + l" << 0 << "i" << expr->children[index - 1]->_offsets[0] << "\n";
+        }
+      }
+
+      accept<int>(expr->children[index], 0);
+
+      if (index != 0) {
+        --nTabs;
+        insertTabs();
+        ss << "}\n";
+      }
+   }
+
+  for (int index = 0; index < expr->attCount; index++)
+    if (expr->attributes[index]->_index != -1)
+;//      valueStack.pop(expr->attributes[index]->name.getString());
+
+  eventAttrIndex = oldEventAttrIndex;
   outAttrIndex = oldOutAttrIndex;
 }
 /*

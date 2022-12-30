@@ -50,7 +50,7 @@ std::string Token::getString() {
   return str;
 }
 
-bool Token::equal(char *string) {
+bool Token::equal(const char *string) {
   return !memcmp(start, string, length) && string[length] == '\0';
 }
 
