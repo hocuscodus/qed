@@ -179,6 +179,17 @@ Token Scanner::scanToken() {
     case '"':
       return string();
 
+    case '$': {
+      while (isAlpha(peek())) advance();
+
+      TokenType tokenType = checkKeyword(0, 5, "$EXPR", TOKEN_INSERT);
+
+      if (tokenType != TOKEN_IDENTIFIER)
+        return makeToken(tokenType);
+      else
+        break;
+    }
+
     case '\n':
       line++;
       // no break; or return(...); here, fully intended...

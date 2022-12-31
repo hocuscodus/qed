@@ -1095,21 +1095,20 @@ void Resolver::visitUnaryExpr(UnaryExpr *expr)
 
 void Resolver::visitVariableExpr(VariableExpr *expr)
 {
-  if (uiParseCount >= 0 && expr->name.getString().find("__ATT__", 0) == 0) {
-    int num;
-
-    sscanf(&expr->name.getString().c_str()[7], "%d", &num);
-    current->addLocal(VAL_INT);
-    num=num;
-    return;
-  }
-
   resolveVariableExpr(expr);
 
   if (expr->index == -1) {
     parser.error("Variable must be defined");
     current->addLocal(VAL_VOID);
   }
+}
+
+static std::list<Expr *> uiExprs;
+
+void Resolver::visitSwapExpr(SwapExpr *expr) {
+  expr->_expr = uiExprs.front();
+  uiExprs.pop_front();
+  accept<int>(expr->_expr);
 }
 
 void Resolver::checkDeclaration(Token *name)
@@ -1174,8 +1173,6 @@ bool Resolver::resolve(Compiler *compiler)
   current = oldCurrent;
   return !parser.hadError;
 }
-
-static std::list<Expr *> uiExprs;
 
 static Expr *generateUIFunction(const char *name, char *args, Expr *uiExpr, int count, int restLength, Expr **rest) {
     VariableExpr *nameExpr = new VariableExpr(buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1), -1, false);
@@ -1669,6 +1666,19 @@ void Resolver::onEvent(AttributeListExpr *expr) {
   outAttrIndex = findAttrIndex(expr, "out");
   eventAttrIndex = findAttrIndex(expr, "onRelease");
 
+  for (int index = 0; index < expr->attCount; index++) {
+    AttributeExpr *attExpr = expr->attributes[index];
+
+    if (!memcmp(attExpr->name.getString().c_str(), "on", 2))
+      if (attExpr->handler) {
+        ss << "$EXPR\n";
+        uiExprs.push_back(attExpr->handler);
+        attExpr->handler = NULL;
+      }
+      else
+        ;
+  }
+
   if (!expr->childrenCount && eventAttrIndex != -1 && outAttrIndex != -1) {
     char name[20];
 
@@ -1681,7 +1691,7 @@ void Resolver::onEvent(AttributeListExpr *expr) {
       switch (outType.objType->type) {
         case OBJ_COMPILER_INSTANCE:
           insertTabs();
-          ss << "onEvent(";
+          ss << "onInstanceEvent(";
           insertPoint("pos");
           ss << ")\n";
           break;
@@ -1689,7 +1699,7 @@ void Resolver::onEvent(AttributeListExpr *expr) {
         case OBJ_STRING:
         case OBJ_FUNCTION:
           insertTabs();
-          ss << "__ATT__" << eventAttrIndex << "(";
+          ss << "onTextEvent(";
           insertPoint("pos");
           ss << ")\n";
           break;

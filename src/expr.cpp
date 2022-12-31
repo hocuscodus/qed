@@ -233,3 +233,10 @@ UnaryExpr::UnaryExpr(Token op, Expr* right) : Expr(EXPR_UNARY) {
 void UnaryExpr::accept(ExprVisitor *visitor) {
   return visitor->visitUnaryExpr(this);
 }
+
+SwapExpr::SwapExpr() : Expr(EXPR_SWAP) {
+}
+
+void SwapExpr::accept(ExprVisitor *visitor) {
+  return visitor->visitSwapExpr(this);
+}

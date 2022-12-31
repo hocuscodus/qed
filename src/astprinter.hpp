@@ -49,6 +49,7 @@ public:
   void visitTypeExpr(TypeExpr *expr);
   void visitUnaryExpr(UnaryExpr *expr);
   void visitVariableExpr(VariableExpr *expr);
+  void visitSwapExpr(SwapExpr *expr);
 
   void print(Expr *expr);
   void printType(Type *expr);

@@ -365,6 +365,10 @@ Expr *Parser::literal() {
   return exp;
 }
 
+Expr *Parser::swap() {
+  return new SwapExpr();
+}
+
 Expr *Parser::primitiveType() {
   switch (previous.start[0]) {
   case 'v':

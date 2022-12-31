@@ -38,6 +38,8 @@ const char *qedLib =
 "int getInstanceSize(int instance);"
 "void displayText(String text, int point);"
 "void displayInstance(int instance, int point);"
+"void onTextEvent(int point);"
+"void onInstanceEvent(int instance, int point);"
 ""
 "void Timer(int timeoutMillis) {"
 "  var _timerObj;"

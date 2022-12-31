@@ -1,7 +1,7 @@
 void Button(String text) {
-  int color = 0xE0000000
+  int col = 0xE0000000
 
-  <out: rect; color: color; onPress: color = 0xB0000000; onRelease: return;>//{color = 0xE0000000; return}>
+  <out: rect; color: col; onPress: col = 0xB0000000; onRelease: return;>//{col = 0xE0000000; return}>
   <out: text; color: 0x90000000; fontSize: 40; width: 35; alignX: 50; alignY: 50; zoomHeight: 100;>
 }
 

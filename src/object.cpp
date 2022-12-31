@@ -789,6 +789,24 @@ void ObjInstance::paint(Point pos) {
     layoutThread->stackTop--;
   }
 }
+
+void ObjInstance::onEvent(Point pos) {
+  for (int ndx = numValuesInstances - 1; ndx >= 0; ndx--) {
+    CoThread *layoutThread = uiLayoutInstances[ndx]->coThread;
+    CallFrame &layoutFrame = layoutThread->frames[0];
+    ObjClosure *layoutClosure = AS_CLOSURE(layoutThread->fields[0]);
+    ObjClosure *eventClosure = AS_CLOSURE(layoutThread->fields[layoutClosure->function->fieldCount - 1]);
+
+    *layoutThread->stackTop++ = OBJ_VAL(eventClosure);
+
+    for (int dir = 0; dir < NUM_DIRS; dir++)
+      *layoutThread->stackTop++ = INT_VAL(pos[dir]);
+
+    layoutThread->call(eventClosure, NUM_DIRS, -1);
+    layoutThread->run();
+    layoutThread->stackTop--;
+  }
+}
 #if 0
 Object parseCreateUIValuesSub(QEDProcess process, Object value, Path path, int flags, LambdaDeclaration handler) {
   Object childValue = process.execCmdRaw(value, handler, null);

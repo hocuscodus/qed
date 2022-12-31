@@ -34,7 +34,8 @@ typedef enum {
   EXPR_TERNARY,
   EXPR_THIS,
   EXPR_TYPE,
-  EXPR_UNARY
+  EXPR_UNARY,
+  EXPR_SWAP
 } ExprType;
 
 struct ExprVisitor;
@@ -69,6 +70,7 @@ struct TernaryExpr;
 struct ThisExpr;
 struct TypeExpr;
 struct UnaryExpr;
+struct SwapExpr;
 
 struct ExprVisitor {
   template <typename T> T accept(Expr *expr, T buf = T()) {
@@ -108,6 +110,7 @@ struct ExprVisitor {
   virtual void visitThisExpr(ThisExpr *expr) = 0;
   virtual void visitTypeExpr(TypeExpr *expr) = 0;
   virtual void visitUnaryExpr(UnaryExpr *expr) = 0;
+  virtual void visitSwapExpr(SwapExpr *expr) = 0;
 };
 
 struct VariableExpr : public Expr {
@@ -314,6 +317,13 @@ struct UnaryExpr : public Expr {
   Expr* right;
 
   UnaryExpr(Token op, Expr* right);
+  void accept(ExprVisitor *visitor);
+};
+
+struct SwapExpr : public Expr {
+  Expr* _expr;
+
+  SwapExpr();
   void accept(ExprVisitor *visitor);
 };
 

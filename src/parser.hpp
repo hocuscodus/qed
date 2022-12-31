@@ -94,6 +94,7 @@ public:
   Expr *call(Expr *left);
   Expr *logical(Expr *left);
   Expr *literal();
+  Expr *swap();
   Expr *primitiveType();
   AttributeExpr *attribute(TokenType endGroupType);
   AttributeListExpr *attributeList(TokenType endGroupType);

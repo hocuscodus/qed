@@ -330,6 +330,10 @@ void CodeGenerator::visitVariableExpr(VariableExpr *expr) {
   emitBytes(expr->upvalueFlag ? OP_GET_UPVALUE : OP_GET_LOCAL, expr->index);
 }
 
+void CodeGenerator::visitSwapExpr(SwapExpr *expr) {
+  accept<int>(expr->_expr);
+}
+
 Chunk *CodeGenerator::currentChunk() {
   return &function->chunk;
 }

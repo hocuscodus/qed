@@ -336,6 +336,10 @@ void ASTPrinter::visitVariableExpr(VariableExpr *expr) {
   printf("(var %d)", expr->index);
 }
 
+void ASTPrinter::visitSwapExpr(SwapExpr *expr) {
+  printf("(swap)");
+}
+
 void ASTPrinter::printType(Type *type) {
   switch(type->valueType) {
     case VAL_VOID:

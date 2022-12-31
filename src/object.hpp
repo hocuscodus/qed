@@ -261,6 +261,7 @@ struct ObjInstance {
   void uninitValues();
   UnitArea *recalculateLayout();
   void paint(Point pos);
+  void onEvent(Point pos);
 };
 
 struct Internal {

@@ -307,6 +307,7 @@ int main(int argc, const char *argv[]) {
     "This        : Token keyword",
     "Type        : Type type",
     "Unary       : Token op, Expr* right",
+    "Swap        : Expr* _expr",
     NULL
   };
   GenerateAst().defineAst(outputDir, "Expr", array1);
