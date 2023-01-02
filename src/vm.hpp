@@ -59,6 +59,7 @@ struct VM {
   void onReturn(CoThread *current, Value &returnValue);
   bool recalculate();
   void repaint();
+  void onEvent(const char *name, Point pos);
   void push(Obj *obj);
 
   virtual void suspend();

@@ -456,12 +456,8 @@ extern void initDisplay();
 extern void uninitDisplay();
 
 bool VM::recalculate() {
-  CoThread *coThread = instance->coThread;
-
-  if (coThread->getFormFlag()) {
-    ValueStack<Value *> valueStack;
-
-    instance->uninitValues();
+  if (instance->coThread->getFormFlag()) {
+//    instance->uninitValues();
     instance->initValues();
 
     totalSize = {0};
@@ -528,6 +524,11 @@ void VM::repaint() {
 //  });
 }
 
+void VM::onEvent(const char *name, Point pos) {
+  instance->onEvent(pos);
+//  repaint();
+}
+
 extern SDL_Renderer *rend2;
 void VM::suspend() {
   repaint();
@@ -547,9 +548,13 @@ void VM::suspend() {
       }
       break;
 
+    case SDL_MOUSEBUTTONUP:
+      printf("MOUSE RELEASE: %d, %d\n", event.button.x, event.button.y);
+      onEvent("onRelease", {event.button.x, event.button.y});
+      break;
+
     case SDL_QUIT:
-      // handling of close button
-//          quit = 1;
+      exit(0);
       break;
 
     case SDL_KEYDOWN:
