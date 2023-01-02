@@ -549,7 +549,6 @@ void VM::suspend() {
       break;
 
     case SDL_MOUSEBUTTONUP:
-      printf("MOUSE RELEASE: %d, %d\n", event.button.x, event.button.y);
       onEvent("onRelease", {event.button.x, event.button.y});
       break;
 

@@ -200,13 +200,6 @@ QNI_FN(displayInstance) {
   return VOID_VAL;
 }
 
-QNI_FN(onTextEvent) {
-  long posP = args[0].as.integer;
-  Point pos = {posP >> 32, posP & 0xFFFFFFFF};
-
-  return VOID_VAL;
-}
-
 QNI_FN(onInstanceEvent) {
   ObjInstance *instance = (ObjInstance *) args[0].as.obj;
   long posP = args[1].as.integer;

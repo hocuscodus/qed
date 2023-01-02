@@ -1210,7 +1210,8 @@ static Expr *generateUIFunction(const char *name, char *args, Expr *uiExpr, int 
 }
 
 int aCount;
-std::stringstream ss;
+std::stringstream s;
+std::stringstream *ss = &s;
 
 void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
   TokenType type = expr->name.type;
@@ -1221,13 +1222,13 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
 
     if (subExpr->type == EXPR_ATTRIBUTELIST && uiParseCount >= 1) {
       aCount = 0;
-      ss.str("");
+      ss->str("");
     }
 
     acceptSubExpr(subExpr);
 
     if (subExpr->type == EXPR_ATTRIBUTELIST && uiParseCount >= 1) {
-      std::string codeStr = ss.str();
+      std::string codeStr = ss->str();
       char *code = new char[codeStr.size() + 1];
 
       strcpy(code, codeStr.c_str());
@@ -1465,7 +1466,6 @@ void Resolver::evalValue(AttributeExpr *expr) {
 }
 
 int outAttrIndex = -1;
-int eventAttrIndex = -1;
 //ValueStack<int> valueStack(-1);
 //ValueStack<ValueStackElement> valueStack2;
 //std::list<AttributeExpr *> attExprs;
@@ -1512,7 +1512,7 @@ void Resolver::pushAreas(AttributeListExpr *expr) {
 
       if (callee) {
         expr->_viewIndex = aCount;
-        ss << "  var a" << aCount++ << " = " << callee << "(v" << outAttrIndex << ")\n";
+        (*ss) << "  var a" << aCount++ << " = " << callee << "(v" << outAttrIndex << ")\n";
       }
       else
         expr->_viewIndex = -1;
@@ -1554,7 +1554,7 @@ void Resolver::recalcLayout(AttributeListExpr *expr) {
       int subViewIndex = expr->children[index]->_offsets[parseDir];
 
       if (acc != -1) {
-        ss << "  var l" << parseDir << "i" << aCount << " = l" << parseDir << "i" << acc << " + l" << parseDir << "i" << subViewIndex << "\n";
+        (*ss) << "  var l" << parseDir << "i" << aCount << " = l" << parseDir << "i" << acc << " + l" << parseDir << "i" << subViewIndex << "\n";
         expr->children[index]->_offsets[parseDir] = acc = aCount++;
       }
       else
@@ -1564,7 +1564,7 @@ void Resolver::recalcLayout(AttributeListExpr *expr) {
     expr->_offsets[parseDir] = acc;
   }
   else {
-    ss << "  var l" << parseDir << "i" << aCount << " = a" << expr->_viewIndex << "\n";
+    (*ss) << "  var l" << parseDir << "i" << aCount << " = a" << expr->_viewIndex << "\n";
     expr->_offsets[parseDir] = aCount++;
   }
 }
@@ -1573,7 +1573,7 @@ int nTabs = 0;
 
 static void insertTabs() {
   for (int index = 0; index < nTabs; index++)
-    ss << "  ";
+    (*ss) << "  ";
 }
 
 static void insertPoint(const char *prefix) {/*
@@ -1582,8 +1582,8 @@ static void insertPoint(const char *prefix) {/*
   for (int dir = 0; dir < NUM_DIRS; dir++)
     ss << (dir == 0 ? "" : ", ") << prefix << dir;
 
-  ss << ")";*/
-  ss << "(" << prefix << "0 << 32 | " << prefix << "1)";
+  (*ss) << ")";*/
+  (*ss) << "(" << prefix << "0 << 32 | " << prefix << "1)";
 }
 
 void Resolver::paint(AttributeListExpr *expr) {
@@ -1612,7 +1612,7 @@ void Resolver::paint(AttributeListExpr *expr) {
 
         case OBJ_FUNCTION:
           insertTabs();
-          ss << ((ObjFunction *) outType.objType)->name->chars << "()\n";
+          (*ss) << ((ObjFunction *) outType.objType)->name->chars << "()\n";
           break;
 
         default:
@@ -1622,9 +1622,9 @@ void Resolver::paint(AttributeListExpr *expr) {
 
       if (callee) {
         insertTabs();
-        ss << callee << "(" << name << ", ";
+        (*ss) << callee << "(" << name << ", ";
         insertPoint("pos");
-        ss << ")\n";
+        (*ss) << ")\n";
       }
     }
     else
@@ -1634,12 +1634,12 @@ void Resolver::paint(AttributeListExpr *expr) {
     for (int index = 0; index < expr->childrenCount; index++) {
       if (index != 0) {
         insertTabs();
-        ss << "{\n";
+        (*ss) << "{\n";
         nTabs++;
 
         if (nTabs > 1) {
           insertTabs();
-          ss << "int pos0 = pos0 + l" << 0 << "i" << expr->children[index - 1]->_offsets[0] << "\n";
+          (*ss) << "int pos0 = pos0 + l" << 0 << "i" << expr->children[index - 1]->_offsets[0] << "\n";
         }
       }
 
@@ -1648,7 +1648,7 @@ void Resolver::paint(AttributeListExpr *expr) {
       if (index != 0) {
         --nTabs;
         insertTabs();
-        ss << "}\n";
+        (*ss) << "}\n";
       }
    }
 
@@ -1661,25 +1661,10 @@ void Resolver::paint(AttributeListExpr *expr) {
 
 void Resolver::onEvent(AttributeListExpr *expr) {
   int oldOutAttrIndex = outAttrIndex;
-  int oldEventAttrIndex = eventAttrIndex;
 
   outAttrIndex = findAttrIndex(expr, "out");
-  eventAttrIndex = findAttrIndex(expr, "onRelease");
 
-  for (int index = 0; index < expr->attCount; index++) {
-    AttributeExpr *attExpr = expr->attributes[index];
-
-    if (!memcmp(attExpr->name.getString().c_str(), "on", 2))
-      if (attExpr->handler) {
-        ss << "$EXPR\n";
-        uiExprs.push_back(attExpr->handler);
-        attExpr->handler = NULL;
-      }
-      else
-        ;
-  }
-
-  if (!expr->childrenCount && eventAttrIndex != -1 && outAttrIndex != -1) {
+  if (!expr->childrenCount && outAttrIndex != -1) {
     char name[20];
 
     sprintf(name, "v%d", outAttrIndex);
@@ -1691,17 +1676,34 @@ void Resolver::onEvent(AttributeListExpr *expr) {
       switch (outType.objType->type) {
         case OBJ_COMPILER_INSTANCE:
           insertTabs();
-          ss << "onInstanceEvent(";
+          (*ss) << "onInstanceEvent(" << name << ", ";
           insertPoint("pos");
-          ss << ")\n";
+          (*ss) << ")\n";
           break;
 
         case OBJ_STRING:
         case OBJ_FUNCTION:
-          insertTabs();
-          ss << "onTextEvent(";
-          insertPoint("pos");
-          ss << ")\n";
+          for (int index = 0; index < expr->attCount; index++) {
+            AttributeExpr *attExpr = expr->attributes[index];
+
+            if (!memcmp(attExpr->name.getString().c_str(), "on", 2))
+              if (attExpr->handler) {
+                insertTabs();
+                (*ss) << "if (" << "\"onRelease\"" << " == \"" << attExpr->name.getString() << "\") {\n";
+                nTabs++;
+
+                insertTabs();
+                (*ss) << "$EXPR\n";
+                uiExprs.push_back(attExpr->handler);
+                attExpr->handler = NULL;
+
+                --nTabs;
+                insertTabs();
+                (*ss) << "}\n";
+              }
+              else
+                ;
+          }
           break;
 
         default:
@@ -1715,30 +1717,31 @@ void Resolver::onEvent(AttributeListExpr *expr) {
   else
     for (int index = 0; index < expr->childrenCount; index++) {
       if (index != 0) {
-        insertTabs();
-        ss << "{\n";
-        nTabs++;
+        std::stringstream *oldSs = ss;
+        std::stringstream ss2;
 
-        if (nTabs > 1) {
+        ss = &ss2;
+        nTabs++;
+        accept<int>(expr->children[index], 0);
+        nTabs--;
+        ss = oldSs;
+        ss2 << std::flush;
+
+        if (ss2.rdbuf()->in_avail()) {
           insertTabs();
-          ss << "int pos0 = pos0 + l" << 0 << "i" << expr->children[index - 1]->_offsets[0] << "\n";
+          (*ss) << "{\n" << ss2.str();
+          insertTabs();
+          (*ss) << "}\n" << std::flush;
         }
       }
-
-      accept<int>(expr->children[index], 0);
-
-      if (index != 0) {
-        --nTabs;
-        insertTabs();
-        ss << "}\n";
-      }
+      else
+        accept<int>(expr->children[0], 0);
    }
 
   for (int index = 0; index < expr->attCount; index++)
     if (expr->attributes[index]->_index != -1)
 ;//      valueStack.pop(expr->attributes[index]->name.getString());
 
-  eventAttrIndex = oldEventAttrIndex;
   outAttrIndex = oldOutAttrIndex;
 }
 /*
