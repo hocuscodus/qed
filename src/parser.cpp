@@ -803,6 +803,9 @@ Expr *Parser::returnStatement(TokenType endGroupType) {
 }
 
 Expr *Parser::statement(TokenType endGroupType) {
+  // ignore optional separator before second operand
+  passSeparator();
+
   if (match(TOKEN_PRINT))
     return printStatement(endGroupType);
   else if (match(TOKEN_RETURN))

@@ -1714,29 +1714,50 @@ void Resolver::onEvent(AttributeListExpr *expr) {
     else
       parser.error("Out value having an illegal type");
   }
-  else
-    for (int index = 0; index < expr->childrenCount; index++) {
-      if (index != 0) {
-        std::stringstream *oldSs = ss;
-        std::stringstream ss2;
+  else {
+    bool ifFlag = false;
 
-        ss = &ss2;
-        nTabs++;
-        accept<int>(expr->children[index], 0);
-        nTabs--;
-        ss = oldSs;
-        ss2 << std::flush;
+    for (int index = expr->childrenCount - 1; index >= 0; index--) {
+      int lastOffset = index == 0 ? -1 : expr->children[index - 1]->_offsets[0];
+      std::stringstream *oldSs = ss;
+      std::stringstream ss2;
 
-        if (ss2.rdbuf()->in_avail()) {
+      ss = &ss2;
+      nTabs++;
+      accept<int>(expr->children[index], 0);
+      nTabs--;
+      ss = oldSs;
+      ss2 << std::flush;
+
+      if (ss2.rdbuf()->in_avail()) {
+        if (ifFlag) {
           insertTabs();
-          (*ss) << "{\n" << ss2.str();
-          insertTabs();
-          (*ss) << "}\n" << std::flush;
+          (*ss) << "else\n";
         }
+
+        insertTabs();
+        (*ss) << "if (pos0 >= ";
+
+        if (index)
+          (*ss) << "l" << 0 << "i" << lastOffset << ") {\n";
+        else
+          (*ss) << "0) {\n";
+
+        nTabs++;
+
+        if (index) {
+          insertTabs();
+          (*ss) << "pos0 = pos0 - l" << 0 << "i" << lastOffset << "\n";
+        }
+
+        (*ss) << ss2.str();
+        --nTabs;
+        insertTabs();
+        (*ss) << "}\n";
+        ifFlag = true;
       }
-      else
-        accept<int>(expr->children[0], 0);
-   }
+    }
+  }
 
   for (int index = 0; index < expr->attCount; index++)
     if (expr->attributes[index]->_index != -1)
