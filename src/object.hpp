@@ -234,6 +234,9 @@ struct CoThread {
   void concatenate();
   void resetStack();
   void runtimeError(const char *format, ...);
+#ifdef DEBUG_TRACE_EXECUTION
+  void printStack();
+#endif
   InterpretValue run();
 
   bool isDone();

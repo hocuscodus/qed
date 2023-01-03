@@ -361,13 +361,7 @@ InterpretResult VM::run() {
       break;
 
     case INTERPRET_RETURN:
-      if (instance->coThread->isFirstInstance() && instance->coThread->isInInstance()) {
-        instance->coThread->closeUpvalues(instance->coThread->frames[0].slots);
-        instance->coThread->pop();
-        return INTERPRET_OK;
-      }
-      else
-        onReturn(instance->coThread, value.as.returnValue);
+      onReturn(instance->coThread, value.as.returnValue);
       break;
 
     case INTERPRET_HALT: {
@@ -419,27 +413,23 @@ CallFrame *VM::getFrame(int index) {
 }
 
 void VM::onReturn(CoThread *current, Value &returnValue) {
-  if (current->isInInstance()) {
-    int handlerIp = current->frames[0].handlerIp;
-//    ObjInstance *instance = current->instance;
+  int handlerIp = current->frames[0].handlerIp;
+//  ObjInstance *instance = current->instance;
 
-    current = current->caller;
+  current = current->caller;
 
-    if (handlerIp != -1) {
-      CallFrame *frame = getFrame();
-      uint8_t *code = frame->closure->function->chunk.code;
-      int currentIp = frame->ip - code;
+  if (handlerIp != -1) {
+    CallFrame *frame = getFrame();
+    uint8_t *code = frame->closure->function->chunk.code;
+    int currentIp = frame->ip - code;
 
-      frame->ip = &code[handlerIp];
-      current->push(INT_VAL(currentIp));
-      current->push(OBJ_VAL(instance));
+    frame->ip = &code[handlerIp];
+    current->push(INT_VAL(currentIp));
+    current->push(OBJ_VAL(instance));
 
-      if (returnValue.type != VAL_VOID)
-        current->push(returnValue);
-    }
+    if (returnValue.type != VAL_VOID)
+      current->push(returnValue);
   }
-  else
-    current->onReturn(returnValue);
 }
 /*
   bool resize(List<int> size) {/ *

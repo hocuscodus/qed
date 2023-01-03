@@ -363,6 +363,20 @@ ObjClosure *CoThread::pushClosure(ObjFunction *function) {
   return closure;
 }
 
+#ifdef DEBUG_TRACE_EXECUTION
+void CoThread::printStack() {
+  CallFrame *frame = &frames[frameCount - 1];
+
+  printf("          ");
+  for (Value *slot = fields; slot < stackTop; slot++) {
+    printf("[ ");
+    printValue(*slot);
+    printf(" ]");
+  }
+  printf("\n");
+}
+#endif
+
 InterpretValue CoThread::run() {
   CallFrame *frame = &frames[frameCount - 1];
 #define READ_BYTE() (*frame->ip++)
@@ -383,13 +397,7 @@ InterpretValue CoThread::run() {
 
   for (;;) {
 #ifdef DEBUG_TRACE_EXECUTION
-    printf("          ");
-    for (Value *slot = fields; slot < stackTop; slot++) {
-      printf("[ ");
-      printValue(*slot);
-      printf(" ]");
-    }
-    printf("\n");
+    printStack();
     disassembleInstruction(&frame->closure->function->chunk, (int)(frame->ip - frame->closure->function->chunk.code));
 #endif
     uint8_t instruction = READ_BYTE();
@@ -639,10 +647,20 @@ InterpretValue CoThread::run() {
       pop();
       break;
     case OP_RETURN: {
-      ValueType type = frame->closure->function->type.valueType;
-      Value result = type != VAL_VOID ? pop() : (Value) {VAL_VOID};
+      if (isFirstInstance() && isInInstance()) {
+        closeUpvalues(frames[0].slots);
+        pop();
+        return {INTERPRET_OK};
+      }
+      else {
+        ValueType type = frame->closure->function->type.valueType;
+        Value result = type != VAL_VOID ? pop() : (Value) {VAL_VOID};
 
-      return {INTERPRET_RETURN, {.returnValue = result}};
+        if (isInInstance())
+          return {INTERPRET_RETURN, {.returnValue = result}};
+        else
+          onReturn(result);
+      }
     }
     case OP_HALT: {
       Obj *native = frame->closure->function->native;
@@ -786,7 +804,7 @@ void ObjInstance::paint(Point pos) {
 
     layoutThread->call(paintClosure, NUM_DIRS, -1);
     layoutThread->run();
-    layoutThread->stackTop--;
+    layoutThread->stackTop-=3;
   }
 }
 
@@ -804,7 +822,10 @@ void ObjInstance::onEvent(Point pos) {
 
     layoutThread->call(eventClosure, NUM_DIRS, -1);
     layoutThread->run();
-    layoutThread->stackTop--;
+    layoutThread->stackTop-=3;
+#ifdef DEBUG_TRACE_EXECUTION
+    layoutThread->printStack();
+#endif
   }
 }
 #if 0
