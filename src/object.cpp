@@ -658,8 +658,10 @@ InterpretValue CoThread::run() {
 
         if (isInInstance())
           return {INTERPRET_RETURN, {.returnValue = result}};
-        else
+        else {
           onReturn(result);
+          frame = &frames[frameCount - 1];
+        }
       }
     }
     case OP_HALT: {
@@ -753,7 +755,7 @@ void ObjInstance::initValues() {
 void ObjInstance::uninitValues() {
   for (int ndx = 0; ndx < numValuesInstances; ndx++) {
     CallFrame &frame = uiValuesInstances[ndx]->coThread->frames[0];
-    ObjClosure *outClosure = frame.uiClosure;
+    ObjClosure *outClosure = frame.closure;
 
     for (int ndx2 = -1; (ndx2 = outClosure->function->instanceIndexes->getNext(ndx2)) != -1;)
       ((ObjInstance *) uiValuesInstances[ndx]->coThread->frames[0].slots[ndx2].as.obj)->uninitValues();
@@ -796,6 +798,7 @@ void ObjInstance::paint(Point pos) {
     CallFrame &layoutFrame = layoutThread->frames[0];
     ObjClosure *layoutClosure = AS_CLOSURE(layoutThread->fields[0]);
     ObjClosure *paintClosure = AS_CLOSURE(layoutThread->fields[layoutClosure->function->fieldCount - 2]);
+    Value value = {VOID_VAL};
 
     *layoutThread->stackTop++ = OBJ_VAL(paintClosure);
 
@@ -804,7 +807,7 @@ void ObjInstance::paint(Point pos) {
 
     layoutThread->call(paintClosure, NUM_DIRS, -1);
     layoutThread->run();
-    layoutThread->stackTop-=3;
+    layoutThread->onReturn(value);
   }
 }
 
@@ -814,6 +817,8 @@ void ObjInstance::onEvent(Point pos) {
     CallFrame &layoutFrame = layoutThread->frames[0];
     ObjClosure *layoutClosure = AS_CLOSURE(layoutThread->fields[0]);
     ObjClosure *eventClosure = AS_CLOSURE(layoutThread->fields[layoutClosure->function->fieldCount - 1]);
+    Value value = {VOID_VAL};
+    int frameCount = layoutThread->frameCount;
 
     *layoutThread->stackTop++ = OBJ_VAL(eventClosure);
 
@@ -822,7 +827,8 @@ void ObjInstance::onEvent(Point pos) {
 
     layoutThread->call(eventClosure, NUM_DIRS, -1);
     layoutThread->run();
-    layoutThread->stackTop-=3;
+    if (layoutThread->frameCount > frameCount)
+    layoutThread->onReturn(value);
 #ifdef DEBUG_TRACE_EXECUTION
     layoutThread->printStack();
 #endif

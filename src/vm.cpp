@@ -447,7 +447,7 @@ extern void uninitDisplay();
 
 bool VM::recalculate() {
   if (instance->coThread->getFormFlag()) {
-//    instance->uninitValues();
+    instance->uninitValues();
     instance->initValues();
 
     totalSize = {0};
@@ -516,7 +516,7 @@ void VM::repaint() {
 
 void VM::onEvent(const char *name, Point pos) {
   instance->onEvent(pos);
-//  repaint();
+  repaint();
 }
 
 extern SDL_Renderer *rend2;
