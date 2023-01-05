@@ -767,6 +767,9 @@ void Resolver::visitListExpr(ListExpr *expr)
     }
     case EXPR_CALL:
     {
+      if (uiParseCount >= 0 && returnType.valueType == VAL_VOID)
+        returnType.valueType = VAL_HANDLER;
+
       Expr *bodyExpr = expr->count > 2 ? expr->expressions[2] : NULL;
 
       expr->listType = subExpr->type;
@@ -825,6 +828,16 @@ void Resolver::visitListExpr(ListExpr *expr)
           }
           else
             parser.error("Parameter consists of a type and a name.");
+
+        if (returnType.valueType != VAL_HANDLER && strcmp(compiler.function->name->chars, "return"))
+          if (returnType.valueType == VAL_VOID)
+            bodyExpr = parse("void return();", 0, 0, bodyExpr);
+          else {
+            char returnDec[128];
+
+//            sprintf(returnDec, "void return(%s value);", returnType.valueType);
+//            parse(returnDec);
+          }
 
         if (bodyExpr)
           if (bodyExpr->type == EXPR_GROUPING && ((GroupingExpr *)bodyExpr)->name.type == TOKEN_RIGHT_BRACE)
@@ -1220,55 +1233,30 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
   for (int index = 0; index < expr->count; index++) {
     Expr *subExpr = expr->expressions[index];
 
-    if (subExpr->type == EXPR_ATTRIBUTELIST && uiParseCount >= 1) {
+    if (subExpr->type == EXPR_ATTRIBUTELIST && ++uiParseCount >= 1) {
       aCount = 0;
       ss->str("");
     }
 
     acceptSubExpr(subExpr);
 
-    if (subExpr->type == EXPR_ATTRIBUTELIST && uiParseCount >= 1) {
-      std::string codeStr = ss->str();
-      char *code = new char[codeStr.size() + 1];
-
-      strcpy(code, codeStr.c_str());
-      printf("CODE %d\n%s", uiParseCount, code);
-      Scanner scanner(code);
-      Parser parser(scanner);
-
-      if (parser.parse()) {
-        GroupingExpr *group = (GroupingExpr *) parser.expr;
-
-        for (int index = 0; index < group->count; index++) {
-          uiExprs.push_back(group->expressions[index]);
-          acceptSubExpr(group->expressions[index]);
-
-          if (current->peekLocal(0)->type.valueType == VAL_VOID)
-            removeLocal();
-
-          group->expressions[index] = NULL;
-        }
-
-        delete group;
-      }
-    }
-
     if (subExpr->type == EXPR_ATTRIBUTELIST) {
-      int size = uiExprs.size();
-      Expr **newExpressions = new Expr *[size + expr->count - 1];
+      if (uiParseCount) {
+        printf("CODE %d\n%s", uiParseCount, ss->str().c_str());
+        expr = (GroupingExpr *) parse(ss->str().c_str(), index, 1, expr);
+      }
+      else {
+        expr->expressions = RESIZE_ARRAY(Expr *, expr->expressions, expr->count, expr->count + uiExprs.size() - 1);
+        memcpy(&expr->expressions[index + uiExprs.size()], &expr->expressions[index + 1], (--expr->count - index) * sizeof(Expr *));
 
-      memcpy(newExpressions, expr->expressions, index * sizeof(Expr *));
-      memcpy(&newExpressions[index + size], &expr->expressions[index + 1], (--expr->count - index) * sizeof(Expr *));
+        for (Expr *uiExpr : uiExprs)
+          expr->expressions[index++] = uiExpr;
 
-      for (Expr *expr : uiExprs)
-        newExpressions[index++] = expr;
+        expr->count += uiExprs.size();
+        uiExprs.clear();
+      }
 
-      expr->count += size;
       index--;
-      delete[] expr->expressions;
-      expr->expressions = newExpressions;
-      uiExprs.clear();
-      uiParseCount++;
     }
     else
       if (current->peekLocal(0)->type.valueType == VAL_VOID && (!parenFlag || index < expr->count - 1))
@@ -1292,7 +1280,6 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
 
       Expr *valueFunction = generateUIFunction("UI$", NULL, expr->ui, 1, 1, layoutExprs);
 
-      uiParseCount = 0;
       accept<int>(valueFunction, 0);
       delete expr->ui;
       expr->ui = valueFunction;
@@ -1395,6 +1382,44 @@ void Resolver::acceptSubExpr(Expr *expr)
 
     current->addLocal(type);
   }*/
+}
+
+Expr *Resolver::parse(const char *source, int index, int replace, Expr *body) {
+  Scanner scanner((new std::string(source))->c_str());
+  Parser parser(scanner);
+  GroupingExpr *group = (GroupingExpr *) parser.parse() ? (GroupingExpr *) parser.expr : NULL;
+
+  if (body == NULL)
+    body = group;
+  else
+    if (group) {
+      if (replace || group->count) {
+        if (body->type != EXPR_GROUPING) {
+          Expr **newExprList = RESIZE_ARRAY(Expr *, NULL, 0, 1);
+
+          newExprList[0] = body;
+          body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 1, newExprList, 0, NULL, NULL);
+          index = 0;
+          replace = 0;
+        }
+
+        GroupingExpr *bodyGroup = (GroupingExpr *) body;
+
+        bodyGroup->expressions = RESIZE_ARRAY(Expr *, bodyGroup->expressions, bodyGroup->count, bodyGroup->count + group->count - replace);
+        bodyGroup->count -= replace;
+
+        if (index < bodyGroup->count)
+          memcpy(&bodyGroup->expressions[index + group->count], &bodyGroup->expressions[index + replace], (bodyGroup->count - index) * sizeof(Expr *));
+
+        memcpy(&bodyGroup->expressions[index], group->expressions, group->count * sizeof(Expr *));
+        group->expressions = RESIZE_ARRAY(Expr *, group->expressions, group->count, 0);
+        bodyGroup->count += group->count;
+      }
+
+      delete group;
+    }
+
+  return body;
 }
 
 ParseStep Resolver::getParseStep() {

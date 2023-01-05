@@ -68,6 +68,7 @@ public:
   bool resolve(Compiler *compiler);
   void acceptGroupingExprUnits(GroupingExpr *expr);
   void acceptSubExpr(Expr *expr);
+  Expr *parse(const char *source, int index, int replace, Expr *body);
 
   ParseStep getParseStep();
   int getParseDir();

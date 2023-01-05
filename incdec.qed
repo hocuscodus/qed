@@ -1,7 +1,7 @@
 void Button(String text) {
   int col = 0xE0000000
 
-  <out: rect; color: col; onPress: col = 0xB0000000; onRelease: return;>//{col = 0xE0000000; return}>
+  <out: rect; color: col; onPress: col = 0xB0000000; onRelease: return();>//{col = 0xE0000000; return()}>
   <out: text; color: 0x90000000; fontSize: 40; width: 35; alignX: 50; alignY: 50; zoomHeight: 100;>
 }
 
@@ -9,7 +9,7 @@ int count = 0
 var decButton = new Button("-") -> count--
 var incButton = new Button("+") -> count++
 
-<out: oval; color: (count >= 0 ? 0x00FF00 : 0) | (count <= 0 ? 0xFF0000 : 0); height: 80;>
+<out: oval; color: (count >= 0 ? COLOR_GREEN : 0) | (count <= 0 ? COLOR_RED : 0); height: 80;>
 <cdir: WIDTH;// <-<_<|<\  .-|+
   <out: decButton;>
   <out: count; width: 100; fontSize: 50; alignX: 50; alignY: 50; color: 0x80000000;>
