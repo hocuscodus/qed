@@ -47,12 +47,14 @@ static Compiler *current = NULL;
 
 static Obj objInternalType = {OBJ_INTERNAL};
 static Obj *primitives[] = {
-    &newPrimitive("void", {VAL_VOID})->obj,
-    &newPrimitive("bool", {VAL_BOOL})->obj,
-    &newPrimitive("int", {VAL_INT})->obj,
-    &newPrimitive("float", {VAL_FLOAT})->obj,
-    &newPrimitive("String", stringType)->obj,
-    &newPrimitive("var", {VAL_OBJ, &objInternalType})->obj};
+  &newPrimitive("void", {VAL_VOID})->obj,
+  &newPrimitive("bool", {VAL_BOOL})->obj,
+  &newPrimitive("int", {VAL_INT})->obj,
+  &newPrimitive("float", {VAL_FLOAT})->obj,
+  &newPrimitive("String", stringType)->obj,
+  &newPrimitive("var", {VAL_OBJ, &objInternalType})->obj,
+  &newPrimitive("handler", {VAL_HANDLER})->obj
+};
 
 static bool identifiersEqual2(Token *a, ObjString *b)
 {
@@ -767,9 +769,6 @@ void Resolver::visitListExpr(ListExpr *expr)
     }
     case EXPR_CALL:
     {
-      if (uiParseCount >= 0 && returnType.valueType == VAL_VOID)
-        returnType.valueType = VAL_HANDLER;
-
       Expr *bodyExpr = expr->count > 2 ? expr->expressions[2] : NULL;
 
       expr->listType = subExpr->type;
@@ -1215,7 +1214,7 @@ static Expr *generateUIFunction(const char *name, char *args, Expr *uiExpr, int 
     for (int index = 0; index < restLength; index++)
       bodyExprs[count + index] = rest[index];
 
-    functionExprs[0] = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "void", 4, -1), VAL_VOID, false);
+    functionExprs[0] = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "void", 4, -1), VAL_HANDLER, false);
     functionExprs[1] = new CallExpr(nameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), nbParms, parms, false, NULL, NULL);
     functionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), count + restLength, bodyExprs, 0, NULL, NULL);
 

@@ -207,7 +207,7 @@ bool CoThread::call(ObjClosure *closure, int argCount, int handlerIp) {
   frame->ip = closure->function->chunk.code;
   frame->slots = stackTop - argCount - 1;
   frame->handlerIp = handlerIp;
-  frame->uiClosure = outFunction ? newClosure(outFunction) : NULL;
+  frame->uiClosure = outFunction ? newClosure(outFunction, instance) : NULL;
 
   if (outFunction)
     for (int i = 0; i < outFunction->upvalueCount; i++) {
@@ -219,6 +219,8 @@ bool CoThread::call(ObjClosure *closure, int argCount, int handlerIp) {
 
   return true;
 }
+
+extern void postMessage(void *param);
 
 InterpretValue CoThread::callValue(Value callee, int argCount, bool newFlag, int handlerIp) {
   CoThread *currentThread = this;
@@ -236,6 +238,16 @@ InterpretValue CoThread::callValue(Value callee, int argCount, bool newFlag, int
 
   switch (OBJ_TYPE(callee)) {
 //    case OBJ_NATIVE_CLASS:
+    case OBJ_RETURN: {
+      stackTop -= argCount + 1;
+
+      if (argCount)
+        push(stackTop[1]);
+
+      ObjClosure *closure = AS_CLOSURE(callee);
+      postMessage(AS_CLOSURE(callee)->parent);
+      return {INTERPRET_CONTINUE};
+    }
     case OBJ_CLOSURE: {
       bool callFlag = currentThread->call(AS_CLOSURE(callee), argCount, handlerIp);
       return {callFlag ? currentThread != this ? INTERPRET_SWITCH_THREAD : INTERPRET_CONTINUE : INTERPRET_RUNTIME_ERROR, currentThread};
@@ -245,7 +257,10 @@ InterpretValue CoThread::callValue(Value callee, int argCount, bool newFlag, int
       Value result = native(argCount, stackTop - argCount);
 
       stackTop -= argCount + 1;
-      push(result);
+
+      if (result.type != VAL_VOID)
+        push(result);
+
       return {INTERPRET_CONTINUE};
     }
     default:
@@ -353,7 +368,7 @@ ObjClosure *CoThread::pushClosure(ObjFunction *function) {
 //  if (mainClosure == NULL) {
     push(OBJ_VAL(function));
 //  }
-  ObjClosure *closure = newClosure(function);
+  ObjClosure *closure = newClosure(function, NULL);
 //  if (mainClosure == NULL) {
     pop();
     push(OBJ_VAL(closure));
@@ -630,7 +645,7 @@ InterpretValue CoThread::run() {
     }
     case OP_CLOSURE: {
       ObjFunction *function = AS_FUNCTION(READ_CONSTANT());
-      ObjClosure *closure = newClosure(function);
+      ObjClosure *closure = newClosure(function, instance);
 
       push(OBJ_VAL(closure));
 
@@ -669,7 +684,6 @@ InterpretValue CoThread::run() {
 
       if (native && native->type == OBJ_NATIVE) {
         NativeFn nativeFn = ((ObjNative *) native)->function;
-//        NativeFn native = AS_NATIVE(callee);
         int argCount = stackTop - frame->slots - 1;
         //TODO: verify result type with frame->closure->function->type.valueType before calling onReturn
 //        ValueType type = frame->closure->function->type.valueType;
@@ -677,7 +691,6 @@ InterpretValue CoThread::run() {
 
         onReturn(result);
         frame = &frames[frameCount - 1];
-//        return {INTERPRET_CONTINUE};
         break;
       }
       else
@@ -896,15 +909,17 @@ ObjCompilerInstance *newCompilerInstance(ObjCallable *callable) {
   return instance;
 }
 
-ObjClosure *newClosure(ObjFunction *function) {
+ObjClosure *newClosure(ObjFunction *function, ObjInstance *parent) {
   ObjUpvalue **upvalues = ALLOCATE(ObjUpvalue *, function->upvalueCount);
 
   for (int i = 0; i < function->upvalueCount; i++) {
     upvalues[i] = NULL;
   }
 
-  ObjClosure *closure = ALLOCATE_OBJ(ObjClosure, OBJ_CLOSURE);
+  ObjType objType = function->name && !strcmp(function->name->chars, "return") ? OBJ_RETURN : OBJ_CLOSURE;
+  ObjClosure *closure = ALLOCATE_OBJ(ObjClosure, objType);
 
+  closure->parent = parent;
   closure->function = function;
   closure->upvalues = upvalues;
   closure->upvalueCount = function->upvalueCount;
@@ -1015,6 +1030,7 @@ void printObject(Value value) {
     break;
   }
   case OBJ_CLOSURE:
+  case OBJ_RETURN:
     printFunction(AS_CLOSURE(value)->function);
     break;
   case OBJ_FUNCTION:

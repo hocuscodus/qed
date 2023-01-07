@@ -209,6 +209,21 @@ QNI_FN(onInstanceEvent) {
   return VOID_VAL;
 }
 
+void SDLCALL postMessage(void *param)
+{
+    SDL_Event event;
+    SDL_UserEvent userevent;
+
+    userevent.type = SDL_USEREVENT + 0; // should be a more official Timer type
+    userevent.code = 0;
+    userevent.data1 = param;
+
+    event.type = SDL_USEREVENT;
+    event.user = userevent;
+
+    SDL_PushEvent(&event);
+}
+
 #ifdef __EMSCRIPTEN__
 void timerCallback(void *param)
 #else

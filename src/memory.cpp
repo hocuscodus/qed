@@ -59,6 +59,7 @@ static void freeObject(Obj *object) {
       break;
     }
 
+    case OBJ_RETURN:
     case OBJ_CLOSURE: {
       ObjClosure *closure = (ObjClosure *) object;
 //      delete closure->uiClosure;

@@ -52,6 +52,7 @@ typedef enum {
   OBJ_COMPILER_INSTANCE,
   OBJ_CLOSURE,
   OBJ_FUNCTION,
+  OBJ_RETURN,
   OBJ_NATIVE,
   OBJ_NATIVE_CLASS,
   OBJ_PRIMITIVE,
@@ -186,9 +187,12 @@ struct ObjNativeClass : ObjCallable {
   void *arg;
 };
 
+struct ObjInstance;
+
 struct ObjClosure {
   Obj obj;
   ObjFunction *function;
+  ObjInstance *parent;
   ObjUpvalue **upvalues;
   int upvalueCount;
 };
@@ -205,8 +209,6 @@ struct CallFrame {
 	Path locateEvent(VM &process, const Point &pos, const Point &size, const Point &location, Path currentFocusPath);
 	const Point &getTotalSize();*/
 };
-
-struct ObjInstance;
 
 struct CoThread {
   CoThread *caller;
@@ -283,7 +285,7 @@ Obj *allocateObject(size_t size, ObjType type);
 ObjInternal *newInternal();
 ObjInstance *newInstance(CoThread *caller);
 ObjCompilerInstance *newCompilerInstance(ObjCallable *callable);
-ObjClosure *newClosure(ObjFunction *function);
+ObjClosure *newClosure(ObjFunction *function, ObjInstance *parent);
 ObjFunction *newFunction();
 ObjNative *newNative(NativeFn function);
 ObjPrimitive *newPrimitive(char *name, Type type);
