@@ -563,7 +563,6 @@ void Resolver::visitCallExpr(CallExpr *expr)
         parser.error("Expected %d arguments but got %d.", callable->arity, expr->count);
 
       if (expr->newFlag)
-//        current->localCount++;
         current->addLocal((Type) {VAL_OBJ, &newCompilerInstance(callable)->obj});
       else
         current->addLocal(callable->type);
@@ -585,37 +584,16 @@ void Resolver::visitCallExpr(CallExpr *expr)
         parser.error("Expected %d arguments but got %d.", callable->arity, expr->count);
 
       if (expr->newFlag)
-        current->localCount++;
+;//        current->addLocal((Type) {VAL_OBJ, &newCompilerInstance(callable)->obj});
       else
         current->addLocal(callable->type.valueType);
 
       for (int index = 0; index < expr->count; index++)
       {
-        expr->arguments[index]->accept(this);
+        accept<int>(expr->arguments[index]);
         Type argType = removeLocal();
 
         argType = argType;
-      }
-
-      if (expr->handler != NULL)
-      {
-        Expr **expList = NULL;
-        Token groupToken = buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1);
-
-        expList = RESIZE_ARRAY(Expr *, expList, 0, 1);
-        expList[0] = expr->handler;
-
-        expr->groupingExpr = new GroupingExpr(groupToken, 1, expList, 0, NULL, NULL);
-        current->beginScope();
-        current->addLocal(VAL_INT);
-        current->addLocal(type);
-
-        if (callable->type.valueType != VAL_VOID)
-          current->addLocal(callable->type);
-
-        acceptGroupingExprUnits(expr->groupingExpr);
-        expr->groupingExpr->popLevels = current->endScope();
-        //        current->addLocal(VAL_VOID);
       }
       break;
     }

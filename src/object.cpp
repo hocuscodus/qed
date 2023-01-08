@@ -194,7 +194,7 @@ Value CoThread::peek(int distance) {
   return stackTop[-1 - distance];
 }
 
-bool CoThread::call(ObjClosure *closure, int argCount, int handlerIp) {
+bool CoThread::call(ObjClosure *closure, int argCount) {
   if (frameCount == FRAMES_MAX) {
     runtimeError("Stack overflow.");
     return false;
@@ -206,7 +206,6 @@ bool CoThread::call(ObjClosure *closure, int argCount, int handlerIp) {
   frame->closure = closure;
   frame->ip = closure->function->chunk.code;
   frame->slots = stackTop - argCount - 1;
-  frame->handlerIp = handlerIp;
   frame->uiClosure = outFunction ? newClosure(outFunction, instance) : NULL;
 
   if (outFunction)
@@ -222,13 +221,14 @@ bool CoThread::call(ObjClosure *closure, int argCount, int handlerIp) {
 
 extern void postMessage(void *param);
 
-InterpretValue CoThread::callValue(Value callee, int argCount, bool newFlag, int handlerIp) {
+InterpretValue CoThread::callValue(Value callee, int argCount, bool newFlag, ObjClosure *handler) {
   CoThread *currentThread = this;
 
   if (newFlag) {
     ObjInstance *instance = newInstance(this);
     int size = argCount + 1;
 
+    instance->handler = handler;
     currentThread = instance->coThread;
     memcpy(currentThread->stackTop, stackTop - size, size * sizeof(Value));
     stackTop -= size;
@@ -249,7 +249,7 @@ InterpretValue CoThread::callValue(Value callee, int argCount, bool newFlag, int
       return {INTERPRET_CONTINUE};
     }
     case OBJ_CLOSURE: {
-      bool callFlag = currentThread->call(AS_CLOSURE(callee), argCount, handlerIp);
+      bool callFlag = currentThread->call(AS_CLOSURE(callee), argCount);
       return {callFlag ? currentThread != this ? INTERPRET_SWITCH_THREAD : INTERPRET_CONTINUE : INTERPRET_RUNTIME_ERROR, currentThread};
     }
     case OBJ_NATIVE: {
@@ -626,8 +626,8 @@ InterpretValue CoThread::run() {
     }
     case OP_NEW: {
       int argCount = READ_BYTE();
-//      int handlerIp = AS_INT(READ_CONSTANT());
-      InterpretValue value = callValue(peek(argCount), argCount, true, -1);
+      Value handlerConstant = pop();
+      InterpretValue value = callValue(peek(argCount), argCount, true, AS_INT(handlerConstant) != -1 ? AS_CLOSURE(handlerConstant) : NULL);
 
       if (value.result != INTERPRET_CONTINUE)
         return value;
@@ -635,7 +635,7 @@ InterpretValue CoThread::run() {
     }
     case OP_CALL: {
       int argCount = READ_BYTE();
-      InterpretValue value = callValue(peek(argCount), argCount, false, -1);
+      InterpretValue value = callValue(peek(argCount), argCount, false, NULL);
 
       if (value.result != INTERPRET_CONTINUE)
         return value;
@@ -757,7 +757,7 @@ void ObjInstance::initValues() {
     CoThread *instanceThread = uiValuesInstances[ndx]->coThread;
 
     *instanceThread->stackTop++ = OBJ_VAL(outClosure);
-    instanceThread->call(outClosure, 0, -1);
+    instanceThread->call(outClosure, 0);
     instanceThread->run();
 
     for (int ndx2 = -1; (ndx2 = outClosure->function->instanceIndexes->getNext(ndx2)) != -1;)
@@ -798,7 +798,7 @@ UnitArea *ObjInstance::recalculateLayout() {
     CoThread *instanceThread = uiLayoutInstances[ndx]->coThread;
 
     *instanceThread->stackTop++ = OBJ_VAL(layoutClosure);
-    instanceThread->call(layoutClosure, 0, -1);
+    instanceThread->call(layoutClosure, 0);
     instanceThread->run();
   }
 
@@ -818,7 +818,7 @@ void ObjInstance::paint(Point pos) {
     for (int dir = 0; dir < NUM_DIRS; dir++)
       *layoutThread->stackTop++ = INT_VAL(pos[dir]);
 
-    layoutThread->call(paintClosure, NUM_DIRS, -1);
+    layoutThread->call(paintClosure, NUM_DIRS);
     layoutThread->run();
     layoutThread->onReturn(value);
   }
@@ -838,7 +838,7 @@ void ObjInstance::onEvent(Point pos) {
     for (int dir = 0; dir < NUM_DIRS; dir++)
       *layoutThread->stackTop++ = INT_VAL(pos[dir]);
 
-    layoutThread->call(eventClosure, NUM_DIRS, -1);
+    layoutThread->call(eventClosure, NUM_DIRS);
     layoutThread->run();
     if (layoutThread->frameCount > frameCount)
     layoutThread->onReturn(value);

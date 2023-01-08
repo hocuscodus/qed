@@ -201,7 +201,6 @@ struct CallFrame {
   ObjClosure *closure;
   uint8_t *ip;
   Value *slots;
-  int handlerIp;
   ObjClosure *uiClosure;
 
 	LocationUnit *init(VM &vm, Value *values, IndexList *instanceIndexes, ValueStack<Value *> &valueStack);/*
@@ -225,8 +224,8 @@ struct CoThread {
   void push(Value value);
   Value pop();
   Value peek(int distance);
-  bool call(ObjClosure *closure, int argCount, int handlerIp);
-  InterpretValue callValue(Value callee, int argCount, bool newFlag, int handlerIp);
+  bool call(ObjClosure *closure, int argCount);
+  InterpretValue callValue(Value callee, int argCount, bool newFlag, ObjClosure *handler);
   ObjUpvalue *captureUpvalue(Value *local);
   void closeUpvalues(Value *last);
 
@@ -259,6 +258,7 @@ struct ObjInstance {
   Obj obj;
   CoThread *coThread;
   int numValuesInstances;
+  ObjClosure *handler;
   ObjInstance **uiValuesInstances;
   ObjInstance **uiLayoutInstances;
 

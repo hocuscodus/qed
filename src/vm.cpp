@@ -404,7 +404,7 @@ void VM::push(Obj *obj) {
 }
 
 InterpretResult VM::interpret(ObjClosure *closure) {
-  instance->coThread->call(closure, instance->coThread->stackTop - instance->coThread->fields - 1, -1);
+  instance->coThread->call(closure, instance->coThread->stackTop - instance->coThread->fields - 1);
   return run();
 }
 
@@ -413,22 +413,17 @@ CallFrame *VM::getFrame(int index) {
 }
 
 void VM::onReturn(CoThread *current, Value &returnValue) {
-  int handlerIp = current->frames[0].handlerIp;
-//  ObjInstance *instance = current->instance;
+  ObjInstance *instance = current->instance;
 
   current = current->caller;
 
-  if (handlerIp != -1) {
-    CallFrame *frame = getFrame();
-    uint8_t *code = frame->closure->function->chunk.code;
-    int currentIp = frame->ip - code;
+  if (instance->handler) {
+    Value value = {VAL_VOID};
 
-    frame->ip = &code[handlerIp];
-    current->push(INT_VAL(currentIp));
-    current->push(OBJ_VAL(instance));
-
-    if (returnValue.type != VAL_VOID)
-      current->push(returnValue);
+    *current->stackTop++ = OBJ_VAL(instance->handler);
+    current->call(instance->handler, 0);
+    current->run();
+    current->onReturn(value);
   }
 }
 /*
@@ -514,12 +509,13 @@ void VM::repaint() {
 //  });
 }
 
+extern SDL_Renderer *rend2;
 void VM::onEvent(const char *name, Point pos) {
   instance->onEvent(pos);
   repaint();
+  SDL_RenderPresent(rend2);
 }
 
-extern SDL_Renderer *rend2;
 void VM::suspend() {
   repaint();
   SDL_RenderPresent(rend2);
@@ -534,7 +530,8 @@ void VM::suspend() {
         ObjInstance *instance = (ObjInstance *) event.user.data1;
 
         onReturn(instance->coThread, value);
-        return;
+        repaint();
+        SDL_RenderPresent(rend2);
       }
       break;
 

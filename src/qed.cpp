@@ -77,7 +77,7 @@ static void repl() {
 //  scanner.reset(buffer);
 
   for (;;) {
-    if (function != NULL && instance->coThread->call(closure, instance->coThread->stackTop - instance->coThread->fields - 1, -1)) {
+    if (function != NULL && instance->coThread->call(closure, instance->coThread->stackTop - instance->coThread->fields - 1)) {
       if (vm.run() == INTERPRET_OK)
         length += strlen(line);
       else {
