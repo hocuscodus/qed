@@ -502,8 +502,50 @@ void Resolver::visitBinaryExpr(BinaryExpr *expr)
   }
 }
 
+static Expr *generateUIFunction(const char *name, char *args, Expr *uiExpr, int count, int restLength, Expr **rest) {
+    VariableExpr *nameExpr = new VariableExpr(buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1), -1, false);
+    Expr **bodyExprs = new Expr *[count + restLength];
+    Expr **functionExprs = new Expr *[3];
+    int nbParms = 0;
+    Expr **parms = NULL;
+
+    if (args != NULL) {
+      Scanner scanner(args);
+      Parser parser(scanner);
+      TokenType tokens[] = {TOKEN_COMMA, TOKEN_EOF};
+
+      do {
+        Expr *expr = parser.expression(tokens);
+
+        parms = RESIZE_ARRAY(Expr *, parms, nbParms, nbParms + 1);
+        parms[nbParms++] = expr;
+      } while (parser.match(TOKEN_COMMA));
+
+      parser.consume(TOKEN_EOF, "Expect EOF after arguments.");
+    }
+
+    for (int index = 0; index < count; index++)
+      bodyExprs[index] = uiExpr;
+
+    for (int index = 0; index < restLength; index++)
+      bodyExprs[count + index] = rest[index];
+
+    functionExprs[0] = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "void", 4, -1), VAL_HANDLER, false);
+    functionExprs[1] = new CallExpr(nameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), nbParms, parms, false, NULL, NULL);
+    functionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), count + restLength, bodyExprs, 0, NULL, NULL);
+
+    return new ListExpr(3, functionExprs, EXPR_LIST, NULL);
+}
+
 void Resolver::visitCallExpr(CallExpr *expr)
 {
+  if (expr->newFlag && expr->handler != NULL)
+  {
+    expr->handler = generateUIFunction("handler", NULL, expr->handler, 1, 0, NULL);
+    accept<int>(expr->handler);
+    removeLocal();
+  }
+
   accept<int>(expr->callee);
 
   Type type = removeLocal();
@@ -527,32 +569,11 @@ void Resolver::visitCallExpr(CallExpr *expr)
         current->addLocal(callable->type);
 
       for (int index = 0; index < expr->count; index++) {
-        expr->arguments[index]->accept(this);
+        accept<int>(expr->arguments[index]);
 
         Type argType = removeLocal();
 
         argType = argType;
-      }
-
-      if (expr->handler != NULL)
-      {
-        Expr **expList = NULL;
-        Token groupToken = buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1);
-
-        expList = RESIZE_ARRAY(Expr *, expList, 0, 1);
-        expList[0] = expr->handler;
-
-        expr->groupingExpr = new GroupingExpr(groupToken, 1, expList, 0, NULL, NULL);
-        current->beginScope();
-        current->addLocal(VAL_INT);
-        current->addLocal(type);
-
-        if (callable->type.valueType != VAL_VOID)
-          current->addLocal(callable->type);
-
-        acceptGroupingExprUnits(expr->groupingExpr);
-        expr->groupingExpr->popLevels = current->endScope();
-        //        current->addLocal(VAL_VOID);
       }
       break;
     }
@@ -783,11 +804,8 @@ void Resolver::visitListExpr(ListExpr *expr)
         VariableExpr *varExp = (VariableExpr *)callExpr->callee;
 
         checkDeclaration(&varExp->name);
-
-        if (!varExp->name.equal("UI$")) {
-          current->addLocal(VAL_OBJ);
-          current->setLocalName(&varExp->name);
-        }
+        current->addLocal(VAL_OBJ);
+        current->setLocalName(&varExp->name);
 
         Compiler compiler(parser, current);
 
@@ -859,14 +877,10 @@ void Resolver::visitListExpr(ListExpr *expr)
         }
 
         current = current->enclosing;
-        if (varExp->name.equal("UI$"))
-          current->function->uiFunction = compiler.function;
-        else
-          current->setLocalObjType(compiler.function);
-
+        current->setLocalObjType(compiler.function);
         expr->function = compiler.function;
       }
-      break;
+      return;
     }
     case EXPR_VARIABLE:
     {
@@ -1023,7 +1037,7 @@ void Resolver::visitStatementExpr(StatementExpr *expr)
 
   acceptSubExpr(expr->expr);
 
-  if ((!current->function->name || strcmp(current->function->name->chars, "UI$")) && (expr->expr->type != EXPR_LIST || ((ListExpr *)expr->expr)->listType == EXPR_LIST)) {
+  if (expr->expr->type != EXPR_LIST || ((ListExpr *)expr->expr)->listType == EXPR_LIST) {
     Type type = removeLocal();
 
     if (oldLocalCount != current->localCount)
@@ -1110,6 +1124,7 @@ void Resolver::visitVariableExpr(VariableExpr *expr)
   resolveVariableExpr(expr);
 
   if (expr->index == -1) {
+    resolveVariableExpr(expr);
     parser.error("Variable must be defined");
     current->addLocal(VAL_VOID);
   }
@@ -1186,41 +1201,6 @@ bool Resolver::resolve(Compiler *compiler)
   return !parser.hadError;
 }
 
-static Expr *generateUIFunction(const char *name, char *args, Expr *uiExpr, int count, int restLength, Expr **rest) {
-    VariableExpr *nameExpr = new VariableExpr(buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1), -1, false);
-    Expr **bodyExprs = new Expr *[count + restLength];
-    Expr **functionExprs = new Expr *[3];
-    int nbParms = 0;
-    Expr **parms = NULL;
-
-    if (args != NULL) {
-      Scanner scanner(args);
-      Parser parser(scanner);
-      TokenType tokens[] = {TOKEN_COMMA, TOKEN_EOF};
-
-      do {
-        Expr *expr = parser.expression(tokens);
-
-        parms = RESIZE_ARRAY(Expr *, parms, nbParms, nbParms + 1);
-        parms[nbParms++] = expr;
-      } while (parser.match(TOKEN_COMMA));
-
-      parser.consume(TOKEN_EOF, "Expect EOF after arguments.");
-    }
-
-    for (int index = 0; index < count; index++)
-      bodyExprs[index] = uiExpr;
-
-    for (int index = 0; index < restLength; index++)
-      bodyExprs[count + index] = rest[index];
-
-    functionExprs[0] = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "void", 4, -1), VAL_HANDLER, false);
-    functionExprs[1] = new CallExpr(nameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), nbParms, parms, false, NULL, NULL);
-    functionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), count + restLength, bodyExprs, 0, NULL, NULL);
-
-    return new ListExpr(3, functionExprs, EXPR_LIST, NULL);
-}
-
 int aCount;
 std::stringstream s;
 std::stringstream *ss = &s;
@@ -1280,6 +1260,8 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
       Expr *valueFunction = generateUIFunction("UI$", NULL, expr->ui, 1, 1, layoutExprs);
 
       accept<int>(valueFunction, 0);
+      Type type = removeLocal();
+      current->function->uiFunction = type.valueType == VAL_OBJ ? (ObjFunction *) type.objType : NULL;
       delete expr->ui;
       expr->ui = valueFunction;
       uiParseCount = -1;

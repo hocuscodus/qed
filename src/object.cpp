@@ -626,8 +626,8 @@ InterpretValue CoThread::run() {
     }
     case OP_NEW: {
       int argCount = READ_BYTE();
-      int handlerIp = AS_INT(READ_CONSTANT());
-      InterpretValue value = callValue(peek(argCount), argCount, true, handlerIp);
+//      int handlerIp = AS_INT(READ_CONSTANT());
+      InterpretValue value = callValue(peek(argCount), argCount, true, -1);
 
       if (value.result != INTERPRET_CONTINUE)
         return value;

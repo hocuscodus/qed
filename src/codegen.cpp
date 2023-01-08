@@ -75,12 +75,17 @@ void CodeGenerator::visitBinaryExpr(BinaryExpr *expr) {
     emitByte(OP_NOT);
 }
 
-void CodeGenerator::visitCallExpr(CallExpr *expr) {
+void CodeGenerator::visitCallExpr(CallExpr *expr) {/*
+  if (expr->handler)
+    accept<int>(expr->handler);
+  else
+    emitConstant(INT_VAL(-1));
+*/
   accept<int>(expr->callee, 0);
 
   for (int index = 0; index < expr->count; index++)
     accept<int>(expr->arguments[index]);
-
+/*
   int handlerStart = -1;
 
   if (expr->groupingExpr) {
@@ -91,11 +96,11 @@ void CodeGenerator::visitCallExpr(CallExpr *expr) {
     emitByte(OP_HALT_HANDLER);
     patchJump(jump);
   }
-
+*/
   emitBytes(expr->newFlag ? OP_NEW : OP_CALL, expr->count);
 
-  if (expr->newFlag)
-    emitByte(makeConstant(INT_VAL(handlerStart)));
+//  if (expr->newFlag)
+//    emitByte(expr->handler ? 1 : 0);
 }
 
 void CodeGenerator::visitDeclarationExpr(DeclarationExpr *expr) {
