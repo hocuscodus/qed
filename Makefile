@@ -25,7 +25,7 @@ NOWARNDIRS = imgui/ stb/
 LOCALWARN = -Wall -Wextra -pedantic -Wpointer-arith -Wshadow -Wfloat-conversion -Wfloat-equal -Wno-unused-function -Wno-unused-parameter
 # NOTE: also useful but noisy -Wconversion -Wshorten-64-to-32
 
-LOCALLIBS = -L/home/linuxbrew/.linuxbrew/lib -Wl,-rpath,/home/linuxbrew/.linuxbrew/lib -Wl,--enable-new-dtags -lSDL2 -lSDL2_image -lSDL2_ttf
+LOCALLIBS = -L/home/linuxbrew/.linuxbrew/lib -Wl,-rpath,/home/linuxbrew/.linuxbrew/lib -Wl,--enable-new-dtags -lSDL2 -lSDL2_image -lSDL2_ttf -lSDL2_gfx
 ifeq ($(UNAME),Darwin)
 	LOCALLIBS += -Wl,-dead_strip -framework OpenGL
 else
@@ -33,7 +33,7 @@ else
 endif
 
 EMXX = em++
-EMXXFLAGS = $(COMMONFLAGS) -Oz -s USE_SDL=2 -s USE_SDL_IMAGE=2
+EMXXFLAGS = $(COMMONFLAGS) -Oz -s USE_SDL=2 -s USE_SDL_IMAGE=2 -s USE_SDL_GFX=2
 # -s SAFE_HEAP=1 -s ASSERTIONS=2 --profiling  -s DEMANGLE_SUPPORT=1
 EMXXLINK = -s TOTAL_MEMORY=50331648 --use-preload-plugins
 

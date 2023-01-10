@@ -28,6 +28,7 @@
 #include <SDL.h>
 #include <SDL_ttf.h>
 #include <SDL_image.h>
+#include <SDL2_gfxPrimitives.h>
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #else
@@ -76,6 +77,8 @@ QNI_FN(rect) {
 }
 
 QNI_FN(oval) {
+  filledEllipseRGBA(rend2, 10, 10, 100, 50,
+                   /* RGBA: green */ 0x00, 0x80, 0x00, 0xFF);
   return VOID_VAL;
 }
 
