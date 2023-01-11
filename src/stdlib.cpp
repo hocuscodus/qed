@@ -87,7 +87,16 @@ QNI_FN(clock) {
 }
 
 SDL_Window* win = NULL;
-TTF_Font* font = NULL;
+
+static TTF_Font *getFont() {
+  static TTF_Font *font = NULL;
+
+  if (!font) {
+    TTF_Init();
+    font = TTF_OpenFont("./res/font/arial.ttf", 30);
+  }
+  return font;
+}
 
 void initDisplay() {
   if (!win) {
@@ -122,9 +131,6 @@ void initDisplay() {
 
     const SDL_Rect* dstrect;
     SDL_Color color;
-
-    TTF_Init();
-    font = TTF_OpenFont("./res/font/arial.ttf", 30);
   }
 /*
   #ifdef __EMSCRIPTEN__
@@ -144,8 +150,8 @@ void initDisplay() {
 
 void uninitDisplay() {
   if (win) {
-    TTF_CloseFont(font);
-    TTF_Quit();
+//    TTF_CloseFont(getFont());
+//    TTF_Quit();
 
     // destroy renderer
     SDL_DestroyRenderer(rend2);
@@ -162,9 +168,12 @@ void uninitDisplay() {
 }
 
 QNI_FN(getTextSize) {
+  int width;
+  int height;
   const char *text = ((ObjString *) args[0].as.obj)->chars;
 
-  return INT_VAL(15);
+  TTF_SizeUTF8(getFont(), text, &width, &height);
+  return INT_VAL((((long) width) << 32) | height);
 }
 
 QNI_FN(getInstanceSize) {
@@ -172,14 +181,16 @@ QNI_FN(getInstanceSize) {
 
   instance->recalculateLayout();
 
-  return INT_VAL(10);
+  Point size = instance->getSize();
+
+  return INT_VAL((size[0] << 32) | size[1]);
 }
 
 QNI_FN(displayText) {
   const char *text = ((ObjString *) args[0].as.obj)->chars;
   long posP = args[1].as.integer;
   Point pos = {posP >> 32, posP & 0xFFFFFFFF};
-  SDL_Surface *textSurface = TTF_RenderText_Blended(font, text, {255, 255, 255, 0});
+  SDL_Surface *textSurface = TTF_RenderText_Blended(getFont(), text, {255, 255, 255, 0});
   SDL_Texture *textTexture = SDL_CreateTextureFromSurface(rend2, textSurface);
   SDL_Rect rectangle;
 

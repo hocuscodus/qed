@@ -805,6 +805,23 @@ UnitArea *ObjInstance::recalculateLayout() {
   return new UnitArea({100, 100});
 }
 
+Point ObjInstance::getSize() {
+  Point size;
+
+  for (int dir = 0; dir < NUM_DIRS; dir++)
+    size[dir] = 0;
+
+  for (int ndx = 0; ndx < numValuesInstances; ndx++) {
+    CoThread *layoutThread = uiLayoutInstances[ndx]->coThread;
+    CallFrame &layoutFrame = layoutThread->frames[0];
+
+    for (int dir = 0; dir < NUM_DIRS; dir++)
+      size[dir] = std::max(size[dir], (int) AS_INT(layoutFrame.slots[layoutFrame.closure->function->sizeOffsets[dir]]));
+  }
+
+  return size;
+}
+
 void ObjInstance::paint(Point pos) {
   for (int ndx = 0; ndx < numValuesInstances; ndx++) {
     CoThread *layoutThread = uiLayoutInstances[ndx]->coThread;

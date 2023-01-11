@@ -1551,6 +1551,8 @@ void Resolver::recalcLayout(AttributeListExpr *expr) {
     (*ss) << "  var l" << parseDir << "i" << aCount << " = a" << expr->_viewIndex << "\n";
     expr->_offsets[parseDir] = aCount++;
   }
+
+  current->function->sizeOffsets[parseDir] = current->localCount - 1;
 }
 
 int nTabs = 0;

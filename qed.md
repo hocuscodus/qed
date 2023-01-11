@@ -1,23 +1,23 @@
 QED - Simple code, fancy apps
 
-The code is quite short but does a lot. It implements an oval increment/decrement widget with a count in the middle and two buttons, - and +, on its sides. A user may press the + and - buttons to modify the count. The oval widget turns green on a positive count, red on a negative count and yellow if the count is zero.
+The code is quite short but does a lot. It implements a yellow oval increment/decrement widget with a count in the middle and two buttons, - and +, on its sides. A user may press the + and - buttons to modify the count. The yellow widget turns green on a positive count and red on a negative count.
 
 ```
 void Button(String text) {
-  int col = 0xE0000000
+  float trp = 80%
 
-  <out: rect; color: col; onPress: col = 0xB0000000; onRelease: {col = 0xE0000000; return()}>
-  <out: text; color: 0x90000000; fontSize: 40; width: 35; alignX: 50; alignY: 50; zoomHeight: 100;>
+  <out: rect; transparency: trp; onPress: trp = 69%; onRelease: {trp = 80%; return()}>
+  <out: text; transparency: 60%; fontSize: 40; size: [35, AS_IS]; align: 50%;>
 }
 
 int count = 0
 Button decButton = new Button("-") -> count--
 Button incButton = new Button("+") -> count++
 
-<out: oval; color: (count >= 0 ? COLOR_GREEN : 0) | (count <= 0 ? COLOR_RED : 0); height: 80;>
-<cdir: WIDTH;// <-<_<|<\  .-|+
+<out: oval; color: (count >= 0 ? COLOR_GREEN : 0) | (count <= 0 ? COLOR_RED : 0);>
+<- color: COLOR_BLACK;
   <out: decButton;>
-  <out: count; width: 100; fontSize: 50; alignX: 50; alignY: 50; color: 0x80000000;>
+  <out: count; size: [100, 80]; fontSize: 50; align: 50%; transparency: 50%;>
   <out: incButton;>
 >
 ```
