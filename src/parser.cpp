@@ -330,7 +330,7 @@ Expr *Parser::call(Expr *left) {
     handler = statement(TOKEN_SEPARATOR);
   }
 
-  return new CallExpr(left, previous, argCount, expList, false, handler, NULL);
+  return new CallExpr(left, previous, argCount, expList, false, handler);
 }
 
 Expr *Parser::logical(Expr *left) {
@@ -431,14 +431,24 @@ AttributeExpr *Parser::attribute(TokenType endGroupType) {
   return new AttributeExpr(identifier, handler);
 }
 
-AttributeListExpr *Parser::attributeList(TokenType endGroupType) {
+UIAttListExpr *newNode(int attCount, AttributeExpr **attributes)
+{
+  UIBinaryExpr binExp;
+  
+  binExp._left = NULL;
+  binExp._right = NULL;
+  binExp._layoutIndex[0] = -1;
+  binExp._layoutIndex[1] = -1;
+  binExp._viewIndex = -1;
+
+  UIAttListExpr *node = new UIAttListExpr(binExp, attCount, attributes);
+
+  return (node);
+}
+
+UIAttListExpr *Parser::attributeList(TokenType endGroupType) {
   int attCount = 0;
   AttributeExpr **attList = NULL;
-  int childrenCount = 0;
-  AttributeListExpr **children = NULL;
-
-  consume(TOKEN_LESS, "Expect '<' to start a child attribute list");
-  passSeparator();
 
   while (check(TOKEN_IDENTIFIER)) {
     AttributeExpr *att = attribute(endGroupType);
@@ -448,24 +458,43 @@ AttributeListExpr *Parser::attributeList(TokenType endGroupType) {
     passSeparator();
   }
 
-  while (check(TOKEN_LESS)) {
-    AttributeListExpr *att = attributeList(endGroupType);
+  UIAttListExpr *attListExpr = newNode(attCount, attList);
 
-    children = RESIZE_ARRAY(AttributeListExpr *, children, childrenCount, childrenCount + 1);
-    children[childrenCount++] = att;
+  while (check(TOKEN_LESS) && !check(TOKEN_EOF)) {
+    consume(TOKEN_LESS, "Expect '<' to start a child attribute list");
+    passSeparator();
+
+    UIAttListExpr *child = attributeList(endGroupType);
+
+    if (child)
+      if (!attListExpr->binaryExpr._left)
+        attListExpr->binaryExpr._left = child;
+      else {
+        if (attListExpr->binaryExpr._right) {
+          UIBinaryExpr *subExpr = new UIBinaryExpr();
+
+          subExpr->_left = attListExpr->binaryExpr._left;
+          subExpr->_right = attListExpr->binaryExpr._right;
+          subExpr->_layoutIndex[0] = -1;
+          subExpr->_layoutIndex[1] = -1;
+          subExpr->_viewIndex = -1;
+          attListExpr->binaryExpr._left = subExpr;
+        }
+
+        attListExpr->binaryExpr._right = child;
+      }
+
+    passSeparator();
+    consume(TOKEN_GREATER, "Expect '>' to end an attribute list");
     passSeparator();
   }
 
-  consume(TOKEN_GREATER, "Expect '>' to end an attribute list");
-
-  return new AttributeListExpr(attCount, attList, childrenCount, children, NULL);
+  return attListExpr;
 }
 
 Expr *Parser::grouping(TokenType endGroupType, const char *errorMessage) {
   int count = 0;
   Expr **expList = NULL;
-  int attCount = 0;
-  AttributeListExpr **attList = NULL;
   bool uiFlag = false;
 
   passSeparator();
@@ -474,13 +503,8 @@ Expr *Parser::grouping(TokenType endGroupType, const char *errorMessage) {
   while (!check(endGroupType) && !check(TOKEN_EOF)) {
     uiFlag |= endGroupType != TOKEN_RIGHT_PAREN && check(TOKEN_LESS);
 
-    if (uiFlag) {
-      AttributeListExpr *att = attributeList(endGroupType);
-
-      attList = RESIZE_ARRAY(AttributeListExpr *, attList, attCount, attCount + 1);
-      attList[attCount++] = att;
-      passSeparator();
-    }
+    if (uiFlag)
+      break;
     else {
       statementExprs &= ~(1 << scopeDepth);
       Expr *exp = declaration(endGroupType);
@@ -489,6 +513,8 @@ Expr *Parser::grouping(TokenType endGroupType, const char *errorMessage) {
       expList[count++] = exp;
     }
   }
+
+  Expr *ui = uiFlag ? attributeList(endGroupType) : NULL;
 
   consume(endGroupType, errorMessage);
   bool wasStatementExpr = (statementExprs & (1 << scopeDepth)) != 0;
@@ -507,7 +533,7 @@ Expr *Parser::grouping(TokenType endGroupType, const char *errorMessage) {
   }
 
   scopeDepth--;
-  return exp != NULL ? exp : new GroupingExpr(previous, count, expList, 0, new AttributeListExpr(0, NULL, attCount, attList, NULL), NULL);
+  return exp != NULL ? exp : new GroupingExpr(previous, count, expList, 0, ui, NULL);
 }
 
 Expr *Parser::floatNumber() {
@@ -517,7 +543,7 @@ Expr *Parser::floatNumber() {
 }
 
 Expr *Parser::intNumber() {
-  long value = strtol(previous.start, NULL, 10);
+  long value = strtol(previous.start, NULL, previous.start[1] == 'x' ? 16 : 10);
 
   return new LiteralExpr(VAL_INT, {.integer = value});
 }

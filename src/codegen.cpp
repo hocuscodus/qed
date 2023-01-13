@@ -41,7 +41,11 @@ void CodeGenerator::visitAttributeExpr(AttributeExpr *expr) {
   parser.error("Cannot generate UI code from UI expression.");
 }
 
-void CodeGenerator::visitAttributeListExpr(AttributeListExpr *expr) {
+void CodeGenerator::visitUIBinaryExpr(UIBinaryExpr *expr) {
+  parser.error("Cannot generate UI code from UI expression.");
+}
+
+void CodeGenerator::visitUIAttListExpr(UIAttListExpr *expr) {
   parser.error("Cannot generate UI code from UI expression.");
 }
 

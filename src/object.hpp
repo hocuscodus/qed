@@ -126,7 +126,6 @@ struct ObjFunction : ObjCallable {
   ChildAttrSets *attrSets;
   DirSizers topSizers;
   ObjFunction *uiFunction;
-  int sizeOffsets[NUM_DIRS];
 //  std::unordered_map<std::string, ObjFunction*> *uiFunctions;
 //  void parseCreateUIValues(VM &vm, Object value, int flags, List<int> dimIndexes, ValueTree valueTree);
 
@@ -265,8 +264,7 @@ struct ObjInstance {
 
   void initValues();
   void uninitValues();
-  UnitArea *recalculateLayout();
-  Point getSize();
+  Point recalculateLayout();
   void paint(Point pos);
   void onEvent(Point pos);
 };

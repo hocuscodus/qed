@@ -89,9 +89,9 @@ Attr::Attr(int flags, void *returnType, int localIndex) {
   this->returnType = returnType;
   this->localIndex = localIndex;
 }
-
+/*
 AttrSet::AttrSet(int *offset, Point &zoneOffsets, std::array<long, NUM_DIRS> &arrayDirFlags, ValueStack<ValueStackElement> &valueStack, AttributeListExpr *listExpr, int parentRefreshFlags, ObjFunction *function) {
-//  /*arrayDirs = */inputStream.read();
+//  / *arrayDirs = * /inputStream.read();
   int childDir = 0;//inputStream.read();
   int numAttrs = listExpr->attCount;
   std::string str = "";
@@ -167,7 +167,7 @@ AttrSet::AttrSet(int *offset, Point &zoneOffsets, std::array<long, NUM_DIRS> &ar
 
 //  print("restore " + str);
 }
-
+*/
 void AttrSet::initAttr(std::string property, int flags, void*returnType, int index) {
   attrs.insert(std::pair<std::string, Attr *>(property, new Attr(flags, returnType, index)));
 }
@@ -262,7 +262,7 @@ void AttrSet::parseCreateAreasTree(VM &vm, ValueStack<Value *> &valueStack, int 
       LocationUnit *unitArea;
 
       if (dimFlags & 1)
-        unitArea = AS_INSTANCE(*value)->recalculateLayout();
+;//        unitArea = AS_INSTANCE(*value)->recalculateLayout();
       else {
 //        LambdaDeclaration func = Op.getPredefinedType(value);
 
@@ -498,7 +498,7 @@ class AttrSet {
 		return str;
 	}*/
 }
-#endif
+#endif/*
 ChildAttrSets::ChildAttrSets(int *offset, Point &zoneOffsets, int childDir, std::array<long, NUM_DIRS> &arrayDirFlags, ValueStack<ValueStackElement> &valueStack, AttributeListExpr *listExpr, int parentRefreshFlags, ObjFunction *function) : std::vector<AttrSet *>() {
   Point maxZoneOffsets;
   bool zBoolFlags[NUM_DIRS]{true};
@@ -558,7 +558,7 @@ ChildAttrSets::ChildAttrSets(int *offset, Point &zoneOffsets, int childDir, std:
       zoneOffsets[dir] = maxZoneOffsets[dir];
   }
 }
-
+*/
 SizerType ChildAttrSets::getSizerType(int dir, int *zone) {
   return (childDir & (1 << dir)) != 0 ? SizerType::adder : /*zone[0] & 1 != 0 ? SizerType.zoneMaxer : */SizerType::maxer;
 }

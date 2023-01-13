@@ -21,13 +21,13 @@
 #include "compiler.hpp"
 
 #define UI_PARSES_DEF \
-    UI_PARSE_DEF( PARSE_VALUES, &Resolver::processAttrs, &Resolver::evalValue ),  \
-    UI_PARSE_DEF( PARSE_AREAS, &Resolver::pushAreas, NULL ),  \
-    UI_PARSE_DEF( PARSE_LAYOUT, &Resolver::recalcLayout, NULL ),  \
-    UI_PARSE_DEF( PARSE_REFRESH, &Resolver::paint, NULL ), \
-    UI_PARSE_DEF( PARSE_EVENTS, &Resolver::onEvent, NULL ), 
+    UI_PARSE_DEF( PARSE_VALUES, &Resolver::processAttrs, &Resolver::parseChildren, &Resolver::evalValue ),  \
+    UI_PARSE_DEF( PARSE_AREAS, &Resolver::pushAreas, &Resolver::pushAreas, NULL ),  \
+    UI_PARSE_DEF( PARSE_LAYOUT, &Resolver::recalcLayout, &Resolver::recalcLayout, NULL ),  \
+    UI_PARSE_DEF( PARSE_REFRESH, &Resolver::paint, &Resolver::paint, NULL ), \
+    UI_PARSE_DEF( PARSE_EVENTS, &Resolver::onEvent, &Resolver::onEvent, NULL ), 
 
-#define UI_PARSE_DEF( identifier, push, attr )  identifier
+#define UI_PARSE_DEF( identifier, push, binary, attr )  identifier
 typedef enum { UI_PARSES_DEF } ParseStep;
 
 #undef UI_PARSE_DEF
@@ -41,7 +41,8 @@ public:
 
   void visitAssignExpr(AssignExpr *expr);
   void visitAttributeExpr(AttributeExpr *expr);
-  void visitAttributeListExpr(AttributeListExpr *expr);
+  void visitUIBinaryExpr(UIBinaryExpr *expr);
+  void visitUIAttListExpr(UIAttListExpr *expr);
   void visitBinaryExpr(BinaryExpr *expr);
   void visitCallExpr(CallExpr *expr);
   void visitDeclarationExpr(DeclarationExpr *expr);
@@ -73,13 +74,18 @@ public:
   ParseStep getParseStep();
   int getParseDir();
 
-  void processAttrs(AttributeListExpr *expr);
-  void parseChildren(AttributeListExpr *expr);
+  void processAttrs(UIAttListExpr *expr);
+  void parseChildren(UIAttListExpr *expr);
+  void parseChildren(UIBinaryExpr *expr);
   void evalValue(AttributeExpr *expr);
-  void pushAreas(AttributeListExpr *expr);
-  void recalcLayout(AttributeListExpr *expr);
-  void paint(AttributeListExpr *expr);
-  void onEvent(AttributeListExpr *expr);
+  void pushAreas(UIAttListExpr *expr);
+  void pushAreas(UIBinaryExpr *expr);
+  void recalcLayout(UIAttListExpr *expr);
+  void recalcLayout(UIBinaryExpr *expr);
+  void paint(UIAttListExpr *expr);
+  void paint(UIBinaryExpr *expr);
+  void onEvent(UIAttListExpr *expr);
+  void onEvent(UIBinaryExpr *expr);
 };
 
 #endif

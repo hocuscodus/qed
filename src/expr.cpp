@@ -27,16 +27,21 @@ void AttributeExpr::accept(ExprVisitor *visitor) {
   return visitor->visitAttributeExpr(this);
 }
 
-AttributeListExpr::AttributeListExpr(int attCount, AttributeExpr** attributes, int childrenCount, AttributeListExpr** children, ChildAttrSets* attrSets) : Expr(EXPR_ATTRIBUTELIST) {
-  this->attCount = attCount;
-  this->attributes = attributes;
-  this->childrenCount = childrenCount;
-  this->children = children;
-  this->attrSets = attrSets;
+UIBinaryExpr::UIBinaryExpr() : Expr(EXPR_UIBINARY) {
 }
 
-void AttributeListExpr::accept(ExprVisitor *visitor) {
-  return visitor->visitAttributeListExpr(this);
+void UIBinaryExpr::accept(ExprVisitor *visitor) {
+  return visitor->visitUIBinaryExpr(this);
+}
+
+UIAttListExpr::UIAttListExpr(UIBinaryExpr binaryExpr, int attCount, AttributeExpr** attributes) : Expr(EXPR_UIATTLIST) {
+  this->binaryExpr = binaryExpr;
+  this->attCount = attCount;
+  this->attributes = attributes;
+}
+
+void UIAttListExpr::accept(ExprVisitor *visitor) {
+  return visitor->visitUIAttListExpr(this);
 }
 
 AssignExpr::AssignExpr(VariableExpr* varExp, Token op, Expr* value) : Expr(EXPR_ASSIGN) {
@@ -74,14 +79,13 @@ void GroupingExpr::accept(ExprVisitor *visitor) {
   return visitor->visitGroupingExpr(this);
 }
 
-CallExpr::CallExpr(Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler, GroupingExpr* groupingExpr) : Expr(EXPR_CALL) {
+CallExpr::CallExpr(Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler) : Expr(EXPR_CALL) {
   this->callee = callee;
   this->paren = paren;
   this->count = count;
   this->arguments = arguments;
   this->newFlag = newFlag;
   this->handler = handler;
-  this->groupingExpr = groupingExpr;
 }
 
 void CallExpr::accept(ExprVisitor *visitor) {

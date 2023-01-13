@@ -29,7 +29,8 @@ public:
 
   void visitAssignExpr(AssignExpr *expr);
   void visitAttributeExpr(AttributeExpr *expr);
-  void visitAttributeListExpr(AttributeListExpr *expr);
+  void visitUIBinaryExpr(UIBinaryExpr *expr);
+  void visitUIAttListExpr(UIAttListExpr *expr);
   void visitBinaryExpr(BinaryExpr *expr);
   void visitCallExpr(CallExpr *expr);
   void visitDeclarationExpr(DeclarationExpr *expr);

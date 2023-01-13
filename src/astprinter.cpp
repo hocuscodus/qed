@@ -166,13 +166,22 @@ void ASTPrinter::visitAttributeExpr(AttributeExpr *expr) {
   printf(")");
 }
 
-void ASTPrinter::visitAttributeListExpr(AttributeListExpr *expr) {
+void ASTPrinter::visitUIBinaryExpr(UIBinaryExpr *expr) {
+  printf("(");
+  if (expr->_left)
+    accept<int>(expr->_left, 0);
+
+  if (expr->_right)
+    accept<int>(expr->_right, 0);
+  printf(")");
+}
+
+void ASTPrinter::visitUIAttListExpr(UIAttListExpr *expr) {
   printf("AttList(");
   for (int index = 0; index < expr->attCount; index++)
     accept<int>(expr->attributes[index], 0);
 
-  for (int index = 0; index < expr->childrenCount; index++)
-    accept<int>(expr->children[index], 0);
+  accept<int>(&expr->binaryExpr, 0);
   printf(")");
 }
 

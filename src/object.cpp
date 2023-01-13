@@ -784,7 +784,8 @@ void ObjInstance::uninitValues() {
   }
 }
 
-UnitArea *ObjInstance::recalculateLayout() {
+Point ObjInstance::recalculateLayout() {
+  Point point = {0, 0};
   uiLayoutInstances = new ObjInstance *[numValuesInstances];
 
   for (int ndx = 0; ndx < numValuesInstances; ndx++) {
@@ -800,26 +801,12 @@ UnitArea *ObjInstance::recalculateLayout() {
     *instanceThread->stackTop++ = OBJ_VAL(layoutClosure);
     instanceThread->call(layoutClosure, 0);
     instanceThread->run();
-  }
-
-  return new UnitArea({100, 100});
-}
-
-Point ObjInstance::getSize() {
-  Point size;
-
-  for (int dir = 0; dir < NUM_DIRS; dir++)
-    size[dir] = 0;
-
-  for (int ndx = 0; ndx < numValuesInstances; ndx++) {
-    CoThread *layoutThread = uiLayoutInstances[ndx]->coThread;
-    CallFrame &layoutFrame = layoutThread->frames[0];
 
     for (int dir = 0; dir < NUM_DIRS; dir++)
-      size[dir] = std::max(size[dir], (int) AS_INT(layoutFrame.slots[layoutFrame.closure->function->sizeOffsets[dir]]));
+      point[dir] = std::max(point[dir], dir ? 34 : 18);
   }
 
-  return size;
+  return point;
 }
 
 void ObjInstance::paint(Point pos) {
@@ -827,7 +814,7 @@ void ObjInstance::paint(Point pos) {
     CoThread *layoutThread = uiLayoutInstances[ndx]->coThread;
     CallFrame &layoutFrame = layoutThread->frames[0];
     ObjClosure *layoutClosure = AS_CLOSURE(layoutThread->fields[0]);
-    ObjClosure *paintClosure = AS_CLOSURE(layoutThread->fields[layoutClosure->function->fieldCount - 2]);
+    ObjClosure *paintClosure = AS_CLOSURE(layoutThread->fields[layoutClosure->function->fieldCount - 1]);
     Value value = {VOID_VAL};
 
     *layoutThread->stackTop++ = OBJ_VAL(paintClosure);

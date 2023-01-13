@@ -24,15 +24,17 @@
 #include "memory.h"
 #include "qni.hpp"
 
-typedef void (Resolver::*FttrListFn)(AttributeListExpr *expr);
+typedef void (Resolver::*AttrListFn)(UIAttListExpr *expr);
+typedef void (Resolver::*AttrBinaryFn)(UIBinaryExpr *expr);
 typedef void (Resolver::*AttrFn)(AttributeExpr *expr);
 
 typedef struct {
-  FttrListFn attrListFn;
+  AttrListFn attrListFn;
+  AttrBinaryFn attrBinaryFn;
   AttrFn attrFn;
 } ResolverUIRule;
 
-#define UI_PARSE_DEF( identifier, push, attr )  { push, attr }
+#define UI_PARSE_DEF( identifier, push, binary, attr )  { push, binary, attr }
 ResolverUIRule resolverUIRules[] = { UI_PARSES_DEF };
 #undef UI_PARSE_DEF
 
@@ -215,6 +217,20 @@ void Resolver::visitAttributeExpr(AttributeExpr *expr) {
     (this->*resolverUIRules[step].attrFn)(expr);
 }
 
+void Resolver::visitUIBinaryExpr(UIBinaryExpr *expr) {
+  ParseStep step = getParseStep();
+
+  if (resolverUIRules[step].attrListFn)
+    (this->*resolverUIRules[step].attrBinaryFn)(expr);
+}
+
+void Resolver::visitUIAttListExpr(UIAttListExpr *expr) {
+  ParseStep step = getParseStep();
+
+  if (resolverUIRules[step].attrListFn)
+    (this->*resolverUIRules[step].attrListFn)(expr);
+}
+#if 0
 void Resolver::visitAttributeListExpr(AttributeListExpr *expr) {
   ParseStep step = getParseStep();
 
@@ -295,7 +311,7 @@ void Resolver::visitAttributeListExpr(AttributeListExpr *expr) {
       if (expr->attributes[index]->_index != -1)
         valueStack.pop(expr->attributes[index]->name.getString());*/
 }
-
+#endif
 void Resolver::visitBinaryExpr(BinaryExpr *expr)
 {
   //  if (expr->left) {
@@ -531,7 +547,7 @@ static Expr *generateUIFunction(const char *name, char *args, Expr *uiExpr, int 
       bodyExprs[count + index] = rest[index];
 
     functionExprs[0] = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "void", 4, -1), VAL_HANDLER, false);
-    functionExprs[1] = new CallExpr(nameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), nbParms, parms, false, NULL, NULL);
+    functionExprs[1] = new CallExpr(nameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), nbParms, parms, false, NULL);
     functionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), count + restLength, bodyExprs, 0, NULL, NULL);
 
     return new ListExpr(3, functionExprs, EXPR_LIST, NULL);
@@ -1190,14 +1206,12 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
   for (int index = 0; index < expr->count; index++) {
     Expr *subExpr = expr->expressions[index];
 
-    if (subExpr->type == EXPR_ATTRIBUTELIST && ++uiParseCount >= 1) {
-      aCount = 0;
+    if (subExpr->type == EXPR_UIATTLIST && ++uiParseCount >= 1)
       ss->str("");
-    }
 
     acceptSubExpr(subExpr);
 
-    if (subExpr->type == EXPR_ATTRIBUTELIST) {
+    if (subExpr->type == EXPR_UIATTLIST) {
       if (uiParseCount) {
         printf("CODE %d\n%s", uiParseCount, ss->str().c_str());
         expr = (GroupingExpr *) parse(ss->str().c_str(), index, 1, expr);
@@ -1220,8 +1234,10 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
         removeLocal();
   }
 
-  if (expr->ui != NULL)
-    if (((AttributeListExpr *) expr->ui)->childrenCount) {
+  if (expr->ui != NULL) {
+    UIAttListExpr *exprUI = (UIAttListExpr *) expr->ui;
+
+    if (exprUI->binaryExpr._left) {
       // Perform the UI AST magic
       Expr *clickFunction = generateUIFunction("onEvent", "int pos0, int pos1", expr->ui, 1, 0, NULL);
       Expr *paintFunction = generateUIFunction("paint", "int pos0, int pos1", expr->ui, 1, 0, NULL);
@@ -1230,13 +1246,14 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
       uiFunctions[0] = paintFunction;
       uiFunctions[1] = clickFunction;
 
-      Expr *layoutFunction = generateUIFunction("Layout", NULL, expr->ui, 3, 2, uiFunctions);
+      Expr *layoutFunction = generateUIFunction("Layout", NULL, expr->ui, 3, 1, uiFunctions);
       Expr **layoutExprs = new Expr *[1];
 
       layoutExprs[0] = layoutFunction;
 
       Expr *valueFunction = generateUIFunction("UI$", NULL, expr->ui, 1, 1, layoutExprs);
 
+      aCount = 1;
       accept<int>(valueFunction, 0);
       Type type = removeLocal();
       current->function->uiFunction = type.valueType == VAL_OBJ ? (ObjFunction *) type.objType : NULL;
@@ -1248,6 +1265,7 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
       delete expr->ui;
       expr->ui = NULL;
     }
+  }
 }
 /*
 void AttrSet::parseCreateAreasTree(VM &vm, ValueStack<Value *> &valueStack, int dimFlags, const Path &path, Value *values, IndexList *instanceIndexes, LocationUnit **areaUnits) {
@@ -1389,12 +1407,20 @@ int Resolver::getParseDir() {
   return uiParseCount - PARSE_LAYOUT;
 }
 
-void Resolver::parseChildren(AttributeListExpr *expr) {
-  for (int index = 0; index < expr->childrenCount; index++)
-    accept<int>(expr->children[index], 0);
+void Resolver::parseChildren(UIAttListExpr *expr) {
+  accept<int>(&expr->binaryExpr);
 }
 
-void Resolver::processAttrs(AttributeListExpr *expr) {
+void Resolver::parseChildren(UIBinaryExpr *expr) {
+  if (expr->_left) {
+    accept<int>(expr->_left);
+
+    if (expr->_right)
+      accept<int>(expr->_right);
+  }
+}
+
+void Resolver::processAttrs(UIAttListExpr *expr) {
   for (int index = 0; index < expr->attCount; index++)
     accept<int>(expr->attributes[index], 0);
 
@@ -1454,7 +1480,7 @@ int outAttrIndex = -1;
 //ValueStack<ValueStackElement> valueStack2;
 //std::list<AttributeExpr *> attExprs;
 
-static int findAttrIndex(AttributeListExpr *expr, const char *name) {
+static int findAttrIndex(UIAttListExpr *expr, const char *name) {
   for (int index = 0; index < expr->attCount; index++)
     if (expr->attributes[index]->_index != -1 && expr->attributes[index]->name.equal(name))
       return expr->attributes[index]->_index;
@@ -1462,12 +1488,12 @@ static int findAttrIndex(AttributeListExpr *expr, const char *name) {
   return -1;
 }
 
-void Resolver::pushAreas(AttributeListExpr *expr) {
+void Resolver::pushAreas(UIAttListExpr *expr) {
   int oldOutAttrIndex = outAttrIndex;
 
   outAttrIndex = findAttrIndex(expr, "out");
 
-  if (!expr->childrenCount && outAttrIndex != -1) {
+  if (!expr->binaryExpr._left && outAttrIndex != -1) {
     char name[20];
 
     sprintf(name, "v%d", outAttrIndex);
@@ -1495,28 +1521,18 @@ void Resolver::pushAreas(AttributeListExpr *expr) {
       }
 
       if (callee) {
-        expr->_viewIndex = aCount;
+        expr->binaryExpr._viewIndex = aCount;
         (*ss) << "  var a" << aCount++ << " = " << callee << "(v" << outAttrIndex << ")\n";
       }
-      else
-        expr->_viewIndex = -1;
     }
     else
       parser.error("Out value having an illegal type");
   }
   else {
-    IndexList indexList;
+//    IndexList indexList;
 
-    for (int index = 0; index < expr->childrenCount; index++) {
-      AttributeListExpr *subExpr = (AttributeListExpr *) expr->children[index];
-
-      accept<int>(subExpr, 0);
-
-      if (subExpr->_viewIndex != -1)
-        indexList.set(index);
-    }
-
-    expr->_viewIndex = indexList.size != -1 ? indexList.array[0] : -1;
+    accept<int>(&expr->binaryExpr);
+//    expr->binaryExpr._viewIndex = indexList.size != -1 ? indexList.array[0] : -1;
   }
 
   for (int index = 0; index < expr->attCount; index++)
@@ -1526,33 +1542,51 @@ void Resolver::pushAreas(AttributeListExpr *expr) {
   outAttrIndex = oldOutAttrIndex;
 }
 
-void Resolver::recalcLayout(AttributeListExpr *expr) {
+void Resolver::pushAreas(UIBinaryExpr *expr) {
+  parseChildren(expr);
+
+  if (expr->_left) {
+    UIBinaryExpr *leftExpr = expr->_left->type == EXPR_UIBINARY ? (UIBinaryExpr *) expr->_left : &((UIAttListExpr *) expr->_left)->binaryExpr;
+
+    if (expr->_right && expr->_right->type != EXPR_UIBINARY && leftExpr->_viewIndex != -1)
+        expr->_viewIndex = 0;
+  }
+}
+
+void Resolver::recalcLayout(UIAttListExpr *expr) {
   int parseDir = getParseDir();
 
-  if (expr->childrenCount) {
-    int acc = -1;
-    IndexList indexList(expr->_viewIndex);
-
-    for (int index = -1; (index = indexList.getNext(index)) != -1;) {
-      accept<int>(expr->children[index], 0);
-      int subViewIndex = expr->children[index]->_offsets[parseDir];
-
-      if (acc != -1) {
-        (*ss) << "  var l" << parseDir << "i" << aCount << " = l" << parseDir << "i" << acc << " + l" << parseDir << "i" << subViewIndex << "\n";
-        expr->children[index]->_offsets[parseDir] = acc = aCount++;
-      }
-      else
-        acc = subViewIndex;
+  if (expr->binaryExpr._left)
+    accept<int>(&expr->binaryExpr);
+  else
+    if (expr->binaryExpr._viewIndex != -1) {
+      (*ss) << "  var l" << aCount << " = a" << expr->binaryExpr._viewIndex << (parseDir ? " & 0xFFFFFFFF" : " >> 32") << "\n";
+      expr->binaryExpr._layoutIndex[parseDir] = aCount++;
     }
+}
 
-    expr->_offsets[parseDir] = acc;
-  }
-  else {
-    (*ss) << "  var l" << parseDir << "i" << aCount << " = a" << expr->_viewIndex << "\n";
-    expr->_offsets[parseDir] = aCount++;
-  }
+void Resolver::recalcLayout(UIBinaryExpr *expr) {
+  int parseDir = getParseDir();
 
-  current->function->sizeOffsets[parseDir] = current->localCount - 1;
+  parseChildren(expr);
+
+  if (expr->_left) {
+    UIBinaryExpr *leftExpr = expr->_left->type == EXPR_UIBINARY ? (UIBinaryExpr *) expr->_left : &((UIAttListExpr *) expr->_left)->binaryExpr;
+
+    expr->_layoutIndex[parseDir] = leftExpr->_layoutIndex[parseDir];
+
+    if (expr->_right) {
+      int rightIndex = ((UIAttListExpr *) expr->_right)->binaryExpr._layoutIndex[parseDir];
+
+      if (rightIndex != -1)
+        if (expr->_layoutIndex[parseDir] != -1) {
+          (*ss) << "  var l" << aCount << " = l" << expr->_layoutIndex[parseDir] << " + l" << rightIndex << "\n";
+          expr->_layoutIndex[parseDir] = aCount++;
+        }
+        else
+          expr->_layoutIndex[parseDir] = rightIndex;
+    }
+  }
 }
 
 int nTabs = 0;
@@ -1569,15 +1603,15 @@ static void insertPoint(const char *prefix) {/*
     ss << (dir == 0 ? "" : ", ") << prefix << dir;
 
   (*ss) << ")";*/
-  (*ss) << "(" << prefix << "0 << 32 | " << prefix << "1)";
+  (*ss) << "((" << prefix << "0 << 32) | " << prefix << "1)";
 }
 
-void Resolver::paint(AttributeListExpr *expr) {
+void Resolver::paint(UIAttListExpr *expr) {
   int oldOutAttrIndex = outAttrIndex;
 
   outAttrIndex = findAttrIndex(expr, "out");
 
-  if (!expr->childrenCount && outAttrIndex != -1) {
+  if (!expr->binaryExpr._left && outAttrIndex != -1) {
     char name[20];
 
     sprintf(name, "v%d", outAttrIndex);
@@ -1617,26 +1651,7 @@ void Resolver::paint(AttributeListExpr *expr) {
       parser.error("Out value having an illegal type");
   }
   else
-    for (int index = 0; index < expr->childrenCount; index++) {
-      if (index != 0) {
-        insertTabs();
-        (*ss) << "{\n";
-        nTabs++;
-
-        if (nTabs > 1) {
-          insertTabs();
-          (*ss) << "int pos0 = pos0 + l" << 0 << "i" << expr->children[index - 1]->_offsets[0] << "\n";
-        }
-      }
-
-      accept<int>(expr->children[index], 0);
-
-      if (index != 0) {
-        --nTabs;
-        insertTabs();
-        (*ss) << "}\n";
-      }
-   }
+    accept<int>(&expr->binaryExpr);
 
   for (int index = 0; index < expr->attCount; index++)
     if (expr->attributes[index]->_index != -1)
@@ -1645,7 +1660,40 @@ void Resolver::paint(AttributeListExpr *expr) {
   outAttrIndex = oldOutAttrIndex;
 }
 
-void Resolver::onEvent(AttributeListExpr *expr) {
+void Resolver::paint(UIBinaryExpr *expr) {
+  if (expr->_left) {
+    UIBinaryExpr *leftExpr = expr->_left->type == EXPR_UIBINARY ? (UIBinaryExpr *) expr->_left : &((UIAttListExpr *) expr->_left)->binaryExpr;
+
+    accept<int>(expr->_left);
+
+    if (expr->_right) {
+      UIBinaryExpr *rightExpr = expr->_right->type != EXPR_UIBINARY ? &((UIAttListExpr *) expr->_right)->binaryExpr : NULL;
+
+      if (rightExpr && leftExpr->_viewIndex != -1) {
+        insertTabs();
+        (*ss) << "{\n";
+        nTabs++;
+
+        if (nTabs > 0) {
+          insertTabs();
+          (*ss) << "int pos0 = pos0 + l" << leftExpr->_layoutIndex[0] << "\n";
+          insertTabs();
+          (*ss) << "int pos1 = pos1 + l" << leftExpr->_layoutIndex[1] << "\n";
+        }
+      }
+
+      accept<int>(expr->_right);
+
+      if (rightExpr && leftExpr->_viewIndex != -1) {
+        --nTabs;
+        insertTabs();
+        (*ss) << "}\n";
+      }
+    }
+  }
+}
+
+void Resolver::onEvent(UIAttListExpr *expr) {/*
   int oldOutAttrIndex = outAttrIndex;
 
   outAttrIndex = findAttrIndex(expr, "out");
@@ -1725,7 +1773,7 @@ void Resolver::onEvent(AttributeListExpr *expr) {
         (*ss) << "if (pos0 >= ";
 
         if (index)
-          (*ss) << "l" << 0 << "i" << lastOffset << ") {\n";
+          (*ss) << "l" << lastOffset << ") {\n";
         else
           (*ss) << "0) {\n";
 
@@ -1733,7 +1781,7 @@ void Resolver::onEvent(AttributeListExpr *expr) {
 
         if (index) {
           insertTabs();
-          (*ss) << "pos0 = pos0 - l" << 0 << "i" << lastOffset << "\n";
+          (*ss) << "pos0 = pos0 - l" << lastOffset << "\n";
         }
 
         (*ss) << ss2.str();
@@ -1749,7 +1797,114 @@ void Resolver::onEvent(AttributeListExpr *expr) {
     if (expr->attributes[index]->_index != -1)
 ;//      valueStack.pop(expr->attributes[index]->name.getString());
 
-  outAttrIndex = oldOutAttrIndex;
+  outAttrIndex = oldOutAttrIndex;*/
+}
+
+void Resolver::onEvent(UIBinaryExpr *expr) {/*
+  int oldOutAttrIndex = outAttrIndex;
+
+  outAttrIndex = findAttrIndex(expr, "out");
+
+  if (!expr->childrenCount && outAttrIndex != -1) {
+    char name[20];
+
+    sprintf(name, "v%d", outAttrIndex);
+
+    Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
+    Type outType = current->enclosing->enclosing->locals[current->enclosing->enclosing->resolveLocal(&token)].type;
+
+    if (outType.valueType == VAL_OBJ && outType.objType) {
+      switch (outType.objType->type) {
+        case OBJ_COMPILER_INSTANCE:
+          insertTabs();
+          (*ss) << "onInstanceEvent(" << name << ", ";
+          insertPoint("pos");
+          (*ss) << ")\n";
+          break;
+
+        case OBJ_STRING:
+        case OBJ_FUNCTION:
+          for (int index = 0; index < expr->attCount; index++) {
+            AttributeExpr *attExpr = expr->attributes[index];
+
+            if (!memcmp(attExpr->name.getString().c_str(), "on", 2))
+              if (attExpr->handler) {
+                insertTabs();
+                (*ss) << "if (" << "\"onRelease\"" << " == \"" << attExpr->name.getString() << "\") {\n";
+                nTabs++;
+
+                insertTabs();
+                (*ss) << "$EXPR\n";
+                uiExprs.push_back(attExpr->handler);
+                attExpr->handler = NULL;
+
+                --nTabs;
+                insertTabs();
+                (*ss) << "}\n";
+              }
+              else
+                ;
+          }
+          break;
+
+        default:
+          parser.error("Out value having an illegal type");
+          break;
+      }
+    }
+    else
+      parser.error("Out value having an illegal type");
+  }
+  else {
+    bool ifFlag = false;
+
+    for (int index = expr->childrenCount - 1; index >= 0; index--) {
+      int lastOffset = index == 0 ? -1 : expr->children[index - 1]->_offsets[0];
+      std::stringstream *oldSs = ss;
+      std::stringstream ss2;
+
+      ss = &ss2;
+      nTabs++;
+      accept<int>(expr->children[index], 0);
+      nTabs--;
+      ss = oldSs;
+      ss2 << std::flush;
+
+      if (ss2.rdbuf()->in_avail()) {
+        if (ifFlag) {
+          insertTabs();
+          (*ss) << "else\n";
+        }
+
+        insertTabs();
+        (*ss) << "if (pos0 >= ";
+
+        if (index)
+          (*ss) << "l" << lastOffset << ") {\n";
+        else
+          (*ss) << "0) {\n";
+
+        nTabs++;
+
+        if (index) {
+          insertTabs();
+          (*ss) << "pos0 = pos0 - l" << lastOffset << "\n";
+        }
+
+        (*ss) << ss2.str();
+        --nTabs;
+        insertTabs();
+        (*ss) << "}\n";
+        ifFlag = true;
+      }
+    }
+  }
+
+  for (int index = 0; index < expr->attCount; index++)
+    if (expr->attributes[index]->_index != -1)
+;//      valueStack.pop(expr->attributes[index]->name.getString());
+
+  outAttrIndex = oldOutAttrIndex;*/
 }
 /*
 Expr *Parser::forStatement(TokenType endGroupType) {

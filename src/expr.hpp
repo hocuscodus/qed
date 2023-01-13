@@ -15,7 +15,8 @@ struct ChildAttrSets;
 typedef enum {
   EXPR_VARIABLE,
   EXPR_ATTRIBUTE,
-  EXPR_ATTRIBUTELIST,
+  EXPR_UIBINARY,
+  EXPR_UIATTLIST,
   EXPR_ASSIGN,
   EXPR_BINARY,
   EXPR_GROUPING,
@@ -50,7 +51,8 @@ struct Expr {
 
 struct VariableExpr;
 struct AttributeExpr;
-struct AttributeListExpr;
+struct UIBinaryExpr;
+struct UIAttListExpr;
 struct AssignExpr;
 struct BinaryExpr;
 struct GroupingExpr;
@@ -90,7 +92,8 @@ struct ExprVisitor {
 
   virtual void visitVariableExpr(VariableExpr *expr) = 0;
   virtual void visitAttributeExpr(AttributeExpr *expr) = 0;
-  virtual void visitAttributeListExpr(AttributeListExpr *expr) = 0;
+  virtual void visitUIBinaryExpr(UIBinaryExpr *expr) = 0;
+  virtual void visitUIAttListExpr(UIAttListExpr *expr) = 0;
   virtual void visitAssignExpr(AssignExpr *expr) = 0;
   virtual void visitBinaryExpr(BinaryExpr *expr) = 0;
   virtual void visitGroupingExpr(GroupingExpr *expr) = 0;
@@ -131,16 +134,22 @@ struct AttributeExpr : public Expr {
   void accept(ExprVisitor *visitor);
 };
 
-struct AttributeListExpr : public Expr {
+struct UIBinaryExpr : public Expr {
+  Expr* _left;
+  Expr* _right;
+  int _viewIndex;
+  int _layoutIndex[NUM_DIRS];
+
+  UIBinaryExpr();
+  void accept(ExprVisitor *visitor);
+};
+
+struct UIAttListExpr : public Expr {
+  UIBinaryExpr binaryExpr;
   int attCount;
   AttributeExpr** attributes;
-  int childrenCount;
-  AttributeListExpr** children;
-  ChildAttrSets* attrSets;
-  int _viewIndex;
-  int _offsets[2];
 
-  AttributeListExpr(int attCount, AttributeExpr** attributes, int childrenCount, AttributeListExpr** children, ChildAttrSets* attrSets);
+  UIAttListExpr(UIBinaryExpr binaryExpr, int attCount, AttributeExpr** attributes);
   void accept(ExprVisitor *visitor);
 };
 
@@ -183,9 +192,8 @@ struct CallExpr : public Expr {
   Expr** arguments;
   bool newFlag;
   Expr* handler;
-  GroupingExpr* groupingExpr;
 
-  CallExpr(Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler, GroupingExpr* groupingExpr);
+  CallExpr(Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler);
   void accept(ExprVisitor *visitor);
 };
 

@@ -444,9 +444,7 @@ bool VM::recalculate() {
   if (instance->coThread->getFormFlag()) {
     instance->uninitValues();
     instance->initValues();
-
-    totalSize = {0};
-    instance->recalculateLayout();
+    totalSize = instance->recalculateLayout();
 
     initDisplay();
 
@@ -523,7 +521,12 @@ void VM::suspend() {
   SDL_Event event;
 
   // Events management
-  while (SDL_WaitEvent(&event)) {
+  while (true) {
+    if (!SDL_WaitEvent(&event)) {
+      printf("%s\n", SDL_GetError());
+      exit(0);
+    }
+
     switch (event.type) {
     case SDL_USEREVENT: {
         Value value = VOID_VAL;

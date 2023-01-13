@@ -178,12 +178,9 @@ QNI_FN(getTextSize) {
 
 QNI_FN(getInstanceSize) {
   ObjInstance *instance = (ObjInstance *) args[0].as.obj;
+  Point size = instance->recalculateLayout();
 
-  instance->recalculateLayout();
-
-  Point size = instance->getSize();
-
-  return INT_VAL((size[0] << 32) | size[1]);
+  return INT_VAL((((long) size[0]) << 32) | size[1]);
 }
 
 QNI_FN(displayText) {

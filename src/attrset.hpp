@@ -50,7 +50,7 @@ struct AttrSet {
   Path posPaths[NUM_DIRS];
 	int offset;
 
-	AttrSet(int *offset, Point &zoneOffsets, std::array<long, NUM_DIRS> &arrayDirFlags, ValueStack<ValueStackElement> &valueStack, AttributeListExpr *listExpr, int parentRefreshFlags, ObjFunction *function);
+//	AttrSet(int *offset, Point &zoneOffsets, std::array<long, NUM_DIRS> &arrayDirFlags, ValueStack<ValueStackElement> &valueStack, AttributeListExpr *listExpr, int parentRefreshFlags, ObjFunction *function);
 
 	void parseCreateSizers(DirSizers &topSizers, int dir, int *zone, Path path, Path flagsPath);
 	void parseAdjustPaths(DirSizers &topSizers, int dir);
@@ -86,7 +86,7 @@ struct ChildAttrSets : std::vector<AttrSet *> {
   DirFlags flags;
   DirFlags zFlags;
 
-	ChildAttrSets(int *offset, Point &zoneOffsets, int childDir, std::array<long, NUM_DIRS> &arrayDirFlags, ValueStack<ValueStackElement> &valueStack, AttributeListExpr *listExpr, int parentRefreshFlags, ObjFunction *function);
+//	ChildAttrSets(int *offset, Point &zoneOffsets, int childDir, std::array<long, NUM_DIRS> &arrayDirFlags, ValueStack<ValueStackElement> &valueStack, AttributeListExpr *listExpr, int parentRefreshFlags, ObjFunction *function);
 
 	SizerType getSizerType(int dir, int *zone);
 	void parseCreateSizers(DirSizers &topSizers, int dir, int *zone, Path path, Path flagsPath);

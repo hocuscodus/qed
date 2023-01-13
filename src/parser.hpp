@@ -97,7 +97,7 @@ public:
   Expr *swap();
   Expr *primitiveType();
   AttributeExpr *attribute(TokenType endGroupType);
-  AttributeListExpr *attributeList(TokenType endGroupType);
+  UIAttListExpr *attributeList(TokenType endGroupType);
   Expr *grouping();
   Expr *grouping(TokenType endGroupType, const char *errorMessage);
   Expr *floatNumber();
