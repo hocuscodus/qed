@@ -96,8 +96,8 @@ public:
   Expr *literal();
   Expr *swap();
   Expr *primitiveType();
-  AttributeExpr *attribute(TokenType endGroupType);
-  UIAttListExpr *attributeList(TokenType endGroupType);
+  UIAttributeExpr *attribute(TokenType endGroupType);
+  UIDirectiveExpr *directive(TokenType endGroupType, UIDirectiveExpr *previous);
   Expr *grouping();
   Expr *grouping(TokenType endGroupType, const char *errorMessage);
   Expr *floatNumber();

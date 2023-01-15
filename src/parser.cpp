@@ -412,7 +412,7 @@ Expr *Parser::grouping() {
   return grouping(endGroupType, errorMessage);
 }
 
-AttributeExpr *Parser::attribute(TokenType endGroupType) {
+UIAttributeExpr *Parser::attribute(TokenType endGroupType) {
   consume(TOKEN_IDENTIFIER, "Expect attribute name");
   passSeparator();
   Token identifier = previous;
@@ -428,68 +428,40 @@ AttributeExpr *Parser::attribute(TokenType endGroupType) {
     delete oldHandler;
   }
 
-  return new AttributeExpr(identifier, handler);
+  return new UIAttributeExpr(identifier, handler);
 }
 
-UIAttListExpr *newNode(int attCount, AttributeExpr **attributes)
+UIDirectiveExpr *newNode(int attCount, UIAttributeExpr **attributes, UIDirectiveExpr *previous, UIDirectiveExpr *lastChild)
 {
-  UIBinaryExpr binExp;
-  
-  binExp._left = NULL;
-  binExp._right = NULL;
-  binExp._layoutIndex[0] = -1;
-  binExp._layoutIndex[1] = -1;
-  binExp._viewIndex = -1;
-
-  UIAttListExpr *node = new UIAttListExpr(binExp, attCount, attributes);
+  int indexes[2] = {-1, -1};
+  UIDirectiveExpr *node = new UIDirectiveExpr(attCount, attributes, previous, lastChild, -1, indexes);
 
   return (node);
 }
 
-UIAttListExpr *Parser::attributeList(TokenType endGroupType) {
+UIDirectiveExpr *Parser::directive(TokenType endGroupType, UIDirectiveExpr *previous) {
   int attCount = 0;
-  AttributeExpr **attList = NULL;
+  UIAttributeExpr **attributeList = NULL;
+  UIDirectiveExpr *lastChild = NULL;
 
   while (check(TOKEN_IDENTIFIER)) {
-    AttributeExpr *att = attribute(endGroupType);
+    UIAttributeExpr *att = attribute(endGroupType);
 
-    attList = RESIZE_ARRAY(AttributeExpr *, attList, attCount, attCount + 1);
-    attList[attCount++] = att;
+    attributeList = RESIZE_ARRAY(UIAttributeExpr *, attributeList, attCount, attCount + 1);
+    attributeList[attCount++] = att;
     passSeparator();
   }
-
-  UIAttListExpr *attListExpr = newNode(attCount, attList);
 
   while (check(TOKEN_LESS) && !check(TOKEN_EOF)) {
-    consume(TOKEN_LESS, "Expect '<' to start a child attribute list");
+    consume(TOKEN_LESS, "Expect '<' to start a child directive");
     passSeparator();
-
-    UIAttListExpr *child = attributeList(endGroupType);
-
-    if (child)
-      if (!attListExpr->binaryExpr._left)
-        attListExpr->binaryExpr._left = child;
-      else {
-        if (attListExpr->binaryExpr._right) {
-          UIBinaryExpr *subExpr = new UIBinaryExpr();
-
-          subExpr->_left = attListExpr->binaryExpr._left;
-          subExpr->_right = attListExpr->binaryExpr._right;
-          subExpr->_layoutIndex[0] = -1;
-          subExpr->_layoutIndex[1] = -1;
-          subExpr->_viewIndex = -1;
-          attListExpr->binaryExpr._left = subExpr;
-        }
-
-        attListExpr->binaryExpr._right = child;
-      }
-
+    lastChild = directive(endGroupType, lastChild);
     passSeparator();
-    consume(TOKEN_GREATER, "Expect '>' to end an attribute list");
+    consume(TOKEN_GREATER, "Expect '>' to end a directive");
     passSeparator();
   }
 
-  return attListExpr;
+  return newNode(attCount, attributeList, previous, lastChild);
 }
 
 Expr *Parser::grouping(TokenType endGroupType, const char *errorMessage) {
@@ -514,7 +486,7 @@ Expr *Parser::grouping(TokenType endGroupType, const char *errorMessage) {
     }
   }
 
-  Expr *ui = uiFlag ? attributeList(endGroupType) : NULL;
+  Expr *ui = uiFlag ? directive(endGroupType, NULL) : NULL;
 
   consume(endGroupType, errorMessage);
   bool wasStatementExpr = (statementExprs & (1 << scopeDepth)) != 0;
@@ -533,7 +505,7 @@ Expr *Parser::grouping(TokenType endGroupType, const char *errorMessage) {
   }
 
   scopeDepth--;
-  return exp != NULL ? exp : new GroupingExpr(previous, count, expList, 0, ui, NULL);
+  return exp != NULL ? exp : new GroupingExpr(previous, count, expList, 0, ui);
 }
 
 Expr *Parser::floatNumber() {
@@ -743,7 +715,7 @@ Expr *Parser::forStatement(TokenType endGroupType) {
 
     expList[0] = new UnaryExpr(buildToken(TOKEN_PRINT, "print", 5, -1), body);
     expList[1] = new UnaryExpr(buildToken(TOKEN_PRINT, "print", 5, -1), increment);
-    body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 2, expList, 0, NULL, NULL);
+    body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 2, expList, 0, NULL);
   }
 
   body = new BinaryExpr(condition, buildToken(TOKEN_WHILE, "while", 5, -1), body, OP_FALSE, false);
@@ -753,7 +725,7 @@ Expr *Parser::forStatement(TokenType endGroupType) {
 
     expList[0] = initializer;
     expList[1] = body;
-    body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 2, expList, 0, NULL, NULL);
+    body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 2, expList, 0, NULL);
   }
 
   return body;

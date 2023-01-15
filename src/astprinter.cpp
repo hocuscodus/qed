@@ -159,30 +159,27 @@ void ASTPrinter::visitAssignExpr(AssignExpr *expr) {
   printf(")");
 }
 
-void ASTPrinter::visitAttributeExpr(AttributeExpr *expr) {
+void ASTPrinter::visitUIAttributeExpr(UIAttributeExpr *expr) {
   printf("%.*s=(", expr->name.length, expr->name.start);
   if (expr->handler)
     accept<int>(expr->handler, 0);
   printf(")");
 }
 
-void ASTPrinter::visitUIBinaryExpr(UIBinaryExpr *expr) {
-  printf("(");
-  if (expr->_left)
-    accept<int>(expr->_left, 0);
-
-  if (expr->_right)
-    accept<int>(expr->_right, 0);
-  printf(")");
-}
-
-void ASTPrinter::visitUIAttListExpr(UIAttListExpr *expr) {
-  printf("AttList(");
+void ASTPrinter::visitUIDirectiveExpr(UIDirectiveExpr *expr) {
+  printf("(Directive(");
   for (int index = 0; index < expr->attCount; index++)
     accept<int>(expr->attributes[index], 0);
 
-  accept<int>(&expr->binaryExpr, 0);
-  printf(")");
+  printf(")(");
+
+  if (expr->previous)
+    accept<int>(expr->previous, 0);
+
+  if (expr->lastChild)
+    accept<int>(expr->lastChild, 0);
+
+  printf("))");
 }
 
 void ASTPrinter::visitBinaryExpr(BinaryExpr *expr) {

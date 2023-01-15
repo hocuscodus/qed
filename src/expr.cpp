@@ -18,30 +18,26 @@ void VariableExpr::accept(ExprVisitor *visitor) {
   return visitor->visitVariableExpr(this);
 }
 
-AttributeExpr::AttributeExpr(Token name, Expr* handler) : Expr(EXPR_ATTRIBUTE) {
+UIAttributeExpr::UIAttributeExpr(Token name, Expr* handler) : Expr(EXPR_UIATTRIBUTE) {
   this->name = name;
   this->handler = handler;
 }
 
-void AttributeExpr::accept(ExprVisitor *visitor) {
-  return visitor->visitAttributeExpr(this);
+void UIAttributeExpr::accept(ExprVisitor *visitor) {
+  return visitor->visitUIAttributeExpr(this);
 }
 
-UIBinaryExpr::UIBinaryExpr() : Expr(EXPR_UIBINARY) {
-}
-
-void UIBinaryExpr::accept(ExprVisitor *visitor) {
-  return visitor->visitUIBinaryExpr(this);
-}
-
-UIAttListExpr::UIAttListExpr(UIBinaryExpr binaryExpr, int attCount, AttributeExpr** attributes) : Expr(EXPR_UIATTLIST) {
-  this->binaryExpr = binaryExpr;
+UIDirectiveExpr::UIDirectiveExpr(int attCount, UIAttributeExpr** attributes, UIDirectiveExpr* previous, UIDirectiveExpr* lastChild, int viewIndex, int layoutIndexes[NUM_DIRS]) : Expr(EXPR_UIDIRECTIVE) {
   this->attCount = attCount;
   this->attributes = attributes;
+  this->previous = previous;
+  this->lastChild = lastChild;
+  this->viewIndex = viewIndex;
+  this->layoutIndexes[NUM_DIRS] = layoutIndexes[NUM_DIRS];
 }
 
-void UIAttListExpr::accept(ExprVisitor *visitor) {
-  return visitor->visitUIAttListExpr(this);
+void UIDirectiveExpr::accept(ExprVisitor *visitor) {
+  return visitor->visitUIDirectiveExpr(this);
 }
 
 AssignExpr::AssignExpr(VariableExpr* varExp, Token op, Expr* value) : Expr(EXPR_ASSIGN) {
@@ -66,13 +62,12 @@ void BinaryExpr::accept(ExprVisitor *visitor) {
   return visitor->visitBinaryExpr(this);
 }
 
-GroupingExpr::GroupingExpr(Token name, int count, Expr** expressions, int popLevels, Expr* ui, ChildAttrSets* attrSets) : Expr(EXPR_GROUPING) {
+GroupingExpr::GroupingExpr(Token name, int count, Expr** expressions, int popLevels, Expr* ui) : Expr(EXPR_GROUPING) {
   this->name = name;
   this->count = count;
   this->expressions = expressions;
   this->popLevels = popLevels;
   this->ui = ui;
-  this->attrSets = attrSets;
 }
 
 void GroupingExpr::accept(ExprVisitor *visitor) {

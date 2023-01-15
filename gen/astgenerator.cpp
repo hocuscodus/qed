@@ -126,7 +126,6 @@ public:
     fprintf(file, "#include \"chunk.hpp\"\n\n");
     fprintf(file, "#include \"object.hpp\"\n");
     fprintf(file, "#include \"scanner.hpp\"\n\n");
-    fprintf(file, "struct ChildAttrSets;\n\n");
 
     // The enum types for AST classes.
     fprintf(file, "typedef enum {\n");
@@ -286,12 +285,11 @@ int main(int argc, const char *argv[]) {
 
   const char *array1[] = {
     "Variable    : Token name, int8_t index, bool upvalueFlag",
-    "Attribute   : Token name, Expr* handler, int _index",
-    "UIBinary    : Expr* _left, Expr* _right, int _viewIndex, int _layoutIndex[NUM_DIRS]",
-    "UIAttList   : UIBinaryExpr binaryExpr, int attCount, AttributeExpr** attributes",
+    "UIAttribute : Token name, Expr* handler, int _index",
+    "UIDirective : int attCount, UIAttributeExpr** attributes, UIDirectiveExpr* previous, UIDirectiveExpr* lastChild, int viewIndex, int layoutIndexes[NUM_DIRS]",
     "Assign      : VariableExpr* varExp, Token op, Expr* value",
     "Binary      : Expr* left, Token op, Expr* right, OpCode opCode, bool notFlag",
-    "Grouping    : Token name, int count, Expr** expressions, int popLevels, Expr* ui, ChildAttrSets* attrSets",
+    "Grouping    : Token name, int count, Expr** expressions, int popLevels, Expr* ui",
     "Call        : Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler",
     "Declaration : Type type, Token name, Expr* initExpr",
     "Function    : Type type, Token name, int count, Expr** params, Expr* body, ObjFunction* function",

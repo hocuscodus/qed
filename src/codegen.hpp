@@ -28,9 +28,8 @@ public:
   CodeGenerator(Parser &parser, ObjFunction *function);
 
   void visitAssignExpr(AssignExpr *expr);
-  void visitAttributeExpr(AttributeExpr *expr);
-  void visitUIBinaryExpr(UIBinaryExpr *expr);
-  void visitUIAttListExpr(UIAttListExpr *expr);
+  void visitUIAttributeExpr(UIAttributeExpr *expr);
+  void visitUIDirectiveExpr(UIDirectiveExpr *expr);
   void visitBinaryExpr(BinaryExpr *expr);
   void visitCallExpr(CallExpr *expr);
   void visitDeclarationExpr(DeclarationExpr *expr);

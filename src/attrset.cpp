@@ -90,7 +90,7 @@ Attr::Attr(int flags, void *returnType, int localIndex) {
   this->localIndex = localIndex;
 }
 /*
-AttrSet::AttrSet(int *offset, Point &zoneOffsets, std::array<long, NUM_DIRS> &arrayDirFlags, ValueStack<ValueStackElement> &valueStack, AttributeListExpr *listExpr, int parentRefreshFlags, ObjFunction *function) {
+AttrSet::AttrSet(int *offset, Point &zoneOffsets, std::array<long, NUM_DIRS> &arrayDirFlags, ValueStack<ValueStackElement> &valueStack, UIDirectiveExpr *listExpr, int parentRefreshFlags, ObjFunction *function) {
 //  / *arrayDirs = * /inputStream.read();
   int childDir = 0;//inputStream.read();
   int numAttrs = listExpr->attCount;
@@ -499,7 +499,7 @@ class AttrSet {
 	}*/
 }
 #endif/*
-ChildAttrSets::ChildAttrSets(int *offset, Point &zoneOffsets, int childDir, std::array<long, NUM_DIRS> &arrayDirFlags, ValueStack<ValueStackElement> &valueStack, AttributeListExpr *listExpr, int parentRefreshFlags, ObjFunction *function) : std::vector<AttrSet *>() {
+ChildAttrSets::ChildAttrSets(int *offset, Point &zoneOffsets, int childDir, std::array<long, NUM_DIRS> &arrayDirFlags, ValueStack<ValueStackElement> &valueStack, UIDirectiveExpr *listExpr, int parentRefreshFlags, ObjFunction *function) : std::vector<AttrSet *>() {
   Point maxZoneOffsets;
   bool zBoolFlags[NUM_DIRS]{true};
 

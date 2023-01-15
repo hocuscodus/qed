@@ -10,13 +10,10 @@
 #include "object.hpp"
 #include "scanner.hpp"
 
-struct ChildAttrSets;
-
 typedef enum {
   EXPR_VARIABLE,
-  EXPR_ATTRIBUTE,
-  EXPR_UIBINARY,
-  EXPR_UIATTLIST,
+  EXPR_UIATTRIBUTE,
+  EXPR_UIDIRECTIVE,
   EXPR_ASSIGN,
   EXPR_BINARY,
   EXPR_GROUPING,
@@ -50,9 +47,8 @@ struct Expr {
 };
 
 struct VariableExpr;
-struct AttributeExpr;
-struct UIBinaryExpr;
-struct UIAttListExpr;
+struct UIAttributeExpr;
+struct UIDirectiveExpr;
 struct AssignExpr;
 struct BinaryExpr;
 struct GroupingExpr;
@@ -91,9 +87,8 @@ struct ExprVisitor {
   }
 
   virtual void visitVariableExpr(VariableExpr *expr) = 0;
-  virtual void visitAttributeExpr(AttributeExpr *expr) = 0;
-  virtual void visitUIBinaryExpr(UIBinaryExpr *expr) = 0;
-  virtual void visitUIAttListExpr(UIAttListExpr *expr) = 0;
+  virtual void visitUIAttributeExpr(UIAttributeExpr *expr) = 0;
+  virtual void visitUIDirectiveExpr(UIDirectiveExpr *expr) = 0;
   virtual void visitAssignExpr(AssignExpr *expr) = 0;
   virtual void visitBinaryExpr(BinaryExpr *expr) = 0;
   virtual void visitGroupingExpr(GroupingExpr *expr) = 0;
@@ -125,31 +120,24 @@ struct VariableExpr : public Expr {
   void accept(ExprVisitor *visitor);
 };
 
-struct AttributeExpr : public Expr {
+struct UIAttributeExpr : public Expr {
   Token name;
   Expr* handler;
   int _index;
 
-  AttributeExpr(Token name, Expr* handler);
+  UIAttributeExpr(Token name, Expr* handler);
   void accept(ExprVisitor *visitor);
 };
 
-struct UIBinaryExpr : public Expr {
-  Expr* _left;
-  Expr* _right;
-  int _viewIndex;
-  int _layoutIndex[NUM_DIRS];
-
-  UIBinaryExpr();
-  void accept(ExprVisitor *visitor);
-};
-
-struct UIAttListExpr : public Expr {
-  UIBinaryExpr binaryExpr;
+struct UIDirectiveExpr : public Expr {
   int attCount;
-  AttributeExpr** attributes;
+  UIAttributeExpr** attributes;
+  UIDirectiveExpr* previous;
+  UIDirectiveExpr* lastChild;
+  int viewIndex;
+  int layoutIndexes[NUM_DIRS];
 
-  UIAttListExpr(UIBinaryExpr binaryExpr, int attCount, AttributeExpr** attributes);
+  UIDirectiveExpr(int attCount, UIAttributeExpr** attributes, UIDirectiveExpr* previous, UIDirectiveExpr* lastChild, int viewIndex, int layoutIndexes[NUM_DIRS]);
   void accept(ExprVisitor *visitor);
 };
 
@@ -179,9 +167,8 @@ struct GroupingExpr : public Expr {
   Expr** expressions;
   int popLevels;
   Expr* ui;
-  ChildAttrSets* attrSets;
 
-  GroupingExpr(Token name, int count, Expr** expressions, int popLevels, Expr* ui, ChildAttrSets* attrSets);
+  GroupingExpr(Token name, int count, Expr** expressions, int popLevels, Expr* ui);
   void accept(ExprVisitor *visitor);
 };
 
