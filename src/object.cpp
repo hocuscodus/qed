@@ -802,8 +802,10 @@ Point ObjInstance::recalculateLayout() {
     instanceThread->call(layoutClosure, 0);
     instanceThread->run();
 
+    long size = AS_INT(instanceThread->fields[layoutClosure->function->fieldCount - 2]);
+
     for (int dir = 0; dir < NUM_DIRS; dir++)
-      point[dir] = std::max(point[dir], dir ? 34 : 18);
+      point[dir] = std::max(point[dir], (int) (dir ? size & 0xFFFFFFFF : size >> 32));
   }
 
   return point;

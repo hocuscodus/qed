@@ -497,7 +497,7 @@ void Resolver::visitBinaryExpr(BinaryExpr *expr)
   }
 }
 
-static Expr *generateUIFunction(const char *name, char *args, Expr *uiExpr, int count, int restLength, Expr **rest) {
+static Expr *generateUIFunction(const char *type, const char *name, char *args, Expr *uiExpr, int count, int restLength, Expr **rest) {
     VariableExpr *nameExpr = new VariableExpr(buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1), -1, false);
     Expr **bodyExprs = new Expr *[count + restLength];
     Expr **functionExprs = new Expr *[3];
@@ -525,7 +525,7 @@ static Expr *generateUIFunction(const char *name, char *args, Expr *uiExpr, int 
     for (int index = 0; index < restLength; index++)
       bodyExprs[count + index] = rest[index];
 
-    functionExprs[0] = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "void", 4, -1), VAL_HANDLER, false);
+    functionExprs[0] = new VariableExpr(buildToken(TOKEN_IDENTIFIER, type, strlen(type), -1), VAL_HANDLER, false);
     functionExprs[1] = new CallExpr(nameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), nbParms, parms, false, NULL);
     functionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), count + restLength, bodyExprs, 0, NULL);
 
@@ -536,7 +536,7 @@ void Resolver::visitCallExpr(CallExpr *expr)
 {
   if (expr->newFlag && expr->handler != NULL)
   {
-    expr->handler = generateUIFunction("handler", NULL, expr->handler, 1, 0, NULL);
+    expr->handler = generateUIFunction("void", "handler", NULL, expr->handler, 1, 0, NULL);
     accept<int>(expr->handler);
     removeLocal();
   }
@@ -1178,6 +1178,13 @@ int aCount;
 std::stringstream s;
 std::stringstream *ss = &s;
 
+int nTabs = 0;
+
+static void insertTabs() {
+  for (int index = 0; index < nTabs; index++)
+    (*ss) << "  ";
+}
+
 void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
   TokenType type = expr->name.type;
   bool parenFlag = type == TOKEN_RIGHT_PAREN;
@@ -1191,7 +1198,16 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
     acceptSubExpr(subExpr);
 
     if (subExpr->type == EXPR_UIDIRECTIVE) {
+      UIDirectiveExpr *exprUI = (UIDirectiveExpr *) subExpr;
+
       if (uiParseCount) {
+        if (uiParseCount == 3) {
+          nTabs++;
+          insertTabs();
+          (*ss) << "var size = (l" << exprUI->layoutIndexes[0] << " << 32) | l" << exprUI->layoutIndexes[1] << "\n";
+          nTabs--;
+        }
+
         printf("CODE %d\n%s", uiParseCount, ss->str().c_str());
         expr = (GroupingExpr *) parse(ss->str().c_str(), index, 1, expr);
       }
@@ -1218,19 +1234,19 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
 
     if (exprUI->previous || exprUI->lastChild) {
       // Perform the UI AST magic
-      Expr *clickFunction = generateUIFunction("onEvent", "int pos0, int pos1", expr->ui, 1, 0, NULL);
-      Expr *paintFunction = generateUIFunction("paint", "int pos0, int pos1", expr->ui, 1, 0, NULL);
+      Expr *clickFunction = generateUIFunction("void", "onEvent", "int pos0, int pos1", expr->ui, 1, 0, NULL);
+      Expr *paintFunction = generateUIFunction("void", "paint", "int pos0, int pos1", expr->ui, 1, 0, NULL);
       Expr **uiFunctions = new Expr *[2];
 
       uiFunctions[0] = paintFunction;
       uiFunctions[1] = clickFunction;
 
-      Expr *layoutFunction = generateUIFunction("Layout", NULL, expr->ui, 3, 1, uiFunctions);
+      Expr *layoutFunction = generateUIFunction("void", "Layout", NULL, expr->ui, 3, 1, uiFunctions);
       Expr **layoutExprs = new Expr *[1];
 
       layoutExprs[0] = layoutFunction;
 
-      Expr *valueFunction = generateUIFunction("UI$", NULL, expr->ui, 1, 1, layoutExprs);
+      Expr *valueFunction = generateUIFunction("void", "UI$", NULL, expr->ui, 1, 1, layoutExprs);
 
       aCount = 1;
       accept<int>(valueFunction, 0);
@@ -1527,13 +1543,6 @@ void Resolver::recalcLayout(UIDirectiveExpr *expr) {
         break;
       }
   }
-}
-
-int nTabs = 0;
-
-static void insertTabs() {
-  for (int index = 0; index < nTabs; index++)
-    (*ss) << "  ";
 }
 
 static void insertPoint(const char *prefix) {/*
