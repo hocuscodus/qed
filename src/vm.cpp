@@ -448,7 +448,7 @@ bool VM::recalculate() {
 
     initDisplay();
 
-    instance->paint({0, 0});
+    instance->paint({0, 0}, totalSize);
   }
   return true;
 }

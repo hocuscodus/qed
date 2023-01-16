@@ -811,7 +811,7 @@ Point ObjInstance::recalculateLayout() {
   return point;
 }
 
-void ObjInstance::paint(Point pos) {
+void ObjInstance::paint(Point pos, Point size) {
   for (int ndx = 0; ndx < numValuesInstances; ndx++) {
     CoThread *layoutThread = uiLayoutInstances[ndx]->coThread;
     CallFrame &layoutFrame = layoutThread->frames[0];
@@ -824,7 +824,10 @@ void ObjInstance::paint(Point pos) {
     for (int dir = 0; dir < NUM_DIRS; dir++)
       *layoutThread->stackTop++ = INT_VAL(pos[dir]);
 
-    layoutThread->call(paintClosure, NUM_DIRS);
+    for (int dir = 0; dir < NUM_DIRS; dir++)
+      *layoutThread->stackTop++ = INT_VAL(size[dir]);
+
+    layoutThread->call(paintClosure, NUM_DIRS * 2);
     layoutThread->run();
     layoutThread->onReturn(value);
   }

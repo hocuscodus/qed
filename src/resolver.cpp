@@ -1235,7 +1235,7 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
     if (exprUI->previous || exprUI->lastChild) {
       // Perform the UI AST magic
       Expr *clickFunction = generateUIFunction("void", "onEvent", "int pos0, int pos1", expr->ui, 1, 0, NULL);
-      Expr *paintFunction = generateUIFunction("void", "paint", "int pos0, int pos1", expr->ui, 1, 0, NULL);
+      Expr *paintFunction = generateUIFunction("void", "paint", "int pos0, int pos1, int size0, int size1", expr->ui, 1, 0, NULL);
       Expr **uiFunctions = new Expr *[2];
 
       uiFunctions[0] = paintFunction;
@@ -1568,18 +1568,33 @@ void Resolver::paint(UIDirectiveExpr *expr) {
     if (previous->viewIndex != -1)
       break;
 
-  if (previous) {
-    insertTabs();
-    (*ss) << "{\n";
-    nTabs++;
+  insertTabs();
+  (*ss) << "{\n";
+  nTabs++;
 
-    if (nTabs > 0) {
+  if (nTabs > 1)
+    if (previous) {
       insertTabs();
       (*ss) << "int pos0 = pos0 + l" << previous->layoutIndexes[0] << "\n";
       insertTabs();
       (*ss) << "int pos1 = pos1 + l" << previous->layoutIndexes[1] << "\n";
+      insertTabs();
+      (*ss) << "int size0 = l" << expr->layoutIndexes[0] << " - l" << previous->layoutIndexes[0] << "\n";
+      insertTabs();
+      (*ss) << "int size1 = l" << expr->layoutIndexes[1] << " - l" << previous->layoutIndexes[1] << "\n";
     }
-  }
+    else {
+      insertTabs();
+      if (expr->layoutIndexes[0])
+        (*ss) << "int size0 = l" << expr->layoutIndexes[0] << "\n";
+      else
+  ;//      (*ss) << "int size0 = 0\n";
+      insertTabs();
+      if (expr->layoutIndexes[1])
+        (*ss) << "int size1 = l" << expr->layoutIndexes[1] << "\n";
+      else
+  ;//      (*ss) << "int size1 = 0\n";
+    }
 
   if (expr->lastChild)
     accept<int>(expr->lastChild);
@@ -1605,7 +1620,11 @@ void Resolver::paint(UIDirectiveExpr *expr) {
 
           case OBJ_FUNCTION:
             insertTabs();
-            (*ss) << ((ObjFunction *) outType.objType)->name->chars << "()\n";
+            (*ss) << ((ObjFunction *) outType.objType)->name->chars << "(";
+            insertPoint("pos");
+            (*ss) << ", ";
+            insertPoint("size");
+            (*ss) << ")\n";
             break;
         }
 
@@ -1613,6 +1632,8 @@ void Resolver::paint(UIDirectiveExpr *expr) {
           insertTabs();
           (*ss) << callee << "(" << name << ", ";
           insertPoint("pos");
+          (*ss) << ", ";
+          insertPoint("size");
           (*ss) << ")\n";
         }
       }
@@ -1620,11 +1641,9 @@ void Resolver::paint(UIDirectiveExpr *expr) {
         parser.error("Out value having an illegal type");
     }
 
-  if (previous) {
-    --nTabs;
-    insertTabs();
-    (*ss) << "}\n";
-  }
+  --nTabs;
+  insertTabs();
+  (*ss) << "}\n";
 
   for (int index = 0; index < expr->attCount; index++)
     if (expr->attributes[index]->_index != -1)

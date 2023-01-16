@@ -265,7 +265,7 @@ struct ObjInstance {
   void initValues();
   void uninitValues();
   Point recalculateLayout();
-  void paint(Point pos);
+  void paint(Point pos, Point size);
   void onEvent(Point pos);
 };
 

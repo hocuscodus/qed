@@ -73,11 +73,31 @@ QNI_FN(println) {
 }
 
 QNI_FN(rect) {
+  long posP = args[0].as.integer;
+  long sizeP = args[1].as.integer;
+  Point pos = {posP >> 32, posP & 0xFFFFFFFF};
+  Point size = {sizeP >> 32, sizeP & 0xFFFFFFFF};
+  SDL_Rect rectangle;
+
+  rectangle.x = pos[0];
+  rectangle.y = pos[1];
+  rectangle.w = size[0];
+  rectangle.h = size[1];
+
+	SDL_SetRenderDrawColor(rend2, 0, 0, 0xFF, 0xFF);
+  SDL_RenderFillRect(rend2, &rectangle);
   return VOID_VAL;
 }
 
 QNI_FN(oval) {
-  filledEllipseRGBA(rend2, 10, 10, 100, 50,
+  long posP = args[0].as.integer;
+  long sizeP = args[1].as.integer;
+  Point pos = {posP >> 32, posP & 0xFFFFFFFF};
+  Point size = {sizeP >> 32, sizeP & 0xFFFFFFFF};
+  int rx = size[0] >> 1;
+  int ry = size[1] >> 1;
+
+  filledEllipseRGBA(rend2, pos[0] + rx, pos[1] + ry, rx, ry,
                    /* RGBA: green */ 0x00, 0x80, 0x00, 0xFF);
   return VOID_VAL;
 }
@@ -186,15 +206,17 @@ QNI_FN(getInstanceSize) {
 QNI_FN(displayText) {
   const char *text = ((ObjString *) args[0].as.obj)->chars;
   long posP = args[1].as.integer;
+  long sizeP = args[2].as.integer;
   Point pos = {posP >> 32, posP & 0xFFFFFFFF};
+  Point size = {sizeP >> 32, sizeP & 0xFFFFFFFF};
   SDL_Surface *textSurface = TTF_RenderText_Blended(getFont(), text, {255, 255, 255, 0});
   SDL_Texture *textTexture = SDL_CreateTextureFromSurface(rend2, textSurface);
   SDL_Rect rectangle;
 
   rectangle.x = pos[0];
   rectangle.y = pos[1];
-  rectangle.w = textSurface->w;
-  rectangle.h = textSurface->h;
+  rectangle.w = size[0];
+  rectangle.h = size[1];
   SDL_RenderCopy(rend2, textTexture, NULL, &rectangle);
   SDL_FreeSurface(textSurface);
   SDL_DestroyTexture(textTexture);
@@ -205,9 +227,11 @@ QNI_FN(displayText) {
 QNI_FN(displayInstance) {
   ObjInstance *instance = (ObjInstance *) args[0].as.obj;
   long posP = args[1].as.integer;
+  long sizeP = args[2].as.integer;
   Point pos = {posP >> 32, posP & 0xFFFFFFFF};
+  Point size = {sizeP >> 32, sizeP & 0xFFFFFFFF};
 
-  instance->paint(pos);
+  instance->paint(pos, size);
   return VOID_VAL;
 }
 
