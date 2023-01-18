@@ -785,7 +785,7 @@ void ObjInstance::uninitValues() {
 }
 
 Point ObjInstance::recalculateLayout() {
-  Point point = {0, 0};
+  Point size = {0, 0};
   uiLayoutInstances = new ObjInstance *[numValuesInstances];
 
   for (int ndx = 0; ndx < numValuesInstances; ndx++) {
@@ -802,13 +802,13 @@ Point ObjInstance::recalculateLayout() {
     instanceThread->call(layoutClosure, 0);
     instanceThread->run();
 
-    long size = AS_INT(instanceThread->fields[layoutClosure->function->fieldCount - 2]);
+    long frameSize = AS_INT(instanceThread->fields[layoutClosure->function->fieldCount - 2]);
 
     for (int dir = 0; dir < NUM_DIRS; dir++)
-      point[dir] = std::max(point[dir], (int) (dir ? size & 0xFFFFFFFF : size >> 32));
+      size[dir] = std::max(size[dir], (int) (dir ? frameSize & 0xFFFFFFFF : frameSize >> 32));
   }
 
-  return point;
+  return size;
 }
 
 void ObjInstance::paint(Point pos, Point size) {

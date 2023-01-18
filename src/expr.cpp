@@ -27,13 +27,12 @@ void UIAttributeExpr::accept(ExprVisitor *visitor) {
   return visitor->visitUIAttributeExpr(this);
 }
 
-UIDirectiveExpr::UIDirectiveExpr(int attCount, UIAttributeExpr** attributes, UIDirectiveExpr* previous, UIDirectiveExpr* lastChild, int viewIndex, int layoutIndexes[NUM_DIRS]) : Expr(EXPR_UIDIRECTIVE) {
+UIDirectiveExpr::UIDirectiveExpr(int attCount, UIAttributeExpr** attributes, UIDirectiveExpr* previous, UIDirectiveExpr* lastChild, int viewIndex) : Expr(EXPR_UIDIRECTIVE) {
   this->attCount = attCount;
   this->attributes = attributes;
   this->previous = previous;
   this->lastChild = lastChild;
   this->viewIndex = viewIndex;
-  this->layoutIndexes[NUM_DIRS] = layoutIndexes[NUM_DIRS];
 }
 
 void UIDirectiveExpr::accept(ExprVisitor *visitor) {

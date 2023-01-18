@@ -433,8 +433,10 @@ UIAttributeExpr *Parser::attribute(TokenType endGroupType) {
 
 UIDirectiveExpr *newNode(int attCount, UIAttributeExpr **attributes, UIDirectiveExpr *previous, UIDirectiveExpr *lastChild)
 {
-  int indexes[2] = {-1, -1};
-  UIDirectiveExpr *node = new UIDirectiveExpr(attCount, attributes, previous, lastChild, -1, indexes);
+  UIDirectiveExpr *node = new UIDirectiveExpr(attCount, attributes, previous, lastChild, -1);
+
+  for (int dir = 0; dir < NUM_DIRS; dir++)
+    node->_layoutIndexes[dir] = -1;
 
   return (node);
 }
