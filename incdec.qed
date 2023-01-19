@@ -10,7 +10,7 @@ var decButton = new Button("-") -> count = count - 1//count--
 var incButton = new Button("+") -> count = count + 1//count++
 
 <out: oval; color: (count >= 0 ? COLOR_GREEN : 0) | (count <= 0 ? COLOR_RED : 0); height: 80;>
-<cdir: WIDTH;// <-<_<|<\  .-|+
+<_
   <out: decButton;>
   <out: count; width: 100; fontSize: 50; alignX: 50; alignY: 50; color: 0x80000000;>
   <out: incButton;>

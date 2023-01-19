@@ -135,6 +135,9 @@ Token Scanner::scanToken() {
     case '/':
       return makeToken(match('=') ? TOKEN_SLASH_EQUAL : TOKEN_SLASH);
 
+    case '\\':
+      return makeToken(TOKEN_BACKSLASH);
+
     case '*':
       return makeToken(match('=') ? TOKEN_STAR_EQUAL : TOKEN_STAR);
 
@@ -376,6 +379,10 @@ TokenType Scanner::identifierType() {
         }
       break;
     case 'w': return checkKeyword(1, 4, "hile", TOKEN_WHILE);
+    case '_':
+      if (current - start == 1)
+        return TOKEN_UNDERLINE;
+      break;
   }
 
   return TOKEN_IDENTIFIER;

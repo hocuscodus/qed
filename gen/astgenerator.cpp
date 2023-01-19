@@ -286,7 +286,7 @@ int main(int argc, const char *argv[]) {
   const char *array1[] = {
     "Variable    : Token name, int8_t index, bool upvalueFlag",
     "UIAttribute : Token name, Expr* handler, int _index",
-    "UIDirective : int attCount, UIAttributeExpr** attributes, UIDirectiveExpr* previous, UIDirectiveExpr* lastChild, int viewIndex, int _layoutIndexes[NUM_DIRS]",
+    "UIDirective : int childDir, int attCount, UIAttributeExpr** attributes, UIDirectiveExpr* previous, UIDirectiveExpr* lastChild, int viewIndex, int _layoutIndexes[NUM_DIRS]",
     "Assign      : VariableExpr* varExp, Token op, Expr* value",
     "Binary      : Expr* left, Token op, Expr* right, OpCode opCode, bool notFlag",
     "Grouping    : Token name, int count, Expr** expressions, int popLevels, Expr* ui",

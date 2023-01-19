@@ -431,9 +431,9 @@ UIAttributeExpr *Parser::attribute(TokenType endGroupType) {
   return new UIAttributeExpr(identifier, handler);
 }
 
-UIDirectiveExpr *newNode(int attCount, UIAttributeExpr **attributes, UIDirectiveExpr *previous, UIDirectiveExpr *lastChild)
+UIDirectiveExpr *newNode(int childDir, int attCount, UIAttributeExpr **attributes, UIDirectiveExpr *previous, UIDirectiveExpr *lastChild)
 {
-  UIDirectiveExpr *node = new UIDirectiveExpr(attCount, attributes, previous, lastChild, -1);
+  UIDirectiveExpr *node = new UIDirectiveExpr(childDir, attCount, attributes, previous, lastChild, -1);
 
   for (int dir = 0; dir < NUM_DIRS; dir++)
     node->_layoutIndexes[dir] = -1;
@@ -445,6 +445,19 @@ UIDirectiveExpr *Parser::directive(TokenType endGroupType, UIDirectiveExpr *prev
   int attCount = 0;
   UIAttributeExpr **attributeList = NULL;
   UIDirectiveExpr *lastChild = NULL;
+  int dir = 0;
+
+  if (!match(TOKEN_DOT))
+    if (match(TOKEN_UNDERLINE))
+      dir = 1;
+    else
+      if (match(TOKEN_OR))
+        dir = 2;
+      else
+        if (match(TOKEN_BACKSLASH))
+          dir = 3;
+
+  passSeparator();
 
   while (check(TOKEN_IDENTIFIER)) {
     UIAttributeExpr *att = attribute(endGroupType);
@@ -463,7 +476,7 @@ UIDirectiveExpr *Parser::directive(TokenType endGroupType, UIDirectiveExpr *prev
     passSeparator();
   }
 
-  return newNode(attCount, attributeList, previous, lastChild);
+  return newNode(dir, attCount, attributeList, previous, lastChild);
 }
 
 Expr *Parser::grouping(TokenType endGroupType, const char *errorMessage) {

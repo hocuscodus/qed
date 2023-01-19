@@ -130,6 +130,7 @@ struct UIAttributeExpr : public Expr {
 };
 
 struct UIDirectiveExpr : public Expr {
+  int childDir;
   int attCount;
   UIAttributeExpr** attributes;
   UIDirectiveExpr* previous;
@@ -137,7 +138,7 @@ struct UIDirectiveExpr : public Expr {
   int viewIndex;
   int _layoutIndexes[NUM_DIRS];
 
-  UIDirectiveExpr(int attCount, UIAttributeExpr** attributes, UIDirectiveExpr* previous, UIDirectiveExpr* lastChild, int viewIndex);
+  UIDirectiveExpr(int childDir, int attCount, UIAttributeExpr** attributes, UIDirectiveExpr* previous, UIDirectiveExpr* lastChild, int viewIndex);
   void accept(ExprVisitor *visitor);
 };
 
