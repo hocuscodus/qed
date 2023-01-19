@@ -306,7 +306,7 @@ Expr *Parser::dot(Expr *left) {
 }
 
 Expr *Parser::call(Expr *left) {
-  TokenType tokens[] = {TOKEN_RIGHT_PAREN, TOKEN_COMMA, TOKEN_EOF};
+  TokenType tokens[] = {TOKEN_RIGHT_PAREN, TOKEN_COMMA, TOKEN_ELSE, TOKEN_EOF};
   uint8_t argCount = 0;
   Expr **expList = NULL;
   Expr *handler = NULL;
@@ -579,7 +579,7 @@ bool identifiersEqual(Token *a, Token *b) {
 
 Expr *Parser::declareVariable(Type &type, TokenType endGroupType) {
   Token name = previous;
-  TokenType tokens[] = {TOKEN_SEPARATOR, endGroupType, TOKEN_EOF};
+  TokenType tokens[] = {TOKEN_SEPARATOR, endGroupType, TOKEN_ELSE, TOKEN_EOF};
   Expr *expr = match(TOKEN_EQUAL) ? expression(tokens) : NULL;
 
   return new DeclarationExpr(type, name, expr);
@@ -682,10 +682,10 @@ Expr *Parser::varDeclaration(TokenType endGroupType) {
 }
 
 Expr *Parser::expressionStatement(TokenType endGroupType) {
-  TokenType tokens[] = {TOKEN_SEPARATOR, endGroupType, TOKEN_EOF};
+  TokenType tokens[] = {TOKEN_SEPARATOR, endGroupType, TOKEN_ELSE, TOKEN_EOF};
   Expr *exp = expression(tokens);
 
-  if (!check(endGroupType))
+  if (!check(endGroupType) && !check(TOKEN_ELSE))
     consume(TOKEN_SEPARATOR, "Expect ';' or newline after expression.");
 
   statementExprs |= 1 << scopeDepth;
@@ -700,12 +700,12 @@ Expr *Parser::forStatement(TokenType endGroupType) {
   if (!match(TOKEN_SEPARATOR))
     initializer = match(TOKEN_VAR) ? varDeclaration(endGroupType) : expressionStatement(endGroupType);
 
-  TokenType tokens[] = {TOKEN_SEPARATOR, TOKEN_EOF};
+  TokenType tokens[] = {TOKEN_SEPARATOR, TOKEN_ELSE, TOKEN_EOF};
   Expr *condition = check(TOKEN_SEPARATOR) ? createBooleanExpr(true) : expression(tokens);
 
   consume(TOKEN_SEPARATOR, "Expect ';' or newline after loop condition.");
 
-  TokenType tokens2[] = {TOKEN_RIGHT_PAREN, TOKEN_SEPARATOR, TOKEN_EOF};
+  TokenType tokens2[] = {TOKEN_RIGHT_PAREN, TOKEN_SEPARATOR, TOKEN_ELSE, TOKEN_EOF};
   Expr *increment = check(TOKEN_RIGHT_PAREN) ? NULL : expression(tokens2);
 
   consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
@@ -738,7 +738,7 @@ Expr *Parser::ifStatement(TokenType endGroupType) {
 
   consume(TOKEN_LEFT_PAREN, "Expect '(' after 'if'.");
 
-  TokenType tokens[] = {TOKEN_RIGHT_PAREN, TOKEN_EOF};
+  TokenType tokens[] = {TOKEN_RIGHT_PAREN, TOKEN_ELSE, TOKEN_EOF};
   Expr *condExp = expression(tokens);
 
   consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition."); 
@@ -754,7 +754,7 @@ Expr *Parser::whileStatement(TokenType endGroupType) {
 
   consume(TOKEN_LEFT_PAREN, "Expect '(' after 'while'.");
 
-  TokenType tokens[] = {TOKEN_RIGHT_PAREN, TOKEN_EOF};
+  TokenType tokens[] = {TOKEN_RIGHT_PAREN, TOKEN_ELSE, TOKEN_EOF};
   Expr *exp = expression(tokens);
 
   consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
@@ -779,7 +779,7 @@ Expr *Parser::declaration(TokenType endGroupType) {
 }
 
 Expr *Parser::printStatement(TokenType endGroupType) {
-  TokenType tokens[] = {TOKEN_SEPARATOR, endGroupType, TOKEN_EOF};
+  TokenType tokens[] = {TOKEN_SEPARATOR, endGroupType, TOKEN_ELSE, TOKEN_EOF};
   Expr *value = expression(tokens);
 
   if (!check(endGroupType))
@@ -789,7 +789,7 @@ Expr *Parser::printStatement(TokenType endGroupType) {
 }
 
 Expr *Parser::returnStatement(TokenType endGroupType) {
-  TokenType tokens[] = {TOKEN_SEPARATOR, endGroupType, TOKEN_EOF};
+  TokenType tokens[] = {TOKEN_SEPARATOR, endGroupType, TOKEN_ELSE, TOKEN_EOF};
   Token keyword = previous;
   Expr *value = NULL;
 

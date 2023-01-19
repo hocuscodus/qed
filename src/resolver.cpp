@@ -1241,7 +1241,7 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
       uiFunctions[0] = paintFunction;
       uiFunctions[1] = clickFunction;
 
-      Expr *layoutFunction = generateUIFunction("void", "Layout", NULL, expr->ui, 3, 1, uiFunctions);
+      Expr *layoutFunction = generateUIFunction("void", "Layout", NULL, expr->ui, 3, 2, uiFunctions);
       Expr **layoutExprs = new Expr *[1];
 
       layoutExprs[0] = layoutFunction;
@@ -1475,8 +1475,10 @@ void Resolver::pushAreas(UIDirectiveExpr *expr) {
     accept<int>(expr->previous);
 
   int oldOutAttrIndex = outAttrIndex;
+  int newOutAttrIndex = findAttrIndex(expr, "out");
 
-  outAttrIndex = findAttrIndex(expr, "out");
+  if (newOutAttrIndex != -1)
+    outAttrIndex = newOutAttrIndex;
 
   if (expr->lastChild) {
     accept<int>(expr->lastChild);
@@ -1566,6 +1568,12 @@ void Resolver::paint(UIDirectiveExpr *expr) {
 
   nTabs++;
 
+  int oldOutAttrIndex = outAttrIndex;
+  int newOutAttrIndex = findAttrIndex(expr, "out");
+
+  if (newOutAttrIndex != -1)
+    outAttrIndex = newOutAttrIndex;
+
   if (nTabs > 1)
     if (expr->viewIndex == -1) {
       // insertTabs();
@@ -1597,10 +1605,6 @@ void Resolver::paint(UIDirectiveExpr *expr) {
         (*ss) << "int size1 = l" << expr->_layoutIndexes[1] << "\n";
       }
     }
-
-  int oldOutAttrIndex = outAttrIndex;
-
-  outAttrIndex = findAttrIndex(expr, "out");
 
   if (expr->lastChild)
     accept<int>(expr->lastChild);
@@ -1643,11 +1647,11 @@ void Resolver::paint(UIDirectiveExpr *expr) {
       parser.error("Out value having an illegal type");
   }
 
-  outAttrIndex = oldOutAttrIndex;
-
   for (int index = 0; index < expr->attCount; index++)
     if (expr->attributes[index]->_index != -1)
 ;//      valueStack.pop(expr->attributes[index]->name.getString());
+
+  outAttrIndex = oldOutAttrIndex;
 
   --nTabs;
 
@@ -1658,28 +1662,59 @@ void Resolver::paint(UIDirectiveExpr *expr) {
 }
 
 void Resolver::onEvent(UIDirectiveExpr *expr) {
-  if (expr->previous)
-    accept<int>(expr->previous);
+  if (expr->viewIndex == -1) {
+    if (expr->previous)
+      accept<int>(expr->previous);
+    // insertTabs();
+    // (*ss) << "int size0 = 0\n";
+    // insertTabs();
+    // (*ss) << "int size1 = 0\n";
+  }
+  else {
+    UIDirectiveExpr *previous = expr->previous;
 
-  int oldOutAttrIndex = outAttrIndex;
+    for (; previous; previous = previous->previous)
+      if (previous->viewIndex != -1)
+        break;
 
-  outAttrIndex = findAttrIndex(expr, "out");
+    if (previous) {
+      insertTabs();
+      (*ss) << "if (pos0 >= l" << previous->_layoutIndexes[0] << " && pos1 >= l" << previous->_layoutIndexes[1] << ") {\n";
+      nTabs++;
+      insertTabs();
+      (*ss) << "pos0 = pos0 - l" << previous->_layoutIndexes[0] << "\n";
+      insertTabs();
+      (*ss) << "pos1 = pos1 - l" << previous->_layoutIndexes[1] << "\n\n";
+      insertTabs();
+      (*ss) << "if (pos0 < l" << expr->_layoutIndexes[0] << " - l" << previous->_layoutIndexes[0];
+      (*ss) << " && pos1 < l" << expr->_layoutIndexes[1] << " - l" << previous->_layoutIndexes[1] << ") {\n";
+    }
+    else {
+      insertTabs();
+      (*ss) << "if (pos0 >= 0 && pos1 >= 0) {\n";
+      nTabs++;
+      insertTabs();
+      (*ss) << "if (pos0 < l" << expr->_layoutIndexes[0] << " && pos1 < l" << expr->_layoutIndexes[1] << ") {\n";
+    }
 
-  UIDirectiveExpr *previous;
+    nTabs++;
 
-  for (previous = expr->previous; previous; previous = previous->previous)
-    if (previous->viewIndex != -1)
-      break;
+    int oldOutAttrIndex = outAttrIndex;
+    int newOutAttrIndex = findAttrIndex(expr, "out");
 
-  if (!previous && outAttrIndex != -1) {
-    char name[20];
+    if (newOutAttrIndex != -1)
+      outAttrIndex = newOutAttrIndex;
 
-    sprintf(name, "v%d", outAttrIndex);
+    if (expr->lastChild)
+      accept<int>(expr->lastChild);
+    else {
+      char name[20];
 
-    Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
-    Type outType = current->enclosing->enclosing->locals[current->enclosing->enclosing->resolveLocal(&token)].type;
+      sprintf(name, "v%d", outAttrIndex);
 
-    if (outType.valueType == VAL_OBJ && outType.objType) {
+      Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
+      Type outType = current->enclosing->enclosing->locals[current->enclosing->enclosing->resolveLocal(&token)].type;
+
       switch (outType.objType->type) {
         case OBJ_COMPILER_INSTANCE:
           insertTabs();
@@ -1718,54 +1753,28 @@ void Resolver::onEvent(UIDirectiveExpr *expr) {
           break;
       }
     }
-    else
-      parser.error("Out value having an illegal type");
-  }
-  else {
-//    accept<int>(&expr);
-    int lastOffset = expr->previous->_layoutIndexes[0];
-    std::stringstream *oldSs = ss;
-    std::stringstream ss2;
 
-    ss = &ss2;
-    nTabs++;
-    accept<int>(expr, 0);
-    nTabs--;
-    ss = oldSs;
-    ss2 << std::flush;
+    for (int index = 0; index < expr->attCount; index++)
+      if (expr->attributes[index]->_index != -1)
+  ;//      valueStack.pop(expr->attributes[index]->name.getString());
 
-    if (ss2.rdbuf()->in_avail()) {
-      insertTabs();
-      (*ss) << "if (pos0 >= l" << lastOffset << ") {\n";
+    outAttrIndex = oldOutAttrIndex;
+
+    --nTabs;
+    insertTabs();
+    (*ss) << "}\n";
+    --nTabs;
+    insertTabs();
+
+    if (previous) {
+      (*ss) << "} else\n";
       nTabs++;
-      insertTabs();
-      (*ss) << "pos0 = pos0 - l" << lastOffset << "\n";
-      (*ss) << ss2.str();
+      accept<int>(previous);
       --nTabs;
-      insertTabs();
-      (*ss) << "}\n";
-      insertTabs();
-      (*ss) << "else\n";
-    }
-
-    if (expr->previous->type == EXPR_UIDIRECTIVE) {
-      insertTabs();
-      (*ss) << "if (pos0 >= 0) {\n";
-      nTabs++;
-      (*ss) << ss2.str();
-      --nTabs;
-      insertTabs();
-      (*ss) << "}\n";
     }
     else
-      accept<int>(expr->previous, 0);
+      (*ss) << "}\n";
   }
-
-  for (int index = 0; index < expr->attCount; index++)
-    if (expr->attributes[index]->_index != -1)
-;//      valueStack.pop(expr->attributes[index]->name.getString());
-
-  outAttrIndex = oldOutAttrIndex;
 }
 /*
 Expr *Parser::forStatement(TokenType endGroupType) {

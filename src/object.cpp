@@ -802,7 +802,7 @@ Point ObjInstance::recalculateLayout() {
     instanceThread->call(layoutClosure, 0);
     instanceThread->run();
 
-    long frameSize = AS_INT(instanceThread->fields[layoutClosure->function->fieldCount - 2]);
+    long frameSize = AS_INT(instanceThread->fields[layoutClosure->function->fieldCount - 3]);
 
     for (int dir = 0; dir < NUM_DIRS; dir++)
       size[dir] = std::max(size[dir], (int) (dir ? frameSize & 0xFFFFFFFF : frameSize >> 32));
@@ -816,7 +816,7 @@ void ObjInstance::paint(Point pos, Point size) {
     CoThread *layoutThread = uiLayoutInstances[ndx]->coThread;
     CallFrame &layoutFrame = layoutThread->frames[0];
     ObjClosure *layoutClosure = AS_CLOSURE(layoutThread->fields[0]);
-    ObjClosure *paintClosure = AS_CLOSURE(layoutThread->fields[layoutClosure->function->fieldCount - 1]);
+    ObjClosure *paintClosure = AS_CLOSURE(layoutThread->fields[layoutClosure->function->fieldCount - 2]);
     Value value = {VOID_VAL};
 
     *layoutThread->stackTop++ = OBJ_VAL(paintClosure);
