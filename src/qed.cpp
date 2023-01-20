@@ -27,6 +27,7 @@
 const char *qedLib =
 "void println(String str);"
 "//void print(String str)\n"
+"int max(int a, int b);"
 ""
 "var WIDTH = 1;"
 "var HEIGHT = 2;"

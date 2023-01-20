@@ -1521,14 +1521,21 @@ void Resolver::pushAreas(UIDirectiveExpr *expr) {
   outAttrIndex = oldOutAttrIndex;
 }
 
+UIDirectiveExpr *parent = NULL;
+
 void Resolver::recalcLayout(UIDirectiveExpr *expr) {
   int parseDir = getParseDir();
 
   if (expr->previous)
     accept<int>(expr->previous);
 
-  if (expr->lastChild)
+  if (expr->lastChild) {
+    UIDirectiveExpr *oldParent = parent;
+
+    parent = expr;
     accept<int>(expr->lastChild);
+    parent = oldParent;
+  }
 
   if (expr->viewIndex != -1) {
     if (expr->lastChild)
@@ -1540,7 +1547,13 @@ void Resolver::recalcLayout(UIDirectiveExpr *expr) {
 
     for (UIDirectiveExpr *previous = expr->previous; previous; previous = previous->previous)
       if (previous->viewIndex != -1) {
-        (*ss) << "  var l" << aCount << " = l" << previous->_layoutIndexes[parseDir] << " + l" << expr->_layoutIndexes[parseDir] << "\n";
+        (*ss) << "  var l" << aCount;
+
+        if (parent && parent->childDir & (1 << parseDir))
+          (*ss) << " = l" << previous->_layoutIndexes[parseDir] << " + l" << expr->_layoutIndexes[parseDir] << "\n";
+        else
+          (*ss) << " = max(l" << previous->_layoutIndexes[parseDir] << ", l" << expr->_layoutIndexes[parseDir] << ")\n";
+
         expr->_layoutIndexes[parseDir] = aCount++;
         break;
       }
@@ -1588,26 +1601,27 @@ void Resolver::paint(UIDirectiveExpr *expr) {
         if (previous->viewIndex != -1)
           break;
 
-      if (previous) {
-        insertTabs();
-        (*ss) << "int pos0 = pos0 + l" << previous->_layoutIndexes[0] << "\n";
-        insertTabs();
-        (*ss) << "int pos1 = pos1 + l" << previous->_layoutIndexes[1] << "\n";
-        insertTabs();
-        (*ss) << "int size0 = l" << expr->_layoutIndexes[0] << " - l" << previous->_layoutIndexes[0] << "\n";
-        insertTabs();
-        (*ss) << "int size1 = l" << expr->_layoutIndexes[1] << " - l" << previous->_layoutIndexes[1] << "\n";
-      }
-      else {
-        insertTabs();
-        (*ss) << "int size0 = l" << expr->_layoutIndexes[0] << "\n";
-        insertTabs();
-        (*ss) << "int size1 = l" << expr->_layoutIndexes[1] << "\n";
-      }
+      for (int dir = 0; dir < NUM_DIRS; dir++)
+        if (parent && parent->childDir & (1 << dir))
+          if (previous) {
+            insertTabs();
+            (*ss) << "int pos" << dir << " = pos" << dir << " + l" << previous->_layoutIndexes[dir] << "\n";
+            insertTabs();
+            (*ss) << "int size" << dir << " = l" << expr->_layoutIndexes[dir] << " - l" << previous->_layoutIndexes[dir] << "\n";
+          }
+          else {
+            insertTabs();
+            (*ss) << "int size" << dir << " = l" << expr->_layoutIndexes[dir] << "\n";
+          }
     }
 
-  if (expr->lastChild)
+  if (expr->lastChild) {
+    UIDirectiveExpr *oldParent = parent;
+
+    parent = expr;
     accept<int>(expr->lastChild);
+    parent = oldParent;
+  }
   else {
     char name[20] = "";
 
@@ -1677,27 +1691,27 @@ void Resolver::onEvent(UIDirectiveExpr *expr) {
       if (previous->viewIndex != -1)
         break;
 
-    if (previous) {
-      insertTabs();
-      (*ss) << "if (pos0 >= l" << previous->_layoutIndexes[0] << " && pos1 >= l" << previous->_layoutIndexes[1] << ") {\n";
-      nTabs++;
-      insertTabs();
-      (*ss) << "pos0 = pos0 - l" << previous->_layoutIndexes[0] << "\n";
-      insertTabs();
-      (*ss) << "pos1 = pos1 - l" << previous->_layoutIndexes[1] << "\n\n";
-      insertTabs();
-      (*ss) << "if (pos0 < l" << expr->_layoutIndexes[0] << " - l" << previous->_layoutIndexes[0];
-      (*ss) << " && pos1 < l" << expr->_layoutIndexes[1] << " - l" << previous->_layoutIndexes[1] << ") {\n";
-    }
-    else {
-      insertTabs();
-      (*ss) << "if (pos0 >= 0 && pos1 >= 0) {\n";
-      nTabs++;
-      insertTabs();
-      (*ss) << "if (pos0 < l" << expr->_layoutIndexes[0] << " && pos1 < l" << expr->_layoutIndexes[1] << ") {\n";
-    }
+    for (int dir = 0; dir < NUM_DIRS; dir++)
+      if (parent && parent->childDir & (1 << dir)) {
+        if (previous) {
+          insertTabs();
+          (*ss) << "if (pos" << dir << " >= l" << previous->_layoutIndexes[dir] << ") {\n";
+          nTabs++;
+          insertTabs();
+          (*ss) << "pos" << dir << " = pos" << dir << " - l" << previous->_layoutIndexes[dir] << "\n";
+          insertTabs();
+          (*ss) << "if (pos" << dir << " < l" << expr->_layoutIndexes[dir] << " - l" << previous->_layoutIndexes[dir] << ") {\n";
+        }
+        else {
+          insertTabs();
+          (*ss) << "if (pos" << dir << " >= 0) {\n";
+          nTabs++;
+          insertTabs();
+          (*ss) << "if (pos" << dir << " < l" << expr->_layoutIndexes[dir] << ") {\n";
+        }
 
-    nTabs++;
+        nTabs++;
+      }
 
     int oldOutAttrIndex = outAttrIndex;
     int newOutAttrIndex = findAttrIndex(expr, "out");
@@ -1705,8 +1719,13 @@ void Resolver::onEvent(UIDirectiveExpr *expr) {
     if (newOutAttrIndex != -1)
       outAttrIndex = newOutAttrIndex;
 
-    if (expr->lastChild)
+    if (expr->lastChild) {
+      UIDirectiveExpr *oldParent = parent;
+
+      parent = expr;
       accept<int>(expr->lastChild);
+      parent = oldParent;
+    }
     else {
       char name[20];
 
@@ -1760,20 +1779,23 @@ void Resolver::onEvent(UIDirectiveExpr *expr) {
 
     outAttrIndex = oldOutAttrIndex;
 
-    --nTabs;
-    insertTabs();
-    (*ss) << "}\n";
-    --nTabs;
-    insertTabs();
+    for (int dir = NUM_DIRS - 1; dir >= 0; dir--)
+      if (parent && parent->childDir & (1 << dir)) {
+        --nTabs;
+        insertTabs();
+        (*ss) << "}\n";
+        --nTabs;
+        insertTabs();
+        (*ss) << "}\n";
+      }
 
     if (previous) {
-      (*ss) << "} else\n";
+      insertTabs();
+      (*ss) << "else\n";
       nTabs++;
       accept<int>(previous);
       --nTabs;
     }
-    else
-      (*ss) << "}\n";
   }
 }
 /*

@@ -445,17 +445,17 @@ UIDirectiveExpr *Parser::directive(TokenType endGroupType, UIDirectiveExpr *prev
   int attCount = 0;
   UIAttributeExpr **attributeList = NULL;
   UIDirectiveExpr *lastChild = NULL;
-  int dir = 0;
+  int childDir = 0;
 
   if (!match(TOKEN_DOT))
     if (match(TOKEN_UNDERLINE))
-      dir = 1;
+      childDir = 1;
     else
       if (match(TOKEN_OR))
-        dir = 2;
+        childDir = 2;
       else
         if (match(TOKEN_BACKSLASH))
-          dir = 3;
+          childDir = 3;
 
   passSeparator();
 
@@ -476,7 +476,7 @@ UIDirectiveExpr *Parser::directive(TokenType endGroupType, UIDirectiveExpr *prev
     passSeparator();
   }
 
-  return newNode(dir, attCount, attributeList, previous, lastChild);
+  return newNode(childDir, attCount, attributeList, previous, lastChild);
 }
 
 Expr *Parser::grouping(TokenType endGroupType, const char *errorMessage) {

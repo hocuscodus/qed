@@ -72,6 +72,13 @@ QNI_FN(println) {
   return VOID_VAL;
 }
 
+QNI_FN(max) {
+  long arg0 = args[0].as.integer;
+  long arg1 = args[1].as.integer;
+
+  return INT_VAL(arg0 > arg1 ? arg0 : arg1);
+}
+
 QNI_FN(rect) {
   long posP = args[0].as.integer;
   long sizeP = args[1].as.integer;
