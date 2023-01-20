@@ -38,6 +38,8 @@ const char *qedLib =
 "float clock();"
 "void oval(int pos, int size);"
 "void rect(int pos, int size);"
+"void pushAttribute(int index, int value);"
+"void popAttribute(int index);"
 "int getTextSize(String text);"
 "int getInstanceSize(int instance);"
 "void displayText(String text, int pos, int size);"

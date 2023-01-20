@@ -1402,7 +1402,21 @@ int Resolver::getParseDir() {
   return uiParseCount - PARSE_LAYOUT;
 }
 
-static std::set<std::string> outAttrs({"out", "color", "fontSize", "width", "height", "alignX", "alignY", "zoomWidth", "zoomHeight"});
+#define UI_ATTRIBUTE_DEF( identifier, text )  text
+static const char *uiAttributes[] = { UI_ATTRIBUTES_DEF };
+#undef UI_ATTRIBUTE_DEF
+
+#define UI_EVENT_DEF( identifier, text )  text
+static const char *uiEvents[] = { UI_EVENTS_DEF };
+#undef UI_EVENT_DEF
+
+static int findAttribute(const char **array, const char *attribute) {
+  for (int index = 0; array[index]; index++)
+    if (!strcmp(array[index], attribute))
+      return index;
+
+  return -1;
+}
 
 static char *generateInternalVarName(const char *prefix, int suffix) {
   char buffer[20];
@@ -1425,7 +1439,9 @@ void Resolver::processAttrs(UIDirectiveExpr *expr) {
   for (int index = 0; index < expr->attCount; index++) {
     UIAttributeExpr *attExpr = expr->attributes[index];
 
-    if (outAttrs.find(attExpr->name.getString()) != outAttrs.end() && attExpr->handler) {
+    attExpr->_uiIndex = findAttribute(uiAttributes, attExpr->name.getString().c_str());
+
+    if (attExpr->_uiIndex != -1 && attExpr->handler) {
       accept<int>(attExpr->handler, 0);
 
       Type type = removeLocal();
@@ -1587,6 +1603,15 @@ void Resolver::paint(UIDirectiveExpr *expr) {
   if (newOutAttrIndex != -1)
     outAttrIndex = newOutAttrIndex;
 
+  for (int index = 0; index < expr->attCount; index++)
+    if (expr->attributes[index]->_uiIndex != -1 && expr->attributes[index]->_index != -1) {
+      char name[20] = "";
+
+      sprintf(name, "v%d", expr->attributes[index]->_index);
+      insertTabs();
+      (*ss) << "pushAttribute(" << expr->attributes[index]->_uiIndex << ", " << name << ")\n";
+    }
+
   if (nTabs > 1)
     if (expr->viewIndex == -1) {
       // insertTabs();
@@ -1661,9 +1686,11 @@ void Resolver::paint(UIDirectiveExpr *expr) {
       parser.error("Out value having an illegal type");
   }
 
-  for (int index = 0; index < expr->attCount; index++)
-    if (expr->attributes[index]->_index != -1)
-;//      valueStack.pop(expr->attributes[index]->name.getString());
+  for (int index = expr->attCount - 1; index >= 0; index--)
+    if (expr->attributes[index]->_uiIndex != -1 && expr->attributes[index]->_index != -1) {
+      insertTabs();
+      (*ss) << "popAttribute(" << expr->attributes[index]->_uiIndex << ")\n";
+    }
 
   outAttrIndex = oldOutAttrIndex;
 
@@ -1790,11 +1817,16 @@ void Resolver::onEvent(UIDirectiveExpr *expr) {
       }
 
     if (previous) {
-      insertTabs();
-      (*ss) << "else\n";
-      nTabs++;
+      if (parent && parent->childDir) {
+        insertTabs();
+        (*ss) << "else\n";
+        nTabs++;
+      }
+
       accept<int>(previous);
-      --nTabs;
+
+      if (parent && parent->childDir)
+        --nTabs;
     }
   }
 }

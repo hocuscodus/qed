@@ -15,9 +15,26 @@ Button decButton = new Button("-") -> count--
 Button incButton = new Button("+") -> count++
 
 <out: oval; color: (count >= 0 ? COLOR_GREEN : 0) | (count <= 0 ? COLOR_RED : 0);>
-<- color: COLOR_BLACK;
+<_ color: COLOR_BLACK;
   <out: decButton;>
   <out: count; size: [100, 80]; fontSize: 50; align: 50%; transparency: 50%;>
+  <out: incButton;>
+>
+void Button(String text) {
+  int col = 0xE0000000
+
+  <out: rect; color: col;>// onPress: col = 0xB0000000; onRelease: return();>//{col = 0xE0000000; return()}>
+  <out: text; color: 0x90000000; fontSize: 40; width: 35; alignX: 50; alignY: 50; zoomHeight: 100; onPress: col = 0xB0000000; onRelease: return();>
+}
+
+int count = 0
+var decButton = new Button("-") -> count = count - 1//count--
+var incButton = new Button("+") -> count = count + 1//count++
+
+<out: oval; color: (count >= 0 ? COLOR_GREEN : 0) | (count <= 0 ? COLOR_RED : 0); height: 80;>
+<_
+  <out: decButton;>
+  <out: count; width: 100; fontSize: 50; alignX: 50; alignY: 50; color: 0x80000000;>
   <out: incButton;>
 >
 ```

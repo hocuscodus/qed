@@ -123,6 +123,7 @@ struct VariableExpr : public Expr {
 struct UIAttributeExpr : public Expr {
   Token name;
   Expr* handler;
+  int _uiIndex;
   int _index;
 
   UIAttributeExpr(Token name, Expr* handler);

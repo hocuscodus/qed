@@ -235,8 +235,8 @@ void AttrSet::parseCreateUIValues(VM &vm, Object value, int flags, List<int> pat
 
   if (children != NULL)
     children->parseCreateUIValues(vm, value, subValue, flags, path, valueTree);
-}*/
-
+}
+*/
 void AttrSet::parseCreateAreasTree(VM &vm, ValueStack<Value *> &valueStack, int dimFlags, const Path &path, Value *values, IndexList *instanceIndexes, LocationUnit **areaUnits) {
   for (std::string key : flagsMap) {
 //    int flags = attrs[key]->flags;

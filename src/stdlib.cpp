@@ -79,6 +79,43 @@ QNI_FN(max) {
   return INT_VAL(arg0 > arg1 ? arg0 : arg1);
 }
 
+struct ValueStack2 {
+	std::stack<Value> map[64];//ATTRIBUTE_END];
+
+  ValueStack2() {
+    push(4, INT_VAL(0xFFFFFF));
+  }
+
+	void push(int key, Value value) {
+    map[key].push(value);
+  }
+
+	void pop(int key) {
+    map[key].pop();
+  }
+
+	Value get(int key) {
+    return map[key].top();
+  }
+};
+
+ValueStack2 attStack;
+
+QNI_FN(pushAttribute) {
+  long uiIndex = args[0].as.integer;
+  Value &value = args[1];
+
+  attStack.push(uiIndex, value);
+  return VOID_VAL;
+}
+
+QNI_FN(popAttribute) {
+  long uiIndex = args[0].as.integer;
+
+  attStack.pop(uiIndex);
+  return VOID_VAL;
+}
+
 QNI_FN(rect) {
   long posP = args[0].as.integer;
   long sizeP = args[1].as.integer;
@@ -91,7 +128,8 @@ QNI_FN(rect) {
   rectangle.w = size[0];
   rectangle.h = size[1];
 
-	SDL_SetRenderDrawColor(rend2, 0, 0, 0xFF, 0xFF);
+  int color = attStack.get(4).as.integer;
+	SDL_SetRenderDrawColor(rend2, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, 0xFF);
   SDL_RenderFillRect(rend2, &rectangle);
   return VOID_VAL;
 }
@@ -104,8 +142,9 @@ QNI_FN(oval) {
   int rx = size[0] >> 1;
   int ry = size[1] >> 1;
 
+  int color = attStack.get(4).as.integer;
   filledEllipseRGBA(rend2, pos[0] + rx, pos[1] + ry, rx, ry,
-                   /* RGBA: green */ 0x00, 0x80, 0x00, 0xFF);
+                    (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, 0xFF);
   return VOID_VAL;
 }
 
