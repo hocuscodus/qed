@@ -84,6 +84,7 @@ struct ValueStack2 {
 
   ValueStack2() {
     push(4, INT_VAL(0xFFFFFF));
+    push(7, FLOAT_VAL(0));
   }
 
 	void push(int key, Value value) {
@@ -128,8 +129,13 @@ QNI_FN(rect) {
   rectangle.w = size[0];
   rectangle.h = size[1];
 
+  SDL_BlendMode blendMode;
   int color = attStack.get(4).as.integer;
-	SDL_SetRenderDrawColor(rend2, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, 0xFF);
+  float transparency = attStack.get(7).as.floating;
+  int trp = ((int) (transparency * 0xFF)) ^ 0xFF;
+
+  SDL_SetRenderDrawBlendMode(rend2, SDL_BLENDMODE_BLEND);
+	SDL_SetRenderDrawColor(rend2, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, trp);
   SDL_RenderFillRect(rend2, &rectangle);
   return VOID_VAL;
 }
@@ -143,8 +149,10 @@ QNI_FN(oval) {
   int ry = size[1] >> 1;
 
   int color = attStack.get(4).as.integer;
+  float transparency = attStack.get(7).as.floating;
+  SDL_SetRenderDrawBlendMode(rend2, SDL_BLENDMODE_BLEND);
   filledEllipseRGBA(rend2, pos[0] + rx, pos[1] + ry, rx, ry,
-                    (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, 0xFF);
+                    (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, ((int) (transparency * 0xFF)) ^ 0xFF);
   return VOID_VAL;
 }
 
@@ -195,8 +203,8 @@ void initDisplay() {
     rend2 = SDL_CreateRenderer(win, -1, render_flags);
     background2 = SDL_CreateRGBSurface(0, SCREEN_SIZE_X, SCREEN_SIZE_Y, 32, 0, 0, 0, 0);
 
-    const SDL_Rect* dstrect;
-    SDL_Color color;
+//    const SDL_Rect* dstrect;
+//    SDL_Color color;
   }
 /*
   #ifdef __EMSCRIPTEN__
@@ -255,7 +263,9 @@ QNI_FN(displayText) {
   long sizeP = args[2].as.integer;
   Point pos = {posP >> 32, posP & 0xFFFFFFFF};
   Point size = {sizeP >> 32, sizeP & 0xFFFFFFFF};
-  SDL_Surface *textSurface = TTF_RenderText_Blended(getFont(), text, {255, 255, 255, 0});
+  int color = attStack.get(4).as.integer;
+  float transparency = attStack.get(7).as.floating;
+  SDL_Surface *textSurface = TTF_RenderText_Blended(getFont(), text, {(color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, ((int) (transparency * 0xFF)) ^ 0xFF});
   SDL_Texture *textTexture = SDL_CreateTextureFromSurface(rend2, textSurface);
   SDL_Rect rectangle;
 

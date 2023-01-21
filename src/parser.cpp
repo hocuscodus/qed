@@ -296,7 +296,7 @@ Expr *Parser::ternary(Expr *left) {
 
   Expr *expIfFalse = parsePrecedence((Precedence)(rule->precedence));
 
-  return new TernaryExpr(op, left, expIfFalse, expIfTrue);
+  return new TernaryExpr(op, left, expIfTrue, expIfFalse);
 }
 
 Expr *Parser::dot(Expr *left) {

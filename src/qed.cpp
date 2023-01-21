@@ -35,6 +35,7 @@ const char *qedLib =
 "int COLOR_RED = 0xFF0000;"
 "int COLOR_GREEN = 0x00FF00;"
 "int COLOR_BLUE = 0x0000FF;"
+"int COLOR_BLACK = 0x000000;"
 "float clock();"
 "void oval(int pos, int size);"
 "void rect(int pos, int size);"
