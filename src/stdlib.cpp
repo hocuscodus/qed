@@ -147,12 +147,14 @@ QNI_FN(oval) {
   Point size = {sizeP >> 32, sizeP & 0xFFFFFFFF};
   int rx = size[0] >> 1;
   int ry = size[1] >> 1;
-
   int color = attStack.get(4).as.integer;
   float transparency = attStack.get(7).as.floating;
-  SDL_SetRenderDrawBlendMode(rend2, SDL_BLENDMODE_BLEND);
+
+//  SDL_SetTextureBlendMode(rend2, SDL_BLENDMODE_ADD);
   filledEllipseRGBA(rend2, pos[0] + rx, pos[1] + ry, rx, ry,
                     (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, ((int) (transparency * 0xFF)) ^ 0xFF);
+//  aaellipseRGBA(rend2, pos[0] + rx, pos[1] + ry, rx, ry,
+//                    (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, ((int) (transparency * 0xFF)) ^ 0xFF);
   return VOID_VAL;
 }
 
