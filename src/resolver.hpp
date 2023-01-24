@@ -37,9 +37,10 @@ typedef enum { UI_PARSES_DEF } ParseStep;
     UI_ATTRIBUTE_DEF( ATTRIBUTE_FONTSIZE, "fontSize" ), \
     UI_ATTRIBUTE_DEF( ATTRIBUTE_SIZE, "size" ), \
     UI_ATTRIBUTE_DEF( ATTRIBUTE_ZOOM, "zoom" ), \
-    UI_ATTRIBUTE_DEF( ATTRIBUTE_COLOR, "color" ), \
     UI_ATTRIBUTE_DEF( ATTRIBUTE_ALIGN, "align" ), \
     UI_ATTRIBUTE_DEF( ATTRIBUTE_EXPAND, "expand" ), \
+    UI_ATTRIBUTE_DEF( ATTRIBUTE_POS, "pos" ), \
+    UI_ATTRIBUTE_DEF( ATTRIBUTE_COLOR, "color" ), \
     UI_ATTRIBUTE_DEF( ATTRIBUTE_TRANSPARENCY, "transparency" ), \
     UI_ATTRIBUTE_DEF( ATTRIBUTE_END, NULL ), \
 
@@ -55,6 +56,37 @@ typedef enum { UI_ATTRIBUTES_DEF } Attribute;
 #define UI_EVENT_DEF( identifier, text )  identifier
 typedef enum { UI_EVENTS_DEF } Event;
 #undef UI_EVENT_DEF
+
+struct ValueStack3 {
+  int max;
+	std::stack<int> *map;
+
+  ValueStack3(int max) {
+    this->max = max;
+    map = new std::stack<int>[max];
+
+    for (int index = 0; index < max; index++)
+      map[index].push(-1);
+  }
+
+  ~ValueStack3() {
+    delete[] map;
+  }
+
+	void push(int key, int value) {
+    if (key >= 0 && key < max)
+      map[key].push(value);
+  }
+
+	void pop(int key) {
+    if (key >= 0 && key < max)
+      map[key].pop();
+  }
+
+	int get(int key) {
+    return key >= 0 && key < max ? map[key].top() : -1;
+  }
+};
 
 class Resolver : public ExprVisitor {
   Parser &parser;

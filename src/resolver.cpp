@@ -1473,28 +1473,27 @@ void Resolver::processAttrs(UIDirectiveExpr *expr) {
   }
 }
 
-int outAttrIndex = -1;
-//ValueStack<int> valueStack(-1);
-//ValueStack<ValueStackElement> valueStack2;
-//std::list<UIAttributeExpr *> attExprs;
+ValueStack3 valueStackSize(ATTRIBUTE_ALIGN);
+ValueStack3 valueStackPaint(ATTRIBUTE_COLOR);
 
-static int findAttrIndex(UIDirectiveExpr *expr, const char *name) {
-  for (int index = 0; index < expr->attCount; index++)
-    if (expr->attributes[index]->_index != -1 && expr->attributes[index]->name.equal(name))
-      return expr->attributes[index]->_index;
+static const char *getValueVariableName(ValueStack3 &valueStack, int uiIndex) {
+  static char name[20];
+  int varIndex = valueStack.get(uiIndex);
 
-  return -1;
+  if (varIndex != -1) {
+    sprintf(name, "v%d", varIndex);
+    return name;
+  }
+  else
+    return NULL;
 }
 
 void Resolver::pushAreas(UIDirectiveExpr *expr) {
   if (expr->previous)
     accept<int>(expr->previous);
 
-  int oldOutAttrIndex = outAttrIndex;
-  int newOutAttrIndex = findAttrIndex(expr, "out");
-
-  if (newOutAttrIndex != -1)
-    outAttrIndex = newOutAttrIndex;
+  for (int index = 0; index < expr->attCount; index++)
+    valueStackSize.push(expr->attributes[index]->_uiIndex, expr->attributes[index]->_index);
 
   if (expr->lastChild) {
     accept<int>(expr->lastChild);
@@ -1502,12 +1501,10 @@ void Resolver::pushAreas(UIDirectiveExpr *expr) {
     for (UIDirectiveExpr *child = expr->lastChild; expr->viewIndex == -1 && child; child = child->previous)
       expr->viewIndex = child->viewIndex != -1 ? 0 : -1;
   }
-  else
-    if (outAttrIndex != -1) {
-      char name[20];
+  else {
+    const char *name = getValueVariableName(valueStackSize, ATTRIBUTE_OUT);
 
-      sprintf(name, "v%d", outAttrIndex);
-
+    if (name != NULL) {
       Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
       Type outType = current->enclosing->locals[current->enclosing->resolveLocal(&token)].type;
       char *callee = NULL;
@@ -1525,16 +1522,14 @@ void Resolver::pushAreas(UIDirectiveExpr *expr) {
 
         if (callee) {
           expr->viewIndex = aCount;
-          (*ss) << "  var a" << aCount++ << " = " << callee << "(v" << outAttrIndex << ")\n";
+          (*ss) << "  var a" << aCount++ << " = " << callee << "(" << name << ")\n";
         }
       }
     }
+  }
 
   for (int index = 0; index < expr->attCount; index++)
-    if (expr->attributes[index]->_index != -1)
-;//      valueStack.pop(expr->attributes[index]->name.getString());
-
-  outAttrIndex = oldOutAttrIndex;
+    valueStackSize.pop(expr->attributes[index]->_uiIndex);
 }
 
 UIDirectiveExpr *parent = NULL;
@@ -1597,11 +1592,8 @@ void Resolver::paint(UIDirectiveExpr *expr) {
 
   nTabs++;
 
-  int oldOutAttrIndex = outAttrIndex;
-  int newOutAttrIndex = findAttrIndex(expr, "out");
-
-  if (newOutAttrIndex != -1)
-    outAttrIndex = newOutAttrIndex;
+  for (int index = 0; index < expr->attCount; index++)
+    valueStackPaint.push(expr->attributes[index]->_uiIndex, expr->attributes[index]->_index);
 
   for (int index = 0; index < expr->attCount; index++)
     if (expr->attributes[index]->_uiIndex != -1 && expr->attributes[index]->_index != -1) {
@@ -1652,10 +1644,7 @@ void Resolver::paint(UIDirectiveExpr *expr) {
     parent = oldParent;
   }
   else {
-    char name[20] = "";
-
-    sprintf(name, "v%d", outAttrIndex);
-
+    char *name = (char *) getValueVariableName(valueStackPaint, ATTRIBUTE_OUT);
     Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
     Type outType = current->enclosing->enclosing->locals[current->enclosing->enclosing->resolveLocal(&token)].type;
 
@@ -1696,7 +1685,8 @@ void Resolver::paint(UIDirectiveExpr *expr) {
       (*ss) << "popAttribute(" << expr->attributes[index]->_uiIndex << ")\n";
     }
 
-  outAttrIndex = oldOutAttrIndex;
+  for (int index = 0; index < expr->attCount; index++)
+    valueStackPaint.pop(expr->attributes[index]->_uiIndex);
 
   --nTabs;
 
@@ -1750,11 +1740,8 @@ void Resolver::onEvent(UIDirectiveExpr *expr) {
         nTabs++;
       }
 
-    int oldOutAttrIndex = outAttrIndex;
-    int newOutAttrIndex = findAttrIndex(expr, "out");
-
-    if (newOutAttrIndex != -1)
-      outAttrIndex = newOutAttrIndex;
+    for (int index = 0; index < expr->attCount; index++)
+      valueStackPaint.push(expr->attributes[index]->_uiIndex, expr->attributes[index]->_index);
 
     if (expr->lastChild) {
       UIDirectiveExpr *oldParent = parent;
@@ -1764,10 +1751,7 @@ void Resolver::onEvent(UIDirectiveExpr *expr) {
       parent = oldParent;
     }
     else {
-      char name[20];
-
-      sprintf(name, "v%d", outAttrIndex);
-
+      const char *name = getValueVariableName(valueStackPaint, ATTRIBUTE_OUT);
       Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
       Type outType = current->enclosing->enclosing->locals[current->enclosing->enclosing->resolveLocal(&token)].type;
 
@@ -1811,10 +1795,7 @@ void Resolver::onEvent(UIDirectiveExpr *expr) {
     }
 
     for (int index = 0; index < expr->attCount; index++)
-      if (expr->attributes[index]->_index != -1)
-  ;//      valueStack.pop(expr->attributes[index]->name.getString());
-
-    outAttrIndex = oldOutAttrIndex;
+      valueStackPaint.pop(expr->attributes[index]->_uiIndex);
 
     for (int dir = NUM_DIRS - 1; dir >= 0; dir--)
       if (!parent || !(parent->childDir & (1 << dir))) {
