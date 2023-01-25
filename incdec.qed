@@ -1,17 +1,17 @@
 void Button(String text) {
   float trp = 0.8
 
-  <out: rect; transparency: trp;>// onPress: trp = 0.69; onRelease: return();>//{trp = 0.8; return()}>
-  <out: text; transparency: 0.6; fontSize: 40; width: 35; align: 0.5; zoomHeight: 100; onPress: trp = 0.69; onRelease: return();>
+  <out: rect; transparency: trp; expand: 1;>// onPress: trp = 0.69; onRelease: return();>//{trp = 0.8; return()}>
+  <out: text; transparency: 0.6; align: 0.5; fontSize: 40; width: 35; zoomHeight: 100; onPress: trp = 0.69; onRelease: return();>
 }
 
 int count = 0
 var decButton = new Button("-") -> count = count - 1//count--
 var incButton = new Button("+") -> count = count + 1//count++
 
-<out: oval; color: (count >= 0 ? COLOR_GREEN : 0) | (count <= 0 ? COLOR_RED : 0);>
-<| color: COLOR_BLACK;
-  <out: decButton;>
-  <out: count; transparency: 0.5; fontSize: 50; align: 0.5; width: 100; height: 80;>
-  <out: incButton;>
+<out: oval; expand: 1; color: (count >= 0 ? COLOR_GREEN : 0) | (count <= 0 ? COLOR_RED : 0);>
+<|color: COLOR_BLACK;
+  <out: decButton; expand: 1;>
+  <out: count; transparency: 0.5; fontSize: 50;>// align: 0.5; width: 100; height: 80;>
+  <out: incButton; expand: 1;>
 >

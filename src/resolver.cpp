@@ -159,6 +159,37 @@ static Expr *convertToFloat(Expr *expr, Type &type, Parser &parser)
   return expr;
 }
 
+static Expr *convertToType(Type srcType, Expr *expr, Type &type, Parser &parser)
+{
+  switch (srcType.valueType)
+  {
+  case VAL_INT:
+    expr = convertToInt(expr, type, parser);
+    break;
+
+  case VAL_FLOAT:
+    expr = convertToFloat(expr, type, parser);
+    break;
+
+  case VAL_BOOL:
+//    expr = convertToBool(OP_BOOL_TO_STRING, expr);
+    break;
+
+  case VAL_VOID:
+    parser.error("Value must not be void");
+    break;
+
+  case VAL_OBJ:
+    expr = convertToString(expr, type, parser);
+    break;
+
+  default:
+    break;
+  }
+
+  return expr;
+}
+
 static void resolveVariableExpr(VariableExpr *expr)
 {
   if (expr->index != -1) {
@@ -196,8 +227,13 @@ void Resolver::visitAssignExpr(AssignExpr *expr)
 
   if (type1.valueType == VAL_VOID)
     parser.error("Variable not found");
-  else if (!type1.equals(type2))
-    parser.error("Value must match the variable type");
+  else if (!type1.equals(type2)) {
+    expr->value = convertToType(type2, expr->value, type1, parser);
+
+    if (expr->value == NULL) {
+      parser.error("Value must match the variable type");
+    }
+  }
 
   current->addLocal(type2);
 }
@@ -750,8 +786,13 @@ void Resolver::visitListExpr(ListExpr *expr)
         //          else
         if (returnType.equals(internalType))
           returnType = type1;
-        else if (!type1.equals(returnType))
-          parser.error("Value must match the variable type");
+        else if (!type1.equals(returnType)) {
+          assignExpr->value = convertToType(returnType, assignExpr->value, type1, parser);
+
+          if (assignExpr->value == NULL) {
+            parser.error("Value must match the variable type");
+          }
+        }
       }
 
       current->addLocal(returnType);
@@ -1476,7 +1517,17 @@ void Resolver::processAttrs(UIDirectiveExpr *expr) {
 ValueStack3 valueStackSize(ATTRIBUTE_ALIGN);
 ValueStack3 valueStackPaint(ATTRIBUTE_COLOR);
 
-static const char *getValueVariableName(ValueStack3 &valueStack, int uiIndex) {
+static int findAttrName(UIDirectiveExpr *expr, Attribute uiIndex) {
+  static char name[20];
+
+  for (int index = 0; index < expr->attCount; index++)
+    if (expr->attributes[index]->_uiIndex == uiIndex)
+      return expr->attributes[index]->_index;
+
+  return -1;
+}
+
+static const char *getValueVariableName(ValueStack3 &valueStack, Attribute uiIndex) {
   static char name[20];
   int varIndex = valueStack.get(uiIndex);
 
@@ -1605,36 +1656,66 @@ void Resolver::paint(UIDirectiveExpr *expr) {
     }
 
   if (nTabs > 1)
-    if (expr->viewIndex == -1) {
-      // insertTabs();
-      // (*ss) << "int size0 = 0\n";
-      // insertTabs();
-      // (*ss) << "int size1 = 0\n";
-    }
-    else {
-      UIDirectiveExpr *previous = expr->previous;
+    for (int dir = 0; dir < NUM_DIRS; dir++)
+      if (expr->viewIndex == -1) {
+        insertTabs();
 
-      for (; previous; previous = previous->previous)
-        if (previous->viewIndex != -1)
-          break;
+        int expand = findAttrName(expr, ATTRIBUTE_EXPAND);
 
-      for (int dir = 0; dir < NUM_DIRS; dir++)
-        if (parent && parent->childDir & (1 << dir)) // +
-          if (previous) {
+        if (expand != -1) {
+          int align = findAttrName(expr, ATTRIBUTE_ALIGN);
+
+          if (align != -1) {
+            (*ss) << "int childSize" << dir << " = size" << dir << " * v" << expand << "\n";
             insertTabs();
-            (*ss) << "int pos" << dir << " = pos" << dir << " + l" << previous->_layoutIndexes[dir] << "\n";
+            (*ss) << "int pos" << dir << " = pos" << dir << " + (size" << dir << " - childSize" << dir << ") * v" << align << "\n";
             insertTabs();
-            (*ss) << "int size" << dir << " = l" << expr->_layoutIndexes[dir] << " - l" << previous->_layoutIndexes[dir] << "\n";
+            (*ss) << "int size" << dir << " = childSize" << dir << "\n";
           }
-          else {
-            insertTabs();
-            (*ss) << "int size" << dir << " = l" << expr->_layoutIndexes[dir] << "\n";
-          }
-        else { // max
-          insertTabs();
-          (*ss) << "int size" << dir << " = l" << expr->_layoutIndexes[dir] << "\n";
+          else
+            (*ss) << "int size" << dir << " = size" << dir << " * v" << expand << "\n";
         }
-    }
+        else
+          (*ss) << "int size" << dir << " = 0\n";
+      }
+      else {
+        UIDirectiveExpr *previous = NULL;
+
+        if (parent && parent->childDir & (1 << dir)) // +
+          for (previous = expr->previous; previous; previous = previous->previous)
+            if (previous->viewIndex != -1)
+              break;
+
+        if (previous) {
+          insertTabs();
+          (*ss) << "int pos" << dir << " = pos" << dir << " + l" << previous->_layoutIndexes[dir] << "\n";
+          insertTabs();
+          (*ss) << "int size" << dir << " = l" << expr->_layoutIndexes[dir] << " - l" << previous->_layoutIndexes[dir] << "\n";
+        }
+        else {
+          bool isPlus = parent && (parent->childDir & (1 << dir));
+          int expand = findAttrName(expr, ATTRIBUTE_EXPAND);
+          int align = findAttrName(expr, ATTRIBUTE_ALIGN);
+          const char *varName = !isPlus && (expand != -1 || align != -1) ? "childSize" : "size";
+
+          insertTabs();
+          (*ss) << "int " << varName << dir << " = l" << expr->_layoutIndexes[dir] << "\n";
+
+          if (!isPlus) {
+            if (expand != -1) {
+              insertTabs();
+              (*ss) << "childSize" << dir << " = childSize" << dir << " + (size" << dir << " - childSize" << dir << ") * v" << expand << "\n";
+            }
+
+            if (align != -1) {
+              insertTabs();
+              (*ss) << "int pos" << dir << " = pos" << dir << " + (size" << dir << " - childSize" << dir << ") * v" << align << "\n";
+              insertTabs();
+              (*ss) << "int size" << dir << " = childSize" << dir << "\n";
+            }
+          }
+        }
+      }
 
   if (expr->lastChild) {
     UIDirectiveExpr *oldParent = parent;
