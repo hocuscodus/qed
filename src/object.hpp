@@ -266,7 +266,7 @@ struct ObjInstance {
   void uninitValues();
   Point recalculateLayout();
   void paint(Point pos, Point size);
-  void onEvent(Point pos);
+  bool onEvent(Point pos, Point size);
 };
 
 struct Internal {

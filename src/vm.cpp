@@ -509,9 +509,10 @@ void VM::repaint() {
 
 extern SDL_Renderer *rend2;
 void VM::onEvent(const char *name, Point pos) {
-  instance->onEvent(pos);
-  repaint();
-  SDL_RenderPresent(rend2);
+  if (instance->onEvent(pos, totalSize)) {
+    repaint();
+    SDL_RenderPresent(rend2);
+  }
 }
 
 void VM::suspend() {

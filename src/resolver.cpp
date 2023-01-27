@@ -1138,8 +1138,8 @@ void Resolver::visitVariableExpr(VariableExpr *expr)
   resolveVariableExpr(expr);
 
   if (expr->index == -1) {
-    resolveVariableExpr(expr);
-    parser.error("Variable must be defined");
+//    resolveVariableExpr(expr);
+    parser.error("Variable '%.*s' must be defined", expr->name.length, expr->name.start);
     current->addLocal(VAL_VOID);
   }
 }
@@ -1233,8 +1233,15 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
   for (int index = 0; index < expr->count; index++) {
     Expr *subExpr = expr->expressions[index];
 
-    if (subExpr->type == EXPR_UIDIRECTIVE && ++uiParseCount >= 1)
-      ss->str("");
+    if (subExpr->type == EXPR_UIDIRECTIVE) {
+      if (++uiParseCount >= 1)
+        ss->str("");
+
+      if (getParseStep() == PARSE_EVENTS) {
+        insertTabs();
+        (*ss) << "bool flag = false\n";
+      }
+    }
 
     acceptSubExpr(subExpr);
 
@@ -1275,7 +1282,7 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
 
     if (exprUI->previous || exprUI->lastChild) {
       // Perform the UI AST magic
-      Expr *clickFunction = generateUIFunction("void", "onEvent", "int pos0, int pos1", expr->ui, 1, 0, NULL);
+      Expr *clickFunction = generateUIFunction("void", "onEvent", "int pos0, int pos1, int size0, int size1", expr->ui, 1, 0, NULL);
       Expr *paintFunction = generateUIFunction("void", "paint", "int pos0, int pos1, int size0, int size1", expr->ui, 1, 0, NULL);
       Expr **uiFunctions = new Expr *[2];
 
@@ -1632,6 +1639,64 @@ static void insertPoint(const char *prefix) {/*
   (*ss) << "((" << prefix << "0 << 32) | " << prefix << "1)";
 }
 
+int Resolver::align(UIDirectiveExpr *expr) {
+  int posDiffDirs = 0;
+
+  for (int dir = 0; dir < NUM_DIRS; dir++)
+    if (parent && (parent->childDir & (1 << dir))) { // +
+      insertTabs();
+      (*ss) << "int size" << dir << " = l" << expr->_layoutIndexes[dir];
+
+      for (UIDirectiveExpr *previous = expr->previous; previous; previous = previous->previous)
+        if (previous->viewIndex != -1) {
+          (*ss) << " - l" << previous->_layoutIndexes[dir] << "\n";
+          insertTabs();
+          (*ss) << "int posDiff" << dir << " = l" << previous->_layoutIndexes[dir];
+          posDiffDirs |= 1 << dir;
+          break;
+        }
+
+      (*ss) << "\n";
+    }
+    else {
+      int expand = findAttrName(expr, ATTRIBUTE_EXPAND);
+      int align = findAttrName(expr, ATTRIBUTE_ALIGN);
+
+      if (expand != -1 || align != 1) {
+        insertTabs();
+        (*ss) << "int childSize" << dir << " = ";
+
+        if (expr->viewIndex != -1) {
+          (*ss) << "l" << expr->_layoutIndexes[dir];
+
+          if (expand != -1)
+            (*ss) << " + (";
+        }
+        else
+          (*ss) << "size" << dir;
+
+        if (expand != -1) {
+          if (expr->viewIndex != -1)
+            (*ss) << " - l" << expr->_layoutIndexes[dir] << ")";
+
+          (*ss) << " * v" << expand << "\n";
+        }
+        else
+          (*ss) << "\n";
+
+        if (align != -1) {
+          insertTabs();
+          (*ss) << "int posDiff" << dir << " = (size" << dir << " - childSize" << dir << ") * v" << align << "\n";
+          insertTabs();
+          (*ss) << "int size" << dir << " = childSize" << dir << "\n";
+          posDiffDirs |= 1 << dir;
+        }
+      }
+    }
+
+  return posDiffDirs;
+}
+
 void Resolver::paint(UIDirectiveExpr *expr) {
   if (expr->previous)
     accept<int>(expr->previous);
@@ -1655,7 +1720,15 @@ void Resolver::paint(UIDirectiveExpr *expr) {
       (*ss) << "pushAttribute(" << expr->attributes[index]->_uiIndex << ", " << name << ")\n";
     }
 
-  if (nTabs > 1)
+  if (nTabs > 1) {
+    int posDiffDirs = align(expr);
+
+    for (int dir = 0; dir < NUM_DIRS; dir++)
+      if (posDiffDirs & (1 << dir)) {
+        insertTabs();
+        (*ss) << "int pos" << dir << " = pos" << dir << " + posDiff" << dir << "\n";
+      }
+  }/*
     for (int dir = 0; dir < NUM_DIRS; dir++)
       if (expr->viewIndex == -1) {
         insertTabs();
@@ -1715,7 +1788,7 @@ void Resolver::paint(UIDirectiveExpr *expr) {
             }
           }
         }
-      }
+      }*/
 
   if (expr->lastChild) {
     UIDirectiveExpr *oldParent = parent;
@@ -1766,7 +1839,7 @@ void Resolver::paint(UIDirectiveExpr *expr) {
       (*ss) << "popAttribute(" << expr->attributes[index]->_uiIndex << ")\n";
     }
 
-  for (int index = 0; index < expr->attCount; index++)
+  for (int index = expr->attCount - 1; index >= 0; index--)
     valueStackPaint.pop(expr->attributes[index]->_uiIndex);
 
   --nTabs;
@@ -1777,7 +1850,7 @@ void Resolver::paint(UIDirectiveExpr *expr) {
   }
 }
 
-void Resolver::onEvent(UIDirectiveExpr *expr) {
+void Resolver::onEvent(UIDirectiveExpr *expr) {/*
   if (expr->viewIndex == -1) {
     if (expr->previous)
       accept<int>(expr->previous);
@@ -1786,7 +1859,38 @@ void Resolver::onEvent(UIDirectiveExpr *expr) {
     // insertTabs();
     // (*ss) << "int size1 = 0\n";
   }
-  else {
+  else {*/
+    insertTabs();
+    (*ss) << "{\n";
+    nTabs++;
+
+    int posDiffDirs = align(expr);
+    int count = 0;
+
+    insertTabs();
+    (*ss) << "flag = ";
+
+    for (int dir = 0; dir < NUM_DIRS; dir++)
+      if (posDiffDirs & (1 << dir)) {
+        (*ss) << (count++ ? " && " : "") << "pos" << dir << " >= posDiff" << dir;
+        (*ss) << " && pos" << dir << " < posDiff" << dir << " + size" << dir;
+      }
+      else {
+        (*ss) << (count++ ? " && " : "") << "pos" << dir << " >= 0";
+        (*ss) << " && pos" << dir << " < size" << dir;
+      }
+
+    (*ss) << "\n";
+    insertTabs();
+    (*ss) << "if (flag) {\n";
+    nTabs++;
+
+    for (int dir = 0; dir < NUM_DIRS; dir++)
+      if (posDiffDirs & (1 << dir)) {
+        insertTabs();
+        (*ss) << "pos" << dir << " = pos" << dir << " - posDiff" << dir << "\n";
+      }
+/*
     UIDirectiveExpr *previous = expr->previous;
 
     for (; previous; previous = previous->previous)
@@ -1820,7 +1924,7 @@ void Resolver::onEvent(UIDirectiveExpr *expr) {
         (*ss) << "if (pos" << dir << " < l" << expr->_layoutIndexes[dir] << ") {\n";
         nTabs++;
       }
-
+*/
     for (int index = 0; index < expr->attCount; index++)
       valueStackPaint.push(expr->attributes[index]->_uiIndex, expr->attributes[index]->_index);
 
@@ -1839,8 +1943,10 @@ void Resolver::onEvent(UIDirectiveExpr *expr) {
       switch (outType.objType->type) {
         case OBJ_COMPILER_INSTANCE:
           insertTabs();
-          (*ss) << "onInstanceEvent(" << name << ", ";
+          (*ss) << "flag = onInstanceEvent(" << name << ", ";
           insertPoint("pos");
+          (*ss) << ", ";
+          insertPoint("size");
           (*ss) << ")\n";
           break;
 
@@ -1878,6 +1984,13 @@ void Resolver::onEvent(UIDirectiveExpr *expr) {
     for (int index = 0; index < expr->attCount; index++)
       valueStackPaint.pop(expr->attributes[index]->_uiIndex);
 
+    --nTabs;
+    insertTabs();
+    (*ss) << "}\n";
+    --nTabs;
+    insertTabs();
+    (*ss) << "}\n";
+/*
     for (int dir = NUM_DIRS - 1; dir >= 0; dir--)
       if (!parent || !(parent->childDir & (1 << dir))) {
         --nTabs;
@@ -1894,20 +2007,29 @@ void Resolver::onEvent(UIDirectiveExpr *expr) {
         insertTabs();
         (*ss) << "}\n";
       }
+*/
+    UIDirectiveExpr *previous = expr->previous;
+
+    for (; previous; previous = previous->previous)
+      if (previous->viewIndex != -1)
+        break;
 
     if (previous) {
       if (parent && parent->childDir) {
         insertTabs();
-        (*ss) << "else\n";
+        (*ss) << "if (!flag) {\n";
         nTabs++;
       }
 
       accept<int>(previous);
 
-      if (parent && parent->childDir)
+      if (parent && parent->childDir) {
         --nTabs;
+        insertTabs();
+        (*ss) << "}\n";
+      }
     }
-  }
+//  }
 }
 /*
 Expr *Parser::forStatement(TokenType endGroupType) {

@@ -132,6 +132,7 @@ public:
   void processAttrs(UIDirectiveExpr *expr);
   void pushAreas(UIDirectiveExpr *expr);
   void recalcLayout(UIDirectiveExpr *expr);
+  int align(UIDirectiveExpr *expr);
   void paint(UIDirectiveExpr *expr);
   void onEvent(UIDirectiveExpr *expr);
 };

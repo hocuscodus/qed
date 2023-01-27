@@ -827,14 +827,16 @@ void ObjInstance::paint(Point pos, Point size) {
     for (int dir = 0; dir < NUM_DIRS; dir++)
       *layoutThread->stackTop++ = INT_VAL(size[dir]);
 
-    layoutThread->call(paintClosure, NUM_DIRS * 2);
+    layoutThread->call(paintClosure, NUM_DIRS << 1);
     layoutThread->run();
     layoutThread->onReturn(value);
   }
 }
 
-void ObjInstance::onEvent(Point pos) {
-  for (int ndx = numValuesInstances - 1; ndx >= 0; ndx--) {
+bool ObjInstance::onEvent(Point pos, Point size) {
+  bool flag = false;
+
+  for (int ndx = numValuesInstances - 1; !flag && ndx >= 0; ndx--) {
     CoThread *layoutThread = uiLayoutInstances[ndx]->coThread;
     CallFrame &layoutFrame = layoutThread->frames[0];
     ObjClosure *layoutClosure = AS_CLOSURE(layoutThread->fields[0]);
@@ -847,14 +849,21 @@ void ObjInstance::onEvent(Point pos) {
     for (int dir = 0; dir < NUM_DIRS; dir++)
       *layoutThread->stackTop++ = INT_VAL(pos[dir]);
 
-    layoutThread->call(eventClosure, NUM_DIRS);
+    for (int dir = 0; dir < NUM_DIRS; dir++)
+      *layoutThread->stackTop++ = INT_VAL(size[dir]);
+
+    layoutThread->call(eventClosure, NUM_DIRS << 1);
     layoutThread->run();
+
     if (layoutThread->frameCount > frameCount)
+      flag = AS_BOOL(*--layoutThread->stackTop);
     layoutThread->onReturn(value);
 #ifdef DEBUG_TRACE_EXECUTION
     layoutThread->printStack();
 #endif
   }
+
+  return flag;
 }
 #if 0
 Object parseCreateUIValuesSub(QEDProcess process, Object value, Path path, int flags, LambdaDeclaration handler) {

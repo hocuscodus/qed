@@ -298,10 +298,11 @@ QNI_FN(displayInstance) {
 QNI_FN(onInstanceEvent) {
   ObjInstance *instance = (ObjInstance *) args[0].as.obj;
   long posP = args[1].as.integer;
+  long sizeP = args[2].as.integer;
   Point pos = {posP >> 32, posP & 0xFFFFFFFF};
+  Point size = {sizeP >> 32, sizeP & 0xFFFFFFFF};
 
-  instance->onEvent(pos);
-  return VOID_VAL;
+  return BOOL_VAL(instance->onEvent(pos, size));
 }
 
 void SDLCALL postMessage(void *param)
