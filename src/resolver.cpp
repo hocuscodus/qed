@@ -1662,7 +1662,7 @@ int Resolver::align(UIDirectiveExpr *expr) {
       int expand = findAttrName(expr, ATTRIBUTE_EXPAND);
       int align = findAttrName(expr, ATTRIBUTE_ALIGN);
 
-      if (expand != -1 || align != 1) {
+      if (expand != -1 || align != -1) {
         insertTabs();
         (*ss) << "int childSize" << dir << " = ";
 
@@ -1687,10 +1687,11 @@ int Resolver::align(UIDirectiveExpr *expr) {
         if (align != -1) {
           insertTabs();
           (*ss) << "int posDiff" << dir << " = (size" << dir << " - childSize" << dir << ") * v" << align << "\n";
-          insertTabs();
-          (*ss) << "int size" << dir << " = childSize" << dir << "\n";
           posDiffDirs |= 1 << dir;
         }
+
+        insertTabs();
+        (*ss) << "int size" << dir << " = childSize" << dir << "\n";
       }
     }
 
@@ -1728,67 +1729,7 @@ void Resolver::paint(UIDirectiveExpr *expr) {
         insertTabs();
         (*ss) << "int pos" << dir << " = pos" << dir << " + posDiff" << dir << "\n";
       }
-  }/*
-    for (int dir = 0; dir < NUM_DIRS; dir++)
-      if (expr->viewIndex == -1) {
-        insertTabs();
-
-        int expand = findAttrName(expr, ATTRIBUTE_EXPAND);
-
-        if (expand != -1) {
-          int align = findAttrName(expr, ATTRIBUTE_ALIGN);
-
-          if (align != -1) {
-            (*ss) << "int childSize" << dir << " = size" << dir << " * v" << expand << "\n";
-            insertTabs();
-            (*ss) << "int pos" << dir << " = pos" << dir << " + (size" << dir << " - childSize" << dir << ") * v" << align << "\n";
-            insertTabs();
-            (*ss) << "int size" << dir << " = childSize" << dir << "\n";
-          }
-          else
-            (*ss) << "int size" << dir << " = size" << dir << " * v" << expand << "\n";
-        }
-        else
-          (*ss) << "int size" << dir << " = 0\n";
-      }
-      else {
-        UIDirectiveExpr *previous = NULL;
-
-        if (parent && parent->childDir & (1 << dir)) // +
-          for (previous = expr->previous; previous; previous = previous->previous)
-            if (previous->viewIndex != -1)
-              break;
-
-        if (previous) {
-          insertTabs();
-          (*ss) << "int pos" << dir << " = pos" << dir << " + l" << previous->_layoutIndexes[dir] << "\n";
-          insertTabs();
-          (*ss) << "int size" << dir << " = l" << expr->_layoutIndexes[dir] << " - l" << previous->_layoutIndexes[dir] << "\n";
-        }
-        else {
-          bool isPlus = parent && (parent->childDir & (1 << dir));
-          int expand = findAttrName(expr, ATTRIBUTE_EXPAND);
-          int align = findAttrName(expr, ATTRIBUTE_ALIGN);
-          const char *varName = !isPlus && (expand != -1 || align != -1) ? "childSize" : "size";
-
-          insertTabs();
-          (*ss) << "int " << varName << dir << " = l" << expr->_layoutIndexes[dir] << "\n";
-
-          if (!isPlus) {
-            if (expand != -1) {
-              insertTabs();
-              (*ss) << "childSize" << dir << " = childSize" << dir << " + (size" << dir << " - childSize" << dir << ") * v" << expand << "\n";
-            }
-
-            if (align != -1) {
-              insertTabs();
-              (*ss) << "int pos" << dir << " = pos" << dir << " + (size" << dir << " - childSize" << dir << ") * v" << align << "\n";
-              insertTabs();
-              (*ss) << "int size" << dir << " = childSize" << dir << "\n";
-            }
-          }
-        }
-      }*/
+  }
 
   if (expr->lastChild) {
     UIDirectiveExpr *oldParent = parent;
@@ -1850,226 +1791,111 @@ void Resolver::paint(UIDirectiveExpr *expr) {
   }
 }
 
-void Resolver::onEvent(UIDirectiveExpr *expr) {/*
-  if (expr->viewIndex == -1) {
-    if (expr->previous)
-      accept<int>(expr->previous);
-    // insertTabs();
-    // (*ss) << "int size0 = 0\n";
-    // insertTabs();
-    // (*ss) << "int size1 = 0\n";
-  }
-  else {*/
-    insertTabs();
-    (*ss) << "{\n";
-    nTabs++;
+void Resolver::onEvent(UIDirectiveExpr *expr) {
+  insertTabs();
+  (*ss) << "{\n";
+  nTabs++;
 
-    int posDiffDirs = align(expr);
-    int count = 0;
+  int posDiffDirs = align(expr);
+  int count = 0;
 
-    insertTabs();
-    (*ss) << "flag = ";
+  insertTabs();
+  (*ss) << "flag = ";
 
-    for (int dir = 0; dir < NUM_DIRS; dir++)
-      if (posDiffDirs & (1 << dir)) {
-        (*ss) << (count++ ? " && " : "") << "pos" << dir << " >= posDiff" << dir;
-        (*ss) << " && pos" << dir << " < posDiff" << dir << " + size" << dir;
-      }
-      else {
-        (*ss) << (count++ ? " && " : "") << "pos" << dir << " >= 0";
-        (*ss) << " && pos" << dir << " < size" << dir;
-      }
-
-    (*ss) << "\n";
-    insertTabs();
-    (*ss) << "if (flag) {\n";
-    nTabs++;
-
-    for (int dir = 0; dir < NUM_DIRS; dir++)
-      if (posDiffDirs & (1 << dir)) {
-        insertTabs();
-        (*ss) << "pos" << dir << " = pos" << dir << " - posDiff" << dir << "\n";
-      }
-/*
-    UIDirectiveExpr *previous = expr->previous;
-
-    for (; previous; previous = previous->previous)
-      if (previous->viewIndex != -1)
-        break;
-
-    for (int dir = 0; dir < NUM_DIRS; dir++)
-      if (parent && parent->childDir & (1 << dir)) // +
-        if (previous) {
-          insertTabs();
-          (*ss) << "if (pos" << dir << " >= l" << previous->_layoutIndexes[dir] << ") {\n";
-          nTabs++;
-          insertTabs();
-          (*ss) << "pos" << dir << " = pos" << dir << " - l" << previous->_layoutIndexes[dir] << "\n";
-          insertTabs();
-          (*ss) << "if (pos" << dir << " < l" << expr->_layoutIndexes[dir] << " - l" << previous->_layoutIndexes[dir] << ") {\n";
-          nTabs++;
-        }
-        else {
-          insertTabs();
-          (*ss) << "if (pos" << dir << " >= 0) {\n";
-          nTabs++;
-          insertTabs();
-          (*ss) << "if (pos" << dir << " < l" << expr->_layoutIndexes[dir] << ") {\n";
-          nTabs++;
-        }
-
-    for (int dir = 0; dir < NUM_DIRS; dir++)
-      if (!parent || !(parent->childDir & (1 << dir))) { // max
-        insertTabs();
-        (*ss) << "if (pos" << dir << " < l" << expr->_layoutIndexes[dir] << ") {\n";
-        nTabs++;
-      }
-*/
-    for (int index = 0; index < expr->attCount; index++)
-      valueStackPaint.push(expr->attributes[index]->_uiIndex, expr->attributes[index]->_index);
-
-    if (expr->lastChild) {
-      UIDirectiveExpr *oldParent = parent;
-
-      parent = expr;
-      accept<int>(expr->lastChild);
-      parent = oldParent;
+  for (int dir = 0; dir < NUM_DIRS; dir++)
+    if (posDiffDirs & (1 << dir)) {
+      (*ss) << (count++ ? " && " : "") << "pos" << dir << " >= posDiff" << dir;
+      (*ss) << " && pos" << dir << " < posDiff" << dir << " + size" << dir;
     }
     else {
-      const char *name = getValueVariableName(valueStackPaint, ATTRIBUTE_OUT);
-      Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
-      Type outType = current->enclosing->enclosing->locals[current->enclosing->enclosing->resolveLocal(&token)].type;
-
-      switch (outType.objType->type) {
-        case OBJ_COMPILER_INSTANCE:
-          insertTabs();
-          (*ss) << "flag = onInstanceEvent(" << name << ", ";
-          insertPoint("pos");
-          (*ss) << ", ";
-          insertPoint("size");
-          (*ss) << ")\n";
-          break;
-
-        case OBJ_STRING:
-        case OBJ_FUNCTION:
-          for (int index = 0; index < expr->attCount; index++) {
-            UIAttributeExpr *attExpr = expr->attributes[index];
-
-            if (!memcmp(attExpr->name.getString().c_str(), "on", 2))
-              if (attExpr->handler) {
-                insertTabs();
-                (*ss) << "if (" << "\"onRelease\"" << " == \"" << attExpr->name.getString() << "\") {\n";
-                nTabs++;
-
-                insertTabs();
-                (*ss) << "$EXPR\n";
-                uiExprs.push_back(attExpr->handler);
-                attExpr->handler = NULL;
-
-                --nTabs;
-                insertTabs();
-                (*ss) << "}\n";
-              }
-              else
-                ;
-          }
-          break;
-
-        default:
-          parser.error("Out value having an illegal type");
-          break;
-      }
+      (*ss) << (count++ ? " && " : "") << "pos" << dir << " >= 0";
+      (*ss) << " && pos" << dir << " < size" << dir;
     }
 
-    for (int index = 0; index < expr->attCount; index++)
-      valueStackPaint.pop(expr->attributes[index]->_uiIndex);
+  (*ss) << "\n";
+  insertTabs();
+  (*ss) << "if (flag) {\n";
+  nTabs++;
 
-    --nTabs;
-    insertTabs();
-    (*ss) << "}\n";
-    --nTabs;
-    insertTabs();
-    (*ss) << "}\n";
-/*
-    for (int dir = NUM_DIRS - 1; dir >= 0; dir--)
-      if (!parent || !(parent->childDir & (1 << dir))) {
-        --nTabs;
-        insertTabs();
-        (*ss) << "}\n";
-      }
+  for (int dir = 0; dir < NUM_DIRS; dir++)
+    if (posDiffDirs & (1 << dir)) {
+      insertTabs();
+      (*ss) << "pos" << dir << " = pos" << dir << " - posDiff" << dir << "\n";
+    }
 
-    for (int dir = NUM_DIRS - 1; dir >= 0; dir--)
-      if (parent && parent->childDir & (1 << dir)) {
-        --nTabs;
-        insertTabs();
-        (*ss) << "}\n";
-        --nTabs;
-        insertTabs();
-        (*ss) << "}\n";
-      }
-*/
-    UIDirectiveExpr *previous = expr->previous;
+  for (int index = 0; index < expr->attCount; index++)
+    valueStackPaint.push(expr->attributes[index]->_uiIndex, expr->attributes[index]->_index);
 
-    for (; previous; previous = previous->previous)
-      if (previous->viewIndex != -1)
+  if (expr->lastChild) {
+    UIDirectiveExpr *oldParent = parent;
+
+    parent = expr;
+    accept<int>(expr->lastChild);
+    parent = oldParent;
+  }
+  else {
+    const char *name = getValueVariableName(valueStackPaint, ATTRIBUTE_OUT);
+    Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
+    Type outType = current->enclosing->enclosing->locals[current->enclosing->enclosing->resolveLocal(&token)].type;
+
+    switch (outType.objType->type) {
+      case OBJ_COMPILER_INSTANCE:
+        insertTabs();
+        (*ss) << "flag = onInstanceEvent(" << name << ", ";
+        insertPoint("pos");
+        (*ss) << ", ";
+        insertPoint("size");
+        (*ss) << ")\n";
         break;
 
-    if (previous) {
-      if (parent && parent->childDir) {
-        insertTabs();
-        (*ss) << "if (!flag) {\n";
-        nTabs++;
-      }
+      case OBJ_STRING:
+      case OBJ_FUNCTION:
+        for (int index = 0; index < expr->attCount; index++) {
+          UIAttributeExpr *attExpr = expr->attributes[index];
 
-      accept<int>(previous);
+          if (!memcmp(attExpr->name.getString().c_str(), "on", 2))
+            if (attExpr->handler) {
+              insertTabs();
+              (*ss) << "if (" << "\"onRelease\"" << " == \"" << attExpr->name.getString() << "\") {\n";
+              nTabs++;
 
-      if (parent && parent->childDir) {
-        --nTabs;
-        insertTabs();
-        (*ss) << "}\n";
-      }
+              insertTabs();
+              (*ss) << "$EXPR\n";
+              uiExprs.push_back(attExpr->handler);
+              attExpr->handler = NULL;
+
+              --nTabs;
+              insertTabs();
+              (*ss) << "}\n";
+            }
+            else
+              ;
+        }
+        break;
+
+      default:
+        parser.error("Out value having an illegal type");
+        break;
     }
-//  }
-}
-/*
-Expr *Parser::forStatement(TokenType endGroupType) {
-  consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
-
-  Expr *initializer = NULL;
-
-  if (!match(TOKEN_SEPARATOR))
-    initializer = match(TOKEN_VAR) ? varDeclaration(endGroupType) : expressionStatement(endGroupType);
-
-  TokenType tokens[] = {TOKEN_SEPARATOR, TOKEN_EOF};
-  Expr *condition = check(TOKEN_SEPARATOR) ? createBooleanExpr(true) : expression(tokens);
-
-  consume(TOKEN_SEPARATOR, "Expect ';' or newline after loop condition.");
-
-  TokenType tokens2[] = {TOKEN_RIGHT_PAREN, TOKEN_SEPARATOR, TOKEN_EOF};
-  Expr *increment = check(TOKEN_RIGHT_PAREN) ? NULL : expression(tokens2);
-
-  consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
-
-  Expr *body = statement(endGroupType);
-
-  if (increment != NULL) {
-    Expr **expList = RESIZE_ARRAY(Expr *, NULL, 0, 2);
-
-    expList[0] = new UnaryExpr(buildToken(TOKEN_PRINT, "print", 5, -1), body);
-    expList[1] = new UnaryExpr(buildToken(TOKEN_PRINT, "print", 5, -1), increment);
-    body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 2, expList, 0, NULL);
   }
 
-  body = new BinaryExpr(condition, buildToken(TOKEN_WHILE, "while", 5, -1), body, OP_FALSE, false);
+  for (int index = 0; index < expr->attCount; index++)
+    valueStackPaint.pop(expr->attributes[index]->_uiIndex);
 
-  if (initializer != NULL) {
-    Expr **expList = RESIZE_ARRAY(Expr *, NULL, 0, 2);
+  --nTabs;
+  insertTabs();
+  (*ss) << "}\n";
+  --nTabs;
+  insertTabs();
+  (*ss) << "}\n";
 
-    expList[0] = initializer;
-    expList[1] = body;
-    body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 2, expList, 0, NULL);
+  if (expr->previous) {
+    insertTabs();
+    (*ss) << "if (!flag) {\n";
+    nTabs++;
+    accept<int>(expr->previous);
+    --nTabs;
+    insertTabs();
+    (*ss) << "}\n";
   }
-
-  return body;
 }
-*/
