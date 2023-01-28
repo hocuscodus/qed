@@ -833,7 +833,7 @@ void ObjInstance::paint(Point pos, Point size) {
   }
 }
 
-bool ObjInstance::onEvent(Point pos, Point size) {
+bool ObjInstance::onEvent(Event event, Point pos, Point size) {
   bool flag = false;
 
   for (int ndx = numValuesInstances - 1; !flag && ndx >= 0; ndx--) {
@@ -845,6 +845,7 @@ bool ObjInstance::onEvent(Point pos, Point size) {
     int frameCount = layoutThread->frameCount;
 
     *layoutThread->stackTop++ = OBJ_VAL(eventClosure);
+    *layoutThread->stackTop++ = INT_VAL(event);
 
     for (int dir = 0; dir < NUM_DIRS; dir++)
       *layoutThread->stackTop++ = INT_VAL(pos[dir]);
@@ -852,7 +853,7 @@ bool ObjInstance::onEvent(Point pos, Point size) {
     for (int dir = 0; dir < NUM_DIRS; dir++)
       *layoutThread->stackTop++ = INT_VAL(size[dir]);
 
-    layoutThread->call(eventClosure, NUM_DIRS << 1);
+    layoutThread->call(eventClosure, (NUM_DIRS << 1) + 1);
     layoutThread->run();
 
     if (layoutThread->frameCount > frameCount)
@@ -953,6 +954,7 @@ ObjFunction *newFunction() {
   function->chunk.init();
   function->native = NULL;
   function->instanceIndexes = new IndexList();
+  function->eventFlags = 0L;
   function->uiFunction = NULL;
 //  function->uiFunctions = new std::unordered_map<std::string, ObjFunction*>();
   return function;

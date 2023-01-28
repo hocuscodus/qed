@@ -508,8 +508,8 @@ void VM::repaint() {
 }
 
 extern SDL_Renderer *rend2;
-void VM::onEvent(const char *name, Point pos) {
-  if (instance->onEvent(pos, totalSize)) {
+void VM::onEvent(Event event, Point pos) {
+  if (instance->onEvent(event, pos, totalSize)) {
     repaint();
     SDL_RenderPresent(rend2);
   }
@@ -539,8 +539,12 @@ void VM::suspend() {
       }
       break;
 
+    case SDL_MOUSEBUTTONDOWN:
+      onEvent(EVENT_PRESS, {event.button.x, event.button.y});
+      break;
+
     case SDL_MOUSEBUTTONUP:
-      onEvent("onRelease", {event.button.x, event.button.y});
+      onEvent(EVENT_RELEASE, {event.button.x, event.button.y});
       break;
 
     case SDL_QUIT:

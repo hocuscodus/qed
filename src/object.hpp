@@ -123,6 +123,7 @@ struct ObjFunction : ObjCallable {
   Chunk chunk;
   Obj *native;
   IndexList *instanceIndexes;
+  long eventFlags;
   ChildAttrSets *attrSets;
   DirSizers topSizers;
   ObjFunction *uiFunction;
@@ -266,7 +267,7 @@ struct ObjInstance {
   void uninitValues();
   Point recalculateLayout();
   void paint(Point pos, Point size);
-  bool onEvent(Point pos, Point size);
+  bool onEvent(Event event, Point pos, Point size);
 };
 
 struct Internal {

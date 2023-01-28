@@ -31,32 +31,6 @@
 typedef enum { UI_PARSES_DEF } ParseStep;
 #undef UI_PARSE_DEF
 
-// put above ATTRIBUTE_COLOR all size-related attributes
-#define UI_ATTRIBUTES_DEF \
-    UI_ATTRIBUTE_DEF( ATTRIBUTE_OUT, "out" ), \
-    UI_ATTRIBUTE_DEF( ATTRIBUTE_FONTSIZE, "fontSize" ), \
-    UI_ATTRIBUTE_DEF( ATTRIBUTE_SIZE, "size" ), \
-    UI_ATTRIBUTE_DEF( ATTRIBUTE_ZOOM, "zoom" ), \
-    UI_ATTRIBUTE_DEF( ATTRIBUTE_ALIGN, "align" ), \
-    UI_ATTRIBUTE_DEF( ATTRIBUTE_EXPAND, "expand" ), \
-    UI_ATTRIBUTE_DEF( ATTRIBUTE_POS, "pos" ), \
-    UI_ATTRIBUTE_DEF( ATTRIBUTE_COLOR, "color" ), \
-    UI_ATTRIBUTE_DEF( ATTRIBUTE_TRANSPARENCY, "transparency" ), \
-    UI_ATTRIBUTE_DEF( ATTRIBUTE_END, NULL ), \
-
-#define UI_ATTRIBUTE_DEF( identifier, text )  identifier
-typedef enum { UI_ATTRIBUTES_DEF } Attribute;
-#undef UI_ATTRIBUTE_DEF
-
-#define UI_EVENTS_DEF \
-    UI_EVENT_DEF( EVENT_PRESS,"onPress" ), \
-    UI_EVENT_DEF( EVENT_RELEASE, "onRelease" ), \
-    UI_EVENT_DEF( EVENT_END, NULL ), \
-
-#define UI_EVENT_DEF( identifier, text )  identifier
-typedef enum { UI_EVENTS_DEF } Event;
-#undef UI_EVENT_DEF
-
 struct ValueStack3 {
   int max;
 	std::stack<int> *map;
@@ -132,7 +106,7 @@ public:
   void processAttrs(UIDirectiveExpr *expr);
   void pushAreas(UIDirectiveExpr *expr);
   void recalcLayout(UIDirectiveExpr *expr);
-  int align(UIDirectiveExpr *expr);
+  int adjustLayout(UIDirectiveExpr *expr);
   void paint(UIDirectiveExpr *expr);
   void onEvent(UIDirectiveExpr *expr);
 };

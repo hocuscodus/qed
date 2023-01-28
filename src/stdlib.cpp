@@ -83,10 +83,10 @@ struct ValueStack2 {
 	std::stack<Value> map[64];//ATTRIBUTE_END];
 
   ValueStack2() {
-    push(4, FLOAT_VAL(0));
-    push(6, INT_VAL(0xFFFFFF));
-    push(7, INT_VAL(0xFFFFFF));
-    push(8, FLOAT_VAL(0));
+    push(ATTRIBUTE_ALIGN, FLOAT_VAL(0));
+    push(ATTRIBUTE_POS, INT_VAL(0xFFFFFF));
+    push(ATTRIBUTE_COLOR, INT_VAL(0xFFFFFF));
+    push(ATTRIBUTE_TRANSPARENCY, FLOAT_VAL(0));
   }
 
 	void push(int key, Value value) {
@@ -297,12 +297,13 @@ QNI_FN(displayInstance) {
 
 QNI_FN(onInstanceEvent) {
   ObjInstance *instance = (ObjInstance *) args[0].as.obj;
-  long posP = args[1].as.integer;
-  long sizeP = args[2].as.integer;
+  Event event = (Event) args[1].as.integer;
+  long posP = args[2].as.integer;
+  long sizeP = args[3].as.integer;
   Point pos = {posP >> 32, posP & 0xFFFFFFFF};
   Point size = {sizeP >> 32, sizeP & 0xFFFFFFFF};
 
-  return BOOL_VAL(instance->onEvent(pos, size));
+  return BOOL_VAL(instance->onEvent(event, pos, size));
 }
 
 void SDLCALL postMessage(void *param)

@@ -327,7 +327,13 @@ Expr *Parser::call(Expr *left) {
 
   if (match(TOKEN_ARROW)) {
     passSeparator();
-    handler = statement(TOKEN_SEPARATOR);
+
+    if (current.type == TOKEN_LEFT_BRACE) {
+      advance();
+      handler = grouping();
+    }
+    else
+      handler = statement(TOKEN_SEPARATOR);
   }
 
   return new CallExpr(left, previous, argCount, expList, false, handler);
@@ -415,10 +421,20 @@ Expr *Parser::grouping() {
 UIAttributeExpr *Parser::attribute(TokenType endGroupType) {
   consume(TOKEN_IDENTIFIER, "Expect attribute name");
   passSeparator();
+
   Token identifier = previous;
+
   consume(TOKEN_COLON, "Expect colon after attribute name");
   passSeparator();
-  Expr *handler = statement(endGroupType);
+
+  Expr *handler;
+
+  if (current.type == TOKEN_LEFT_BRACE) {
+    advance();
+    handler = grouping();
+  }
+  else
+    handler = statement(endGroupType);
 
   if (handler->type == EXPR_STATEMENT) {
     StatementExpr *oldHandler = (StatementExpr *) handler;

@@ -1260,6 +1260,7 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
         expr = (GroupingExpr *) parse(ss->str().c_str(), index, 1, expr);
       }
       else {
+        current->function->eventFlags = exprUI->_eventFlags;
         expr->expressions = RESIZE_ARRAY(Expr *, expr->expressions, expr->count, expr->count + uiExprs.size() - 1);
         memcpy(&expr->expressions[index + uiExprs.size()], &expr->expressions[index + 1], (--expr->count - index) * sizeof(Expr *));
 
@@ -1282,7 +1283,7 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
 
     if (exprUI->previous || exprUI->lastChild) {
       // Perform the UI AST magic
-      Expr *clickFunction = generateUIFunction("void", "onEvent", "int pos0, int pos1, int size0, int size1", expr->ui, 1, 0, NULL);
+      Expr *clickFunction = generateUIFunction("void", "onEvent", "int event, int pos0, int pos1, int size0, int size1", expr->ui, 1, 0, NULL);
       Expr *paintFunction = generateUIFunction("void", "paint", "int pos0, int pos1, int size0, int size1", expr->ui, 1, 0, NULL);
       Expr **uiFunctions = new Expr *[2];
 
@@ -1477,48 +1478,73 @@ static char *generateInternalVarName(const char *prefix, int suffix) {
   return str;
 }
 
+static bool isEventHandler(UIAttributeExpr *attExpr) {
+  return !memcmp(attExpr->name.getString().c_str(), "on", strlen("on"));
+}
+
+UIDirectiveExpr *parent = NULL;
+
 void Resolver::processAttrs(UIDirectiveExpr *expr) {
   if (expr->previous)
     accept<int>(expr->previous);
 
-  if (expr->lastChild)
+  if (expr->lastChild) {
+    UIDirectiveExpr *oldParent = parent;
+
+    parent = expr;
     accept<int>(expr->lastChild);
+    parent = oldParent;
+  }
 
   for (int index = 0; index < expr->attCount; index++) {
     UIAttributeExpr *attExpr = expr->attributes[index];
+    const char *attrName = attExpr->name.getString().c_str();
 
-    attExpr->_uiIndex = findAttribute(uiAttributes, attExpr->name.getString().c_str());
+    if (isEventHandler(attExpr)) {
+      attExpr->_uiIndex = findAttribute(uiEvents, attrName);
 
-    if (attExpr->_uiIndex != -1 && attExpr->handler) {
-      accept<int>(attExpr->handler, 0);
+      if (attExpr->_uiIndex != -1 && attExpr->handler)
+        expr->_eventFlags |= 1L << attExpr->_uiIndex;
+    }
+    else {
+      attExpr->_uiIndex = findAttribute(uiAttributes, attrName);
 
-      Type type = removeLocal();
+      if (attExpr->_uiIndex != -1 && attExpr->handler) {
+        accept<int>(attExpr->handler, 0);
 
-      if (type.valueType != VAL_VOID) {
-        if (!attExpr->name.getString().compare("out")) {
-          if (type.valueType != VAL_OBJ || (type.objType->type != OBJ_COMPILER_INSTANCE && type.objType->type != OBJ_FUNCTION)) {
-            attExpr->handler = convertToString(attExpr->handler, type, parser);
-            type = stringType;
+        Type type = removeLocal();
+
+        if (type.valueType != VAL_VOID) {
+          if (attExpr->_uiIndex == ATTRIBUTE_OUT) {
+            if (type.valueType != VAL_OBJ || (type.objType->type != OBJ_COMPILER_INSTANCE && type.objType->type != OBJ_FUNCTION)) {
+              attExpr->handler = convertToString(attExpr->handler, type, parser);
+              type = stringType;
+            }
           }
+
+          if (type.valueType == VAL_OBJ && type.objType && type.objType->type == OBJ_COMPILER_INSTANCE) {
+            current->function->instanceIndexes->set(current->localCount);
+            expr->_eventFlags |= ((ObjFunction *) ((ObjCompilerInstance *) type.objType)->callable)->uiFunction->eventFlags;
+          }
+
+          char *name = generateInternalVarName("v", current->localCount);
+          DeclarationExpr *decExpr = new DeclarationExpr(type, buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1), attExpr->handler);
+
+          attExpr->handler = NULL;
+          attExpr->_index = current->localCount;
+          uiExprs.push_back(decExpr);
+          current->addLocal(type);
+          current->setLocalName(&decExpr->name);
         }
-
-        if (type.valueType == VAL_OBJ && type.objType && type.objType->type == OBJ_COMPILER_INSTANCE)
-          current->function->instanceIndexes->set(current->localCount);
-
-        char *name = generateInternalVarName("v", current->localCount);
-        DeclarationExpr *decExpr = new DeclarationExpr(type, buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1), attExpr->handler);
-
-        attExpr->handler = NULL;
-        attExpr->_index = current->localCount;
-        uiExprs.push_back(decExpr);
-        current->addLocal(type);
-        current->setLocalName(&decExpr->name);
-      }
-      else
-        parser.error("Value must not be void");
+        else
+          parser.error("Value must not be void");
 //          attExprs.push_back(expr);
+      }
     }
   }
+
+  if (parent)
+    parent->_eventFlags |= expr->_eventFlags;
 }
 
 ValueStack3 valueStackSize(ATTRIBUTE_ALIGN);
@@ -1528,7 +1554,7 @@ static int findAttrName(UIDirectiveExpr *expr, Attribute uiIndex) {
   static char name[20];
 
   for (int index = 0; index < expr->attCount; index++)
-    if (expr->attributes[index]->_uiIndex == uiIndex)
+    if (!isEventHandler(expr->attributes[index]) && expr->attributes[index]->_uiIndex == uiIndex)
       return expr->attributes[index]->_index;
 
   return -1;
@@ -1551,7 +1577,8 @@ void Resolver::pushAreas(UIDirectiveExpr *expr) {
     accept<int>(expr->previous);
 
   for (int index = 0; index < expr->attCount; index++)
-    valueStackSize.push(expr->attributes[index]->_uiIndex, expr->attributes[index]->_index);
+    if (!isEventHandler(expr->attributes[index]))
+      valueStackSize.push(expr->attributes[index]->_uiIndex, expr->attributes[index]->_index);
 
   if (expr->lastChild) {
     accept<int>(expr->lastChild);
@@ -1587,10 +1614,9 @@ void Resolver::pushAreas(UIDirectiveExpr *expr) {
   }
 
   for (int index = 0; index < expr->attCount; index++)
-    valueStackSize.pop(expr->attributes[index]->_uiIndex);
+    if (!isEventHandler(expr->attributes[index]))
+      valueStackSize.pop(expr->attributes[index]->_uiIndex);
 }
-
-UIDirectiveExpr *parent = NULL;
 
 void Resolver::recalcLayout(UIDirectiveExpr *expr) {
   int dir = getParseDir();
@@ -1639,7 +1665,7 @@ static void insertPoint(const char *prefix) {/*
   (*ss) << "((" << prefix << "0 << 32) | " << prefix << "1)";
 }
 
-int Resolver::align(UIDirectiveExpr *expr) {
+int Resolver::adjustLayout(UIDirectiveExpr *expr) {
   int posDiffDirs = 0;
 
   for (int dir = 0; dir < NUM_DIRS; dir++)
@@ -1710,10 +1736,11 @@ void Resolver::paint(UIDirectiveExpr *expr) {
   nTabs++;
 
   for (int index = 0; index < expr->attCount; index++)
-    valueStackPaint.push(expr->attributes[index]->_uiIndex, expr->attributes[index]->_index);
+    if (!isEventHandler(expr->attributes[index]))
+      valueStackPaint.push(expr->attributes[index]->_uiIndex, expr->attributes[index]->_index);
 
   for (int index = 0; index < expr->attCount; index++)
-    if (expr->attributes[index]->_uiIndex != -1 && expr->attributes[index]->_index != -1) {
+    if (!isEventHandler(expr->attributes[index]) && expr->attributes[index]->_uiIndex != -1 && expr->attributes[index]->_index != -1) {
       char name[20] = "";
 
       sprintf(name, "v%d", expr->attributes[index]->_index);
@@ -1722,7 +1749,7 @@ void Resolver::paint(UIDirectiveExpr *expr) {
     }
 
   if (nTabs > 1) {
-    int posDiffDirs = align(expr);
+    int posDiffDirs = adjustLayout(expr);
 
     for (int dir = 0; dir < NUM_DIRS; dir++)
       if (posDiffDirs & (1 << dir)) {
@@ -1775,13 +1802,14 @@ void Resolver::paint(UIDirectiveExpr *expr) {
   }
 
   for (int index = expr->attCount - 1; index >= 0; index--)
-    if (expr->attributes[index]->_uiIndex != -1 && expr->attributes[index]->_index != -1) {
+    if (!isEventHandler(expr->attributes[index]) && expr->attributes[index]->_uiIndex != -1 && expr->attributes[index]->_index != -1) {
       insertTabs();
       (*ss) << "popAttribute(" << expr->attributes[index]->_uiIndex << ")\n";
     }
 
   for (int index = expr->attCount - 1; index >= 0; index--)
-    valueStackPaint.pop(expr->attributes[index]->_uiIndex);
+    if (!isEventHandler(expr->attributes[index]))
+      valueStackPaint.pop(expr->attributes[index]->_uiIndex);
 
   --nTabs;
 
@@ -1792,110 +1820,120 @@ void Resolver::paint(UIDirectiveExpr *expr) {
 }
 
 void Resolver::onEvent(UIDirectiveExpr *expr) {
-  insertTabs();
-  (*ss) << "{\n";
-  nTabs++;
+  if (expr->_eventFlags) {
+    insertTabs();
+    (*ss) << "if ((" << expr->_eventFlags << " & (1 << event)) != 0) {\n";
+    nTabs++;
 
-  int posDiffDirs = align(expr);
-  int count = 0;
+    int posDiffDirs = adjustLayout(expr);
+    int count = 0;
 
-  insertTabs();
-  (*ss) << "flag = ";
+    insertTabs();
+    (*ss) << "flag = ";
 
-  for (int dir = 0; dir < NUM_DIRS; dir++)
-    if (posDiffDirs & (1 << dir)) {
-      (*ss) << (count++ ? " && " : "") << "pos" << dir << " >= posDiff" << dir;
-      (*ss) << " && pos" << dir << " < posDiff" << dir << " + size" << dir;
+    for (int dir = 0; dir < NUM_DIRS; dir++)
+      if (posDiffDirs & (1 << dir)) {
+        (*ss) << (count++ ? " && " : "") << "pos" << dir << " >= posDiff" << dir;
+        (*ss) << " && pos" << dir << " < posDiff" << dir << " + size" << dir;
+      }
+      else {
+        (*ss) << (count++ ? " && " : "") << "pos" << dir << " >= 0";
+        (*ss) << " && pos" << dir << " < size" << dir;
+      }
+
+    (*ss) << "\n";
+    insertTabs();
+    (*ss) << "if (flag) {\n";
+    nTabs++;
+
+    for (int dir = 0; dir < NUM_DIRS; dir++)
+      if (posDiffDirs & (1 << dir)) {
+        insertTabs();
+        (*ss) << "pos" << dir << " = pos" << dir << " - posDiff" << dir << "\n";
+      }
+
+    for (int index = 0; index < expr->attCount; index++)
+      if (!isEventHandler(expr->attributes[index]))
+        valueStackPaint.push(expr->attributes[index]->_uiIndex, expr->attributes[index]->_index);
+
+    if (expr->lastChild) {
+      UIDirectiveExpr *oldParent = parent;
+
+      parent = expr;
+      accept<int>(expr->lastChild);
+      parent = oldParent;
     }
     else {
-      (*ss) << (count++ ? " && " : "") << "pos" << dir << " >= 0";
-      (*ss) << " && pos" << dir << " < size" << dir;
+      const char *name = getValueVariableName(valueStackPaint, ATTRIBUTE_OUT);
+      Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
+      Type outType = current->enclosing->enclosing->locals[current->enclosing->enclosing->resolveLocal(&token)].type;
+
+      switch (outType.objType->type) {
+        case OBJ_COMPILER_INSTANCE:
+          insertTabs();
+          (*ss) << "flag = onInstanceEvent(" << name << ", event, ";
+          insertPoint("pos");
+          (*ss) << ", ";
+          insertPoint("size");
+          (*ss) << ")\n";
+          break;
+
+        case OBJ_STRING:
+        case OBJ_FUNCTION:
+          for (int index = 0; index < expr->attCount; index++) {
+            UIAttributeExpr *attExpr = expr->attributes[index];
+
+            if (isEventHandler(attExpr))
+              if (attExpr->handler) {
+                insertTabs();
+                (*ss) << "if (event == " << attExpr->_uiIndex << ") {\n";
+                nTabs++;
+
+                insertTabs();
+                (*ss) << "$EXPR\n";
+                uiExprs.push_back(attExpr->handler);
+                attExpr->handler = NULL;
+
+                --nTabs;
+                insertTabs();
+                (*ss) << "}\n";
+              }
+              else
+                ;
+          }
+          break;
+
+        default:
+          parser.error("Out value having an illegal type");
+          break;
+      }
     }
 
-  (*ss) << "\n";
-  insertTabs();
-  (*ss) << "if (flag) {\n";
-  nTabs++;
+    for (int index = 0; index < expr->attCount; index++)
+      if (!isEventHandler(expr->attributes[index]))
+        valueStackPaint.pop(expr->attributes[index]->_uiIndex);
 
-  for (int dir = 0; dir < NUM_DIRS; dir++)
-    if (posDiffDirs & (1 << dir)) {
-      insertTabs();
-      (*ss) << "pos" << dir << " = pos" << dir << " - posDiff" << dir << "\n";
-    }
-
-  for (int index = 0; index < expr->attCount; index++)
-    valueStackPaint.push(expr->attributes[index]->_uiIndex, expr->attributes[index]->_index);
-
-  if (expr->lastChild) {
-    UIDirectiveExpr *oldParent = parent;
-
-    parent = expr;
-    accept<int>(expr->lastChild);
-    parent = oldParent;
-  }
-  else {
-    const char *name = getValueVariableName(valueStackPaint, ATTRIBUTE_OUT);
-    Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
-    Type outType = current->enclosing->enclosing->locals[current->enclosing->enclosing->resolveLocal(&token)].type;
-
-    switch (outType.objType->type) {
-      case OBJ_COMPILER_INSTANCE:
-        insertTabs();
-        (*ss) << "flag = onInstanceEvent(" << name << ", ";
-        insertPoint("pos");
-        (*ss) << ", ";
-        insertPoint("size");
-        (*ss) << ")\n";
-        break;
-
-      case OBJ_STRING:
-      case OBJ_FUNCTION:
-        for (int index = 0; index < expr->attCount; index++) {
-          UIAttributeExpr *attExpr = expr->attributes[index];
-
-          if (!memcmp(attExpr->name.getString().c_str(), "on", 2))
-            if (attExpr->handler) {
-              insertTabs();
-              (*ss) << "if (" << "\"onRelease\"" << " == \"" << attExpr->name.getString() << "\") {\n";
-              nTabs++;
-
-              insertTabs();
-              (*ss) << "$EXPR\n";
-              uiExprs.push_back(attExpr->handler);
-              attExpr->handler = NULL;
-
-              --nTabs;
-              insertTabs();
-              (*ss) << "}\n";
-            }
-            else
-              ;
-        }
-        break;
-
-      default:
-        parser.error("Out value having an illegal type");
-        break;
-    }
-  }
-
-  for (int index = 0; index < expr->attCount; index++)
-    valueStackPaint.pop(expr->attributes[index]->_uiIndex);
-
-  --nTabs;
-  insertTabs();
-  (*ss) << "}\n";
-  --nTabs;
-  insertTabs();
-  (*ss) << "}\n";
-
-  if (expr->previous) {
-    insertTabs();
-    (*ss) << "if (!flag) {\n";
-    nTabs++;
-    accept<int>(expr->previous);
     --nTabs;
     insertTabs();
     (*ss) << "}\n";
+    --nTabs;
+    insertTabs();
+    (*ss) << "}\n";
+  }
+
+  if (expr->previous) {
+    if (expr->_eventFlags) {
+      insertTabs();
+      (*ss) << "if (!flag) {\n";
+      nTabs++;
+    }
+
+    accept<int>(expr->previous);
+
+    if (expr->_eventFlags) {
+      --nTabs;
+      insertTabs();
+      (*ss) << "}\n";
+    }
   }
 }
