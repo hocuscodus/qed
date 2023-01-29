@@ -34,6 +34,7 @@ const char *qedLib =
 "var OBLIQUE = 3;"
 "int COLOR_RED = 0xFF0000;"
 "int COLOR_GREEN = 0x00FF00;"
+"int COLOR_YELLOW = 0xFFFF00;"
 "int COLOR_BLUE = 0x0000FF;"
 "int COLOR_BLACK = 0x000000;"
 "float clock();"

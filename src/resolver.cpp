@@ -438,7 +438,7 @@ void Resolver::visitBinaryExpr(BinaryExpr *expr)
   case TOKEN_PLUS:
     if (type1.valueType == VAL_OBJ) {
       expr->right = convertToString(expr->right, type2, parser);
-      current->addLocal(VAL_OBJ);
+      current->addLocal(stringType);
       return;
     }
     // no break statement, fall through
@@ -974,7 +974,10 @@ void Resolver::visitListExpr(ListExpr *expr)
 
 void Resolver::visitLiteralExpr(LiteralExpr *expr)
 {
-  current->addLocal(expr->type);
+  if (expr->type == VAL_OBJ)
+    current->addLocal(stringType);
+  else
+    current->addLocal(expr->type);
 }
 
 void Resolver::visitLogicalExpr(LogicalExpr *expr)

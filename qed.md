@@ -6,8 +6,8 @@ The code is quite short but does a lot. It implements a yellow oval increment/de
 void Button(String text) {
   float trp = 80%
 
-  <out: rect; transparency: trp; onPress: trp = 69%; onRelease: {trp = 80%; return()}>
-  <out: text; transparency: 60%; fontSize: 40; size: [35, AS_IS]; align: 50%;>
+  <out: rect; transparency: trp; onPress: trp = 69%; onRelease: {trp = 80%; return()} size: [35, AS_IS];>
+  <out: text; transparency: 60%; align: 50%; fontSize: 40;>
 }
 
 int count = 0
@@ -17,24 +17,30 @@ Button incButton = new Button("+") -> count++
 <out: oval; color: (count >= 0 ? COLOR_GREEN : 0) | (count <= 0 ? COLOR_RED : 0);>
 <_ color: COLOR_BLACK;
   <out: decButton;>
-  <out: count; size: [100, 80]; fontSize: 50; align: 50%; transparency: 50%;>
+  <.
+    <size: [100, 80];>
+    <out: count; transparency: 50%; align: 50%; fontSize: 50;>
+  >
   <out: incButton;>
 >
 void Button(String text) {
-  int col = 0xE0000000
+  float trp = 0.8
 
-  <out: rect; color: col;>// onPress: col = 0xB0000000; onRelease: return();>//{col = 0xE0000000; return()}>
-  <out: text; color: 0x90000000; fontSize: 40; width: 35; alignX: 50; alignY: 50; zoomHeight: 100; onPress: col = 0xB0000000; onRelease: return();>
+  <out: rect; transparency: trp; onPress: trp = 0.69; onRelease: {trp = 0.8; return()}> // size: [35,];>//
+  <out: text; transparency: 0.6; align: 0.5; fontSize: 40;>
 }
 
 int count = 0
 var decButton = new Button("-") -> count = count - 1//count--
 var incButton = new Button("+") -> count = count + 1//count++
 
-<out: oval; color: (count >= 0 ? COLOR_GREEN : 0) | (count <= 0 ? COLOR_RED : 0); height: 80;>
-<_
+<out: oval; color: (count >= 0 ? COLOR_GREEN : 0) | (count <= 0 ? COLOR_RED : 0);>
+<_ color: COLOR_BLACK;
   <out: decButton;>
-  <out: count; width: 100; fontSize: 50; alignX: 50; alignY: 50; color: 0x80000000;>
+  <.
+    //<size: [100, 80];>
+    <out: count; transparency: 0.5; align: 0.5; fontSize: 50;>
+  >
   <out: incButton;>
 >
 ```

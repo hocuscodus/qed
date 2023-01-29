@@ -1,7 +1,7 @@
 void Button(String text) {
   float trp = 0.8
 
-  <out: rect; transparency: trp; onPress: trp = 0.69; onRelease: {trp = 0.8; return()}> // size: [35,];>//
+  <out: rect; transparency: trp; onPress: trp = 0.69; onRelease: {trp = 0.8; return()}>
   <out: text; transparency: 0.6; align: 0.5; fontSize: 40;>
 }
 
@@ -9,11 +9,11 @@ int count = 0
 var decButton = new Button("-") -> count = count - 1//count--
 var incButton = new Button("+") -> count = count + 1//count++
 
-<out: oval; color: (count >= 0 ? COLOR_GREEN : 0) | (count <= 0 ? COLOR_RED : 0);>
+<out: oval; color: count > 0 ? COLOR_GREEN : count < 0 ? COLOR_RED : COLOR_YELLOW;>
 <_ color: COLOR_BLACK;
   <out: decButton;>
   <.
-    //<size: [100, 80];>
+    <out: "          ";>
     <out: count; transparency: 0.5; align: 0.5; fontSize: 50;>
   >
   <out: incButton;>
