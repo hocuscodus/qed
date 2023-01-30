@@ -1,6 +1,7 @@
 void Button(String text) {
   float trp = 0.8
 
+  <out: "   ";>
   <out: rect; transparency: trp; onPress: trp = 0.69; onRelease: {trp = 0.8; return()}>
   <out: text; transparency: 0.6; align: 0.5; fontSize: 40;>
 }

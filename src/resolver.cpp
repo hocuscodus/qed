@@ -1636,25 +1636,29 @@ void Resolver::recalcLayout(UIDirectiveExpr *expr) {
   }
 
   if (expr->viewIndex != -1) {
-    if (expr->lastChild)
-      expr->_layoutIndexes[dir] = expr->lastChild->_layoutIndexes[dir];
-    else {
-      (*ss) << "  var l" << aCount << " = a" << expr->viewIndex << (dir ? " & 0xFFFFFFFF" : " >> 32") << "\n";
-      expr->_layoutIndexes[dir] = aCount++;
-    }
+    if (expr->viewIndex)
+      (*ss) << "  var u" << aCount << " = a" << expr->viewIndex << (dir ? " & 0xFFFFFFFF" : " >> 32") << "\n";
 
-    for (UIDirectiveExpr *previous = expr->previous; previous; previous = previous->previous)
-      if (previous->viewIndex != -1) {
-        (*ss) << "  var l" << aCount << " = ";
+    (*ss) << "  var l" << aCount << " = ";
 
-        if (parent && parent->childDir & (1 << dir))
-          (*ss) << "l" << previous->_layoutIndexes[dir] << " + l" << expr->_layoutIndexes[dir] << "\n";
-        else
-          (*ss) << "max(l" << previous->_layoutIndexes[dir] << ", l" << expr->_layoutIndexes[dir] << ")\n";
+    char letter  = expr->viewIndex ? 'u' : 'l';
+    int count2 = expr->viewIndex ? aCount : expr->lastChild->_layoutIndexes[dir];
+    UIDirectiveExpr *previous = expr->previous;
 
-        expr->_layoutIndexes[dir] = aCount++;
+    for (; previous; previous = previous->previous)
+      if (previous->viewIndex != -1)
         break;
-      }
+
+    if (previous) {
+      if (parent && parent->childDir & (1 << dir))
+        (*ss) << "l" << previous->_layoutIndexes[dir] << " + " << letter << count2 << "\n";
+      else
+        (*ss) << "max(l" << previous->_layoutIndexes[dir] << ", " << letter << count2 << ")\n";
+    }
+    else
+      (*ss) << letter << count2 << "\n";
+
+    expr->_layoutIndexes[dir] = aCount++;
   }
 }
 
@@ -1696,7 +1700,7 @@ int Resolver::adjustLayout(UIDirectiveExpr *expr) {
         (*ss) << "int childSize" << dir << " = ";
 
         if (expr->viewIndex != -1) {
-          (*ss) << "l" << expr->_layoutIndexes[dir];
+          (*ss) << (expr->viewIndex ? "u" : "l") << expr->_layoutIndexes[dir];
 
           if (expand != -1)
             (*ss) << " + (";
@@ -1706,13 +1710,21 @@ int Resolver::adjustLayout(UIDirectiveExpr *expr) {
 
         if (expand != -1) {
           if (expr->viewIndex != -1)
-            (*ss) << " - l" << expr->_layoutIndexes[dir] << ")";
+            (*ss) << "size" << dir << " - " << (expr->viewIndex ? "u" : "l") << expr->_layoutIndexes[dir] << ")";
 
           (*ss) << " * v" << expand << "\n";
         }
         else
           (*ss) << "\n";
-
+// expand != -1 viewindex != -1
+// 00 int childSize = sizeX
+// 01 int childSize = lTotalX
+// 10 int childSize = sizeX * vExpand
+// 11 int childSize = lTotalX + ( - lTotalX) * vExpand
+// 00 int childSize = sizeX
+// 01 int childSize = aViewX >> 32
+// 10 int childSize = sizeX * vExpand
+// 11 int childSize = aViewX >> 32 + (sizeX - aViewX >> 32) * vExpand
         if (align != -1) {
           insertTabs();
           (*ss) << "int posDiff" << dir << " = (size" << dir << " - childSize" << dir << ") * v" << align << "\n";
