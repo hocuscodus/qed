@@ -1596,27 +1596,35 @@ void Resolver::pushAreas(UIDirectiveExpr *expr) {
       expr->viewIndex = child->viewIndex != -1 ? 0 : -1;
   }
   else {
-    const char *name = getValueVariableName(valueStackSize, ATTRIBUTE_OUT);
+    const char *size = getValueVariableName(valueStackSize, ATTRIBUTE_SIZE);
 
-    if (name != NULL) {
-      Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
-      Type outType = current->enclosing->locals[current->enclosing->resolveLocal(&token)].type;
-      char *callee = NULL;
+    if (size != NULL) {
+      expr->viewIndex = aCount;
+      (*ss) << "var a" << aCount++ << " = (" << size << " << 32) | " << size << "\n";
+    }
+    else {
+      const char *name = getValueVariableName(valueStackSize, ATTRIBUTE_OUT);
 
-      if (outType.valueType == VAL_OBJ && outType.objType) {
-        switch (outType.objType->type) {
-          case OBJ_COMPILER_INSTANCE:
-            callee = "getInstanceSize";
-            break;
+      if (name != NULL) {
+        Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
+        Type outType = current->enclosing->locals[current->enclosing->resolveLocal(&token)].type;
+        char *callee = NULL;
 
-          case OBJ_STRING:
-            callee = "getTextSize";
-            break;
-        }
+        if (outType.valueType == VAL_OBJ && outType.objType) {
+          switch (outType.objType->type) {
+            case OBJ_COMPILER_INSTANCE:
+              callee = "getInstanceSize";
+              break;
 
-        if (callee) {
-          expr->viewIndex = aCount;
-          (*ss) << "  var a" << aCount++ << " = " << callee << "(" << name << ")\n";
+            case OBJ_STRING:
+              callee = "getTextSize";
+              break;
+          }
+
+          if (callee) {
+            expr->viewIndex = aCount;
+            (*ss) << "  var a" << aCount++ << " = " << callee << "(" << name << ")\n";
+          }
         }
       }
     }
@@ -1811,41 +1819,42 @@ void Resolver::paint(UIDirectiveExpr *expr) {
     accept<int>(expr->lastChild);
     parent = oldParent;
   }
-  else {
-    char *name = (char *) getValueVariableName(valueStackPaint, ATTRIBUTE_OUT);
-    Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
-    Type outType = current->enclosing->enclosing->locals[current->enclosing->enclosing->resolveLocal(&token)].type;
+  else
+    if (valueStackPaint.get(ATTRIBUTE_OUT) != -1) {
+      char *name = (char *) getValueVariableName(valueStackPaint, ATTRIBUTE_OUT);
+      Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
+      Type outType = current->enclosing->enclosing->locals[current->enclosing->enclosing->resolveLocal(&token)].type;
 
-    if (outType.valueType == VAL_OBJ && outType.objType) {
-      char *callee = NULL;
+      if (outType.valueType == VAL_OBJ && outType.objType) {
+        char *callee = NULL;
 
-      switch (outType.objType->type) {
-        case OBJ_COMPILER_INSTANCE:
-          callee = "displayInstance";
-          break;
+        switch (outType.objType->type) {
+          case OBJ_COMPILER_INSTANCE:
+            callee = "displayInstance";
+            break;
 
-        case OBJ_STRING:
-          callee = "displayText";
-          break;
+          case OBJ_STRING:
+            callee = "displayText";
+            break;
 
-        case OBJ_FUNCTION:
-          callee = ((ObjFunction *) outType.objType)->name->chars;
-          name[0] = 0;
-          break;
+          case OBJ_FUNCTION:
+            callee = ((ObjFunction *) outType.objType)->name->chars;
+            name[0] = 0;
+            break;
+        }
+
+        if (callee) {
+          insertTabs();
+          (*ss) << callee << "(" << name << (name[0] ? ", " : "");
+          insertPoint("pos");
+          (*ss) << ", ";
+          insertPoint("size");
+          (*ss) << ")\n";
+        }
       }
-
-      if (callee) {
-        insertTabs();
-        (*ss) << callee << "(" << name << (name[0] ? ", " : "");
-        insertPoint("pos");
-        (*ss) << ", ";
-        insertPoint("size");
-        (*ss) << ")\n";
-      }
+      else
+        parser.error("Out value having an illegal type");
     }
-    else
-      parser.error("Out value having an illegal type");
-  }
 
   for (int index = expr->attCount - 1; index >= 0; index--)
     if (!isEventHandler(expr->attributes[index]) && expr->attributes[index]->_uiIndex != -1 && expr->attributes[index]->_index != -1) {
