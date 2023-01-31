@@ -1229,6 +1229,8 @@ static void insertTabs() {
     (*ss) << "  ";
 }
 
+static const char *getGroupName(UIDirectiveExpr *expr, int dir);
+
 void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
   TokenType type = expr->name.type;
   bool parenFlag = type == TOKEN_RIGHT_PAREN;
@@ -1255,7 +1257,7 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
         if (uiParseCount == 3) {
           nTabs++;
           insertTabs();
-          (*ss) << "var size = (l" << exprUI->_layoutIndexes[0] << " << 32) | l" << exprUI->_layoutIndexes[1] << "\n";
+          (*ss) << "var size = (" << getGroupName(exprUI, 0) << " << 32) | " << getGroupName(exprUI, 1) << "\n";
           nTabs--;
         }
 
@@ -1575,6 +1577,9 @@ static const char *getValueVariableName(ValueStack3 &valueStack, Attribute uiInd
     return NULL;
 }
 
+// viewIndex = -1 -> non-sized unit or group
+// viewIndex = 0  -> sized group
+// viewIndex > 0  -> sized unit, has an associated variable
 void Resolver::pushAreas(UIDirectiveExpr *expr) {
   if (expr->previous)
     accept<int>(expr->previous);
@@ -1621,6 +1626,42 @@ void Resolver::pushAreas(UIDirectiveExpr *expr) {
       valueStackSize.pop(expr->attributes[index]->_uiIndex);
 }
 
+static const char *getUnitName(UIDirectiveExpr *expr, int dir) {
+  if (expr->viewIndex == -1)
+    return NULL;
+
+  if (expr->viewIndex) {
+    static char name[16];
+
+    sprintf(name, "u%d", expr->_layoutIndexes[dir]);
+    return name;
+  }
+  else
+    return getGroupName(expr->lastChild, dir);
+}
+
+static UIDirectiveExpr *getPrevious(UIDirectiveExpr *expr) {
+  for (UIDirectiveExpr *previous = expr->previous; previous; previous = previous->previous)
+    if (previous->viewIndex != -1)
+      return previous;
+
+  return NULL;
+}
+
+static const char *getGroupName(UIDirectiveExpr *expr, int dir) {
+  if (expr->viewIndex == -1)
+    return NULL;
+
+  if (getPrevious(expr)) {
+    static char name[16];
+
+    sprintf(name, "l%d", expr->_layoutIndexes[dir]);
+    return name;
+  }
+  else
+    return getUnitName(expr, dir);
+}
+
 void Resolver::recalcLayout(UIDirectiveExpr *expr) {
   int dir = getParseDir();
 
@@ -1636,29 +1677,22 @@ void Resolver::recalcLayout(UIDirectiveExpr *expr) {
   }
 
   if (expr->viewIndex != -1) {
+    UIDirectiveExpr *previous = getPrevious(expr);
+
+    if (expr->viewIndex || previous)
+      expr->_layoutIndexes[dir] = aCount++;
+
     if (expr->viewIndex)
-      (*ss) << "  var u" << aCount << " = a" << expr->viewIndex << (dir ? " & 0xFFFFFFFF" : " >> 32") << "\n";
-
-    (*ss) << "  var l" << aCount << " = ";
-
-    char letter  = expr->viewIndex ? 'u' : 'l';
-    int count2 = expr->viewIndex ? aCount : expr->lastChild->_layoutIndexes[dir];
-    UIDirectiveExpr *previous = expr->previous;
-
-    for (; previous; previous = previous->previous)
-      if (previous->viewIndex != -1)
-        break;
+      (*ss) << "  var " << getUnitName(expr, dir) << " = a" << expr->viewIndex << (dir ? " & 0xFFFFFFFF" : " >> 32") << "\n";
 
     if (previous) {
-      if (parent && parent->childDir & (1 << dir))
-        (*ss) << "l" << previous->_layoutIndexes[dir] << " + " << letter << count2 << "\n";
-      else
-        (*ss) << "max(l" << previous->_layoutIndexes[dir] << ", " << letter << count2 << ")\n";
-    }
-    else
-      (*ss) << letter << count2 << "\n";
+      (*ss) << "  var " << getGroupName(expr, dir) << " = ";
 
-    expr->_layoutIndexes[dir] = aCount++;
+      if (parent && parent->childDir & (1 << dir))
+        (*ss) << getGroupName(previous, dir) << " + " << getUnitName(expr, dir) << "\n";
+      else
+        (*ss) << "max(" << getGroupName(previous, dir) << ", " << getUnitName(expr, dir) << ")\n";
+    }
   }
 }
 
@@ -1677,17 +1711,17 @@ int Resolver::adjustLayout(UIDirectiveExpr *expr) {
 
   for (int dir = 0; dir < NUM_DIRS; dir++)
     if (parent && (parent->childDir & (1 << dir))) { // +
-      insertTabs();
-      (*ss) << "int size" << dir << " = l" << expr->_layoutIndexes[dir];
+      UIDirectiveExpr *previous = getPrevious(expr);
 
-      for (UIDirectiveExpr *previous = expr->previous; previous; previous = previous->previous)
-        if (previous->viewIndex != -1) {
-          (*ss) << " - l" << previous->_layoutIndexes[dir] << "\n";
-          insertTabs();
-          (*ss) << "int posDiff" << dir << " = l" << previous->_layoutIndexes[dir];
-          posDiffDirs |= 1 << dir;
-          break;
-        }
+      insertTabs();
+      (*ss) << "int size" << dir << " = " << getGroupName(expr, dir);
+
+      if (previous) {
+        (*ss) << " - " << getGroupName(previous, dir) << "\n";
+        insertTabs();
+        (*ss) << "int posDiff" << dir << " = " << getGroupName(previous, dir);
+        posDiffDirs |= 1 << dir;
+      }
 
       (*ss) << "\n";
     }
@@ -1700,7 +1734,7 @@ int Resolver::adjustLayout(UIDirectiveExpr *expr) {
         (*ss) << "int childSize" << dir << " = ";
 
         if (expr->viewIndex != -1) {
-          (*ss) << (expr->viewIndex ? "u" : "l") << expr->_layoutIndexes[dir];
+          (*ss) << getUnitName(expr, dir);
 
           if (expand != -1)
             (*ss) << " + (";
@@ -1710,7 +1744,7 @@ int Resolver::adjustLayout(UIDirectiveExpr *expr) {
 
         if (expand != -1) {
           if (expr->viewIndex != -1)
-            (*ss) << "size" << dir << " - " << (expr->viewIndex ? "u" : "l") << expr->_layoutIndexes[dir] << ")";
+            (*ss) << "size" << dir << " - " << getUnitName(expr, dir) << ")";
 
           (*ss) << " * v" << expand << "\n";
         }
@@ -1718,13 +1752,9 @@ int Resolver::adjustLayout(UIDirectiveExpr *expr) {
           (*ss) << "\n";
 // expand != -1 viewindex != -1
 // 00 int childSize = sizeX
-// 01 int childSize = lTotalX
+// 01 int childSize = unitX >> 32
 // 10 int childSize = sizeX * vExpand
-// 11 int childSize = lTotalX + ( - lTotalX) * vExpand
-// 00 int childSize = sizeX
-// 01 int childSize = aViewX >> 32
-// 10 int childSize = sizeX * vExpand
-// 11 int childSize = aViewX >> 32 + (sizeX - aViewX >> 32) * vExpand
+// 11 int childSize = unitX >> 32 + (sizeX - unitX >> 32) * vExpand
         if (align != -1) {
           insertTabs();
           (*ss) << "int posDiff" << dir << " = (size" << dir << " - childSize" << dir << ") * v" << align << "\n";
