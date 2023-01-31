@@ -6,40 +6,20 @@ The code is quite short but does a lot. It implements a yellow oval increment/de
 void Button(String text) {
   float trp = 80%
 
-  <out: rect; transparency: trp; onPress: trp = 69%; onRelease: {trp = 80%; return()} size: [35, AS_IS];>
-  <out: text; transparency: 60%; align: 50%; fontSize: 40;>
-}
-
-int count = 0
-Button decButton = new Button("-") -> count--
-Button incButton = new Button("+") -> count++
-
-<out: oval; color: (count >= 0 ? COLOR_GREEN : 0) | (count <= 0 ? COLOR_RED : 0);>
-<_ color: COLOR_BLACK;
-  <out: decButton;>
-  <.
-    <size: [100, 80];>
-    <out: count; transparency: 50%; align: 50%; fontSize: 50;>
-  >
-  <out: incButton;>
->
-void Button(String text) {
-  float trp = 0.8
-
-  <out: rect; transparency: trp; onPress: trp = 0.69; onRelease: {trp = 0.8; return()}> // size: [35,];>//
-  <out: text; transparency: 0.6; align: 0.5; fontSize: 40;>
+  <out: rect; transparency: trp; size: 35; onPress: trp = 65%; onRelease: {trp = 80%; return()}>
+  <out: text; transparency: 40%; align: 50%; fontSize: 40;>
 }
 
 int count = 0
 var decButton = new Button("-") -> count = count - 1//count--
 var incButton = new Button("+") -> count = count + 1//count++
 
-<out: oval; color: (count >= 0 ? COLOR_GREEN : 0) | (count <= 0 ? COLOR_RED : 0);>
+<out: oval; color: count > 0 ? COLOR_GREEN : count < 0 ? COLOR_RED : COLOR_YELLOW;>
 <_ color: COLOR_BLACK;
   <out: decButton;>
   <.
-    //<size: [100, 80];>
-    <out: count; transparency: 0.5; align: 0.5; fontSize: 50;>
+    <size: 80;>
+    <out: count; transparency: 30%; align: 50%; fontSize: 50;>
   >
   <out: incButton;>
 >

@@ -315,7 +315,8 @@ void CodeGenerator::visitUnaryExpr(UnaryExpr *expr) {
   switch (expr->op.type) {
     case TOKEN_PRINT:         emitByte(OP_PRINT); break;
 //    case TOKEN_MINUS:         emitByte(OP_PRINT); break;
-    case TOKEN_BANG:         emitByte(OP_NOT); break;
+    case TOKEN_BANG:          emitByte(OP_NOT); break;
+    case TOKEN_PERCENT:       emitConstant(FLOAT_VAL(100)); emitByte(OP_DIVIDE_FLOAT); break;
     default: return; // Unreachable.
   }
 }

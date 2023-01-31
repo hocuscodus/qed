@@ -1,8 +1,8 @@
 void Button(String text) {
-  float trp = 0.8
+  float trp = 80%
 
-  <out: rect; transparency: trp; size: 35; onPress: trp = 0.69; onRelease: {trp = 0.8; return()}>
-  <out: text; transparency: 0.6; align: 0.5; fontSize: 40;>
+  <out: rect; transparency: trp; size: 35; onPress: trp = 65%; onRelease: {trp = 80%; return()}>
+  <out: text; transparency: 40%; align: 50%; fontSize: 40;>
 }
 
 int count = 0
@@ -14,7 +14,7 @@ var incButton = new Button("+") -> count = count + 1//count++
   <out: decButton;>
   <.
     <size: 80;>
-    <out: count; transparency: 0.5; align: 0.5; fontSize: 50;>
+    <out: count; transparency: 30%; align: 50%; fontSize: 50;>
   >
   <out: incButton;>
 >

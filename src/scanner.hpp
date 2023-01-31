@@ -31,7 +31,7 @@
     KEY_DEF( TOKEN_COMMA, NULL, NULL, PREC_NONE ),  \
     KEY_DEF( TOKEN_DOT, NULL, &Parser::dot, PREC_MEMBER ),  \
     KEY_DEF( TOKEN_COMP, NULL, NULL, PREC_NONE ),  \
-    KEY_DEF( TOKEN_PERCENT, NULL, NULL, PREC_FACTOR ),  \
+    KEY_DEF( TOKEN_PERCENT, NULL, &Parser::suffix, PREC_FACTOR ),  \
     KEY_DEF( TOKEN_QUESTION, NULL, &Parser::ternary, PREC_TERNARY ),  \
     /* One, two or three character tokens. */ \
     KEY_DEF( TOKEN_BANG, &Parser::unary, NULL, PREC_NONE ),  \

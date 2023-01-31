@@ -1130,6 +1130,12 @@ void Resolver::visitUnaryExpr(UnaryExpr *expr)
     current->localCount++;
     break;
   }
+
+  case TOKEN_PERCENT:
+    expr->right = convertToFloat(expr->right, type, parser);
+    current->addLocal({VAL_FLOAT});
+    break;
+
   default:
     current->addLocal(type);
     break;
