@@ -1589,6 +1589,15 @@ void Resolver::pushAreas(UIDirectiveExpr *expr) {
     if (!isEventHandler(expr->attributes[index]))
       valueStackSize.push(expr->attributes[index]->_uiIndex, expr->attributes[index]->_index);
 
+  for (int index = 0; index < expr->attCount; index++)
+    if (!isEventHandler(expr->attributes[index]) && expr->attributes[index]->_uiIndex == ATTRIBUTE_FONTSIZE && expr->attributes[index]->_index != -1) {
+      char name[20] = "";
+
+      sprintf(name, "v%d", expr->attributes[index]->_index);
+      insertTabs();
+      (*ss) << "pushAttribute(" << expr->attributes[index]->_uiIndex << ", " << name << ")\n";
+    }
+
   if (expr->lastChild) {
     accept<int>(expr->lastChild);
 
@@ -1600,7 +1609,7 @@ void Resolver::pushAreas(UIDirectiveExpr *expr) {
 
     if (size != NULL) {
       expr->viewIndex = aCount;
-      (*ss) << "var a" << aCount++ << " = (" << size << " << 32) | " << size << "\n";
+      (*ss) << "  var a" << aCount++ << " = (" << size << " << 32) | " << size << "\n";
     }
     else {
       const char *name = getValueVariableName(valueStackSize, ATTRIBUTE_OUT);
@@ -1629,6 +1638,12 @@ void Resolver::pushAreas(UIDirectiveExpr *expr) {
       }
     }
   }
+
+  for (int index = expr->attCount - 1; index >= 0; index--)
+    if (!isEventHandler(expr->attributes[index]) && expr->attributes[index]->_uiIndex == ATTRIBUTE_FONTSIZE && expr->attributes[index]->_index != -1) {
+      insertTabs();
+      (*ss) << "popAttribute(" << expr->attributes[index]->_uiIndex << ")\n";
+    }
 
   for (int index = 0; index < expr->attCount; index++)
     if (!isEventHandler(expr->attributes[index]))

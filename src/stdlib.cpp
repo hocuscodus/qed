@@ -80,7 +80,7 @@ QNI_FN(max) {
 }
 
 struct ValueStack2 {
-	std::stack<Value> map[64];//ATTRIBUTE_END];
+	std::stack<Value> map[ATTRIBUTE_END];
 
   ValueStack2() {
     push(ATTRIBUTE_ALIGN, FLOAT_VAL(0));
@@ -132,8 +132,8 @@ QNI_FN(rect) {
   rectangle.h = size[1];
 
   SDL_BlendMode blendMode;
-  int color = AS_INT(attStack.get(7));
-  float transparency = AS_FLOAT(attStack.get(8));
+  int color = AS_INT(attStack.get(ATTRIBUTE_COLOR));
+  float transparency = AS_FLOAT(attStack.get(ATTRIBUTE_TRANSPARENCY));
   int trp = ((int) (transparency * 0xFF)) ^ 0xFF;
 
   SDL_SetRenderDrawBlendMode(rend2, SDL_BLENDMODE_BLEND);
@@ -149,8 +149,8 @@ QNI_FN(oval) {
   Point size = {sizeP >> 32, sizeP & 0xFFFFFFFF};
   int rx = size[0] >> 1;
   int ry = size[1] >> 1;
-  int color = AS_INT(attStack.get(7));
-  float transparency = AS_FLOAT(attStack.get(8));
+  int color = AS_INT(attStack.get(ATTRIBUTE_COLOR));
+  float transparency = AS_FLOAT(attStack.get(ATTRIBUTE_TRANSPARENCY));
 
 //  SDL_SetTextureBlendMode(rend2, SDL_BLENDMODE_ADD);
   filledEllipseRGBA(rend2, pos[0] + rx, pos[1] + ry, rx, ry,
@@ -165,13 +165,22 @@ QNI_FN(clock) {
 }
 
 SDL_Window* win = NULL;
+bool initFont = false;
+
+static TTF_Font *getNewFont(int size) {
+  if (!initFont) {
+    TTF_Init();
+    initFont = true;
+  }
+
+  return TTF_OpenFont("./res/font/arial.ttf", size);
+}
 
 static TTF_Font *getFont() {
   static TTF_Font *font = NULL;
 
   if (!font) {
-    TTF_Init();
-    font = TTF_OpenFont("./res/font/arial.ttf", 30);
+    font = getNewFont(30);
   }
   return font;
 }
@@ -248,9 +257,15 @@ void uninitDisplay() {
 QNI_FN(getTextSize) {
   int width;
   int height;
+  int fontSize = AS_INT(attStack.get(ATTRIBUTE_FONTSIZE));
   const char *text = ((ObjString *) AS_OBJ(args[0]))->chars;
+  TTF_Font *font = fontSize != -1 ? getNewFont(fontSize) : getFont();
 
-  TTF_SizeUTF8(getFont(), text, &width, &height);
+  TTF_SizeUTF8(font, text, &width, &height);
+
+  if (fontSize != -1)
+    TTF_CloseFont(font);
+
   return INT_VAL((((long) width) << 32) | height);
 }
 
@@ -262,16 +277,21 @@ QNI_FN(getInstanceSize) {
 }
 
 QNI_FN(displayText) {
+  SDL_Rect rectangle;
   const char *text = ((ObjString *) AS_OBJ(args[0]))->chars;
   long posP = AS_INT(args[1]);
   long sizeP = AS_INT(args[2]);
   Point pos = {posP >> 32, posP & 0xFFFFFFFF};
   Point size = {sizeP >> 32, sizeP & 0xFFFFFFFF};
-  int color = AS_INT(attStack.get(7));
-  float transparency = AS_FLOAT(attStack.get(8));
-  SDL_Surface *textSurface = TTF_RenderText_Blended(getFont(), text, {(color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, ((int) (transparency * 0xFF)) ^ 0xFF});
+  int color = AS_INT(attStack.get(ATTRIBUTE_COLOR));
+  float transparency = AS_FLOAT(attStack.get(ATTRIBUTE_TRANSPARENCY));
+  int fontSize = AS_INT(attStack.get(ATTRIBUTE_FONTSIZE));
+  TTF_Font *font = fontSize != -1 ? getNewFont(fontSize) : getFont();
+  SDL_Surface *textSurface = TTF_RenderText_Blended(font, text, {(color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, ((int) (transparency * 0xFF)) ^ 0xFF});
   SDL_Texture *textTexture = SDL_CreateTextureFromSurface(rend2, textSurface);
-  SDL_Rect rectangle;
+
+  if (fontSize != -1)
+    TTF_CloseFont(font);
 
   rectangle.x = pos[0];
   rectangle.y = pos[1];
