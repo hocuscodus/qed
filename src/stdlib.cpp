@@ -68,13 +68,13 @@ SDL_Surface *background2;
   SDL_DestroyTexture(screenTexture);
 */
 QNI_FN(println) {
-  printf("%s\n", ((ObjString *) args[0].as.obj)->chars);
+  printf("%s\n", ((ObjString *) AS_OBJ(args[0]))->chars);
   return VOID_VAL;
 }
 
 QNI_FN(max) {
-  long arg0 = args[0].as.integer;
-  long arg1 = args[1].as.integer;
+  long arg0 = AS_INT(args[0]);
+  long arg1 = AS_INT(args[1]);
 
   return INT_VAL(arg0 > arg1 ? arg0 : arg1);
 }
@@ -105,7 +105,7 @@ struct ValueStack2 {
 ValueStack2 attStack;
 
 QNI_FN(pushAttribute) {
-  long uiIndex = args[0].as.integer;
+  long uiIndex = AS_INT(args[0]);
   Value &value = args[1];
 
   attStack.push(uiIndex, value);
@@ -113,15 +113,15 @@ QNI_FN(pushAttribute) {
 }
 
 QNI_FN(popAttribute) {
-  long uiIndex = args[0].as.integer;
+  long uiIndex = AS_INT(args[0]);
 
   attStack.pop(uiIndex);
   return VOID_VAL;
 }
 
 QNI_FN(rect) {
-  long posP = args[0].as.integer;
-  long sizeP = args[1].as.integer;
+  long posP = AS_INT(args[0]);
+  long sizeP = AS_INT(args[1]);
   Point pos = {posP >> 32, posP & 0xFFFFFFFF};
   Point size = {sizeP >> 32, sizeP & 0xFFFFFFFF};
   SDL_Rect rectangle;
@@ -132,8 +132,8 @@ QNI_FN(rect) {
   rectangle.h = size[1];
 
   SDL_BlendMode blendMode;
-  int color = attStack.get(7).as.integer;
-  float transparency = attStack.get(8).as.floating;
+  int color = AS_INT(attStack.get(7));
+  float transparency = AS_FLOAT(attStack.get(8));
   int trp = ((int) (transparency * 0xFF)) ^ 0xFF;
 
   SDL_SetRenderDrawBlendMode(rend2, SDL_BLENDMODE_BLEND);
@@ -143,14 +143,14 @@ QNI_FN(rect) {
 }
 
 QNI_FN(oval) {
-  long posP = args[0].as.integer;
-  long sizeP = args[1].as.integer;
+  long posP = AS_INT(args[0]);
+  long sizeP = AS_INT(args[1]);
   Point pos = {posP >> 32, posP & 0xFFFFFFFF};
   Point size = {sizeP >> 32, sizeP & 0xFFFFFFFF};
   int rx = size[0] >> 1;
   int ry = size[1] >> 1;
-  int color = attStack.get(7).as.integer;
-  float transparency = attStack.get(8).as.floating;
+  int color = AS_INT(attStack.get(7));
+  float transparency = AS_FLOAT(attStack.get(8));
 
 //  SDL_SetTextureBlendMode(rend2, SDL_BLENDMODE_ADD);
   filledEllipseRGBA(rend2, pos[0] + rx, pos[1] + ry, rx, ry,
@@ -248,27 +248,27 @@ void uninitDisplay() {
 QNI_FN(getTextSize) {
   int width;
   int height;
-  const char *text = ((ObjString *) args[0].as.obj)->chars;
+  const char *text = ((ObjString *) AS_OBJ(args[0]))->chars;
 
   TTF_SizeUTF8(getFont(), text, &width, &height);
   return INT_VAL((((long) width) << 32) | height);
 }
 
 QNI_FN(getInstanceSize) {
-  ObjInstance *instance = (ObjInstance *) args[0].as.obj;
+  ObjInstance *instance = (ObjInstance *) AS_OBJ(args[0]);
   Point size = instance->recalculateLayout();
 
   return INT_VAL((((long) size[0]) << 32) | size[1]);
 }
 
 QNI_FN(displayText) {
-  const char *text = ((ObjString *) args[0].as.obj)->chars;
-  long posP = args[1].as.integer;
-  long sizeP = args[2].as.integer;
+  const char *text = ((ObjString *) AS_OBJ(args[0]))->chars;
+  long posP = AS_INT(args[1]);
+  long sizeP = AS_INT(args[2]);
   Point pos = {posP >> 32, posP & 0xFFFFFFFF};
   Point size = {sizeP >> 32, sizeP & 0xFFFFFFFF};
-  int color = attStack.get(7).as.integer;
-  float transparency = attStack.get(8).as.floating;
+  int color = AS_INT(attStack.get(7));
+  float transparency = AS_FLOAT(attStack.get(8));
   SDL_Surface *textSurface = TTF_RenderText_Blended(getFont(), text, {(color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, ((int) (transparency * 0xFF)) ^ 0xFF});
   SDL_Texture *textTexture = SDL_CreateTextureFromSurface(rend2, textSurface);
   SDL_Rect rectangle;
@@ -285,9 +285,9 @@ QNI_FN(displayText) {
 }
 
 QNI_FN(displayInstance) {
-  ObjInstance *instance = (ObjInstance *) args[0].as.obj;
-  long posP = args[1].as.integer;
-  long sizeP = args[2].as.integer;
+  ObjInstance *instance = (ObjInstance *) AS_OBJ(args[0]);
+  long posP = AS_INT(args[1]);
+  long sizeP = AS_INT(args[2]);
   Point pos = {posP >> 32, posP & 0xFFFFFFFF};
   Point size = {sizeP >> 32, sizeP & 0xFFFFFFFF};
 
@@ -296,10 +296,10 @@ QNI_FN(displayInstance) {
 }
 
 QNI_FN(onInstanceEvent) {
-  ObjInstance *instance = (ObjInstance *) args[0].as.obj;
-  Event event = (Event) args[1].as.integer;
-  long posP = args[2].as.integer;
-  long sizeP = args[3].as.integer;
+  ObjInstance *instance = (ObjInstance *) AS_OBJ(args[0]);
+  Event event = (Event) AS_INT(args[1]);
+  long posP = AS_INT(args[2]);
+  long sizeP = AS_INT(args[3]);
   Point pos = {posP >> 32, posP & 0xFFFFFFFF};
   Point size = {sizeP >> 32, sizeP & 0xFFFFFFFF};
 
@@ -355,7 +355,7 @@ QNI_CLASS(Timer) {
   ObjInstance *instance = vm.instance;
   ObjInternal *objInternal = (ObjInternal *) AS_OBJ(args[1]);
 
-  objInternal->object = new TimerInternal(args[0].as.integer, instance);
+  objInternal->object = new TimerInternal(AS_INT(args[0]), instance);
   return {INTERPRET_HALT};
 }
 

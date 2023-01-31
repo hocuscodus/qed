@@ -258,7 +258,7 @@ InterpretValue CoThread::callValue(Value callee, int argCount, bool newFlag, Obj
 
       stackTop -= argCount + 1;
 
-      if (result.type != VAL_VOID)
+      if (AS_CLOSURE(callee)->function->type.valueType != VAL_VOID)
         push(result);
 
       return {INTERPRET_CONTINUE};
@@ -423,7 +423,7 @@ InterpretValue CoThread::run() {
       uint8_t byte = READ_BYTE();
       Value value = frame->closure->function->chunk.constants.values[byte];
 
-      push(value.type == VAL_OBJ && value.as.obj->type == OBJ_INTERNAL ? OBJ_VAL(newInternal()) : value);
+      push(value);//frame->closure->function->type.valueType == VAL_OBJ && AS_OBJ(value)->type == OBJ_INTERNAL ? OBJ_VAL(newInternal()) : value);
       break;
     }
     case OP_TRUE:
@@ -732,7 +732,7 @@ void CoThread::onReturn(Value &returnValue) {
   closeUpvalues(frame->slots);
   stackTop = frame->slots;
 
-  if (returnValue.type != VAL_VOID)
+  if (frame->closure->function->type.valueType != VAL_VOID)
     push(returnValue);
 }
 
@@ -761,7 +761,7 @@ void ObjInstance::initValues() {
     instanceThread->run();
 
     for (int ndx2 = -1; (ndx2 = outClosure->function->instanceIndexes->getNext(ndx2)) != -1;)
-      ((ObjInstance *) instanceThread->frames[0].slots[ndx2].as.obj)->initValues();
+      ((ObjInstance *) AS_OBJ(instanceThread->frames[0].slots[ndx2]))->initValues();
   }
 }
 
@@ -771,7 +771,7 @@ void ObjInstance::uninitValues() {
     ObjClosure *outClosure = frame.closure;
 
     for (int ndx2 = -1; (ndx2 = outClosure->function->instanceIndexes->getNext(ndx2)) != -1;)
-      ((ObjInstance *) uiValuesInstances[ndx]->coThread->frames[0].slots[ndx2].as.obj)->uninitValues();
+      ((ObjInstance *) AS_OBJ(uiValuesInstances[ndx]->coThread->frames[0].slots[ndx2]))->uninitValues();
   }
 
   if (uiValuesInstances) {

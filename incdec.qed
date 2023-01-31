@@ -14,7 +14,10 @@ var incButton = new Button("+") -> count = count + 1//count++
 <_ color: COLOR_BLACK;
   <out: decButton;>
   <.
-    <out: "          ";>
+    <|
+      <out: "          ";>
+      <out: "          ";>
+    >
     <out: count; transparency: 0.5; align: 0.5; fontSize: 50;>
   >
   <out: incButton;>

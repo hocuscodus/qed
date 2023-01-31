@@ -1260,8 +1260,9 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
           (*ss) << "var size = (" << getGroupName(exprUI, 0) << " << 32) | " << getGroupName(exprUI, 1) << "\n";
           nTabs--;
         }
-
+#ifdef DEBUG_PRINT_CODE
         printf("CODE %d\n%s", uiParseCount, ss->str().c_str());
+#endif
         expr = (GroupingExpr *) parse(ss->str().c_str(), index, 1, expr);
       }
       else {
@@ -1752,9 +1753,9 @@ int Resolver::adjustLayout(UIDirectiveExpr *expr) {
           (*ss) << "\n";
 // expand != -1 viewindex != -1
 // 00 int childSize = sizeX
-// 01 int childSize = unitX >> 32
+// 01 int childSize = unitX
 // 10 int childSize = sizeX * vExpand
-// 11 int childSize = unitX >> 32 + (sizeX - unitX >> 32) * vExpand
+// 11 int childSize = unitX + (sizeX - unitX) * vExpand
         if (align != -1) {
           insertTabs();
           (*ss) << "int posDiff" << dir << " = (size" << dir << " - childSize" << dir << ") * v" << align << "\n";
