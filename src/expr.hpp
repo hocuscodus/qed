@@ -148,8 +148,10 @@ struct AssignExpr : public Expr {
   VariableExpr* varExp;
   Token op;
   Expr* value;
+  OpCode opCode;
+  bool suffixFlag;
 
-  AssignExpr(VariableExpr* varExp, Token op, Expr* value);
+  AssignExpr(VariableExpr* varExp, Token op, Expr* value, OpCode opCode, bool suffixFlag);
   void accept(ExprVisitor *visitor);
 };
 

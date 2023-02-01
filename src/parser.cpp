@@ -208,7 +208,7 @@ Expr *Parser::assignment(Expr *left) {
 
   switch (left->type) {
   case EXPR_VARIABLE:
-    return new AssignExpr((VariableExpr *) left, op, right);
+    return new AssignExpr((VariableExpr *) left, op, right, OP_FALSE, false);
 
   case EXPR_GET: {
     GetExpr *getExpr = (GetExpr *) left;
@@ -275,7 +275,17 @@ Expr *Parser::binaryOrPostfix(Expr *left) {
 }
 
 Expr *Parser::suffix(Expr *left) {
-  return new UnaryExpr(previous, left);
+  Token op = previous;
+
+  // Emit the operator instruction.
+  switch (op.type) {
+    case TOKEN_PLUS_PLUS:
+    case TOKEN_MINUS_MINUS:
+      return new AssignExpr((VariableExpr *) left, op, NULL, OP_FALSE, true);
+
+    default:
+      return new UnaryExpr(op, left);
+  }
 }
 
 Expr *Parser::ternary(Expr *left) {
@@ -563,24 +573,32 @@ Expr *Parser::unary() {
   Token op = previous;
 
   // Emit the operator instruction.
-  if (op.type == TOKEN_NEW) {
-    Expr *right = parsePrecedence(PREC_CALL);
+  switch (op.type) {
+    case TOKEN_NEW: {
+      Expr *right = parsePrecedence(PREC_CALL);
 
-    if (right->type == EXPR_CALL) {
-      CallExpr *call = (CallExpr *) right;
+      if (right->type == EXPR_CALL) {
+        CallExpr *call = (CallExpr *) right;
 
-      if (call->newFlag)
-        errorAt(&op, "Use 'new' once before call");
+        if (call->newFlag)
+          errorAt(&op, "Use 'new' once before call");
+        else
+          call->newFlag = true;
+      }
       else
-        call->newFlag = true;
-    }
-    else
-      errorAt(&op, "Cannot use 'new' before non-callable expression");
+        errorAt(&op, "Cannot use 'new' before non-callable expression");
 
-    return right;
+      return right;
+    }
+    case TOKEN_PLUS_PLUS:
+    case TOKEN_MINUS_MINUS: {
+      Expr *right = parsePrecedence(PREC_CALL);
+
+      return new AssignExpr((VariableExpr *) right, op, NULL, OP_FALSE, false);
+    }
+    default:
+      return new UnaryExpr(op, parsePrecedence(PREC_UNARY));
   }
-  else
-    return new UnaryExpr(op, parsePrecedence(PREC_UNARY));
 }
 
 Expr *Parser::parsePrecedence(Precedence precedence) {

@@ -216,14 +216,95 @@ Resolver::Resolver(Parser &parser, Expr *exp) : ExprVisitor(), parser(parser) {
   uiParseCount = -1;
 }
 
+static OpCode getOpCode(Type type, Token token)
+{
+  OpCode opCode = OP_FALSE;
+
+  switch (token.type) {
+  case TOKEN_PLUS:
+  case TOKEN_PLUS_PLUS:
+  case TOKEN_PLUS_EQUAL:
+    opCode = type.valueType == VAL_OBJ   ? OP_ADD_STRING
+                    : type.valueType == VAL_INT ? OP_ADD_INT
+                                                : OP_ADD_FLOAT;
+    break;
+  case TOKEN_MINUS:
+  case TOKEN_MINUS_MINUS:
+  case TOKEN_MINUS_EQUAL:
+    opCode = type.valueType == VAL_INT ? OP_SUBTRACT_INT : OP_SUBTRACT_FLOAT;
+    break;
+  case TOKEN_STAR:
+  case TOKEN_STAR_EQUAL:
+    opCode = type.valueType == VAL_INT ? OP_MULTIPLY_INT : OP_MULTIPLY_FLOAT;
+    break;
+  case TOKEN_SLASH:
+  case TOKEN_SLASH_EQUAL:
+    opCode = type.valueType == VAL_INT ? OP_DIVIDE_INT : OP_DIVIDE_FLOAT;
+    break;
+  case TOKEN_BANG_EQUAL:
+  case TOKEN_EQUAL_EQUAL:
+    opCode = type.valueType == VAL_OBJ   ? OP_EQUAL_STRING
+                    : type.valueType == VAL_INT ? OP_EQUAL_INT
+                                                : OP_EQUAL_FLOAT;
+    break;
+  case TOKEN_GREATER:
+  case TOKEN_LESS_EQUAL:
+    opCode = (type.valueType == VAL_OBJ   ? OP_GREATER_STRING
+                    : type.valueType == VAL_INT ? OP_GREATER_INT
+                                                : OP_GREATER_FLOAT);
+    break;
+  case TOKEN_GREATER_EQUAL:
+  case TOKEN_LESS:
+    opCode = (type.valueType == VAL_OBJ   ? OP_LESS_STRING
+                    : type.valueType == VAL_INT ? OP_LESS_INT
+                                                : OP_LESS_FLOAT);
+    break;
+  case TOKEN_OR:
+  case TOKEN_OR_EQUAL:
+    opCode = type.valueType == VAL_INT ? OP_BITWISE_OR : OP_LOGICAL_OR;
+    break;
+  case TOKEN_OR_OR:
+    opCode = OP_LOGICAL_OR;
+    break;
+  case TOKEN_AND:
+  case TOKEN_AND_EQUAL:
+    opCode = type.valueType == VAL_INT ? OP_BITWISE_AND : OP_LOGICAL_AND;
+    break;
+  case TOKEN_AND_AND:
+    opCode = OP_LOGICAL_AND;
+    break;
+  case TOKEN_XOR:
+  case TOKEN_XOR_EQUAL:
+    opCode = OP_BITWISE_XOR;
+    break;
+  case TOKEN_GREATER_GREATER:
+  case TOKEN_GREATER_GREATER_EQUAL:
+    opCode = OP_SHIFT_RIGHT;
+    break;
+  case TOKEN_GREATER_GREATER_GREATER:
+    opCode = OP_SHIFT_URIGHT;
+    break;
+  case TOKEN_LESS_LESS:
+  case TOKEN_LESS_LESS_EQUAL:
+    opCode = OP_SHIFT_LEFT;
+    break;
+  }
+
+  return opCode;
+}
+
 void Resolver::visitAssignExpr(AssignExpr *expr)
 {
   //  accept<int>(expr->index, 0);
-  accept<int>(expr->value, 0);
+  if (expr->value)
+    accept<int>(expr->value, 0);
+
   accept<int>(expr->varExp, 0);
 
   Type type1 = removeLocal();
-  Type type2 = removeLocal();
+  Type type2 = expr->value ? removeLocal() : type1;
+
+  expr->opCode = getOpCode(type1, expr->op);
 
   if (type1.valueType == VAL_VOID)
     parser.error("Variable not found");
@@ -344,93 +425,15 @@ void Resolver::visitBinaryExpr(BinaryExpr *expr)
   Type type = type1;
   bool boolVal = false;
 
+  expr->opCode = getOpCode(type, expr->op);
+
   switch (expr->op.type)
   {
-  case TOKEN_PLUS:
-    expr->opCode = (type.valueType == VAL_OBJ   ? OP_ADD_STRING
-                    : type.valueType == VAL_INT ? OP_ADD_INT
-                                                : OP_ADD_FLOAT);
-    break;
-  case TOKEN_MINUS:
-    expr->opCode =
-        (type.valueType == VAL_INT ? OP_SUBTRACT_INT : OP_SUBTRACT_FLOAT);
-    break;
-  case TOKEN_STAR:
-    expr->opCode =
-        (type.valueType == VAL_INT ? OP_MULTIPLY_INT : OP_MULTIPLY_FLOAT);
-    break;
-  case TOKEN_SLASH:
-    expr->opCode =
-        (type.valueType == VAL_INT ? OP_DIVIDE_INT : OP_DIVIDE_FLOAT);
-    break;
   case TOKEN_BANG_EQUAL:
-    expr->opCode = (type.valueType == VAL_OBJ   ? OP_EQUAL_STRING
-                    : type.valueType == VAL_INT ? OP_EQUAL_INT
-                                                : OP_EQUAL_FLOAT);
-    expr->notFlag = true;
-    break;
-  case TOKEN_EQUAL_EQUAL:
-    expr->opCode = (type.valueType == VAL_OBJ   ? OP_EQUAL_STRING
-                    : type.valueType == VAL_INT ? OP_EQUAL_INT
-                                                : OP_EQUAL_FLOAT);
-    break;
-  case TOKEN_GREATER:
-    expr->opCode = (type.valueType == VAL_OBJ   ? OP_GREATER_STRING
-                    : type.valueType == VAL_INT ? OP_GREATER_INT
-                                                : OP_GREATER_FLOAT);
-    break;
   case TOKEN_GREATER_EQUAL:
-    expr->opCode = (type.valueType == VAL_OBJ   ? OP_LESS_STRING
-                    : type.valueType == VAL_INT ? OP_LESS_INT
-                                                : OP_LESS_FLOAT);
-    expr->notFlag = true;
-    break;
-  case TOKEN_LESS:
-    expr->opCode = (type.valueType == VAL_OBJ   ? OP_LESS_STRING
-                    : type.valueType == VAL_INT ? OP_LESS_INT
-                                                : OP_LESS_FLOAT);
-    break;
   case TOKEN_LESS_EQUAL:
-    expr->opCode = (type.valueType == VAL_OBJ   ? OP_GREATER_STRING
-                    : type.valueType == VAL_INT ? OP_GREATER_INT
-                                                : OP_GREATER_FLOAT);
     expr->notFlag = true;
     break;
-  case TOKEN_OR:
-    expr->opCode = OP_BITWISE_OR;
-    break;
-  case TOKEN_OR_OR:
-    expr->opCode = OP_LOGICAL_OR;
-    break;
-  case TOKEN_OR_EQUAL:
-    expr->opCode = type.valueType == VAL_INT ? OP_BITWISE_OR : OP_LOGICAL_OR;
-    break;
-  case TOKEN_AND:
-    expr->opCode = OP_BITWISE_AND;
-    break;
-  case TOKEN_AND_AND:
-    expr->opCode = OP_LOGICAL_AND;
-    break;
-  case TOKEN_AND_EQUAL:
-    expr->opCode = type.valueType == VAL_INT ? OP_BITWISE_AND : OP_LOGICAL_AND;
-    break;
-  case TOKEN_XOR:
-    expr->opCode = OP_BITWISE_XOR;
-    break;
-  case TOKEN_XOR_EQUAL:
-    expr->opCode = OP_BITWISE_XOR;
-    break;
-  case TOKEN_GREATER_GREATER:
-    expr->opCode = OP_SHIFT_RIGHT;
-    break;
-  case TOKEN_GREATER_GREATER_GREATER:
-    expr->opCode = OP_SHIFT_URIGHT;
-    break;
-  case TOKEN_LESS_LESS:
-    expr->opCode = OP_SHIFT_LEFT;
-    break;
-  default:
-    return; // Unreachable.
   }
 
   switch (expr->op.type)
@@ -946,7 +949,7 @@ void Resolver::visitListExpr(ListExpr *expr)
       {
         expr->expressions[1] = new AssignExpr(
             varExpr, buildToken(TOKEN_EQUAL, "=", 1, varExpr->name.line),
-            valueExpr);
+            valueExpr, OP_FALSE, false);
         expr->listType = EXPR_ASSIGN;
       }
 

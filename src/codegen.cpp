@@ -28,13 +28,24 @@ CodeGenerator::CodeGenerator(Parser &parser, ObjFunction *function) : ExprVisito
 }
 
 void CodeGenerator::visitAssignExpr(AssignExpr *expr) {
-//  accept<int>(expr->lvalue, 0);
-  accept<int>(expr->value, 0);
+  if (expr->op.type != TOKEN_EQUAL)
+    accept<int>(expr->varExp, 0);
 
-  switch (expr->op.type) {
-    case TOKEN_EQUAL:          emitBytes(expr->varExp->upvalueFlag ? OP_SET_UPVALUE : OP_SET_LOCAL, expr->varExp->index); break;
-    default: return; // Unreachable.
-  }
+  if (expr->suffixFlag)
+    accept<int>(expr->varExp, 0);
+
+  if (expr->value)
+    accept<int>(expr->value, 0);
+  else
+    emitConstant(INT_VAL(1));
+
+  if (expr->opCode != OP_FALSE)
+    emitByte(expr->opCode);
+
+  emitBytes(expr->varExp->upvalueFlag ? OP_SET_UPVALUE : OP_SET_LOCAL, expr->varExp->index);
+
+  if (expr->suffixFlag)
+    emitByte(OP_POP);
 }
 
 void CodeGenerator::visitUIAttributeExpr(UIAttributeExpr *expr) {

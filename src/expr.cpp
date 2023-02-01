@@ -40,10 +40,12 @@ void UIDirectiveExpr::accept(ExprVisitor *visitor) {
   return visitor->visitUIDirectiveExpr(this);
 }
 
-AssignExpr::AssignExpr(VariableExpr* varExp, Token op, Expr* value) : Expr(EXPR_ASSIGN) {
+AssignExpr::AssignExpr(VariableExpr* varExp, Token op, Expr* value, OpCode opCode, bool suffixFlag) : Expr(EXPR_ASSIGN) {
   this->varExp = varExp;
   this->op = op;
   this->value = value;
+  this->opCode = opCode;
+  this->suffixFlag = suffixFlag;
 }
 
 void AssignExpr::accept(ExprVisitor *visitor) {

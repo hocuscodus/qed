@@ -11,8 +11,8 @@ void Button(String text) {
 }
 
 int count = 0
-var decButton = new Button("-") -> count = count - 1//count--
-var incButton = new Button("+") -> count = count + 1//count++
+var decButton = new Button("-") -> count--
+var incButton = new Button("+") -> count++
 
 <out: oval; color: count > 0 ? COLOR_GREEN : count < 0 ? COLOR_RED : COLOR_YELLOW;>
 <_ color: COLOR_BLACK;
