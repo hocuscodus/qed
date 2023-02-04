@@ -165,58 +165,6 @@ static void runFile(const char *source) {
 }
 
 int main(int argc, const char *argv[]) {
-#if 0
-  char source[4096] = 
-"void println(String str);"
-"int max(int a, int b);"
-""
-"var WIDTH = 1;"
-"var HEIGHT = 2;"
-"var OBLIQUE = 3;"
-"int COLOR_RED = 0xFF0000;"
-"int COLOR_GREEN = 0x00FF00;"
-"int COLOR_YELLOW = 0xFFFF00;"
-"int COLOR_BLUE = 0x0000FF;"
-"int COLOR_BLACK = 0x000000;"
-"float clock();"
-"void oval(int pos, int size);"
-"void rect(int pos, int size);"
-"void pushAttribute(int index, int value);"
-"void popAttribute(int index);"
-"int getTextSize(String text);"
-"int getInstanceSize(int instance);"
-"void displayText(String text, int pos, int size);"
-"void displayInstance(int instance, int pos, int size);"
-"bool onInstanceEvent(int instance, int event, int pos, int size);"
-""
-"void Button(String text) {\n"
-"  float trp = 80%\n"
-"\n"
-"  <out: rect; transparency: trp; size: 35; onPress: trp = 65%; onRelease: {trp = 80%; return()}>\n"
-"  <out: text; transparency: 40%; align: 50%; fontSize: 40;>\n"
-"}\n"
-"\n"
-"int count = 0\n"
-"var decButton = new Button(\"-\") -> count--\n"
-"var incButton = new Button(\"+\") -> count++\n"
-"\n"
-"<out: oval; color: count > 0 ? COLOR_GREEN : count < 0 ? COLOR_RED : COLOR_YELLOW;>\n"
-"<_ color: COLOR_BLACK;\n"
-"  <out: decButton;>\n"
-"  <.\n"
-"    <size: 80;>\n"
-"    <out: count; transparency: 30%; align: 50%; fontSize: 50;>\n"
-"  >\n"
-"  <out: incButton;>\n"
-">\n";
-  runFile(source);
-#else
-#ifdef __EMSCRIPTEN__
-  char *source = readFile("incdec.qed");
-
-  runFile(source);
-  free(source);
-#else
   if (argc == 1)
     repl();
   else if (argc == 2) {
@@ -229,8 +177,6 @@ int main(int argc, const char *argv[]) {
     fprintf(stderr, "Usage: qed [path]\n");
     exit(64);
   }
-#endif
-#endif
 
   return 0;
 }
