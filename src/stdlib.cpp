@@ -122,8 +122,8 @@ QNI_FN(popAttribute) {
 QNI_FN(rect) {
   long posP = AS_INT(args[0]);
   long sizeP = AS_INT(args[1]);
-  Point pos = {posP >> 32, posP & 0xFFFFFFFF};
-  Point size = {sizeP >> 32, sizeP & 0xFFFFFFFF};
+  Point pos = {(int) (posP >> 16), (int) (posP & 0xFFFF)};
+  Point size = {(int) (sizeP >> 16), (int) (sizeP & 0xFFFF)};
   SDL_Rect rectangle;
 
   rectangle.x = pos[0];
@@ -145,8 +145,8 @@ QNI_FN(rect) {
 QNI_FN(oval) {
   long posP = AS_INT(args[0]);
   long sizeP = AS_INT(args[1]);
-  Point pos = {posP >> 32, posP & 0xFFFFFFFF};
-  Point size = {sizeP >> 32, sizeP & 0xFFFFFFFF};
+  Point pos = {(int) (posP >> 16), (int) (posP & 0xFFFF)};
+  Point size = {(int) (sizeP >> 16), (int) (sizeP & 0xFFFF)};
   int rx = size[0] >> 1;
   int ry = size[1] >> 1;
   int color = AS_INT(attStack.get(ATTRIBUTE_COLOR));
@@ -192,12 +192,12 @@ void initDisplay() {
       fprintf(stderr, "SDL could not initialize: %s\n", SDL_GetError());
       assert(false);
     }
-
+/*
     Uint32 ticks1 = SDL_GetTicks();
     SDL_Delay(5); // busy-wait
     Uint32 ticks2 = SDL_GetTicks();
     assert(ticks2 >= ticks1 + 5);
-
+*/
       // ----- Create window
     SDL_GL_SetSwapInterval(1);
 
@@ -266,14 +266,14 @@ QNI_FN(getTextSize) {
   if (fontSize != -1)
     TTF_CloseFont(font);
 
-  return INT_VAL((((long) width) << 32) | height);
+  return INT_VAL((((long) width) << 16) | height);
 }
 
 QNI_FN(getInstanceSize) {
   ObjInstance *instance = (ObjInstance *) AS_OBJ(args[0]);
   Point size = instance->recalculateLayout();
 
-  return INT_VAL((((long) size[0]) << 32) | size[1]);
+  return INT_VAL((((long) size[0]) << 16) | size[1]);
 }
 
 QNI_FN(displayText) {
@@ -281,13 +281,13 @@ QNI_FN(displayText) {
   const char *text = ((ObjString *) AS_OBJ(args[0]))->chars;
   long posP = AS_INT(args[1]);
   long sizeP = AS_INT(args[2]);
-  Point pos = {posP >> 32, posP & 0xFFFFFFFF};
-  Point size = {sizeP >> 32, sizeP & 0xFFFFFFFF};
+  Point pos = {(int) (posP >> 16), (int) (posP & 0xFFFF)};
+  Point size = {(int) (sizeP >> 16), (int) (sizeP & 0xFFFF)};
   int color = AS_INT(attStack.get(ATTRIBUTE_COLOR));
   float transparency = AS_FLOAT(attStack.get(ATTRIBUTE_TRANSPARENCY));
   int fontSize = AS_INT(attStack.get(ATTRIBUTE_FONTSIZE));
   TTF_Font *font = fontSize != -1 ? getNewFont(fontSize) : getFont();
-  SDL_Surface *textSurface = TTF_RenderText_Blended(font, text, {(color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, ((int) (transparency * 0xFF)) ^ 0xFF});
+  SDL_Surface *textSurface = TTF_RenderText_Blended(font, text, {(Uint8) (color >> 16), (Uint8) (color >> 8), (Uint8) color, (Uint8) (((Uint8) (transparency * 0xFF)) ^ 0xFF)});
   SDL_Texture *textTexture = SDL_CreateTextureFromSurface(rend2, textSurface);
 
   if (fontSize != -1)
@@ -308,8 +308,8 @@ QNI_FN(displayInstance) {
   ObjInstance *instance = (ObjInstance *) AS_OBJ(args[0]);
   long posP = AS_INT(args[1]);
   long sizeP = AS_INT(args[2]);
-  Point pos = {posP >> 32, posP & 0xFFFFFFFF};
-  Point size = {sizeP >> 32, sizeP & 0xFFFFFFFF};
+  Point pos = {(int) (posP >> 16), (int) (posP & 0xFFFF)};
+  Point size = {(int) (sizeP >> 16), (int) (sizeP & 0xFFFF)};
 
   instance->paint(pos, size);
   return VOID_VAL;
@@ -320,8 +320,8 @@ QNI_FN(onInstanceEvent) {
   Event event = (Event) AS_INT(args[1]);
   long posP = AS_INT(args[2]);
   long sizeP = AS_INT(args[3]);
-  Point pos = {posP >> 32, posP & 0xFFFFFFFF};
-  Point size = {sizeP >> 32, sizeP & 0xFFFFFFFF};
+  Point pos = {(int) (posP >> 16), (int) (posP & 0xFFFF)};
+  Point size = {(int) (sizeP >> 16), (int) (sizeP & 0xFFFF)};
 
   return BOOL_VAL(instance->onEvent(event, pos, size));
 }
@@ -367,7 +367,7 @@ struct TimerInternal : Internal {
   SDL_TimerID timer;
 
   TimerInternal(int timeoutMillis, ObjInstance *instance) {
-    timer = SDL_AddTimer(timeoutMillis, timerCallback, instance);
+//    timer = SDL_AddTimer(timeoutMillis, timerCallback, instance);
   }
 };
 

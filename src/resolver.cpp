@@ -1174,7 +1174,7 @@ void Resolver::checkDeclaration(Token *name)
       break;
 
     if (identifiersEqual(name, &local->name))
-      parser.error("Already a variable with this name in this scope.");
+      parser.error("Already a variable '%.*s' with this name in this scope.", name->length, name->start);
   }
 }
 
@@ -1266,7 +1266,7 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
         if (uiParseCount == 3) {
           nTabs++;
           insertTabs();
-          (*ss) << "var size = (" << getGroupName(exprUI, 0) << " << 32) | " << getGroupName(exprUI, 1) << "\n";
+          (*ss) << "var size = (" << getGroupName(exprUI, 0) << " << 16) | " << getGroupName(exprUI, 1) << "\n";
           nTabs--;
         }
 #ifdef DEBUG_PRINT_CODE
@@ -1277,7 +1277,7 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
       else {
         current->function->eventFlags = exprUI->_eventFlags;
         expr->expressions = RESIZE_ARRAY(Expr *, expr->expressions, expr->count, expr->count + uiExprs.size() - 1);
-        memcpy(&expr->expressions[index + uiExprs.size()], &expr->expressions[index + 1], (--expr->count - index) * sizeof(Expr *));
+        memmove(&expr->expressions[index + uiExprs.size()], &expr->expressions[index + 1], (--expr->count - index) * sizeof(Expr *));
 
         for (Expr *uiExpr : uiExprs)
           expr->expressions[index++] = uiExpr;
@@ -1445,7 +1445,7 @@ Expr *Resolver::parse(const char *source, int index, int replace, Expr *body) {
         bodyGroup->count -= replace;
 
         if (index < bodyGroup->count)
-          memcpy(&bodyGroup->expressions[index + group->count], &bodyGroup->expressions[index + replace], (bodyGroup->count - index) * sizeof(Expr *));
+          memmove(&bodyGroup->expressions[index + group->count], &bodyGroup->expressions[index + replace], (bodyGroup->count - index) * sizeof(Expr *));
 
         memcpy(&bodyGroup->expressions[index], group->expressions, group->count * sizeof(Expr *));
         group->expressions = RESIZE_ARRAY(Expr *, group->expressions, group->count, 0);
@@ -1618,7 +1618,7 @@ void Resolver::pushAreas(UIDirectiveExpr *expr) {
 
     if (size != NULL) {
       expr->viewIndex = aCount;
-      (*ss) << "  var a" << aCount++ << " = (" << size << " << 32) | " << size << "\n";
+      (*ss) << "  var a" << aCount++ << " = (" << size << " << 16) | " << size << "\n";
     }
     else {
       const char *name = getValueVariableName(valueStackSize, ATTRIBUTE_OUT);
@@ -1716,7 +1716,7 @@ void Resolver::recalcLayout(UIDirectiveExpr *expr) {
       expr->_layoutIndexes[dir] = aCount++;
 
     if (expr->viewIndex)
-      (*ss) << "  var " << getUnitName(expr, dir) << " = a" << expr->viewIndex << (dir ? " & 0xFFFFFFFF" : " >> 32") << "\n";
+      (*ss) << "  var " << getUnitName(expr, dir) << " = a" << expr->viewIndex << (dir ? " & 0xFFFF" : " >> 16") << "\n";
 
     if (previous) {
       (*ss) << "  var " << getGroupName(expr, dir) << " = ";
@@ -1736,7 +1736,7 @@ static void insertPoint(const char *prefix) {/*
     ss << (dir == 0 ? "" : ", ") << prefix << dir;
 
   (*ss) << ")";*/
-  (*ss) << "((" << prefix << "0 << 32) | " << prefix << "1)";
+  (*ss) << "((" << prefix << "0 << 16) | " << prefix << "1)";
 }
 
 int Resolver::adjustLayout(UIDirectiveExpr *expr) {
@@ -1945,7 +1945,8 @@ void Resolver::onEvent(UIDirectiveExpr *expr) {
     else {
       const char *name = getValueVariableName(valueStackPaint, ATTRIBUTE_OUT);
       Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
-      Type outType = current->enclosing->enclosing->locals[current->enclosing->enclosing->resolveLocal(&token)].type;
+      int index = current->enclosing->enclosing->resolveLocal(&token);
+      Type outType = current->enclosing->enclosing->locals[index].type;
 
       switch (outType.objType->type) {
         case OBJ_COMPILER_INSTANCE:

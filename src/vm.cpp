@@ -523,6 +523,9 @@ void VM::suspend() {
 
   // Events management
   while (true) {
+#ifdef __EMSCRIPTEN__
+    emscripten_sleep(0);
+#endif
     if (!SDL_WaitEvent(&event)) {
       printf("%s\n", SDL_GetError());
       exit(0);

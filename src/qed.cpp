@@ -144,8 +144,7 @@ static char *readFile(const char *path) {
   return buffer;
 }
 
-static void runFile(const char *path) {
-  char *source = readFile(path);
+static void runFile(const char *source) {
   Scanner scanner(source);
   Parser parser(scanner);
   Compiler compiler(parser, NULL);
@@ -159,7 +158,6 @@ static void runFile(const char *path) {
 
   InterpretResult result = vm.interpret(closure);
 
-  free(source);
 //  freeObjects();
 
   if (result == INTERPRET_COMPILE_ERROR) exit(65);
@@ -167,14 +165,72 @@ static void runFile(const char *path) {
 }
 
 int main(int argc, const char *argv[]) {
+#if 0
+  char source[4096] = 
+"void println(String str);"
+"int max(int a, int b);"
+""
+"var WIDTH = 1;"
+"var HEIGHT = 2;"
+"var OBLIQUE = 3;"
+"int COLOR_RED = 0xFF0000;"
+"int COLOR_GREEN = 0x00FF00;"
+"int COLOR_YELLOW = 0xFFFF00;"
+"int COLOR_BLUE = 0x0000FF;"
+"int COLOR_BLACK = 0x000000;"
+"float clock();"
+"void oval(int pos, int size);"
+"void rect(int pos, int size);"
+"void pushAttribute(int index, int value);"
+"void popAttribute(int index);"
+"int getTextSize(String text);"
+"int getInstanceSize(int instance);"
+"void displayText(String text, int pos, int size);"
+"void displayInstance(int instance, int pos, int size);"
+"bool onInstanceEvent(int instance, int event, int pos, int size);"
+""
+"void Button(String text) {\n"
+"  float trp = 80%\n"
+"\n"
+"  <out: rect; transparency: trp; size: 35; onPress: trp = 65%; onRelease: {trp = 80%; return()}>\n"
+"  <out: text; transparency: 40%; align: 50%; fontSize: 40;>\n"
+"}\n"
+"\n"
+"int count = 0\n"
+"var decButton = new Button(\"-\") -> count--\n"
+"var incButton = new Button(\"+\") -> count++\n"
+"\n"
+"<out: oval; color: count > 0 ? COLOR_GREEN : count < 0 ? COLOR_RED : COLOR_YELLOW;>\n"
+"<_ color: COLOR_BLACK;\n"
+"  <out: decButton;>\n"
+"  <.\n"
+"    <size: 80;>\n"
+"    <out: count; transparency: 30%; align: 50%; fontSize: 50;>\n"
+"  >\n"
+"  <out: incButton;>\n"
+">\n";
+  runFile(source);
+#else
+#ifdef __EMSCRIPTEN__
+  char *source = readFile("incdec.qed");
+
+  runFile(source);
+  free(source);
+#else
   if (argc == 1)
     repl();
-  else if (argc == 2)
-    runFile(argv[1]);
+  else if (argc == 2) {
+    char *source = readFile(argv[1]);
+
+    runFile(source);
+    free(source);
+  }
   else {
     fprintf(stderr, "Usage: qed [path]\n");
     exit(64);
   }
+#endif
+#endif
 
   return 0;
 }
@@ -188,11 +244,11 @@ int main(int argc, const char *argv[]) {
 // sdl
 #include <SDL.h>
 #include <SDL_image.h>
+#include <SDL_ttf.h>
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #else
 #include <SDL_timer.h>
-#include <SDL_ttf.h>
 #endif
 
 #define SCREEN_SIZE_X 512
@@ -254,7 +310,7 @@ void mainLoop() {
 
       case SDL_QUIT:
           // handling of close button
-          quit = 1;
+          quit = true;
           break;
 
       case SDL_KEYDOWN:
@@ -346,15 +402,38 @@ void get_text_and_rect(SDL_Renderer *renderer, int x, int y, char *text,
     rect->h = text_height;
 }
 
+void redraw(SDL_Renderer *renderer) {
+  SDL_RenderClear(renderer);
+  SDL_SetRenderDrawColor(renderer, /* RGBA: green */ 0x00, 0x80, 0x00, 0xFF);
+  SDL_Rect rect = {.x = 10, .y = 10, .w = 150, .h = 100};
+  SDL_RenderFillRect(renderer, &rect);
+
+  SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
+  // Use TTF textures.
+//      SDL_RenderCopy(renderer, texture1, NULL, &rect1);
+//      SDL_RenderCopy(renderer, texture2, NULL, &rect2);
+
+  SDL_RenderPresent(renderer);
+}
+
+bool handleEvents(SDL_Renderer *renderer) {
+  SDL_Event event;
+
+  while (SDL_PollEvent(&event) == 1) {
+      if (event.type == SDL_QUIT)
+          return false;
+  }
+  redraw(renderer);
+  return true;
+}
+
 int main (int argc, char* argv[])
 {
-  SDL_Event event;
   SDL_Rect rect1, rect2;
-  SDL_Renderer *renderer;
+  static SDL_Renderer *renderer;
   SDL_Texture *texture1, *texture2;
   SDL_Window *window;
   char *font_path = "./res/font/arial.ttf";
-  int quit;
 
   // Init TTF.
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER);
@@ -368,23 +447,11 @@ int main (int argc, char* argv[])
   get_text_and_rect(renderer, 0, 0, "hello", font, &texture1, &rect1);
   get_text_and_rect(renderer, 0, rect1.y + rect1.h, "world", font, &texture2, &rect2);
 
-  quit = 0;
-  while (!quit) {
-      while (SDL_PollEvent(&event) == 1) {
-          if (event.type == SDL_QUIT) {
-              quit = 1;
-          }
-      }
-      SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
-      SDL_RenderClear(renderer);
-
-      // Use TTF textures.
-      SDL_RenderCopy(renderer, texture1, NULL, &rect1);
-      SDL_RenderCopy(renderer, texture2, NULL, &rect2);
-
-      SDL_RenderPresent(renderer);
-  }
-
+#ifdef __EMSCRIPTEN__
+  emscripten_set_main_loop([]() { handleEvents(renderer); }, 0, true);
+#else
+  while (handleEvents(renderer));
+#endif
   // Deinit TTF.
   SDL_DestroyTexture(texture1);
   SDL_DestroyTexture(texture2);

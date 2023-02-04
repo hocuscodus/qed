@@ -600,7 +600,11 @@ InterpretValue CoThread::run() {
       BINARY_OP(INT_VAL, AS_INT, long, >>);
       break;
     case OP_SHIFT_URIGHT:
+#ifdef __EMSCRIPTEN__
+      BINARY_OP(INT_VAL, AS_INT, long, >>);
+#else
       BINARY_OP(INT_VAL, AS_INT, unsigned long, >>);
+#endif
       break;
     case OP_PRINT: {
       Value value = pop();
@@ -805,7 +809,7 @@ Point ObjInstance::recalculateLayout() {
     long frameSize = AS_INT(instanceThread->fields[layoutClosure->function->fieldCount - 3]);
 
     for (int dir = 0; dir < NUM_DIRS; dir++)
-      size[dir] = std::max(size[dir], (int) (dir ? frameSize & 0xFFFFFFFF : frameSize >> 32));
+      size[dir] = std::max(size[dir], (int) (dir ? frameSize & 0xFFFF : frameSize >> 16));
   }
 
   return size;
@@ -845,7 +849,7 @@ bool ObjInstance::onEvent(Event event, Point pos, Point size) {
     int frameCount = layoutThread->frameCount;
 
     *layoutThread->stackTop++ = OBJ_VAL(eventClosure);
-    *layoutThread->stackTop++ = INT_VAL(event);
+    *layoutThread->stackTop++ = INT_VAL((int) event);
 
     for (int dir = 0; dir < NUM_DIRS; dir++)
       *layoutThread->stackTop++ = INT_VAL(pos[dir]);

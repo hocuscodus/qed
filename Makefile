@@ -8,7 +8,7 @@
 # For emscripten builds, $(WWWDIR)/ is needed
 SED=s/\.cpp$$//
 MODULES = $(shell (cd src && ls -1 *.cpp | sed -e '$(SED)') | tr '\n' ' ')
-ASSETS = qed-small6.png
+ASSETS = qed-small6.png res/font/arial.ttf incdec.qed
 
 UNAME = $(shell uname -s)
 BUILDDIR = build
@@ -33,9 +33,10 @@ else
 endif
 
 EMXX = em++
-EMXXFLAGS = $(COMMONFLAGS) -Oz -s USE_SDL=2 -s USE_SDL_IMAGE=2 -s USE_SDL_GFX=2
+#EMXXFLAGS = $(COMMONFLAGS) -O0 -s USE_SDL_TTF=2 -s USE_SDL=2 -s USE_SDL_IMAGE=2 -s USE_SDL_GFX=2 -g -fdebug-compilation-dir='..'
+EMXXFLAGS = $(COMMONFLAGS) -Oz -s USE_SDL_TTF=2 -s USE_SDL=2 -s USE_SDL_IMAGE=2 -s USE_SDL_GFX=2
 # -s SAFE_HEAP=1 -s ASSERTIONS=2 --profiling  -s DEMANGLE_SUPPORT=1
-EMXXLINK = -s TOTAL_MEMORY=50331648 --use-preload-plugins
+EMXXLINK = -s TOTAL_MEMORY=50331648 -s ASYNCIFY -s ALLOW_MEMORY_GROWTH=1 --use-preload-plugins
 
 all: $(BINDIR)/qed
 
