@@ -10,3 +10,4 @@ packages*
 www
 build
 astgen
+codemirror

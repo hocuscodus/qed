@@ -45,8 +45,43 @@
       }
 
     </style>
+    <script src="codemirror/lib/codemirror.js"></script>
+    <link href="codemirror/lib/codemirror.css" rel="stylesheet"></link>
+    <script src="codemirror/mode/xml/xml.js"></script>
+    <script src="codemirror/addon/edit/closebrackets.js"></script>
+    <link href="codemirror/theme/dracula.css" rel="stylesheet"></link>
   </head>
   <body>
+    <textarea id="editor">
+void Button(String text) {
+  float trp = 80%
+
+  <out: rect; transparency: trp; size: 35; onPress: trp = 65%; onRelease: {trp = 80%; return()}>
+  <out: text; transparency: 40%; align: 50%; fontSize: 40;>
+}
+
+int count = 0
+var decButton = new Button("-") -> count--
+var incButton = new Button("+") -> count++
+
+<out: oval; color: count > 0 ? COLOR_GREEN : count < 0 ? COLOR_RED : COLOR_YELLOW;>
+<_ color: COLOR_BLACK;
+  <out: decButton;>
+  <.
+    <size: 80;>
+    <out: count; transparency: 30%; align: 50%; fontSize: 50;>
+  >
+  <out: incButton;>
+>
+</textarea>
+    <script>
+      var editor = CodeMirror.fromTextArea(document.getElementById("editor"), {
+        mode: "xml",
+        theme: "dracula",
+        lineNumbers: true,
+        autoCloseBrackets: true
+      });
+    </script>
     <hr/>
     <figure style="overflow:visible;" id="spinner"><div class="spinner"></div><center style="margin-top:0.5em"><strong>emscripten</strong></center></figure>
     <div class="emscripten" id="status">Downloading...</div>
@@ -61,8 +96,7 @@
       <input type="checkbox" id="resize">Resize canvas
       <input type="checkbox" id="pointerLock" checked>Lock/hide mouse pointer
       &nbsp;&nbsp;&nbsp;
-      <input type="button" value="Fullscreen" onclick="Module.requestFullscreen(document.getElementById('pointerLock').checked, 
-                                                                                document.getElementById('resize').checked)">
+      <input type="button" value="Fullscreen" onclick="Module.ccall('runSource', null, ['string'], [editor.getValue()])">
     </div>
     
     <hr/>
