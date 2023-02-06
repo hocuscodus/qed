@@ -32,15 +32,6 @@
 #include "astprinter.hpp"
 #endif
 
-// sdl
-#include <SDL.h>
-#include <SDL_image.h>
-#ifdef __EMSCRIPTEN__
-#include <emscripten.h>
-#else
-#include <SDL_timer.h>
-#endif
-
 /*
 class ReturnHandler {
 public:
@@ -507,79 +498,10 @@ void VM::repaint() {
 //  });
 }
 
-extern SDL_Renderer *rend2;
-void VM::onEvent(Event event, Point pos) {
-  if (instance->onEvent(event, pos, totalSize)) {
-    repaint();
-    SDL_RenderPresent(rend2);
-  }
-}
+extern VM *vm;
+extern void suspend();
 
 void VM::suspend() {
-  repaint();
-  SDL_RenderPresent(rend2);
-
-  SDL_Event event;
-
-  // Events management
-  while (true) {
-#ifdef __EMSCRIPTEN__
-    emscripten_sleep(0);
-#endif
-    if (!SDL_WaitEvent(&event)) {
-      printf("%s\n", SDL_GetError());
-      exit(0);
-    }
-
-    switch (event.type) {
-    case SDL_USEREVENT: {
-        Value value = VOID_VAL;
-        ObjInstance *instance = (ObjInstance *) event.user.data1;
-
-        onReturn(instance->coThread, value);
-        repaint();
-        SDL_RenderPresent(rend2);
-      }
-      break;
-
-    case SDL_MOUSEBUTTONDOWN:
-      onEvent(EVENT_PRESS, {event.button.x, event.button.y});
-      break;
-
-    case SDL_MOUSEBUTTONUP:
-      onEvent(EVENT_RELEASE, {event.button.x, event.button.y});
-      break;
-
-    case SDL_QUIT:
-      exit(0);
-      break;
-
-    case SDL_KEYDOWN:
-      // keyboard API for key pressed
-      switch (event.key.keysym.scancode) {
-      case SDL_SCANCODE_W:
-      case SDL_SCANCODE_UP:
-//        dest.y -= speed / 30;
-        break;
-
-      case SDL_SCANCODE_A:
-      case SDL_SCANCODE_LEFT:
-//        dest.x -= speed / 30;
-        break;
-
-      case SDL_SCANCODE_S:
-      case SDL_SCANCODE_DOWN:
-//        dest.y += speed / 30;
-        break;
-
-      case SDL_SCANCODE_D:
-      case SDL_SCANCODE_RIGHT:
-//        dest.x += speed / 30;
-        break;
-
-      default:
-        break;
-      }
-  }
-  }
+  ::vm = this;
+  ::suspend();
 }
