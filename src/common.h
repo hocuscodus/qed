@@ -37,7 +37,7 @@
     UI_ATTRIBUTE_DEF( ATTRIBUTE_EXPAND, "expand" ), \
     UI_ATTRIBUTE_DEF( ATTRIBUTE_POS, "pos" ), \
     UI_ATTRIBUTE_DEF( ATTRIBUTE_COLOR, "color" ), \
-    UI_ATTRIBUTE_DEF( ATTRIBUTE_TRANSPARENCY, "transparency" ), \
+    UI_ATTRIBUTE_DEF( ATTRIBUTE_OPACITY, "opacity" ), \
     UI_ATTRIBUTE_DEF( ATTRIBUTE_END, NULL ), \
 
 #define UI_ATTRIBUTE_DEF( identifier, text )  identifier

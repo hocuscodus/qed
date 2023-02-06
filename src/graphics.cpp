@@ -72,9 +72,9 @@ struct ValueStack2 {
 
   ValueStack2() {
     push(ATTRIBUTE_ALIGN, FLOAT_VAL(0));
-    push(ATTRIBUTE_POS, INT_VAL(0xFFFFFF));
+    push(ATTRIBUTE_POS, INT_VAL(0));
     push(ATTRIBUTE_COLOR, INT_VAL(0xFFFFFF));
-    push(ATTRIBUTE_TRANSPARENCY, FLOAT_VAL(0));
+    push(ATTRIBUTE_OPACITY, FLOAT_VAL(1));
   }
 
 	void push(int key, Value value) {
@@ -121,11 +121,11 @@ QNI_FN(rect) {
 
   SDL_BlendMode blendMode;
   int color = AS_INT(attStack.get(ATTRIBUTE_COLOR));
-  float transparency = AS_FLOAT(attStack.get(ATTRIBUTE_TRANSPARENCY));
-  int trp = ((int) (transparency * 0xFF)) ^ 0xFF;
+  float opacity = AS_FLOAT(attStack.get(ATTRIBUTE_OPACITY));
+  int opacityByte = (int) (opacity * 0xFF);
 
   SDL_SetRenderDrawBlendMode(rend2, SDL_BLENDMODE_BLEND);
-	SDL_SetRenderDrawColor(rend2, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, trp);
+	SDL_SetRenderDrawColor(rend2, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, opacityByte);
   SDL_RenderFillRect(rend2, &rectangle);
   return VOID_VAL;
 }
@@ -138,13 +138,13 @@ QNI_FN(oval) {
   int rx = size[0] >> 1;
   int ry = size[1] >> 1;
   int color = AS_INT(attStack.get(ATTRIBUTE_COLOR));
-  float transparency = AS_FLOAT(attStack.get(ATTRIBUTE_TRANSPARENCY));
+  float opacity = AS_FLOAT(attStack.get(ATTRIBUTE_OPACITY));
 
 //  SDL_SetTextureBlendMode(rend2, SDL_BLENDMODE_ADD);
   filledEllipseRGBA(rend2, pos[0] + rx, pos[1] + ry, rx, ry,
-                    (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, ((int) (transparency * 0xFF)) ^ 0xFF);
+                    (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, (int) (opacity * 0xFF));
 //  aaellipseRGBA(rend2, pos[0] + rx, pos[1] + ry, rx, ry,
-//                    (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, ((int) (transparency * 0xFF)) ^ 0xFF);
+//                    (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, (int) (opacity * 0xFF));
   return VOID_VAL;
 }
 
@@ -268,10 +268,10 @@ QNI_FN(displayText) {
   Point pos = {(int) (posP >> 16), (int) (posP & 0xFFFF)};
   Point size = {(int) (sizeP >> 16), (int) (sizeP & 0xFFFF)};
   int color = AS_INT(attStack.get(ATTRIBUTE_COLOR));
-  float transparency = AS_FLOAT(attStack.get(ATTRIBUTE_TRANSPARENCY));
+  float opacity = AS_FLOAT(attStack.get(ATTRIBUTE_OPACITY));
   int fontSize = AS_INT(attStack.get(ATTRIBUTE_FONTSIZE));
   TTF_Font *font = fontSize != -1 ? getNewFont(fontSize) : getFont();
-  SDL_Surface *textSurface = TTF_RenderText_Blended(font, text, {(Uint8) (color >> 16), (Uint8) (color >> 8), (Uint8) color, (Uint8) (((Uint8) (transparency * 0xFF)) ^ 0xFF)});
+  SDL_Surface *textSurface = TTF_RenderText_Blended(font, text, {(Uint8) (color >> 16), (Uint8) (color >> 8), (Uint8) color, (Uint8) (Uint8) (opacity * 0xFF)});
   SDL_Texture *textTexture = SDL_CreateTextureFromSurface(rend2, textSurface);
 
   if (fontSize != -1)

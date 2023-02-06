@@ -4,10 +4,10 @@ The code is quite short but does a lot. It implements a yellow oval increment/de
 
 ```
 void Button(String text) {
-  float trp = 80%
+  float solid = 20%
 
-  <out: rect; transparency: trp; size: 35; onPress: trp = 65%; onRelease: {trp = 80%; return()}>
-  <out: text; transparency: 40%; align: 50%; fontSize: 40;>
+  <out: rect; opacity: solid; size: 35; onPress: solid = 35%; onRelease: {solid = 20%; return()}>
+  <out: text; opacity: 60%; align: 50%; fontSize: 40;>
 }
 
 int count = 0
@@ -19,7 +19,7 @@ var incButton = new Button("+") -> count++
   <out: decButton;>
   <.
     <size: 80;>
-    <out: count; transparency: 30%; align: 50%; fontSize: 50;>
+    <out: count; opacity: 70%; align: 50%; fontSize: 50;>
   >
   <out: incButton;>
 >
