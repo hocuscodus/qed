@@ -29,10 +29,10 @@ struct AttrSet;
 struct VM {
   bool eventFlag;
   ObjInstance *instance;
+	Point totalSize;/*
   std::vector<LayoutObject *> layoutObjects;
 	Obj *current2;
 	std::vector<void *> stack;
-	Point totalSize;
 	///////
 	Path currentPath;
 	Obj currentObj;
@@ -50,13 +50,12 @@ struct VM {
 	int inputColor;
 	int inputFontSize;
 	int inputStyle;
-
+*/
   VM(ObjInstance *instance, bool eventFlag);
 
   InterpretResult run();
   InterpretResult interpret(ObjClosure *closure);
   CallFrame *getFrame(int index = 0);
-  void onReturn(ObjInstance *instance, Value &returnValue);
   bool recalculate();
   void repaint();
   void onEvent(Event event, Point pos);

@@ -175,7 +175,7 @@ QNI_CLASS(CoList_yield) {
 		objInternal->object = main->next;
 		vm.instance->coThread = main->next->coThread;
 		vm.instance->coThread->onReturn(value);
-		return {INTERPRET_CONTINUE};
+		return {INTERPRET_OK};//INTERPRET_CONTINUE should switch thread here
 	} else {
     CoListThread *newUnit = new CoListThread(vm.instance->coThread, main->previous, main);
 

@@ -668,7 +668,7 @@ InterpretValue CoThread::run() {
         Value result = type != VAL_VOID ? pop() : (Value) {VAL_VOID};
 
         if (isInInstance())
-          return {INTERPRET_RETURN, {.returnValue = result}};
+          instance->onReturn(result);
         else {
           onReturn(result);
           frame = &frames[frameCount - 1];
@@ -826,6 +826,18 @@ void ObjInstance::paint(Point pos, Point size) {
     layoutThread->call(paintClosure, NUM_DIRS << 1);
     layoutThread->run();
     layoutThread->onReturn(value);
+  }
+}
+
+void ObjInstance::onReturn(Value &returnValue) {
+  if (caller && handler) {
+    CoThread *callerThread = caller->coThread;
+    Value value = {VAL_VOID};
+
+    *callerThread->stackTop++ = OBJ_VAL(handler);
+    callerThread->call(handler, 0);
+    callerThread->run();
+    callerThread->onReturn(value);
   }
 }
 

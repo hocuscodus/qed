@@ -325,16 +325,18 @@ class LayoutObject {
 VM::VM(ObjInstance *instance, bool eventFlag) {
   this->eventFlag = eventFlag;
   this->instance = instance;
-  instance->coThread->resetStack();
-  instance->coThread->frameCount = 0;
-  instance->coThread->openUpvalues = NULL;
 }
 
 InterpretResult VM::run() {
   for (;;) {
     InterpretValue value = instance->coThread->run();
 
-    if (value.result == INTERPRET_HALT) {
+    switch(value.result) {
+    case INTERPRET_SWITCH_THREAD:
+      instance = value.as.coThread->instance;
+      break;
+
+    case INTERPRET_HALT: {
       CallFrame *frame = getFrame();
       Obj *native = frame->closure->function->native;
 
@@ -344,18 +346,7 @@ InterpretResult VM::run() {
 
         value = nativeClassFn(*this, argCount, instance->coThread->stackTop - argCount);
       }
-    }
 
-    switch(value.result) {
-    case INTERPRET_SWITCH_THREAD:
-      instance = value.as.coThread->instance;
-      break;
-
-    case INTERPRET_RETURN:
-      onReturn(instance, value.as.returnValue);
-      break;
-
-    case INTERPRET_HALT: {
       if (instance->coThread->isInInstance() && (!eventFlag || !instance->coThread->isFirstInstance()))
         if (instance->coThread->isFirstInstance())
           return INTERPRET_OK;
@@ -378,11 +369,6 @@ InterpretResult VM::run() {
       break;
     }
 
-    case INTERPRET_CONTINUE:
-      value.result = value.result;
-//      return INTERPRET_RUNTIME_ERROR;
-      break;
-
     default:
       return value.result;
     }
@@ -390,8 +376,8 @@ InterpretResult VM::run() {
 }
 
 void VM::push(Obj *obj) {
-  layoutObjects.push_back(new LayoutObject(obj));
-  current2 = obj;
+//  layoutObjects.push_back(new LayoutObject(obj));
+//  current2 = obj;
 }
 
 InterpretResult VM::interpret(ObjClosure *closure) {
@@ -401,19 +387,6 @@ InterpretResult VM::interpret(ObjClosure *closure) {
 
 CallFrame *VM::getFrame(int index) {
   return instance->coThread->getFrame(index);
-}
-
-void VM::onReturn(ObjInstance *instance, Value &returnValue) {
-  CoThread *current = instance->caller->coThread;
-
-  if (instance->handler) {
-    Value value = {VAL_VOID};
-
-    *current->stackTop++ = OBJ_VAL(instance->handler);
-    current->call(instance->handler, 0);
-    current->run();
-    current->onReturn(value);
-  }
 }
 /*
   bool resize(List<int> size) {/ *

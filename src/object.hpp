@@ -164,9 +164,7 @@ typedef enum {
   INTERPRET_OK,
   INTERPRET_COMPILE_ERROR,
   INTERPRET_RUNTIME_ERROR,
-  INTERPRET_CONTINUE,
   INTERPRET_HALT,
-  INTERPRET_RETURN,
   INTERPRET_SWITCH_THREAD
 } InterpretResult;
 
@@ -177,7 +175,6 @@ typedef struct {
   InterpretResult result;
   union {
     CoThread *coThread;
-    Value returnValue;
   } as;
 } InterpretValue;
 
@@ -267,6 +264,7 @@ struct ObjInstance {
   void uninitValues();
   Point recalculateLayout();
   void paint(Point pos, Point size);
+  void onReturn(Value &returnValue);
   bool onEvent(Event event, Point pos, Point size);
 };
 
