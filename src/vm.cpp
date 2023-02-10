@@ -352,7 +352,7 @@ InterpretResult VM::run() {
       break;
 
     case INTERPRET_RETURN:
-      onReturn(instance->coThread, value.as.returnValue);
+      onReturn(instance, value.as.returnValue);
       break;
 
     case INTERPRET_HALT: {
@@ -368,7 +368,7 @@ InterpretResult VM::run() {
 //            FREE(CoThread, instance->coThread);
 //            instance->coThread = NULL;
           }
-          instance = instance->coThread->caller->instance;
+          instance = instance->caller;
         }
       else
         // suspend app
@@ -403,10 +403,8 @@ CallFrame *VM::getFrame(int index) {
   return instance->coThread->getFrame(index);
 }
 
-void VM::onReturn(CoThread *current, Value &returnValue) {
-  ObjInstance *instance = current->instance;
-
-  current = current->caller;
+void VM::onReturn(ObjInstance *instance, Value &returnValue) {
+  CoThread *current = instance->caller->coThread;
 
   if (instance->handler) {
     Value value = {VAL_VOID};

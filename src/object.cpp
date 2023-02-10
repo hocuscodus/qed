@@ -170,7 +170,6 @@ LocationUnit *CallFrame::init(VM &vm, Value *values, IndexList *instanceIndexes,
 
 CoThread::CoThread(ObjInstance *instance) {
   this->instance = instance;
-  this->caller = NULL;
   fields = new Value[64];//ALLOCATE(Value, 64);
   resetStack();
   frameCount = 0;
@@ -221,21 +220,7 @@ bool CoThread::call(ObjClosure *closure, int argCount) {
 
 extern void postMessage(void *param);
 
-InterpretValue CoThread::callValue(Value callee, int argCount, bool newFlag, ObjClosure *handler) {
-  CoThread *currentThread = this;
-
-  if (newFlag) {
-    ObjInstance *instance = newInstance(this);
-    int size = argCount + 1;
-
-    instance->handler = handler;
-    currentThread = instance->coThread;
-    memcpy(currentThread->stackTop, stackTop - size, size * sizeof(Value));
-    stackTop -= size;
-    currentThread->stackTop += size;
-    push(OBJ_VAL(instance));
-  }
-
+bool CoThread::callValue(Value callee, int argCount) {
   switch (OBJ_TYPE(callee)) {
 //    case OBJ_NATIVE_CLASS:
     case OBJ_RETURN: {
@@ -246,12 +231,11 @@ InterpretValue CoThread::callValue(Value callee, int argCount, bool newFlag, Obj
 
       ObjClosure *closure = AS_CLOSURE(callee);
       postMessage(AS_CLOSURE(callee)->parent);
-      return {INTERPRET_CONTINUE};
+      break;
     }
-    case OBJ_CLOSURE: {
-      bool callFlag = currentThread->call(AS_CLOSURE(callee), argCount);
-      return {callFlag ? currentThread != this ? INTERPRET_SWITCH_THREAD : INTERPRET_CONTINUE : INTERPRET_RUNTIME_ERROR, currentThread};
-    }
+    case OBJ_CLOSURE:
+      return call(AS_CLOSURE(callee), argCount);
+
     case OBJ_NATIVE: {
       NativeFn native = AS_NATIVE(callee);
       Value result = native(argCount, stackTop - argCount);
@@ -261,12 +245,12 @@ InterpretValue CoThread::callValue(Value callee, int argCount, bool newFlag, Obj
       if (AS_CLOSURE(callee)->function->type.valueType != VAL_VOID)
         push(result);
 
-      return {INTERPRET_CONTINUE};
+      break;
     }
     default:
       break; // Non-callable object type.
   }
-  return {INTERPRET_CONTINUE};
+  return true;
 }
 
 ObjUpvalue *CoThread::captureUpvalue(Value *local) {
@@ -631,18 +615,26 @@ InterpretValue CoThread::run() {
     case OP_NEW: {
       int argCount = READ_BYTE();
       Value handlerConstant = pop();
-      InterpretValue value = callValue(peek(argCount), argCount, true, AS_INT(handlerConstant) != -1 ? AS_CLOSURE(handlerConstant) : NULL);
+      ObjInstance *instance = newInstance(this->instance);
+      int size = argCount + 1;
 
-      if (value.result != INTERPRET_CONTINUE)
-        return value;
+      instance->handler = AS_INT(handlerConstant) != -1 ? AS_CLOSURE(handlerConstant) : NULL;
+      memcpy(instance->coThread->stackTop, stackTop - size, size * sizeof(Value));
+      stackTop -= size;
+      instance->coThread->stackTop += size;
+      push(OBJ_VAL(instance));
+
+      if (instance->coThread->callValue(instance->coThread->peek(argCount), argCount))
+        return {INTERPRET_SWITCH_THREAD, instance->coThread};
+      else
+        return {INTERPRET_RUNTIME_ERROR};
       break;
     }
     case OP_CALL: {
       int argCount = READ_BYTE();
-      InterpretValue value = callValue(peek(argCount), argCount, false, NULL);
 
-      if (value.result != INTERPRET_CONTINUE)
-        return value;
+      if (!callValue(peek(argCount), argCount))
+        return {INTERPRET_RUNTIME_ERROR};
 
       frame = &frames[frameCount - 1];
       break;
@@ -719,7 +711,7 @@ bool CoThread::isDone() {
 }
 
 bool CoThread::isFirstInstance() {
-  return caller == NULL;
+  return instance->caller == NULL;
 }
 
 bool CoThread::isInInstance() {
@@ -756,7 +748,7 @@ void ObjInstance::initValues() {
     CallFrame &frame = coThread->frames[ndx];
     ObjClosure *outClosure = frame.uiClosure;
 
-    uiValuesInstances[numValuesInstances++] = newInstance(coThread);
+    uiValuesInstances[numValuesInstances++] = newInstance(this);
 
     CoThread *instanceThread = uiValuesInstances[ndx]->coThread;
 
@@ -798,7 +790,7 @@ Point ObjInstance::recalculateLayout() {
     ObjClosure *valuesClosure = AS_CLOSURE(valuesThread->fields[0]);
     ObjClosure *layoutClosure = AS_CLOSURE(valuesThread->fields[valuesClosure->function->fieldCount - 1]);
 
-    uiLayoutInstances[ndx] = newInstance(valuesThread);
+    uiLayoutInstances[ndx] = newInstance(uiValuesInstances[ndx]);
 
     CoThread *instanceThread = uiLayoutInstances[ndx]->coThread;
 
@@ -915,13 +907,13 @@ ObjInternal *newInternal() {
   return internal;
 }
 
-ObjInstance *newInstance(CoThread *caller) {
+ObjInstance *newInstance(ObjInstance *caller) {
   ObjInstance *instance = ALLOCATE_OBJ(ObjInstance, OBJ_INSTANCE);
 
   instance->coThread = new CoThread(instance);
   instance->numValuesInstances = 0;
   instance->uiValuesInstances= NULL;
-  instance->coThread->caller = caller;
+  instance->caller = caller;
   return instance;
 }
 

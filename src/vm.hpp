@@ -56,7 +56,7 @@ struct VM {
   InterpretResult run();
   InterpretResult interpret(ObjClosure *closure);
   CallFrame *getFrame(int index = 0);
-  void onReturn(CoThread *current, Value &returnValue);
+  void onReturn(ObjInstance *instance, Value &returnValue);
   bool recalculate();
   void repaint();
   void onEvent(Event event, Point pos);

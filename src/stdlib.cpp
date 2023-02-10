@@ -141,7 +141,7 @@ CoListThread::CoListThread(CoThread *coThread, CoListThread *previous, CoListThr
 QNI_CLASS(CoList) {
   ObjInstance *instance = vm.instance;
   ObjInternal *objInternal = (ObjInternal *) AS_OBJ(instance->coThread->fields[1]);
-	CoListThread *main = new CoListThread(instance->coThread->caller, NULL, NULL);
+	CoListThread *main = new CoListThread(instance->caller->coThread, NULL, NULL);
 
   objInternal->object = main->next = main->previous = main;
   return {INTERPRET_HALT};
@@ -157,7 +157,7 @@ static InterpretValue qni__CoListEnd(VM &vm, int argCount, Value *args) {
   main->next->coThread->onReturn(value);
   main->previous->next = main->next;
   main->next->previous = main->previous;
-  main->coThread->caller = main->next->coThread;
+  main->coThread->instance->caller = main->next->coThread->instance;
   delete main;
   return {INTERPRET_HALT};
 }

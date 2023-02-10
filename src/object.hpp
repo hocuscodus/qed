@@ -211,7 +211,6 @@ struct CallFrame {
 };
 
 struct CoThread {
-  CoThread *caller;
   Value *fields;
   int frameCount;
   CallFrame frames[FRAMES_MAX];
@@ -226,7 +225,7 @@ struct CoThread {
   Value pop();
   Value peek(int distance);
   bool call(ObjClosure *closure, int argCount);
-  InterpretValue callValue(Value callee, int argCount, bool newFlag, ObjClosure *handler);
+  bool callValue(Value callee, int argCount);
   ObjUpvalue *captureUpvalue(Value *local);
   void closeUpvalues(Value *last);
 
@@ -257,6 +256,7 @@ struct ObjCompilerInstance {
 
 struct ObjInstance {
   Obj obj;
+  ObjInstance *caller;
   CoThread *coThread;
   int numValuesInstances;
   ObjClosure *handler;
@@ -284,7 +284,7 @@ struct ObjInternal {
 
 Obj *allocateObject(size_t size, ObjType type);
 ObjInternal *newInternal();
-ObjInstance *newInstance(CoThread *caller);
+ObjInstance *newInstance(ObjInstance *caller);
 ObjCompilerInstance *newCompilerInstance(ObjCallable *callable);
 ObjClosure *newClosure(ObjFunction *function, ObjInstance *parent);
 ObjFunction *newFunction();
