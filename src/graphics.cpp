@@ -15,9 +15,147 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http: *www.gnu.org/licenses/>.
  */
+
 #include "qni.hpp"
 #include "vm.hpp"
 
+extern ValueStack2 attStack;
+
+VM *vm;
+
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#include <emscripten/val.h>
+#define _USE_MATH_DEFINES
+#include <math.h>
+
+#define SCREEN_SIZE_X 512
+#define SCREEN_SIZE_Y 512
+
+using emscripten::val;
+
+// Use thread_local when you want to retrieve & cache a global JS variable once per thread.
+thread_local const val document = val::global("document");
+
+void initDisplay() {
+//  const canvas = document.getElementById('canvas');
+//  const ctx = canvas.getContext('2d');
+  const auto canvas = document.call<emscripten::val, std::string>("querySelector", "canvas");
+  auto ctx = canvas.call<emscripten::val, std::string>("getContext", "2d");
+//  val canvas = document.call<val>("getElementById", "canvas");
+//  val ctx = canvas.call<val>("getContext", "2d");
+
+//  ctx.fillStyle = 'green';
+//  ctx.fillRect(10, 10, 150, 100);
+/*
+  const auto width = canvas["width"].as<int>();
+  const auto height = canvas["height"].as<int>();
+  ctx.set("fillStyle", "green");
+  ctx.call<void>("fillRect", 10, 10, 150, 100);
+*/}
+
+void uninitDisplay() {
+}
+
+void postMessage(void *param)
+{
+}
+
+void suspend() {
+  vm->repaint();
+}
+
+QNI_FN(rect) {
+  long posP = AS_INT(args[0]);
+  long sizeP = AS_INT(args[1]);
+  Point pos = {(int) (posP >> 16), (int) (posP & 0xFFFF)};
+  Point size = {(int) (sizeP >> 16), (int) (sizeP & 0xFFFF)};
+  int color = AS_INT(attStack.get(ATTRIBUTE_COLOR));
+  float opacity = AS_FLOAT(attStack.get(ATTRIBUTE_OPACITY));
+  int opacityByte = (int) (opacity * 0xFF);
+  const auto canvas = document.call<emscripten::val, std::string>("querySelector", "canvas");
+  auto ctx = canvas.call<emscripten::val, std::string>("getContext", "2d");
+  char colorBuffer[16];
+
+  sprintf(colorBuffer, "#%02X%02X%02X", (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
+  ctx.set("fillStyle", colorBuffer);
+  ctx.set("globalAlpha", opacity);
+  ctx.call<void>("fillRect", pos[0], pos[1], size[0], size[1]);
+  ctx.set("globalAlpha", 1.0);
+//  SDL_SetRenderDrawBlendMode(rend2, SDL_BLENDMODE_BLEND);
+//	SDL_SetRenderDrawColor(rend2, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, opacityByte);
+//  SDL_RenderFillRect(rend2, &rectangle);
+  return VOID_VAL;
+}
+
+QNI_FN(oval) {
+  long posP = AS_INT(args[0]);
+  long sizeP = AS_INT(args[1]);
+  Point pos = {(int) (posP >> 16), (int) (posP & 0xFFFF)};
+  Point size = {(int) (sizeP >> 17), (int) ((sizeP & 0xFFFF) >> 1)};
+  int rx = size[0] >> 1;
+  int ry = size[1] >> 1;
+  int color = AS_INT(attStack.get(ATTRIBUTE_COLOR));
+  float opacity = AS_FLOAT(attStack.get(ATTRIBUTE_OPACITY));
+  const auto canvas = document.call<emscripten::val, std::string>("querySelector", "canvas");
+  auto ctx = canvas.call<emscripten::val, std::string>("getContext", "2d");
+  char colorBuffer[16];
+
+  sprintf(colorBuffer, "#%02X%02X%02X", (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
+  ctx.set("fillStyle", colorBuffer);
+  ctx.set("globalAlpha", opacity);
+  ctx.call<void>("beginPath");
+  ctx.call<void>("ellipse", pos[0] + size[0], pos[1] + size[1], size[0], size[1], 0, 0, 2*M_PI);
+  ctx.call<void>("fill");
+  ctx.set("globalAlpha", 1.0);
+
+//  filledEllipseRGBA(rend2, pos[0] + rx, pos[1] + ry, rx, ry,
+//                    (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, (int) (opacity * 0xFF));
+  return VOID_VAL;
+}
+
+QNI_FN(getTextSize) {
+  int fontSize = AS_INT(attStack.get(ATTRIBUTE_FONTSIZE));
+  const char *text = ((ObjString *) AS_OBJ(args[0]))->chars;
+  const auto canvas = document.call<emscripten::val, std::string>("querySelector", "canvas");
+  auto ctx = canvas.call<emscripten::val, std::string>("getContext", "2d");
+  char fontBuffer[64];
+
+  sprintf(fontBuffer, "%dpx Arial", fontSize);
+  ctx.set("font", fontBuffer);
+  auto textMetrics = ctx.call<emscripten::val, std::string>("measureText", text);
+  float width = textMetrics["width"].as<float>();
+  float height = textMetrics["fontBoundingBoxAscent"].as<float>() + textMetrics["fontBoundingBoxDescent"].as<float>();
+
+  return INT_VAL((((long) width) << 16) | (long) height);
+}
+
+QNI_FN(displayText) {
+  const char *text = ((ObjString *) AS_OBJ(args[0]))->chars;
+  long posP = AS_INT(args[1]);
+  long sizeP = AS_INT(args[2]);
+  Point pos = {(int) (posP >> 16), (int) (posP & 0xFFFF)};
+  Point size = {(int) (sizeP >> 16), (int) (sizeP & 0xFFFF)};
+  int color = AS_INT(attStack.get(ATTRIBUTE_COLOR));
+  float opacity = AS_FLOAT(attStack.get(ATTRIBUTE_OPACITY));
+  int fontSize = AS_INT(attStack.get(ATTRIBUTE_FONTSIZE));
+  const auto canvas = document.call<emscripten::val, std::string>("querySelector", "canvas");
+  auto ctx = canvas.call<emscripten::val, std::string>("getContext", "2d");
+  char colorBuffer[16];
+  char fontBuffer[64];
+
+  sprintf(fontBuffer, "%dpx Arial", fontSize);
+  sprintf(colorBuffer, "#%02X%02X%02X", (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
+  ctx.set("font", fontBuffer);
+  ctx.set("fillStyle", colorBuffer);
+  ctx.set("textBaseline", val("top"));
+  ctx.set("globalAlpha", opacity);
+  ctx.call<void>("fillText", std::string(text), pos[0], pos[1]);
+  ctx.set("globalAlpha", 1.0);
+
+  return VOID_VAL;
+}
+#else
 // std
 #include <assert.h>
 
@@ -41,6 +179,27 @@
 // creates a renderer to render our images
 SDL_Renderer* rend2;
 SDL_Surface *background2;
+
+SDL_Window* win = NULL;
+bool initFont = false;
+
+static TTF_Font *getNewFont(int size) {
+  if (!initFont) {
+    TTF_Init();
+    initFont = true;
+  }
+
+  return TTF_OpenFont("./res/font/arial.ttf", size);
+}
+
+static TTF_Font *getFont() {
+  static TTF_Font *font = NULL;
+
+  if (!font) {
+    font = getNewFont(30);
+  }
+  return font;
+}
 /*
   if (SDL_MUSTLOCK(background)) SDL_LockSurface(background);
 
@@ -67,108 +226,6 @@ SDL_Surface *background2;
 
   SDL_DestroyTexture(screenTexture);
 */
-struct ValueStack2 {
-	std::stack<Value> map[ATTRIBUTE_END];
-
-  ValueStack2() {
-    push(ATTRIBUTE_ALIGN, FLOAT_VAL(0));
-    push(ATTRIBUTE_POS, INT_VAL(0));
-    push(ATTRIBUTE_COLOR, INT_VAL(0xFFFFFF));
-    push(ATTRIBUTE_OPACITY, FLOAT_VAL(1));
-  }
-
-	void push(int key, Value value) {
-    map[key].push(value);
-  }
-
-	void pop(int key) {
-    map[key].pop();
-  }
-
-	Value get(int key) {
-    return map[key].top();
-  }
-};
-
-ValueStack2 attStack;
-
-QNI_FN(pushAttribute) {
-  long uiIndex = AS_INT(args[0]);
-  Value &value = args[1];
-
-  attStack.push(uiIndex, value);
-  return VOID_VAL;
-}
-
-QNI_FN(popAttribute) {
-  long uiIndex = AS_INT(args[0]);
-
-  attStack.pop(uiIndex);
-  return VOID_VAL;
-}
-
-QNI_FN(rect) {
-  long posP = AS_INT(args[0]);
-  long sizeP = AS_INT(args[1]);
-  Point pos = {(int) (posP >> 16), (int) (posP & 0xFFFF)};
-  Point size = {(int) (sizeP >> 16), (int) (sizeP & 0xFFFF)};
-  SDL_Rect rectangle;
-
-  rectangle.x = pos[0];
-  rectangle.y = pos[1];
-  rectangle.w = size[0];
-  rectangle.h = size[1];
-
-  SDL_BlendMode blendMode;
-  int color = AS_INT(attStack.get(ATTRIBUTE_COLOR));
-  float opacity = AS_FLOAT(attStack.get(ATTRIBUTE_OPACITY));
-  int opacityByte = (int) (opacity * 0xFF);
-
-  SDL_SetRenderDrawBlendMode(rend2, SDL_BLENDMODE_BLEND);
-	SDL_SetRenderDrawColor(rend2, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, opacityByte);
-  SDL_RenderFillRect(rend2, &rectangle);
-  return VOID_VAL;
-}
-
-QNI_FN(oval) {
-  long posP = AS_INT(args[0]);
-  long sizeP = AS_INT(args[1]);
-  Point pos = {(int) (posP >> 16), (int) (posP & 0xFFFF)};
-  Point size = {(int) (sizeP >> 16), (int) (sizeP & 0xFFFF)};
-  int rx = size[0] >> 1;
-  int ry = size[1] >> 1;
-  int color = AS_INT(attStack.get(ATTRIBUTE_COLOR));
-  float opacity = AS_FLOAT(attStack.get(ATTRIBUTE_OPACITY));
-
-//  SDL_SetTextureBlendMode(rend2, SDL_BLENDMODE_ADD);
-  filledEllipseRGBA(rend2, pos[0] + rx, pos[1] + ry, rx, ry,
-                    (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, (int) (opacity * 0xFF));
-//  aaellipseRGBA(rend2, pos[0] + rx, pos[1] + ry, rx, ry,
-//                    (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, (int) (opacity * 0xFF));
-  return VOID_VAL;
-}
-
-SDL_Window* win = NULL;
-bool initFont = false;
-
-static TTF_Font *getNewFont(int size) {
-  if (!initFont) {
-    TTF_Init();
-    initFont = true;
-  }
-
-  return TTF_OpenFont("./res/font/arial.ttf", size);
-}
-
-static TTF_Font *getFont() {
-  static TTF_Font *font = NULL;
-
-  if (!font) {
-    font = getNewFont(30);
-  }
-  return font;
-}
-
 void initDisplay() {
   if (!win) {
     // ----- Initialize SDL
@@ -215,8 +272,6 @@ void initDisplay() {
 */
   SDL_SetRenderDrawColor(rend2, 0, 0, 0, 0);
   SDL_RenderClear(rend2);
-
-  return;
 }
 
 void uninitDisplay() {
@@ -234,8 +289,47 @@ void uninitDisplay() {
   //    SDL_GL_DeleteContext(glContext);
     win = NULL;
   }
+}
 
-  return;
+QNI_FN(oval) {
+  long posP = AS_INT(args[0]);
+  long sizeP = AS_INT(args[1]);
+  Point pos = {(int) (posP >> 16), (int) (posP & 0xFFFF)};
+  Point size = {(int) (sizeP >> 16), (int) (sizeP & 0xFFFF)};
+  int rx = size[0] >> 1;
+  int ry = size[1] >> 1;
+  int color = AS_INT(attStack.get(ATTRIBUTE_COLOR));
+  float opacity = AS_FLOAT(attStack.get(ATTRIBUTE_OPACITY));
+
+//  SDL_SetTextureBlendMode(rend2, SDL_BLENDMODE_ADD);
+  filledEllipseRGBA(rend2, pos[0] + rx, pos[1] + ry, rx, ry,
+                    (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, (int) (opacity * 0xFF));
+//  aaellipseRGBA(rend2, pos[0] + rx, pos[1] + ry, rx, ry,
+//                    (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, (int) (opacity * 0xFF));
+  return VOID_VAL;
+}
+
+QNI_FN(rect) {
+  long posP = AS_INT(args[0]);
+  long sizeP = AS_INT(args[1]);
+  Point pos = {(int) (posP >> 16), (int) (posP & 0xFFFF)};
+  Point size = {(int) (sizeP >> 16), (int) (sizeP & 0xFFFF)};
+  SDL_Rect rectangle;
+
+  rectangle.x = pos[0];
+  rectangle.y = pos[1];
+  rectangle.w = size[0];
+  rectangle.h = size[1];
+
+  SDL_BlendMode blendMode;
+  int color = AS_INT(attStack.get(ATTRIBUTE_COLOR));
+  float opacity = AS_FLOAT(attStack.get(ATTRIBUTE_OPACITY));
+  int opacityByte = (int) (opacity * 0xFF);
+
+  SDL_SetRenderDrawBlendMode(rend2, SDL_BLENDMODE_BLEND);
+	SDL_SetRenderDrawColor(rend2, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, opacityByte);
+  SDL_RenderFillRect(rend2, &rectangle);
+  return VOID_VAL;
 }
 
 QNI_FN(getTextSize) {
@@ -251,13 +345,6 @@ QNI_FN(getTextSize) {
     TTF_CloseFont(font);
 
   return INT_VAL((((long) width) << 16) | height);
-}
-
-QNI_FN(getInstanceSize) {
-  ObjInstance *instance = (ObjInstance *) AS_OBJ(args[0]);
-  Point size = instance->recalculateLayout();
-
-  return INT_VAL((((long) size[0]) << 16) | size[1]);
 }
 
 QNI_FN(displayText) {
@@ -288,28 +375,6 @@ QNI_FN(displayText) {
   return VOID_VAL;
 }
 
-QNI_FN(displayInstance) {
-  ObjInstance *instance = (ObjInstance *) AS_OBJ(args[0]);
-  long posP = AS_INT(args[1]);
-  long sizeP = AS_INT(args[2]);
-  Point pos = {(int) (posP >> 16), (int) (posP & 0xFFFF)};
-  Point size = {(int) (sizeP >> 16), (int) (sizeP & 0xFFFF)};
-
-  instance->paint(pos, size);
-  return VOID_VAL;
-}
-
-QNI_FN(onInstanceEvent) {
-  ObjInstance *instance = (ObjInstance *) AS_OBJ(args[0]);
-  Event event = (Event) AS_INT(args[1]);
-  long posP = AS_INT(args[2]);
-  long sizeP = AS_INT(args[3]);
-  Point pos = {(int) (posP >> 16), (int) (posP & 0xFFFF)};
-  Point size = {(int) (sizeP >> 16), (int) (sizeP & 0xFFFF)};
-
-  return BOOL_VAL(instance->onEvent(event, pos, size));
-}
-
 void SDLCALL postMessage(void *param)
 {
     SDL_Event event;
@@ -324,8 +389,6 @@ void SDLCALL postMessage(void *param)
 
     SDL_PushEvent(&event);
 }
-
-VM *vm;
 
 void onEvent(Event event, Point pos) {
   if (vm->instance->onEvent(event, pos, vm->totalSize)) {
@@ -403,3 +466,4 @@ void suspend() {
   }
   }
 }
+#endif

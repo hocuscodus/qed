@@ -18,6 +18,29 @@
 #include <iostream>
 #include "vm.hpp"
 
+struct ValueStack2 {
+	std::stack<Value> map[ATTRIBUTE_END];
+
+  ValueStack2() {
+    push(ATTRIBUTE_ALIGN, FLOAT_VAL(0));
+    push(ATTRIBUTE_POS, INT_VAL(0));
+    push(ATTRIBUTE_COLOR, INT_VAL(0xFFFFFF));
+    push(ATTRIBUTE_OPACITY, FLOAT_VAL(1));
+  }
+
+	void push(int key, Value value) {
+    map[key].push(value);
+  }
+
+	void pop(int key) {
+    map[key].pop();
+  }
+
+	Value get(int key) {
+    return map[key].top();
+  }
+};
+
 #define QNI_FN(name) \
   static Value qni_ ## name(int argCount, Value *args); \
   static bool qni_ ## name ## Var = addNativeFn("qni_" #name, qni_ ## name); \

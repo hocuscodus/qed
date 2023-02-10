@@ -24,6 +24,52 @@
 #include <emscripten.h>
 #endif
 
+ValueStack2 attStack;
+
+QNI_FN(pushAttribute) {
+  long uiIndex = AS_INT(args[0]);
+  Value &value = args[1];
+
+  attStack.push(uiIndex, value);
+  return VOID_VAL;
+}
+
+QNI_FN(popAttribute) {
+  long uiIndex = AS_INT(args[0]);
+
+  attStack.pop(uiIndex);
+  return VOID_VAL;
+}
+
+QNI_FN(getInstanceSize) {
+  ObjInstance *instance = (ObjInstance *) AS_OBJ(args[0]);
+  Point size = instance->recalculateLayout();
+
+  return INT_VAL((((long) size[0]) << 16) | size[1]);
+}
+
+QNI_FN(displayInstance) {
+  ObjInstance *instance = (ObjInstance *) AS_OBJ(args[0]);
+  long posP = AS_INT(args[1]);
+  long sizeP = AS_INT(args[2]);
+  Point pos = {(int) (posP >> 16), (int) (posP & 0xFFFF)};
+  Point size = {(int) (sizeP >> 16), (int) (sizeP & 0xFFFF)};
+
+  instance->paint(pos, size);
+  return VOID_VAL;
+}
+
+QNI_FN(onInstanceEvent) {
+  ObjInstance *instance = (ObjInstance *) AS_OBJ(args[0]);
+  Event event = (Event) AS_INT(args[1]);
+  long posP = AS_INT(args[2]);
+  long sizeP = AS_INT(args[3]);
+  Point pos = {(int) (posP >> 16), (int) (posP & 0xFFFF)};
+  Point size = {(int) (sizeP >> 16), (int) (sizeP & 0xFFFF)};
+
+  return BOOL_VAL(instance->onEvent(event, pos, size));
+}
+
 QNI_FN(println) {
   printf("%s\n", ((ObjString *) AS_OBJ(args[0]))->chars);
   return VOID_VAL;
