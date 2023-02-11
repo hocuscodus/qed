@@ -164,8 +164,8 @@ typedef enum {
   INTERPRET_OK,
   INTERPRET_COMPILE_ERROR,
   INTERPRET_RUNTIME_ERROR,
-  INTERPRET_HALT,
-  INTERPRET_SWITCH_THREAD
+  INTERPRET_CONTINUE,
+  INTERPRET_HALT
 } InterpretResult;
 
 struct VM;
@@ -235,7 +235,7 @@ struct CoThread {
 #ifdef DEBUG_TRACE_EXECUTION
   void printStack();
 #endif
-  InterpretValue run();
+  InterpretResult run();
 
   bool isDone();
   bool isFirstInstance();

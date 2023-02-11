@@ -322,18 +322,26 @@ class LayoutObject {
 	}
 }
 #endif
+
+extern bool eventFlag;
+extern ObjInstance *instance;
+extern VM *vm;
+
 VM::VM(ObjInstance *instance, bool eventFlag) {
-  this->eventFlag = eventFlag;
-  this->instance = instance;
+  ::vm = this;
+  ::eventFlag = eventFlag;
+  ::instance = instance;
 }
+
+extern void suspend();
+extern ObjInstance *instance;
 
 InterpretResult VM::run() {
   for (;;) {
-    InterpretValue value = instance->coThread->run();
+    InterpretResult result = instance->coThread->run();
 
-    switch(value.result) {
-    case INTERPRET_SWITCH_THREAD:
-      instance = value.as.coThread->instance;
+    switch(result) {
+    case INTERPRET_CONTINUE:
       break;
 
     case INTERPRET_HALT: {
@@ -344,7 +352,7 @@ InterpretResult VM::run() {
         int argCount = instance->coThread->stackTop - frame->slots - 1;
         NativeClassFn nativeClassFn = ((ObjNativeClass *) native)->classFn;
 
-        value = nativeClassFn(*this, argCount, instance->coThread->stackTop - argCount);
+        result = nativeClassFn(*this, argCount, instance->coThread->stackTop - argCount).result;
       }
 
       if (instance->coThread->isInInstance() && (!eventFlag || !instance->coThread->isFirstInstance()))
@@ -370,7 +378,7 @@ InterpretResult VM::run() {
     }
 
     default:
-      return value.result;
+      return result;
     }
   }
 }
@@ -402,7 +410,7 @@ CallFrame *VM::getFrame(int index) {
 extern void initDisplay();
 extern void uninitDisplay();
 
-bool VM::recalculate() {
+bool VM::recalculate() {               
   if (instance->coThread->getFormFlag()) {
     instance->uninitValues();
     instance->initValues();
@@ -467,12 +475,4 @@ void VM::repaint() {
 //  setState(() {
     /*process.*/recalculate();
 //  });
-}
-
-extern VM *vm;
-extern void suspend();
-
-void VM::suspend() {
-  ::vm = this;
-  ::suspend();
 }

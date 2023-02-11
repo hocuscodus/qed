@@ -168,6 +168,9 @@ LocationUnit *CallFrame::init(VM &vm, Value *values, IndexList *instanceIndexes,
     return NULL;
 }
 
+bool eventFlag;
+ObjInstance *instance;
+
 CoThread::CoThread(ObjInstance *instance) {
   this->instance = instance;
   fields = new Value[64];//ALLOCATE(Value, 64);
@@ -376,7 +379,10 @@ void CoThread::printStack() {
 }
 #endif
 
-InterpretValue CoThread::run() {
+extern VM *vm;
+extern void suspend();
+
+InterpretResult CoThread::run() {
   CallFrame *frame = &frames[frameCount - 1];
 #define READ_BYTE() (*frame->ip++)
 #define READ_SHORT() (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
@@ -624,17 +630,19 @@ InterpretValue CoThread::run() {
       instance->coThread->stackTop += size;
       push(OBJ_VAL(instance));
 
-      if (instance->coThread->callValue(instance->coThread->peek(argCount), argCount))
-        return {INTERPRET_SWITCH_THREAD, instance->coThread};
+      if (instance->coThread->callValue(instance->coThread->peek(argCount), argCount)) {
+        ::instance = instance;
+        return INTERPRET_CONTINUE;
+      }
       else
-        return {INTERPRET_RUNTIME_ERROR};
+        return INTERPRET_RUNTIME_ERROR;
       break;
     }
     case OP_CALL: {
       int argCount = READ_BYTE();
 
       if (!callValue(peek(argCount), argCount))
-        return {INTERPRET_RUNTIME_ERROR};
+        return INTERPRET_RUNTIME_ERROR;
 
       frame = &frames[frameCount - 1];
       break;
@@ -661,7 +669,7 @@ InterpretValue CoThread::run() {
       if (isFirstInstance() && isInInstance()) {
         closeUpvalues(frames[0].slots);
         pop();
-        return {INTERPRET_OK};
+        return INTERPRET_OK;
       }
       else {
         ValueType type = frame->closure->function->type.valueType;
@@ -690,11 +698,11 @@ InterpretValue CoThread::run() {
         break;
       }
       else
-        return {INTERPRET_HALT};
+        return INTERPRET_HALT;
     }
-    case OP_HALT_HANDLER: {
-        return {INTERPRET_HALT};
-    }
+    case OP_HALT_HANDLER:
+      return INTERPRET_HALT;
+//      stackTop = frame->slots;
     }
   }
 #undef READ_BYTE

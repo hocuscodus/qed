@@ -27,8 +27,6 @@
 struct AttrSet;
 
 struct VM {
-  bool eventFlag;
-  ObjInstance *instance;
 	Point totalSize;/*
   std::vector<LayoutObject *> layoutObjects;
 	Obj *current2;
@@ -60,8 +58,6 @@ struct VM {
   void repaint();
   void onEvent(Event event, Point pos);
   void push(Obj *obj);
-
-  virtual void suspend();
 };
 
 ObjNativeClass *newNativeClass(NativeClassFn classFn);

@@ -116,12 +116,13 @@ struct TimerInternal : Internal {
   }
 };
 */
+extern ObjInstance *instance;
+
 QNI_CLASS(Timer) {
-  ObjInstance *instance = vm.instance;
   ObjInternal *objInternal = (ObjInternal *) AS_OBJ(args[1]);
 
 //  objInternal->object = new TimerInternal(AS_INT(args[0]), instance);
-  return {INTERPRET_HALT};
+  return {INTERPRET_OK};//HALT};
 }
 
 struct CoListThread : Internal {
@@ -139,12 +140,11 @@ CoListThread::CoListThread(CoThread *coThread, CoListThread *previous, CoListThr
 }
 
 QNI_CLASS(CoList) {
-  ObjInstance *instance = vm.instance;
   ObjInternal *objInternal = (ObjInternal *) AS_OBJ(instance->coThread->fields[1]);
 	CoListThread *main = new CoListThread(instance->caller->coThread, NULL, NULL);
 
   objInternal->object = main->next = main->previous = main;
-  return {INTERPRET_HALT};
+  return {INTERPRET_OK};//HALT};
 }
 
 static InterpretValue qni__CoListEnd(VM &vm, int argCount, Value *args) {
@@ -159,7 +159,7 @@ static InterpretValue qni__CoListEnd(VM &vm, int argCount, Value *args) {
   main->next->previous = main->previous;
   main->coThread->instance->caller = main->next->coThread->instance;
   delete main;
-  return {INTERPRET_HALT};
+  return {INTERPRET_OK};//HALT};
 }
 
 QNI_CLASS(CoList_yield) {
@@ -169,22 +169,22 @@ QNI_CLASS(CoList_yield) {
   ObjInternal *objInternal = (ObjInternal *) AS_OBJ(instance->coThread->fields[1]);
   CoListThread *main = (CoListThread *) objInternal->object;
 
-  if (vm.instance->coThread == main->coThread) {
+  if (instance->coThread == main->coThread) {
 		Value value = BOOL_VAL(true);
 
 		objInternal->object = main->next;
-		vm.instance->coThread = main->next->coThread;
-		vm.instance->coThread->onReturn(value);
+		instance->coThread = main->next->coThread;
+		instance->coThread->onReturn(value);
 		return {INTERPRET_OK};//INTERPRET_CONTINUE should switch thread here
 	} else {
-    CoListThread *newUnit = new CoListThread(vm.instance->coThread, main->previous, main);
+    CoListThread *newUnit = new CoListThread(instance->coThread, main->previous, main);
 
 		main->previous->next = newUnit;
 		main->previous = newUnit;
     ObjNativeClass *endObj = newNativeClass(qni__CoListEnd);
     closure1->function->native = &endObj->obj;
     endObj->arg = objInternal;
-	  return {INTERPRET_HALT};
+	  return {INTERPRET_OK};//HALT};
   }
 }
 /*
