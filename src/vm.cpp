@@ -335,6 +335,7 @@ VM::VM(ObjInstance *instance, bool eventFlag) {
 
 extern void suspend();
 extern ObjInstance *instance;
+extern Value *stackTop;
 
 InterpretResult VM::run() {
   for (;;) {
@@ -349,10 +350,10 @@ InterpretResult VM::run() {
       Obj *native = frame->closure->function->native;
 
       if (native && native->type == OBJ_NATIVE_CLASS) {
-        int argCount = instance->coThread->stackTop - frame->slots - 1;
+        int argCount = stackTop - frame->slots - 1;
         NativeClassFn nativeClassFn = ((ObjNativeClass *) native)->classFn;
 
-        result = nativeClassFn(*this, argCount, instance->coThread->stackTop - argCount).result;
+        result = nativeClassFn(*this, argCount, stackTop - argCount).result;
       }
 
       if (instance->coThread->isInInstance() && (!eventFlag || !instance->coThread->isFirstInstance()))
@@ -367,6 +368,7 @@ InterpretResult VM::run() {
 //            FREE(CoThread, instance->coThread);
 //            instance->coThread = NULL;
           }
+          instance->coThread->savedStackTop = stackTop;
           instance = instance->caller;
         }
       else
@@ -389,7 +391,7 @@ void VM::push(Obj *obj) {
 }
 
 InterpretResult VM::interpret(ObjClosure *closure) {
-  instance->coThread->call(closure, instance->coThread->stackTop - instance->coThread->fields - 1);
+  instance->coThread->call(closure, instance->coThread->savedStackTop - instance->coThread->fields - 1);
   return run();
 }
 
@@ -407,19 +409,11 @@ CallFrame *VM::getFrame(int index) {
 * /    return (true);
   }
 */
-extern void initDisplay();
-extern void uninitDisplay();
+bool VM::recalculate() {
+  ObjInstance *instance = ::instance;
 
-bool VM::recalculate() {               
-  if (instance->coThread->getFormFlag()) {
-    instance->uninitValues();
-    instance->initValues();
-    totalSize = instance->recalculateLayout();
-
-    initDisplay();
-
-    instance->paint({0, 0}, totalSize);
-  }
+  totalSize = instance->repaint();
+  ::instance = instance;
   return true;
 }
 #if 0
@@ -476,3 +470,12 @@ void VM::repaint() {
     /*process.*/recalculate();
 //  });
 }
+
+bool VM::onEvent(Event event, Point pos) {
+  ObjInstance *instance = ::instance;
+
+  instance->onEvent(event, pos, totalSize);
+  ::instance = instance;
+  return true;
+}
+

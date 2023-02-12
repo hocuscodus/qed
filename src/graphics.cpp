@@ -390,10 +390,8 @@ void SDLCALL postMessage(void *param)
     SDL_PushEvent(&event);
 }
 
-extern ObjInstance *instance;
-
 void onEvent(Event event, Point pos) {
-  if (instance->onEvent(event, pos, vm->totalSize)) {
+  if (vm->onEvent(event, pos)) {
     vm->repaint();
     SDL_RenderPresent(rend2);
   }

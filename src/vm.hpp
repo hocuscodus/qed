@@ -56,7 +56,7 @@ struct VM {
   CallFrame *getFrame(int index = 0);
   bool recalculate();
   void repaint();
-  void onEvent(Event event, Point pos);
+  bool onEvent(Event event, Point pos);
   void push(Obj *obj);
 };
 

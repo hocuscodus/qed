@@ -213,7 +213,7 @@ struct CoThread {
   CallFrame frames[FRAMES_MAX];
   ObjUpvalue *openUpvalues;
   ObjInstance *instance;
-  Value *stackTop;
+  Value *savedStackTop;
 
   CoThread(ObjInstance *instance);
   ~CoThread();
@@ -263,6 +263,7 @@ struct ObjInstance {
   void initValues();
   void uninitValues();
   Point recalculateLayout();
+  Point repaint();
   void paint(Point pos, Point size);
   void onReturn(Value &returnValue);
   bool onEvent(Event event, Point pos, Point size);
