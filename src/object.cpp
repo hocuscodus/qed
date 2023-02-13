@@ -836,7 +836,7 @@ Point ObjInstance::recalculateLayout() {
 extern void initDisplay();
 extern void uninitDisplay();
 
-Point ObjInstance::repaint() {               
+Point ObjInstance::repaint() {
   if (coThread->getFormFlag()) {
     uninitValues();
     initValues();
