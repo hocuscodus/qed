@@ -813,7 +813,7 @@ Point ObjInstance::recalculateLayout() {
     ObjClosure *valuesClosure = AS_CLOSURE(valuesThread->fields[0]);
     ObjClosure *layoutClosure = AS_CLOSURE(valuesThread->fields[valuesClosure->function->fieldCount - 1]);
 
-    uiLayoutInstances[ndx] = newInstance(uiValuesInstances[ndx]);
+    uiLayoutInstances[ndx] = newInstance(instance);
 
     CoThread *instanceThread = uiLayoutInstances[ndx]->coThread;
 
