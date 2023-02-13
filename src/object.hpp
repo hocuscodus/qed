@@ -218,9 +218,9 @@ struct CoThread {
   CoThread(ObjInstance *instance);
   ~CoThread();
 
-  void push(Value value);
-  Value pop();
-  Value peek(int distance);
+  static void push(Value value);
+  static Value pop();
+  static Value peek(int distance);
   bool call(ObjClosure *closure, int argCount);
   bool callValue(Value callee, int argCount);
   ObjUpvalue *captureUpvalue(Value *local);
@@ -229,13 +229,13 @@ struct CoThread {
   ObjClosure *pushClosure(ObjFunction *function);
   void reset();
 
-  void concatenate();
+  static void concatenate();
   void resetStack();
   void runtimeError(const char *format, ...);
 #ifdef DEBUG_TRACE_EXECUTION
   void printStack();
 #endif
-  InterpretResult run();
+  static InterpretResult run();
 
   bool isDone();
   bool isFirstInstance();

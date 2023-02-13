@@ -387,7 +387,8 @@ extern VM *vm;
 extern void suspend();
 
 InterpretResult CoThread::run() {
-  CallFrame *frame = &frames[frameCount - 1];
+  CoThread *current = ::instance->coThread;
+  CallFrame *frame = &current->frames[current->frameCount - 1];
 #define READ_BYTE() (*frame->ip++)
 #define READ_SHORT() (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
 #define READ_CONSTANT() (frame->closure->function->chunk.constants.values[READ_BYTE()])
@@ -404,7 +405,7 @@ InterpretResult CoThread::run() {
     push(BOOL_VAL(valuesCompare(a, b) op 0));                                  \
   } while (false)
 
-  stackTop = ::instance->coThread->savedStackTop;
+  stackTop = current->savedStackTop;
 
   for (;;) {
 #ifdef DEBUG_TRACE_EXECUTION
@@ -627,7 +628,7 @@ InterpretResult CoThread::run() {
     case OP_NEW: {
       int argCount = READ_BYTE();
       Value handlerConstant = pop();
-      ObjInstance *instance = newInstance(this->instance);
+      ObjInstance *instance = newInstance(current->instance);
       int size = argCount + 1;
 
       instance->handler = AS_INT(handlerConstant) != -1 ? AS_CLOSURE(handlerConstant) : NULL;
@@ -637,7 +638,7 @@ InterpretResult CoThread::run() {
       push(OBJ_VAL(instance));
 
       if (instance->coThread->callValue(*instance->coThread->fields, argCount)) {
-        savedStackTop = stackTop;
+        current->savedStackTop = stackTop;
         ::instance = instance;
         return INTERPRET_CONTINUE;
       }
@@ -648,17 +649,17 @@ InterpretResult CoThread::run() {
     case OP_CALL: {
       int argCount = READ_BYTE();
 
-      savedStackTop = stackTop;
+      current->savedStackTop = stackTop;
 
-      if (!callValue(peek(argCount), argCount))
+      if (!current->callValue(peek(argCount), argCount))
         return INTERPRET_RUNTIME_ERROR;
 
-      frame = &frames[frameCount - 1];
+      frame = &current->frames[current->frameCount - 1];
       break;
     }
     case OP_CLOSURE: {
       ObjFunction *function = AS_FUNCTION(READ_CONSTANT());
-      ObjClosure *closure = newClosure(function, instance);
+      ObjClosure *closure = newClosure(function, current->instance);
 
       push(OBJ_VAL(closure));
 
@@ -666,17 +667,17 @@ InterpretResult CoThread::run() {
         uint8_t isLocal = READ_BYTE();
         uint8_t index = READ_BYTE();
 
-        closure->upvalues[i] = isLocal ? captureUpvalue(frame->slots + index) : frame->closure->upvalues[index];
+        closure->upvalues[i] = isLocal ? current->captureUpvalue(frame->slots + index) : frame->closure->upvalues[index];
       }
       break;
     }
     case OP_CLOSE_UPVALUE:
-      closeUpvalues(stackTop - 1);
+      current->closeUpvalues(stackTop - 1);
       pop();
       break;
     case OP_RETURN: {
-      if (isFirstInstance() && isInInstance()) {
-        closeUpvalues(frames[0].slots);
+      if (current->isFirstInstance() && current->isInInstance()) {
+        current->closeUpvalues(current->frames[0].slots);
         pop();
         return INTERPRET_OK;
       }
@@ -684,11 +685,11 @@ InterpretResult CoThread::run() {
         ValueType type = frame->closure->function->type.valueType;
         Value result = type != VAL_VOID ? pop() : (Value) {VAL_VOID};
 
-        if (isInInstance())
-          instance->onReturn(result);
+        if (current->isInInstance())
+          current->instance->onReturn(result);
         else {
-          onReturn(result);
-          frame = &frames[frameCount - 1];
+          current->onReturn(result);
+          frame = &current->frames[current->frameCount - 1];
           continue;
         }
       }
@@ -704,8 +705,8 @@ InterpretResult CoThread::run() {
 //        ValueType type = frame->closure->function->type.valueType;
         Value result = nativeFn(argCount, stackTop - argCount);
 
-        onReturn(result);
-        frame = &frames[frameCount - 1];
+        current->onReturn(result);
+        frame = &current->frames[current->frameCount - 1];
         break;
       }
       else
