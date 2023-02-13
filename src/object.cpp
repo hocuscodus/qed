@@ -640,7 +640,9 @@ InterpretResult CoThread::run() {
       if (instance->coThread->callValue(*instance->coThread->fields, argCount)) {
         current->savedStackTop = stackTop;
         ::instance = instance;
-        return INTERPRET_CONTINUE;
+        current = ::instance->coThread;
+        frame = &current->frames[current->frameCount - 1];
+        stackTop = current->savedStackTop;
       }
       else
         return INTERPRET_RUNTIME_ERROR;
@@ -696,6 +698,9 @@ InterpretResult CoThread::run() {
     }
     // Is is wanted that we do not break here...
     case OP_HALT: {
+      if (frame->closure->function->type.valueType == VAL_HANDLER)
+        return INTERPRET_HALT;
+
       Obj *native = frame->closure->function->native;
 
       if (native && native->type == OBJ_NATIVE) {
@@ -709,8 +714,38 @@ InterpretResult CoThread::run() {
         frame = &current->frames[current->frameCount - 1];
         break;
       }
-      else
-        return INTERPRET_HALT;
+      else {
+        Obj *native = frame->closure->function->native;
+
+        if (native && native->type == OBJ_NATIVE_CLASS) {
+          int argCount = stackTop - frame->slots - 1;
+          NativeClassFn nativeClassFn = ((ObjNativeClass *) native)->classFn;
+          InterpretResult result = nativeClassFn(*vm, argCount, stackTop - argCount).result;
+        }
+        else
+          if (current->isInInstance() && (!eventFlag || !current->isFirstInstance()))
+            if (current->isFirstInstance())
+              return INTERPRET_OK;
+            else {
+    //        CallFrame *frame = &current->frames[--current->frameCount];
+
+    //TODO: fix this        current->closeUpvalues(frame->slots);
+    //        caller->coinstance = caller;
+              if (current->isDone()) {
+    //            FREE(CoThread, instance->coThread);
+    //            instance->coThread = NULL;
+              }
+              current->savedStackTop = stackTop;
+              ::instance = ::instance->caller;
+              current = ::instance->coThread;
+              frame = &current->frames[current->frameCount - 1];
+              stackTop = current->savedStackTop;
+            }
+          else
+            // suspend app
+            suspend();
+      }
+      break;
     }
     case OP_HALT_HANDLER:
       return INTERPRET_HALT;

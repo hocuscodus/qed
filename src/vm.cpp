@@ -338,51 +338,7 @@ extern ObjInstance *instance;
 extern Value *stackTop;
 
 InterpretResult VM::run() {
-  for (;;) {
-    InterpretResult result = instance->coThread->run();
-
-    switch(result) {
-    case INTERPRET_CONTINUE:
-      break;
-
-    case INTERPRET_HALT: {
-      CallFrame *frame = getFrame();
-      Obj *native = frame->closure->function->native;
-
-      if (native && native->type == OBJ_NATIVE_CLASS) {
-        int argCount = stackTop - frame->slots - 1;
-        NativeClassFn nativeClassFn = ((ObjNativeClass *) native)->classFn;
-
-        result = nativeClassFn(*this, argCount, stackTop - argCount).result;
-      }
-
-      if (instance->coThread->isInInstance() && (!eventFlag || !instance->coThread->isFirstInstance()))
-        if (instance->coThread->isFirstInstance())
-          return INTERPRET_OK;
-        else {
-//        CallFrame *frame = &current->frames[--current->frameCount];
-
-//TODO: fix this        current->closeUpvalues(frame->slots);
-//        caller->coinstance = caller;
-          if (instance->coThread->isDone()) {
-//            FREE(CoThread, instance->coThread);
-//            instance->coThread = NULL;
-          }
-          instance->coThread->savedStackTop = stackTop;
-          instance = instance->caller;
-        }
-      else
-        // suspend app
-        suspend();
-
-//      stackTop = frame->slots;
-      break;
-    }
-
-    default:
-      return result;
-    }
-  }
+  return CoThread::run();
 }
 
 void VM::push(Obj *obj) {
