@@ -384,7 +384,6 @@ void CoThread::printStack() {
 #endif
 
 extern VM *vm;
-extern void suspend();
 
 InterpretResult CoThread::run() {
   CoThread *current = ::instance->coThread;
@@ -409,7 +408,7 @@ InterpretResult CoThread::run() {
 
   for (;;) {
 #ifdef DEBUG_TRACE_EXECUTION
-    printStack();
+    current->printStack();
     disassembleInstruction(&frame->closure->function->chunk, (int)(frame->ip - frame->closure->function->chunk.code));
 #endif
     uint8_t instruction = READ_BYTE();
@@ -628,7 +627,7 @@ InterpretResult CoThread::run() {
     case OP_NEW: {
       int argCount = READ_BYTE();
       Value handlerConstant = pop();
-      ObjInstance *instance = newInstance(current->instance);
+      ObjInstance *instance = newInstance(::instance);
       int size = argCount + 1;
 
       instance->handler = AS_INT(handlerConstant) != -1 ? AS_CLOSURE(handlerConstant) : NULL;
@@ -661,7 +660,7 @@ InterpretResult CoThread::run() {
     }
     case OP_CLOSURE: {
       ObjFunction *function = AS_FUNCTION(READ_CONSTANT());
-      ObjClosure *closure = newClosure(function, current->instance);
+      ObjClosure *closure = newClosure(function, ::instance);
 
       push(OBJ_VAL(closure));
 
@@ -688,19 +687,16 @@ InterpretResult CoThread::run() {
         Value result = type != VAL_VOID ? pop() : (Value) {VAL_VOID};
 
         if (current->isInInstance())
-          current->instance->onReturn(result);
+          ::instance->onReturn(result);
         else {
           current->onReturn(result);
           frame = &current->frames[current->frameCount - 1];
-          continue;
+          break;
         }
       }
     }
     // Is is wanted that we do not break here...
     case OP_HALT: {
-      if (frame->closure->function->type.valueType == VAL_HANDLER)
-        return INTERPRET_HALT;
-
       Obj *native = frame->closure->function->native;
 
       if (native && native->type == OBJ_NATIVE) {
@@ -712,7 +708,6 @@ InterpretResult CoThread::run() {
 
         current->onReturn(result);
         frame = &current->frames[current->frameCount - 1];
-        break;
       }
       else {
         Obj *native = frame->closure->function->native;
@@ -743,13 +738,10 @@ InterpretResult CoThread::run() {
             }
           else
             // suspend app
-            suspend();
+            return INTERPRET_SUSPEND;
       }
       break;
     }
-    case OP_HALT_HANDLER:
-      return INTERPRET_HALT;
-//      stackTop = frame->slots;
     }
   }
 #undef READ_BYTE
@@ -766,7 +758,7 @@ bool CoThread::isDone() {
 }
 
 bool CoThread::isFirstInstance() {
-  return instance->caller == NULL;
+  return ::instance->caller == NULL;
 }
 
 bool CoThread::isInInstance() {
@@ -803,7 +795,7 @@ void ObjInstance::initValues() {
     CallFrame &frame = coThread->frames[ndx];
     ObjClosure *outClosure = frame.uiClosure;
 
-    uiValuesInstances[numValuesInstances++] = newInstance(this);
+    uiValuesInstances[numValuesInstances++] = newInstance(NULL);
 
     CoThread *instanceThread = uiValuesInstances[ndx]->coThread;
 
@@ -815,8 +807,6 @@ void ObjInstance::initValues() {
 
     for (int ndx2 = -1; (ndx2 = outClosure->function->instanceIndexes->getNext(ndx2)) != -1;)
       ((ObjInstance *) AS_OBJ(instanceThread->fields[ndx2]))->initValues();
-
-    instance = instance->caller;
   }
 }
 
@@ -848,8 +838,9 @@ Point ObjInstance::recalculateLayout() {
     CallFrame &valuesFrame = valuesThread->frames[0];
     ObjClosure *valuesClosure = AS_CLOSURE(valuesThread->fields[0]);
     ObjClosure *layoutClosure = AS_CLOSURE(valuesThread->fields[valuesClosure->function->fieldCount - 1]);
+    ObjInstance *saved = instance;
 
-    uiLayoutInstances[ndx] = newInstance(instance);
+    uiLayoutInstances[ndx] = newInstance(NULL);
 
     CoThread *instanceThread = uiLayoutInstances[ndx]->coThread;
 
@@ -858,7 +849,7 @@ Point ObjInstance::recalculateLayout() {
     instance = uiLayoutInstances[ndx];
     instanceThread->run();
     instance->coThread->savedStackTop = stackTop;
-    instance = instance->caller;
+    instance = saved;
 
     long frameSize = AS_INT(instanceThread->fields[layoutClosure->function->fieldCount - 3]);
 

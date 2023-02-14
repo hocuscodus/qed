@@ -164,7 +164,7 @@ typedef enum {
   INTERPRET_OK,
   INTERPRET_COMPILE_ERROR,
   INTERPRET_RUNTIME_ERROR,
-  INTERPRET_HALT
+  INTERPRET_SUSPEND
 } InterpretResult;
 
 struct VM;
@@ -237,7 +237,7 @@ struct CoThread {
   static InterpretResult run();
 
   bool isDone();
-  bool isFirstInstance();
+  static bool isFirstInstance();
   bool isInInstance();
   CallFrame *getFrame(int index = 0);
   void onReturn(Value &returnValue);

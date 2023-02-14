@@ -266,9 +266,6 @@ int disassembleInstruction(Chunk *chunk, int offset) {
     case OP_HALT:
       return simpleInstruction("OP_HALT", offset);
 
-    case OP_HALT_HANDLER:
-      return simpleInstruction("OP_HALT_HANDLER", offset);
-
     default:
       printf("Unknown opcode %d\n", instruction);
       return offset + 1;

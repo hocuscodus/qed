@@ -157,7 +157,7 @@ static InterpretValue qni__CoListEnd(VM &vm, int argCount, Value *args) {
   main->next->coThread->onReturn(value);
   main->previous->next = main->next;
   main->next->previous = main->previous;
-  main->coThread->instance->caller = main->next->coThread->instance;
+//  main->coThread->instance->caller = main->next->coThread->instance;
   delete main;
   return {INTERPRET_OK};//HALT};
 }

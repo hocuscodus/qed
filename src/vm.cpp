@@ -338,7 +338,12 @@ extern ObjInstance *instance;
 extern Value *stackTop;
 
 InterpretResult VM::run() {
-  return CoThread::run();
+  InterpretResult result = CoThread::run();
+
+  if (result == INTERPRET_SUSPEND)
+    suspend();
+
+  return result;
 }
 
 void VM::push(Obj *obj) {

@@ -78,8 +78,7 @@ typedef enum {
   OP_CLOSURE,
   OP_CLOSE_UPVALUE,
   OP_RETURN,
-  OP_HALT,
-  OP_HALT_HANDLER
+  OP_HALT
 } OpCode;
 
 struct Chunk {
