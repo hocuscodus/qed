@@ -42,16 +42,16 @@ static void freeObject(Obj *object) {
       break;
     }
 
-    case OBJ_INSTANCE: {
-      CoThread *instance = (CoThread *) object;
+    case OBJ_THREAD: {
+      CoThread *coThread = (CoThread *) object;
 
-      if (instance->getFormFlag())
-        for (int ndx = 0; ndx < instance->frameCount; ndx++)
-          FREE(OBJ_INSTANCE, instance->frames[ndx].uiValuesInstance);
+      if (coThread->getFormFlag())
+        for (int ndx = 0; ndx < coThread->frameCount; ndx++)
+          FREE(OBJ_THREAD, coThread->frames[ndx].uiValuesInstance);
 
-//      delete[] instance->fields;
-      FREE_ARRAY(Value, instance->fields, 64);
-      FREE(ObjInstance, object);
+//      delete[] coThread->fields;
+      FREE_ARRAY(Value, coThread->fields, 64);
+      FREE(CoThread, object);
       break;
     }
 
@@ -73,8 +73,8 @@ static void freeObject(Obj *object) {
       break;
     }
 
-    case OBJ_COMPILER_INSTANCE:
-      FREE(ObjCompilerInstance, object);
+    case OBJ_INSTANCE:
+      FREE(ObjInstance, object);
       break;
 
     case OBJ_NATIVE:

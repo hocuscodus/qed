@@ -27,15 +27,15 @@
 
 #define OBJ_TYPE(value)        (AS_OBJ(value)->type)
 
+#define IS_THREAD(value)     isObjType(value, OBJ_THREAD)
 #define IS_INSTANCE(value)     isObjType(value, OBJ_INSTANCE)
-#define IS_COMPILER_INSTANCE(value)     isObjType(value, OBJ_COMPILER_INSTANCE)
 #define IS_CLOSURE(value)      isObjType(value, OBJ_CLOSURE)
 #define IS_FUNCTION(value)     isObjType(value, OBJ_FUNCTION)
 #define IS_NATIVE(value)       isObjType(value, OBJ_NATIVE)
 #define IS_STRING(value)       isObjType(value, OBJ_STRING)
 
-#define AS_INSTANCE(value)     ((CoThread*)AS_OBJ(value))
-#define AS_COMPILER_INSTANCE(value)     ((ObjCompilerInstance*)AS_OBJ(value))
+#define AS_THREAD(value)     ((CoThread*)AS_OBJ(value))
+#define AS_INSTANCE(value)     ((ObjInstance*)AS_OBJ(value))
 #define AS_CLOSURE(value)      ((ObjClosure*)AS_OBJ(value))
 #define AS_CALLABLE(value)     ((ObjCallable*)AS_OBJ(value))
 #define AS_FUNCTION(value)     ((ObjFunction*)AS_OBJ(value))
@@ -48,8 +48,8 @@
 typedef struct ObjString ObjString;
 
 typedef enum {
+  OBJ_THREAD,
   OBJ_INSTANCE,
-  OBJ_COMPILER_INSTANCE,
   OBJ_CLOSURE,
   OBJ_FUNCTION,
   OBJ_RETURN,
@@ -184,8 +184,6 @@ struct ObjNativeClass : ObjCallable {
   void *arg;
 };
 
-struct ObjInstance;
-
 struct ObjClosure {
   Obj obj;
   CoThread *parent;
@@ -254,11 +252,6 @@ struct CoThread {
   bool onEvent(Event event, Point pos, Point size);
 };
 
-struct ObjCompilerInstance {
-  Obj obj;
-  ObjCallable *callable;
-};
-
 struct ObjInstance {
   Obj obj;
   ObjCallable *callable;
@@ -278,8 +271,8 @@ struct ObjInternal {
 
 Obj *allocateObject(size_t size, ObjType type);
 ObjInternal *newInternal();
-CoThread *newInstance(CoThread *caller);
-ObjCompilerInstance *newCompilerInstance(ObjCallable *callable);
+CoThread *newThread(CoThread *caller);
+ObjInstance *newInstance(ObjCallable *callable);
 ObjClosure *newClosure(ObjFunction *function, CoThread *parent);
 ObjFunction *newFunction();
 ObjNative *newNative(NativeFn function);

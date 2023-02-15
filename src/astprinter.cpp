@@ -377,8 +377,8 @@ void ASTPrinter::printObjType(Obj *obj) {
       printf("%.s", name->length, name->chars);
       return;
     }
-    case OBJ_COMPILER_INSTANCE: {
-      ObjString *name = ((ObjCompilerInstance *) obj)->callable->name;
+    case OBJ_INSTANCE: {
+      ObjString *name = ((ObjInstance *) obj)->callable->name;
 
       printf("%.s instance", name->length, name->chars);
       return;

@@ -352,7 +352,7 @@ void Resolver::visitDirectiveExpr(UIDirectiveExpr *expr) {
 
         if (type.valueType == VAL_OBJ)
           switch (type.objType->type) {
-          case OBJ_COMPILER_INSTANCE:
+          case OBJ_INSTANCE:
             expr->viewIndex = current->localCount;
             current->addLocal({VAL_INT});
             break;
@@ -597,7 +597,7 @@ void Resolver::visitCallExpr(CallExpr *expr)
         parser.error("Expected %d arguments but got %d.", callable->arity, expr->count);
 
       if (expr->newFlag)
-        current->addLocal((Type) {VAL_OBJ, &newCompilerInstance(callable)->obj});
+        current->addLocal((Type) {VAL_OBJ, &newInstance(callable)->obj});
       else
         current->addLocal(callable->type);
 
@@ -618,7 +618,7 @@ void Resolver::visitCallExpr(CallExpr *expr)
         parser.error("Expected %d arguments but got %d.", callable->arity, expr->count);
 
       if (expr->newFlag)
-;//        current->addLocal((Type) {VAL_OBJ, &newCompilerInstance(callable)->obj});
+;//        current->addLocal((Type) {VAL_OBJ, &newInstance(callable)->obj});
       else
         current->addLocal(callable->type.valueType);
 
@@ -698,7 +698,7 @@ void Resolver::visitGetExpr(GetExpr *expr)
 
   Type objectType = removeLocal();
 
-  if (objectType.valueType != VAL_OBJ || objectType.objType->type != OBJ_COMPILER_INSTANCE)
+  if (objectType.valueType != VAL_OBJ || objectType.objType->type != OBJ_INSTANCE)
     parser.errorAt(&expr->name, "Only instances have properties.");
   else
   {
@@ -1024,7 +1024,7 @@ void Resolver::visitSetExpr(SetExpr *expr)
   Type valueType = removeLocal();
   Type objectType = removeLocal();
 
-  if (objectType.valueType != VAL_OBJ || objectType.objType->type != OBJ_COMPILER_INSTANCE)
+  if (objectType.valueType != VAL_OBJ || objectType.objType->type != OBJ_INSTANCE)
     parser.errorAt(&expr->name, "Only instances have properties.");
   else
   {
@@ -1531,15 +1531,15 @@ void Resolver::processAttrs(UIDirectiveExpr *expr) {
 
         if (type.valueType != VAL_VOID) {
           if (attExpr->_uiIndex == ATTRIBUTE_OUT) {
-            if (type.valueType != VAL_OBJ || (type.objType->type != OBJ_COMPILER_INSTANCE && type.objType->type != OBJ_FUNCTION)) {
+            if (type.valueType != VAL_OBJ || (type.objType->type != OBJ_INSTANCE && type.objType->type != OBJ_FUNCTION)) {
               attExpr->handler = convertToString(attExpr->handler, type, parser);
               type = stringType;
             }
           }
 
-          if (type.valueType == VAL_OBJ && type.objType && type.objType->type == OBJ_COMPILER_INSTANCE) {
+          if (type.valueType == VAL_OBJ && type.objType && type.objType->type == OBJ_INSTANCE) {
             current->function->instanceIndexes->set(current->localCount);
-            expr->_eventFlags |= ((ObjFunction *) ((ObjCompilerInstance *) type.objType)->callable)->uiFunction->eventFlags;
+            expr->_eventFlags |= ((ObjFunction *) ((ObjInstance *) type.objType)->callable)->uiFunction->eventFlags;
           }
 
           char *name = generateInternalVarName("v", current->localCount);
@@ -1630,7 +1630,7 @@ void Resolver::pushAreas(UIDirectiveExpr *expr) {
 
         if (outType.valueType == VAL_OBJ && outType.objType) {
           switch (outType.objType->type) {
-            case OBJ_COMPILER_INSTANCE:
+            case OBJ_INSTANCE:
               callee = "getInstanceSize";
               break;
 
@@ -1853,7 +1853,7 @@ void Resolver::paint(UIDirectiveExpr *expr) {
         char *callee = NULL;
 
         switch (outType.objType->type) {
-          case OBJ_COMPILER_INSTANCE:
+          case OBJ_INSTANCE:
             callee = "displayInstance";
             break;
 
@@ -1949,7 +1949,7 @@ void Resolver::onEvent(UIDirectiveExpr *expr) {
       Type outType = current->enclosing->enclosing->locals[index].type;
 
       switch (outType.objType->type) {
-        case OBJ_COMPILER_INSTANCE:
+        case OBJ_INSTANCE:
           insertTabs();
           (*ss) << "flag = onInstanceEvent(" << name << ", event, ";
           insertPoint("pos");

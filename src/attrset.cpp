@@ -137,7 +137,7 @@ AttrSet::AttrSet(int *offset, Point &zoneOffsets, std::array<long, NUM_DIRS> &ar
       areaParseFlags |= 1 << element.parseFlags;
       element.b = true;
 
-      if (type.valueType == VAL_OBJ && type.objType->type == OBJ_COMPILER_INSTANCE)
+      if (type.valueType == VAL_OBJ && type.objType->type == OBJ_INSTANCE)
         function->instanceIndexes->set(element.localIndex);
     }
   }

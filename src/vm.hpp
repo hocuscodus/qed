@@ -49,7 +49,7 @@ struct VM {
 	int inputFontSize;
 	int inputStyle;
 */
-  VM(CoThread *instance, bool eventFlag);
+  VM(CoThread *coThread, bool eventFlag);
 
   InterpretResult run();
   InterpretResult interpret(ObjClosure *closure);

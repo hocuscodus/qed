@@ -42,32 +42,32 @@ QNI_FN(popAttribute) {
 }
 
 QNI_FN(getInstanceSize) {
-  CoThread *instance = (CoThread *) AS_OBJ(args[0]);
-  Point size = instance->recalculateLayout();
+  CoThread *coThread = (CoThread *) AS_OBJ(args[0]);
+  Point size = coThread->recalculateLayout();
 
   return INT_VAL((((long) size[0]) << 16) | size[1]);
 }
 
 QNI_FN(displayInstance) {
-  CoThread *instance = (CoThread *) AS_OBJ(args[0]);
+  CoThread *coThread = (CoThread *) AS_OBJ(args[0]);
   long posP = AS_INT(args[1]);
   long sizeP = AS_INT(args[2]);
   Point pos = {(int) (posP >> 16), (int) (posP & 0xFFFF)};
   Point size = {(int) (sizeP >> 16), (int) (sizeP & 0xFFFF)};
 
-  instance->paint(pos, size);
+  coThread->paint(pos, size);
   return VOID_VAL;
 }
 
 QNI_FN(onInstanceEvent) {
-  CoThread *instance = (CoThread *) AS_OBJ(args[0]);
+  CoThread *coThread = (CoThread *) AS_OBJ(args[0]);
   Event event = (Event) AS_INT(args[1]);
   long posP = AS_INT(args[2]);
   long sizeP = AS_INT(args[3]);
   Point pos = {(int) (posP >> 16), (int) (posP & 0xFFFF)};
   Point size = {(int) (sizeP >> 16), (int) (sizeP & 0xFFFF)};
 
-  return BOOL_VAL(instance->onEvent(event, pos, size));
+  return BOOL_VAL(coThread->onEvent(event, pos, size));
 }
 
 QNI_FN(println) {
@@ -111,17 +111,17 @@ Uint32 SDLCALL timerCallback(Uint32 interval, void *param)
 struct TimerInternal : Internal {
   SDL_TimerID timer;
 
-  TimerInternal(int timeoutMillis, CoThread *instance) {
-//    timer = SDL_AddTimer(timeoutMillis, timerCallback, instance);
+  TimerInternal(int timeoutMillis, CoThread *coThread) {
+//    timer = SDL_AddTimer(timeoutMillis, timerCallback, coThread);
   }
 };
 */
-extern CoThread *instance;
+extern CoThread *current;
 
 QNI_CLASS(Timer) {
   ObjInternal *objInternal = (ObjInternal *) AS_OBJ(args[1]);
 
-//  objInternal->object = new TimerInternal(AS_INT(args[0]), instance);
+//  objInternal->object = new TimerInternal(AS_INT(args[0]), coThread);
   return {INTERPRET_OK};//HALT};
 }
 
@@ -140,8 +140,8 @@ CoListThread::CoListThread(CoThread *coThread, CoListThread *previous, CoListThr
 }
 
 QNI_CLASS(CoList) {
-  ObjInternal *objInternal = (ObjInternal *) AS_OBJ(instance->fields[1]);
-	CoListThread *main = new CoListThread(instance->caller, NULL, NULL);
+  ObjInternal *objInternal = (ObjInternal *) AS_OBJ(current->fields[1]);
+	CoListThread *main = new CoListThread(current->caller, NULL, NULL);
 
   objInternal->object = main->next = main->previous = main;
   return {INTERPRET_OK};//HALT};
@@ -157,7 +157,7 @@ static InterpretValue qni__CoListEnd(VM &vm, int argCount, Value *args) {
   main->next->coThread->onReturn(value);
   main->previous->next = main->next;
   main->next->previous = main->previous;
-//  main->coThread->instance->caller = main->next->coThread->instance;
+//  main->caller = main->next;
   delete main;
   return {INTERPRET_OK};//HALT};
 }
@@ -165,19 +165,19 @@ static InterpretValue qni__CoListEnd(VM &vm, int argCount, Value *args) {
 QNI_CLASS(CoList_yield) {
   ObjClosure *closure1 = vm.getFrame(1)->closure;
   ObjClosure *closure = vm.getFrame()->closure;
-  CoThread *instance = NULL;//closure->instance;
-  ObjInternal *objInternal = (ObjInternal *) AS_OBJ(instance->fields[1]);
+  CoThread *coThread = NULL;//closure->coThread;
+  ObjInternal *objInternal = (ObjInternal *) AS_OBJ(coThread->fields[1]);
   CoListThread *main = (CoListThread *) objInternal->object;
 
-  if (instance == main->coThread) {
+  if (coThread == main->coThread) {
 		Value value = BOOL_VAL(true);
 
 		objInternal->object = main->next;
-		instance = main->next->coThread;
-		instance->onReturn(value);
+		coThread = main->next->coThread;
+		coThread->onReturn(value);
 		return {INTERPRET_OK};//INTERPRET_CONTINUE should switch thread here
 	} else {
-    CoListThread *newUnit = new CoListThread(instance, main->previous, main);
+    CoListThread *newUnit = new CoListThread(coThread, main->previous, main);
 
 		main->previous->next = newUnit;
 		main->previous = newUnit;

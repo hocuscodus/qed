@@ -35,7 +35,7 @@
 /*
 class ReturnHandler {
 public:
-	void onPause(VM &process, ObjInstance &obj) {
+	void onPause(VM &process, CoThread &obj) {
 		if (obj.caller != NULL)
 			obj.caller.onPause(process);
 	}
@@ -324,15 +324,15 @@ class LayoutObject {
 #endif
 
 extern bool eventFlag;
-extern CoThread *instance;
+extern CoThread *current;
 extern VM *vm;
 extern void suspend();
 extern Value *stackTop;
 
-VM::VM(CoThread *instance, bool eventFlag) {
+VM::VM(CoThread *coThread, bool eventFlag) {
   ::vm = this;
   ::eventFlag = eventFlag;
-  ::instance = instance;
+  ::current = coThread;
 }
 
 InterpretResult VM::run() {
@@ -350,12 +350,12 @@ void VM::push(Obj *obj) {
 }
 
 InterpretResult VM::interpret(ObjClosure *closure) {
-  instance->call(closure, instance->savedStackTop - instance->fields - 1);
+  current->call(closure, current->savedStackTop - current->fields - 1);
   return run();
 }
 
 CallFrame *VM::getFrame(int index) {
-  return instance->getFrame(index);
+  return current->getFrame(index);
 }
 /*
   bool resize(List<int> size) {/ *
@@ -369,10 +369,10 @@ CallFrame *VM::getFrame(int index) {
   }
 */
 bool VM::recalculate() {
-  CoThread *instance = ::instance;
+  CoThread *coThread = ::current;
 
-  totalSize = instance->repaint();
-  ::instance = instance;
+  totalSize = coThread->repaint();
+  ::current = coThread;
   return true;
 }
 #if 0
@@ -431,10 +431,10 @@ void VM::repaint() {
 }
 
 bool VM::onEvent(Event event, Point pos) {
-  CoThread *instance = ::instance;
+  CoThread *coThread = ::current;
 
-  instance->onEvent(event, pos, totalSize);
-  ::instance = instance;
+  coThread->onEvent(event, pos, totalSize);
+  ::current = coThread;
   return true;
 }
 
