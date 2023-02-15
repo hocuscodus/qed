@@ -324,18 +324,16 @@ class LayoutObject {
 #endif
 
 extern bool eventFlag;
-extern ObjInstance *instance;
+extern CoThread *instance;
 extern VM *vm;
+extern void suspend();
+extern Value *stackTop;
 
-VM::VM(ObjInstance *instance, bool eventFlag) {
+VM::VM(CoThread *instance, bool eventFlag) {
   ::vm = this;
   ::eventFlag = eventFlag;
   ::instance = instance;
 }
-
-extern void suspend();
-extern ObjInstance *instance;
-extern Value *stackTop;
 
 InterpretResult VM::run() {
   InterpretResult result = CoThread::run();
@@ -352,12 +350,12 @@ void VM::push(Obj *obj) {
 }
 
 InterpretResult VM::interpret(ObjClosure *closure) {
-  instance->coThread->call(closure, instance->coThread->savedStackTop - instance->coThread->fields - 1);
+  instance->call(closure, instance->savedStackTop - instance->fields - 1);
   return run();
 }
 
 CallFrame *VM::getFrame(int index) {
-  return instance->coThread->getFrame(index);
+  return instance->getFrame(index);
 }
 /*
   bool resize(List<int> size) {/ *
@@ -371,7 +369,7 @@ CallFrame *VM::getFrame(int index) {
   }
 */
 bool VM::recalculate() {
-  ObjInstance *instance = ::instance;
+  CoThread *instance = ::instance;
 
   totalSize = instance->repaint();
   ::instance = instance;
@@ -433,7 +431,7 @@ void VM::repaint() {
 }
 
 bool VM::onEvent(Event event, Point pos) {
-  ObjInstance *instance = ::instance;
+  CoThread *instance = ::instance;
 
   instance->onEvent(event, pos, totalSize);
   ::instance = instance;

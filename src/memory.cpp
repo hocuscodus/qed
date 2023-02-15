@@ -43,18 +43,14 @@ static void freeObject(Obj *object) {
     }
 
     case OBJ_INSTANCE: {
-      ObjInstance *instance = (ObjInstance *) object;
+      CoThread *instance = (CoThread *) object;
 
-      if (instance->numValuesInstances) {
-        for (int ndx = 0; ndx < instance->numValuesInstances; ndx++)
-          FREE(OBJ_INSTANCE, instance->uiValuesInstances[ndx]);
+      if (instance->getFormFlag())
+        for (int ndx = 0; ndx < instance->frameCount; ndx++)
+          FREE(OBJ_INSTANCE, instance->frames[ndx].uiValuesInstance);
 
-        delete[] instance->uiValuesInstances;
-      }
-
-      if (instance->coThread)
-        delete instance->coThread;
-
+//      delete[] instance->fields;
+      FREE_ARRAY(Value, instance->fields, 64);
       FREE(ObjInstance, object);
       break;
     }

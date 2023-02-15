@@ -169,20 +169,7 @@ LocationUnit *CallFrame::init(VM &vm, Value *values, IndexList *instanceIndexes,
 }
 
 bool eventFlag;
-ObjInstance *instance;
-
-CoThread::CoThread(ObjInstance *instance) {
-  this->instance = instance;
-  fields = new Value[64];//ALLOCATE(Value, 64);
-  resetStack();
-  frameCount = 0;
-  openUpvalues = NULL;
-}
-
-CoThread::~CoThread() {
-  delete[] fields;
-//      FREE_ARRAY(Value, instance->fields, 64);
-}
+CoThread *instance;
 
 Value *stackTop;
 
@@ -210,7 +197,9 @@ bool CoThread::call(ObjClosure *closure, int argCount) {
   frame->closure = closure;
   frame->ip = closure->function->chunk.code;
   frame->slots = savedStackTop - argCount - 1;
-  frame->uiClosure = outFunction ? newClosure(outFunction, instance) : NULL;
+  frame->uiClosure = outFunction ? newClosure(outFunction, ::instance) : NULL;
+  frame->uiValuesInstance = NULL;
+  frame->uiLayoutInstance = NULL;
 
   if (outFunction)
     for (int i = 0; i < outFunction->upvalueCount; i++) {
@@ -386,7 +375,7 @@ void CoThread::printStack() {
 extern VM *vm;
 
 InterpretResult CoThread::run() {
-  CoThread *current = ::instance->coThread;
+  CoThread *current = ::instance;
   CallFrame *frame = &current->frames[current->frameCount - 1];
 #define READ_BYTE() (*frame->ip++)
 #define READ_SHORT() (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
@@ -442,14 +431,14 @@ InterpretResult CoThread::run() {
       break;
     }
     case OP_GET_PROPERTY: {
-      ObjInstance *instance = AS_INSTANCE(pop());
-      push(instance->coThread->fields[READ_BYTE()]);
+      CoThread *instance = AS_INSTANCE(pop());
+      push(instance->fields[READ_BYTE()]);
       break;
     }
     case OP_SET_PROPERTY: {
       Value value = pop();
-      ObjInstance *instance = AS_INSTANCE(pop());
-      instance->coThread->fields[READ_BYTE()] = value;
+      CoThread *instance = AS_INSTANCE(pop());
+      instance->fields[READ_BYTE()] = value;
       push(value);
       break;
     }
@@ -627,19 +616,19 @@ InterpretResult CoThread::run() {
     case OP_NEW: {
       int argCount = READ_BYTE();
       Value handlerConstant = pop();
-      ObjInstance *instance = newInstance(::instance);
+      CoThread *thread = newInstance(::instance);
       int size = argCount + 1;
 
-      instance->handler = AS_INT(handlerConstant) != -1 ? AS_CLOSURE(handlerConstant) : NULL;
-      memcpy(instance->coThread->fields, stackTop - size, size * sizeof(Value));
-      instance->coThread->savedStackTop += size;
+      thread->handler = AS_INT(handlerConstant) != -1 ? AS_CLOSURE(handlerConstant) : NULL;
+      memcpy(thread->fields, stackTop - size, size * sizeof(Value));
+      thread->savedStackTop += size;
       stackTop -= size;
-      push(OBJ_VAL(instance));
+      push(OBJ_VAL(thread));
 
-      if (instance->coThread->callValue(*instance->coThread->fields, argCount)) {
+      if (thread->callValue(*thread->fields, argCount)) {
         current->savedStackTop = stackTop;
-        ::instance = instance;
-        current = ::instance->coThread;
+        ::instance = thread;
+        current = ::instance;
         frame = &current->frames[current->frameCount - 1];
         stackTop = current->savedStackTop;
       }
@@ -687,7 +676,7 @@ InterpretResult CoThread::run() {
         Value result = type != VAL_VOID ? pop() : (Value) {VAL_VOID};
 
         if (current->isInInstance())
-          ::instance->onReturn(result);
+          ::instance->onThreadReturn(result);
         else {
           current->onReturn(result);
           frame = &current->frames[current->frameCount - 1];
@@ -732,7 +721,7 @@ InterpretResult CoThread::run() {
               }
               current->savedStackTop = stackTop;
               ::instance = ::instance->caller;
-              current = ::instance->coThread;
+              current = ::instance;
               frame = &current->frames[current->frameCount - 1];
               stackTop = current->savedStackTop;
             }
@@ -788,67 +777,61 @@ bool CoThread::getFormFlag() {
   return formFlag;
 }
 
-void ObjInstance::initValues() {
-  uiValuesInstances = new ObjInstance *[coThread->frameCount];
-
-  for (int ndx = 0; ndx < coThread->frameCount; ndx++) {
-    CallFrame &frame = coThread->frames[ndx];
+void CoThread::initValues() {
+  for (int ndx = 0; ndx < frameCount; ndx++) {
+    CallFrame &frame = frames[ndx];
     ObjClosure *outClosure = frame.uiClosure;
 
-    uiValuesInstances[numValuesInstances++] = newInstance(NULL);
+    frame.uiValuesInstance = newInstance(NULL);
 
-    CoThread *instanceThread = uiValuesInstances[ndx]->coThread;
+    CoThread *instanceThread = frame.uiValuesInstance;
 
     *instanceThread->savedStackTop++ = OBJ_VAL(outClosure);
     instanceThread->call(outClosure, 0);
-    instance = uiValuesInstances[ndx];
+    ::instance = instanceThread;
     instanceThread->run();
-    instance->coThread->savedStackTop = stackTop;
+    ::instance->savedStackTop = stackTop;
 
     for (int ndx2 = -1; (ndx2 = outClosure->function->instanceIndexes->getNext(ndx2)) != -1;)
-      ((ObjInstance *) AS_OBJ(instanceThread->fields[ndx2]))->initValues();
+      ((CoThread *) AS_OBJ(instanceThread->fields[ndx2]))->initValues();
   }
 }
 
-void ObjInstance::uninitValues() {
-  for (int ndx = 0; ndx < numValuesInstances; ndx++) {
-    CallFrame &frame = uiValuesInstances[ndx]->coThread->frames[0];
-    ObjClosure *outClosure = frame.closure;
+void CoThread::uninitValues() {
+  for (int ndx = frameCount - 1; ndx >- 0; ndx--)
+    if (frames[ndx].uiValuesInstance) {
+      CallFrame &frame = frames[ndx].uiValuesInstance->frames[0];
+      ObjClosure *outClosure = frame.closure;
 
-    for (int ndx2 = -1; (ndx2 = outClosure->function->instanceIndexes->getNext(ndx2)) != -1;)
-      ((ObjInstance *) AS_OBJ(uiValuesInstances[ndx]->coThread->fields[ndx2]))->uninitValues();
-  }
+      for (int ndx2 = -1; (ndx2 = outClosure->function->instanceIndexes->getNext(ndx2)) != -1;)
+        ((CoThread *) AS_OBJ(frame.uiValuesInstance->fields[ndx2]))->uninitValues();
 
-  if (uiValuesInstances) {
-    for (int ndx = 0; ndx < coThread->frameCount; ndx++)
-      FREE(OBJ_INSTANCE, uiValuesInstances[ndx]);
-
-    delete[] uiValuesInstances;
-    uiValuesInstances = NULL;
-    numValuesInstances = 0;
-  }
+      if (frame.uiValuesInstance) {
+        FREE(OBJ_INSTANCE, frame.uiValuesInstance);
+        frame.uiValuesInstance = NULL;
+      }
+    }
 }
 
-Point ObjInstance::recalculateLayout() {
+Point CoThread::recalculateLayout() {
   Point size = {0, 0};
-  uiLayoutInstances = new ObjInstance *[numValuesInstances];
 
-  for (int ndx = 0; ndx < numValuesInstances; ndx++) {
-    CoThread *valuesThread = uiValuesInstances[ndx]->coThread;
+  for (int ndx = 0; ndx < frameCount; ndx++) {
+    CoThread *valuesThread = frames[ndx].uiValuesInstance;
     CallFrame &valuesFrame = valuesThread->frames[0];
     ObjClosure *valuesClosure = AS_CLOSURE(valuesThread->fields[0]);
     ObjClosure *layoutClosure = AS_CLOSURE(valuesThread->fields[valuesClosure->function->fieldCount - 1]);
-    ObjInstance *saved = instance;
+    CoThread *saved = instance;
 
-    uiLayoutInstances[ndx] = newInstance(NULL);
+    frames[ndx].uiLayoutInstance = newInstance(NULL);
 
-    CoThread *instanceThread = uiLayoutInstances[ndx]->coThread;
+    CoThread *instanceThread = frames[ndx].uiLayoutInstance;
 
     *instanceThread->savedStackTop++ = OBJ_VAL(layoutClosure);
     instanceThread->call(layoutClosure, 0);
-    instance = uiLayoutInstances[ndx];
+    instance = instanceThread;
     instanceThread->run();
-    instance->coThread->savedStackTop = stackTop;
+    instance->savedStackTop = stackTop;
     instance = saved;
 
     long frameSize = AS_INT(instanceThread->fields[layoutClosure->function->fieldCount - 3]);
@@ -863,8 +846,8 @@ Point ObjInstance::recalculateLayout() {
 extern void initDisplay();
 extern void uninitDisplay();
 
-Point ObjInstance::repaint() {
-  if (coThread->getFormFlag()) {
+Point CoThread::repaint() {
+  if (getFormFlag()) {
     uninitValues();
     initValues();
     Point totalSize = recalculateLayout();
@@ -879,9 +862,9 @@ Point ObjInstance::repaint() {
   return {0, 0};
 }
 
-void ObjInstance::paint(Point pos, Point size) {
-  for (int ndx = 0; ndx < numValuesInstances; ndx++) {
-    CoThread *layoutThread = uiLayoutInstances[ndx]->coThread;
+void CoThread::paint(Point pos, Point size) {
+  for (int ndx = 0; ndx < frameCount; ndx++) {
+    CoThread *layoutThread = frames[ndx].uiLayoutInstance;
     CallFrame &layoutFrame = layoutThread->frames[0];
     ObjClosure *layoutClosure = AS_CLOSURE(layoutThread->fields[0]);
     ObjClosure *paintClosure = AS_CLOSURE(layoutThread->fields[layoutClosure->function->fieldCount - 2]);
@@ -896,15 +879,15 @@ void ObjInstance::paint(Point pos, Point size) {
       *layoutThread->savedStackTop++ = INT_VAL(size[dir]);
 
     layoutThread->call(paintClosure, NUM_DIRS << 1);
-    instance = uiLayoutInstances[ndx];
+    instance = layoutThread;
     layoutThread->run();
     layoutThread->onReturn(value);
   }
 }
 
-void ObjInstance::onReturn(Value &returnValue) {
+void CoThread::onThreadReturn(Value &returnValue) {
   if (caller && handler) {
-    CoThread *callerThread = caller->coThread;
+    CoThread *callerThread = caller;
     Value value = {VAL_VOID};
 
     *callerThread->savedStackTop++ = OBJ_VAL(handler);
@@ -914,11 +897,11 @@ void ObjInstance::onReturn(Value &returnValue) {
   }
 }
 
-bool ObjInstance::onEvent(Event event, Point pos, Point size) {
+bool CoThread::onEvent(Event event, Point pos, Point size) {
   bool flag = false;
 
-  for (int ndx = numValuesInstances - 1; !flag && ndx >= 0; ndx--) {
-    CoThread *layoutThread = uiLayoutInstances[ndx]->coThread;
+  for (int ndx = frameCount - 1; !flag && ndx >= 0; ndx--) {
+    CoThread *layoutThread = frames[ndx].uiLayoutInstance;
     CallFrame &layoutFrame = layoutThread->frames[0];
     ObjClosure *layoutClosure = AS_CLOSURE(layoutThread->fields[0]);
     ObjClosure *eventClosure = AS_CLOSURE(layoutThread->fields[layoutClosure->function->fieldCount - 1]);
@@ -935,7 +918,7 @@ bool ObjInstance::onEvent(Event event, Point pos, Point size) {
       *layoutThread->savedStackTop++ = INT_VAL(size[dir]);
 
     layoutThread->call(eventClosure, (NUM_DIRS << 1) + 1);
-    instance = uiLayoutInstances[ndx];
+    instance = layoutThread;
     layoutThread->run();
 
     if (layoutThread->frameCount > frameCount)
@@ -993,13 +976,15 @@ ObjInternal *newInternal() {
   return internal;
 }
 
-ObjInstance *newInstance(ObjInstance *caller) {
-  ObjInstance *instance = ALLOCATE_OBJ(ObjInstance, OBJ_INSTANCE);
+CoThread *newInstance(CoThread *caller) {
+  CoThread *instance = ALLOCATE_OBJ(CoThread, OBJ_INSTANCE);
 
-  instance->coThread = new CoThread(instance);
-  instance->numValuesInstances = 0;
-  instance->uiValuesInstances= NULL;
   instance->caller = caller;
+  instance->handler = NULL;
+  instance->fields = ALLOCATE(Value, 64);
+  instance->resetStack();
+  instance->frameCount = 0;
+  instance->openUpvalues = NULL;
   return instance;
 }
 
@@ -1010,7 +995,7 @@ ObjCompilerInstance *newCompilerInstance(ObjCallable *callable) {
   return instance;
 }
 
-ObjClosure *newClosure(ObjFunction *function, ObjInstance *parent) {
+ObjClosure *newClosure(ObjFunction *function, CoThread *parent) {
   ObjUpvalue **upvalues = ALLOCATE(ObjUpvalue *, function->upvalueCount);
 
   for (int i = 0; i < function->upvalueCount; i++) {
@@ -1117,7 +1102,7 @@ void printObject(Value value) {
     break;
 
   case OBJ_INSTANCE: {
-    ObjString *name = AS_CLOSURE(AS_INSTANCE(value)->coThread->fields[0])->function->name;
+    ObjString *name = AS_CLOSURE(AS_INSTANCE(value)->fields[0])->function->name;
 
     if (name)
       printf("<%.*s instance>", name->length, name->chars);

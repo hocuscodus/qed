@@ -34,7 +34,7 @@
 #define IS_NATIVE(value)       isObjType(value, OBJ_NATIVE)
 #define IS_STRING(value)       isObjType(value, OBJ_STRING)
 
-#define AS_INSTANCE(value)     ((ObjInstance*)AS_OBJ(value))
+#define AS_INSTANCE(value)     ((CoThread*)AS_OBJ(value))
 #define AS_COMPILER_INSTANCE(value)     ((ObjCompilerInstance*)AS_OBJ(value))
 #define AS_CLOSURE(value)      ((ObjClosure*)AS_OBJ(value))
 #define AS_CALLABLE(value)     ((ObjCallable*)AS_OBJ(value))
@@ -188,8 +188,8 @@ struct ObjInstance;
 
 struct ObjClosure {
   Obj obj;
+  CoThread *parent;
   ObjFunction *function;
-  ObjInstance *parent;
   ObjUpvalue **upvalues;
   int upvalueCount;
 };
@@ -199,6 +199,8 @@ struct CallFrame {
   uint8_t *ip;
   Value *slots;
   ObjClosure *uiClosure;
+  CoThread *uiValuesInstance;
+  CoThread *uiLayoutInstance;
 
 	LocationUnit *init(VM &vm, Value *values, IndexList *instanceIndexes, ValueStack<Value *> &valueStack);/*
 	void refresh(VM &process, const Point &pos, const Point &size, const Point &clipPos, const Point &clipSize);
@@ -207,15 +209,14 @@ struct CallFrame {
 };
 
 struct CoThread {
+  Obj obj;
+  CoThread *caller;
+  ObjClosure *handler;
   Value *fields;
   int frameCount;
   CallFrame frames[FRAMES_MAX];
   ObjUpvalue *openUpvalues;
-  ObjInstance *instance;
   Value *savedStackTop;
-
-  CoThread(ObjInstance *instance);
-  ~CoThread();
 
   static void push(Value value);
   static Value pop();
@@ -243,6 +244,14 @@ struct CoThread {
   void onReturn(Value &returnValue);
 
   bool getFormFlag();
+
+  void initValues();
+  void uninitValues();
+  Point recalculateLayout();
+  Point repaint();
+  void paint(Point pos, Point size);
+  void onThreadReturn(Value &returnValue);
+  bool onEvent(Event event, Point pos, Point size);
 };
 
 struct ObjCompilerInstance {
@@ -252,20 +261,7 @@ struct ObjCompilerInstance {
 
 struct ObjInstance {
   Obj obj;
-  ObjInstance *caller;
-  CoThread *coThread;
-  int numValuesInstances;
-  ObjClosure *handler;
-  ObjInstance **uiValuesInstances;
-  ObjInstance **uiLayoutInstances;
-
-  void initValues();
-  void uninitValues();
-  Point recalculateLayout();
-  Point repaint();
-  void paint(Point pos, Point size);
-  void onReturn(Value &returnValue);
-  bool onEvent(Event event, Point pos, Point size);
+  ObjCallable *callable;
 };
 
 struct Internal {
@@ -282,9 +278,9 @@ struct ObjInternal {
 
 Obj *allocateObject(size_t size, ObjType type);
 ObjInternal *newInternal();
-ObjInstance *newInstance(ObjInstance *caller);
+CoThread *newInstance(CoThread *caller);
 ObjCompilerInstance *newCompilerInstance(ObjCallable *callable);
-ObjClosure *newClosure(ObjFunction *function, ObjInstance *parent);
+ObjClosure *newClosure(ObjFunction *function, CoThread *parent);
 ObjFunction *newFunction();
 ObjNative *newNative(NativeFn function);
 ObjPrimitive *newPrimitive(char *name, Type type);

@@ -42,14 +42,14 @@ QNI_FN(popAttribute) {
 }
 
 QNI_FN(getInstanceSize) {
-  ObjInstance *instance = (ObjInstance *) AS_OBJ(args[0]);
+  CoThread *instance = (CoThread *) AS_OBJ(args[0]);
   Point size = instance->recalculateLayout();
 
   return INT_VAL((((long) size[0]) << 16) | size[1]);
 }
 
 QNI_FN(displayInstance) {
-  ObjInstance *instance = (ObjInstance *) AS_OBJ(args[0]);
+  CoThread *instance = (CoThread *) AS_OBJ(args[0]);
   long posP = AS_INT(args[1]);
   long sizeP = AS_INT(args[2]);
   Point pos = {(int) (posP >> 16), (int) (posP & 0xFFFF)};
@@ -60,7 +60,7 @@ QNI_FN(displayInstance) {
 }
 
 QNI_FN(onInstanceEvent) {
-  ObjInstance *instance = (ObjInstance *) AS_OBJ(args[0]);
+  CoThread *instance = (CoThread *) AS_OBJ(args[0]);
   Event event = (Event) AS_INT(args[1]);
   long posP = AS_INT(args[2]);
   long sizeP = AS_INT(args[3]);
@@ -111,12 +111,12 @@ Uint32 SDLCALL timerCallback(Uint32 interval, void *param)
 struct TimerInternal : Internal {
   SDL_TimerID timer;
 
-  TimerInternal(int timeoutMillis, ObjInstance *instance) {
+  TimerInternal(int timeoutMillis, CoThread *instance) {
 //    timer = SDL_AddTimer(timeoutMillis, timerCallback, instance);
   }
 };
 */
-extern ObjInstance *instance;
+extern CoThread *instance;
 
 QNI_CLASS(Timer) {
   ObjInternal *objInternal = (ObjInternal *) AS_OBJ(args[1]);
@@ -140,8 +140,8 @@ CoListThread::CoListThread(CoThread *coThread, CoListThread *previous, CoListThr
 }
 
 QNI_CLASS(CoList) {
-  ObjInternal *objInternal = (ObjInternal *) AS_OBJ(instance->coThread->fields[1]);
-	CoListThread *main = new CoListThread(instance->caller->coThread, NULL, NULL);
+  ObjInternal *objInternal = (ObjInternal *) AS_OBJ(instance->fields[1]);
+	CoListThread *main = new CoListThread(instance->caller, NULL, NULL);
 
   objInternal->object = main->next = main->previous = main;
   return {INTERPRET_OK};//HALT};
@@ -165,19 +165,19 @@ static InterpretValue qni__CoListEnd(VM &vm, int argCount, Value *args) {
 QNI_CLASS(CoList_yield) {
   ObjClosure *closure1 = vm.getFrame(1)->closure;
   ObjClosure *closure = vm.getFrame()->closure;
-  ObjInstance *instance = NULL;//closure->instance;
-  ObjInternal *objInternal = (ObjInternal *) AS_OBJ(instance->coThread->fields[1]);
+  CoThread *instance = NULL;//closure->instance;
+  ObjInternal *objInternal = (ObjInternal *) AS_OBJ(instance->fields[1]);
   CoListThread *main = (CoListThread *) objInternal->object;
 
-  if (instance->coThread == main->coThread) {
+  if (instance == main->coThread) {
 		Value value = BOOL_VAL(true);
 
 		objInternal->object = main->next;
-		instance->coThread = main->next->coThread;
-		instance->coThread->onReturn(value);
+		instance = main->next->coThread;
+		instance->onReturn(value);
 		return {INTERPRET_OK};//INTERPRET_CONTINUE should switch thread here
 	} else {
-    CoListThread *newUnit = new CoListThread(instance->coThread, main->previous, main);
+    CoListThread *newUnit = new CoListThread(instance, main->previous, main);
 
 		main->previous->next = newUnit;
 		main->previous = newUnit;

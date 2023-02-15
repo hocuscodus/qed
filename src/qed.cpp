@@ -71,16 +71,16 @@ static void repl() {
   Scanner scanner(buffer);
   Parser parser(scanner);
   Compiler compiler(parser, NULL);
-  ObjInstance *instance = newInstance(NULL);
+  CoThread *instance = newInstance(NULL);
   VM vm(instance, false);
-  ObjClosure *closure = instance->coThread->pushClosure(compiler.function);
+  ObjClosure *closure = instance->pushClosure(compiler.function);
   ObjFunction *function = compiler.compile();
 
 //  strcpy(buffer, "");
 //  scanner.reset(buffer);
 
   for (;;) {
-    if (function != NULL && instance->coThread->call(closure, instance->coThread->savedStackTop - instance->coThread->fields - 1)) {
+    if (function != NULL && instance->call(closure, instance->savedStackTop - instance->fields - 1)) {
       if (vm.run() == INTERPRET_OK)
         length += strlen(line);
       else {
@@ -89,7 +89,7 @@ static void repl() {
       }
 
       function->chunk.reset();
-      instance->coThread->reset();
+      instance->reset();
     }
 
     printf("> ");
@@ -158,9 +158,9 @@ void runSource(const char *source) {
   Scanner scanner(buffer);
   Parser parser(scanner);
   Compiler compiler(parser, NULL);
-  ObjInstance *instance = newInstance(NULL);
+  CoThread *instance = newInstance(NULL);
   VM vm(instance, true);
-  ObjClosure *closure = instance->coThread->pushClosure(compiler.function);
+  ObjClosure *closure = instance->pushClosure(compiler.function);
   ObjFunction *function = compiler.compile();
 
   if (function == NULL)

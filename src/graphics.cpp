@@ -418,7 +418,7 @@ void suspend() {
     case SDL_USEREVENT: {
         Value value = VOID_VAL;
 
-        ((ObjInstance *) event.user.data1)->onReturn(value);
+        ((CoThread *) event.user.data1)->onThreadReturn(value);
         vm->repaint();
         SDL_RenderPresent(rend2);
       }
