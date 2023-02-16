@@ -18,7 +18,6 @@
 #ifndef qed_parser_h
 #define qed_parser_h
 
-#include "object.hpp"
 #include "scanner.hpp"
 #include "expr.hpp"
 

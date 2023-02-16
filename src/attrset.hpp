@@ -22,6 +22,7 @@
 #include <vector>
 #include "expr.hpp"
 #include "sizer.hpp"
+#include "object.hpp"
 
 struct Attr {
 	int flags;

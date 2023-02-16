@@ -22,7 +22,6 @@
 #include "chunk.hpp"
 #include "scanner.hpp"
 #include "object.hpp"
-#include "compiler.hpp"
 
 struct AttrSet;
 

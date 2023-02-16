@@ -147,7 +147,7 @@ QNI_CLASS(CoList) {
   return {INTERPRET_OK};//HALT};
 }
 
-static InterpretValue qni__CoListEnd(VM &vm, int argCount, Value *args) {
+static InterpretResult qni__CoListEnd(VM &vm, int argCount, Value *args) {
   ObjNativeClass *objNativeClass = (ObjNativeClass *) vm.getFrame()->closure->function->native;
   ObjInternal *objInternal = (ObjInternal *) objNativeClass->arg;
   Value value = BOOL_VAL(true);
@@ -159,7 +159,7 @@ static InterpretValue qni__CoListEnd(VM &vm, int argCount, Value *args) {
   main->next->previous = main->previous;
 //  main->caller = main->next;
   delete main;
-  return {INTERPRET_OK};//HALT};
+  return INTERPRET_OK;//HALT;
 }
 
 QNI_CLASS(CoList_yield) {

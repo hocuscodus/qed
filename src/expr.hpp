@@ -6,9 +6,9 @@
 #define expr_h
 
 #include "chunk.hpp"
-
-#include "object.hpp"
 #include "scanner.hpp"
+
+struct ObjFunction;
 
 typedef enum {
   EXPR_VARIABLE,

@@ -123,9 +123,9 @@ public:
     writeHeader(file);
     fprintf(file, "#ifndef %s_h\n", toLowerCase(baseName));
     fprintf(file, "#define %s_h\n\n", toLowerCase(baseName));
-    fprintf(file, "#include \"chunk.hpp\"\n\n");
-    fprintf(file, "#include \"object.hpp\"\n");
+    fprintf(file, "#include \"chunk.hpp\"\n");
     fprintf(file, "#include \"scanner.hpp\"\n\n");
+    fprintf(file, "struct ObjFunction;\n\n");
 
     // The enum types for AST classes.
     fprintf(file, "typedef enum {\n");

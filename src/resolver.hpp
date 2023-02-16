@@ -19,6 +19,7 @@
 #define qed_resolver_h
 
 #include "compiler.hpp"
+#include <stack>
 
 #define UI_PARSES_DEF \
     UI_PARSE_DEF( PARSE_VALUES, &Resolver::processAttrs ), \

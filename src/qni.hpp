@@ -17,6 +17,7 @@
  */
 #include <iostream>
 #include "vm.hpp"
+#include "object.hpp"
 
 struct ValueStack2 {
 	std::stack<Value> map[ATTRIBUTE_END];
@@ -47,9 +48,9 @@ struct ValueStack2 {
   static Value qni_ ## name(int argCount, Value *args)
 
 #define QNI_CLASS(name) \
-  static InterpretValue qni_ ## name(VM &vm, int argCount, Value *args); \
+  static InterpretResult qni_ ## name(VM &vm, int argCount, Value *args); \
   static bool qni_ ## name ## Var = addNativeClassFn("qni_" #name, qni_ ## name); \
-  static InterpretValue qni_ ## name(VM &vm, int argCount, Value *args)
+  static InterpretResult qni_ ## name(VM &vm, int argCount, Value *args)
 
 bool addNativeFn(const char *name, NativeFn nativeFn);
 bool addNativeClassFn(const char *name, NativeClassFn nativeClassFn);

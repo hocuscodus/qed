@@ -22,6 +22,7 @@
 #include "resolver.hpp"
 #include "codegen.hpp"
 #include "astprinter.hpp"
+#include "object.hpp"
 
 #ifdef DEBUG_PRINT_CODE
 #include "debug.hpp"

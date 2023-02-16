@@ -24,7 +24,6 @@
 #include "codegen.hpp"
 #include "debug.hpp"
 #include "memory.h"
-#include "object.hpp"
 #include "attrset.hpp"
 
 #ifdef DEBUG_PRINT_CODE

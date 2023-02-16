@@ -129,7 +129,7 @@ void ObjFunction::parseCreateUIValues(VM &vm, Object value, int flags, List<int>
   if (attrSets != NULL)
     attrSets->parseCreateUIValues(vm, value, null, flags, dimIndexes, valueTree);
 }
-*/
+
 LayoutUnitArea *ObjFunction::parseCreateAreasTree(VM &vm, ValueStack<Value *> &valueStack, Value *values, IndexList *instanceIndexes, int dimFlags) {
   LocationUnit **subAreas = new LocationUnit *[attrSets->numAreas];
 
@@ -141,7 +141,7 @@ LayoutUnitArea *ObjFunction::parseCreateAreasTree(VM &vm, ValueStack<Value *> &v
   for (int dir = 0; dir < NUM_DIRS; dir++)
     sizeTrees[dir] = parseResize(dir, {0, 0}, *subAreas, 0);
 
-  return new LayoutUnitArea(sizeTrees, subAreas);
+  return NULL;//new LayoutUnitArea(sizeTrees, subAreas);
 }
 
 IntTreeUnit *ObjFunction::parseResize(int dir, const Point &limits, LocationUnit *areas, int offset) {
@@ -152,14 +152,14 @@ LocationUnit *CallFrame::init(VM &vm, Value *values, IndexList *instanceIndexes,
   if (closure->function->native->type == VAL_OBJ) {
 //    obj.valueTree = new ValueTree();
 //    closure->function->parseCreateUIValues(vm, obj, 0, [], obj.valueTree);
-/*
+
     Point size;
 
     resize(size);
 
     for (int index = 0; index < NUM_DIRS; index++)
       totalSize[index] = std::max(size[index], totalSize[index]);
-*/
+
   }
 
   if (closure->function->attrSets != NULL)
@@ -167,7 +167,7 @@ LocationUnit *CallFrame::init(VM &vm, Value *values, IndexList *instanceIndexes,
   else
     return NULL;
 }
-
+*/
 bool eventFlag;
 CoThread *current;
 
@@ -704,7 +704,7 @@ InterpretResult CoThread::run() {
         if (native && native->type == OBJ_NATIVE_CLASS) {
           int argCount = stackTop - frame->slots - 1;
           NativeClassFn nativeClassFn = ((ObjNativeClass *) native)->classFn;
-          InterpretResult result = nativeClassFn(*vm, argCount, stackTop - argCount).result;
+          InterpretResult result = nativeClassFn(*vm, argCount, stackTop - argCount);
         }
         else
           if (current->isInInstance() && (!eventFlag || !current->isFirstInstance()))

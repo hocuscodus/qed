@@ -17,6 +17,7 @@
  */
 #include "parser.hpp"
 #include "memory.h"
+#include "object.hpp"
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>

@@ -18,23 +18,20 @@
 #ifndef qed_object_h
 #define qed_object_h
 
-#include <string>
-#include <unordered_map>
 #include "common.h"
 #include "chunk.hpp"
 #include "value.h"
-#include "sizer.hpp"
 
 #define OBJ_TYPE(value)        (AS_OBJ(value)->type)
 
-#define IS_THREAD(value)     isObjType(value, OBJ_THREAD)
+#define IS_THREAD(value)       isObjType(value, OBJ_THREAD)
 #define IS_INSTANCE(value)     isObjType(value, OBJ_INSTANCE)
 #define IS_CLOSURE(value)      isObjType(value, OBJ_CLOSURE)
 #define IS_FUNCTION(value)     isObjType(value, OBJ_FUNCTION)
 #define IS_NATIVE(value)       isObjType(value, OBJ_NATIVE)
 #define IS_STRING(value)       isObjType(value, OBJ_STRING)
 
-#define AS_THREAD(value)     ((CoThread*)AS_OBJ(value))
+#define AS_THREAD(value)       ((CoThread*)AS_OBJ(value))
 #define AS_INSTANCE(value)     ((ObjInstance*)AS_OBJ(value))
 #define AS_CLOSURE(value)      ((ObjClosure*)AS_OBJ(value))
 #define AS_CALLABLE(value)     ((ObjCallable*)AS_OBJ(value))
@@ -117,21 +114,12 @@ struct IndexList {
   int get(int index);
 };
 
-struct ChildAttrSets;
-
 struct ObjFunction : ObjCallable {
   Chunk chunk;
   Obj *native;
   IndexList *instanceIndexes;
   long eventFlags;
-  ChildAttrSets *attrSets;
-  DirSizers topSizers;
   ObjFunction *uiFunction;
-//  std::unordered_map<std::string, ObjFunction*> *uiFunctions;
-//  void parseCreateUIValues(VM &vm, Object value, int flags, List<int> dimIndexes, ValueTree valueTree);
-
-  LayoutUnitArea *parseCreateAreasTree(VM &vm, ValueStack<Value *> &valueStack, Value *values, IndexList *instanceIndexes, int dimFlags);
-  IntTreeUnit *parseResize(int dir, const Point &limits, LocationUnit *areas, int offset);
 };
 
 typedef Value (*NativeFn)(int argCount, Value *args);
@@ -170,14 +158,7 @@ typedef enum {
 struct VM;
 struct CoThread;
 
-typedef struct {
-  InterpretResult result;
-  union {
-    CoThread *coThread;
-  } as;
-} InterpretValue;
-
-typedef InterpretValue (*NativeClassFn)(VM &vm, int argCount, Value *args);
+typedef InterpretResult (*NativeClassFn)(VM &vm, int argCount, Value *args);
 
 struct ObjNativeClass : ObjCallable {
   NativeClassFn classFn;
@@ -199,8 +180,8 @@ struct CallFrame {
   ObjClosure *uiClosure;
   CoThread *uiValuesInstance;
   CoThread *uiLayoutInstance;
-
-	LocationUnit *init(VM &vm, Value *values, IndexList *instanceIndexes, ValueStack<Value *> &valueStack);/*
+/*
+	LocationUnit *init(VM &vm, Value *values, IndexList *instanceIndexes, ValueStack<Value *> &valueStack);
 	void refresh(VM &process, const Point &pos, const Point &size, const Point &clipPos, const Point &clipSize);
 	Path locateEvent(VM &process, const Point &pos, const Point &size, const Point &location, Path currentFocusPath);
 	const Point &getTotalSize();*/
