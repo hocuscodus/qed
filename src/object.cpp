@@ -28,6 +28,456 @@
 #include "astprinter.hpp"
 #endif
 
+bool eventFlag;
+CoThread *current;
+Value *stackTop;
+
+void push(Value value) {
+  *stackTop++ = value;
+}
+
+Value pop() {
+  return *--stackTop;
+}
+
+void concatenate() {
+  ObjString *b = AS_STRING(pop());
+  ObjString *a = AS_STRING(pop());
+
+  int length = a->length + b->length;
+  char *chars = ALLOCATE(char, length + 1);
+  memcpy(chars, a->chars, a->length);
+  memcpy(chars + a->length, b->chars, b->length);
+  chars[length] = '\0';
+
+  ObjString *result = takeString(chars, length);
+  push(OBJ_VAL(result));
+}
+
+bool isFirstInstance() {
+  return current->caller == NULL;
+}
+
+static bool isFalsey(Value value) {
+  return (/*IS_BOOL(value) && */!AS_BOOL(value));
+}
+
+extern VM *vm;
+
+InterpretResult run(CoThread *thread) {
+  current = thread;
+
+  CallFrame *frame = &current->frames[current->frameCount - 1];
+#define PUSH(value) (*stackTop++ = (value))
+//#define PUSH(value) do {Value val = (value); *stackTop++ = val;} while (false)
+#define POP (*--stackTop)
+#define PEEK(distance) (stackTop[-1 - distance])
+#define READ_BYTE() (*frame->ip++)
+#define READ_SHORT() (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
+#define READ_CONSTANT() (frame->closure->function->chunk.constants.values[READ_BYTE()])
+#define BINARY_OP(valueConst, convertMacro, primitiveType, op)                 \
+  do {                                                                         \
+    primitiveType b = convertMacro(POP);                                     \
+    primitiveType a = convertMacro(POP);                                     \
+    PUSH(valueConst(a op b));                                                  \
+  } while (false)
+#define STRING_OP(op)                                                          \
+  do {                                                                         \
+    Value b = POP;                                                           \
+    Value a = POP;                                                           \
+    PUSH(BOOL_VAL(valuesCompare(a, b) op 0));                                  \
+  } while (false)
+
+  stackTop = current->savedStackTop;
+
+  for (;;) {
+#ifdef DEBUG_TRACE_EXECUTION
+    current->printStack();
+    disassembleInstruction(&frame->closure->function->chunk, (int)(frame->ip - frame->closure->function->chunk.code));
+#endif
+    uint8_t instruction = READ_BYTE();
+
+    switch (instruction) {
+    case OP_CONSTANT: {
+//      Value constant = READ_CONSTANT();
+      uint8_t byte = READ_BYTE();
+      Value value = frame->closure->function->chunk.constants.values[byte];
+
+      PUSH(value);//frame->closure->function->type.valueType == VAL_OBJ && AS_OBJ(value)->type == OBJ_INTERNAL ? OBJ_VAL(newInternal()) : value);
+      break;
+    }
+    case OP_TRUE:
+      PUSH(BOOL_VAL(true));
+      break;
+    case OP_FALSE:
+      PUSH(BOOL_VAL(false));
+      break;
+    case OP_POP:
+      POP;
+      break;
+    case OP_GET_UPVALUE: {
+      uint8_t slot = READ_BYTE();
+      PUSH(*frame->closure->upvalues[slot]->location);
+      break;
+    }
+    case OP_SET_UPVALUE: {
+      uint8_t slot = READ_BYTE();
+      *frame->closure->upvalues[slot]->location = PEEK(0);
+      break;
+    }
+    case OP_GET_PROPERTY: {
+      CoThread *coThread = AS_THREAD(POP);
+      PUSH(coThread->fields[READ_BYTE()]);
+      break;
+    }
+    case OP_SET_PROPERTY: {
+      Value value = POP;
+      CoThread *coThread = AS_THREAD(POP);
+      coThread->fields[READ_BYTE()] = value;
+      PUSH(value);
+      break;
+    }
+    case OP_GET_LOCAL_DIR: {
+      int8_t dir = READ_BYTE();
+      int8_t slot = READ_BYTE();
+
+      PUSH(INT_VAL(AS_INT(frame->slots[slot])));
+      break;
+    }
+    case OP_ADD_LOCAL: {
+      int8_t a = READ_BYTE();
+      int8_t b = READ_BYTE();
+
+      PUSH(INT_VAL(AS_INT(frame->slots[a]) + AS_INT(frame->slots[b])));
+      break;
+    }
+    case OP_MAX_LOCAL: {
+      int8_t a = READ_BYTE();
+      int8_t b = READ_BYTE();
+
+      PUSH(INT_VAL(std::max(AS_INT(frame->slots[a]), AS_INT(frame->slots[b]))));
+      break;
+    }
+    case OP_GET_LOCAL: {
+      int8_t slot = READ_BYTE();
+
+      PUSH(frame->slots[slot]);
+      break;
+    }
+    case OP_SET_LOCAL: {
+      int8_t slot = READ_BYTE();
+      frame->slots[slot] = PEEK(0);
+      break;
+    }
+    case OP_INT_TO_FLOAT: {
+      Value val = FLOAT_VAL((double) AS_INT(POP));
+      PUSH(val);
+      break;
+    }
+    case OP_FLOAT_TO_INT: {
+      Value val = INT_VAL((long) AS_FLOAT(POP));
+      PUSH(val);
+      break;
+    }
+    case OP_INT_TO_STRING: {
+      char buffer [sizeof(long)*8+1];
+
+      sprintf(buffer, "%ld", AS_INT(POP));
+      {
+        Value val = OBJ_VAL(copyString(buffer, strlen(buffer)));
+        PUSH(val);
+      }
+      break;
+    }
+    case OP_FLOAT_TO_STRING: {
+      char buffer[64];
+
+      sprintf(buffer, "%g", AS_FLOAT(POP));
+      {
+        Value val = OBJ_VAL(copyString(buffer, strlen(buffer)));
+        PUSH(val);
+      }
+      break;
+    }
+    case OP_BOOL_TO_STRING: {
+      const char *buffer = AS_BOOL(POP) ? "true" : "false";
+
+      {
+        Value val = OBJ_VAL(copyString(buffer, strlen(buffer)));
+        PUSH(val);
+      }
+      break;
+    }
+    case OP_EQUAL_STRING:
+      STRING_OP(==);
+      break;
+    case OP_GREATER_STRING:
+      STRING_OP(>);
+      break;
+    case OP_LESS_STRING:
+      STRING_OP(<);
+      break;
+    case OP_EQUAL_FLOAT:
+      BINARY_OP(BOOL_VAL, AS_FLOAT, double, ==);
+      break;
+    case OP_GREATER_FLOAT:
+      BINARY_OP(BOOL_VAL, AS_FLOAT, double, >);
+      break;
+    case OP_LESS_FLOAT:
+      BINARY_OP(BOOL_VAL, AS_FLOAT, double, <);
+      break;
+    case OP_EQUAL_INT:
+      BINARY_OP(BOOL_VAL, AS_INT, long, ==);
+      break;
+    case OP_GREATER_INT:
+      BINARY_OP(BOOL_VAL, AS_INT, long, >);
+      break;
+    case OP_LESS_INT:
+      BINARY_OP(BOOL_VAL, AS_INT, long, <);
+      break;
+    case OP_ADD_STRING:
+      concatenate();
+      break;
+    case OP_ADD_INT:
+      BINARY_OP(INT_VAL, AS_INT, long, +);
+      break;
+    case OP_SUBTRACT_INT:
+      BINARY_OP(INT_VAL, AS_INT, long, -);
+      break;
+    case OP_MULTIPLY_INT:
+      BINARY_OP(INT_VAL, AS_INT, long, *);
+      break;
+    case OP_DIVIDE_INT:
+      BINARY_OP(INT_VAL, AS_INT, long, /);
+      break;
+    case OP_ADD_FLOAT:
+      BINARY_OP(FLOAT_VAL, AS_FLOAT, double, +);
+      break;
+    case OP_SUBTRACT_FLOAT:
+      BINARY_OP(FLOAT_VAL, AS_FLOAT, double, -);
+      break;
+    case OP_MULTIPLY_FLOAT:
+      BINARY_OP(FLOAT_VAL, AS_FLOAT, double, *);
+      break;
+    case OP_DIVIDE_FLOAT:
+      BINARY_OP(FLOAT_VAL, AS_FLOAT, double, /);
+      break;
+    case OP_NOT: {
+      Value val = BOOL_VAL(isFalsey(POP));
+      PUSH(val);
+      break;
+    }
+    case OP_NEGATE_FLOAT:
+      PUSH(FLOAT_VAL(-AS_FLOAT(POP)));
+      break;
+    case OP_NEGATE_INT:
+      PUSH(INT_VAL(-AS_INT(POP)));
+      break;
+    case OP_BITWISE_OR:
+      BINARY_OP(INT_VAL, AS_INT, long, |);
+      break;
+    case OP_BITWISE_AND:
+      BINARY_OP(INT_VAL, AS_INT, long, &);
+      break;
+    case OP_BITWISE_XOR:
+      BINARY_OP(INT_VAL, AS_INT, long, ^);
+      break;
+    case OP_LOGICAL_OR:
+      BINARY_OP(BOOL_VAL, AS_BOOL, bool, ||);
+      break;
+    case OP_LOGICAL_AND:
+      BINARY_OP(BOOL_VAL, AS_BOOL, bool, &&);
+      break;
+    case OP_SHIFT_LEFT:
+      BINARY_OP(INT_VAL, AS_INT, long, <<);
+      break;
+    case OP_SHIFT_RIGHT:
+      BINARY_OP(INT_VAL, AS_INT, long, >>);
+      break;
+    case OP_SHIFT_URIGHT:
+#ifdef __EMSCRIPTEN__
+      BINARY_OP(INT_VAL, AS_INT, long, >>);
+#else
+      BINARY_OP(INT_VAL, AS_INT, unsigned long, >>);
+#endif
+      break;
+    case OP_PRINT: {
+      Value value = POP;
+
+      printObject(value);
+      printf("\n");
+      break;
+    }
+    case OP_JUMP: {
+      int16_t offset = READ_SHORT();
+      frame->ip += offset;
+      break;
+    }
+    case OP_JUMP_IF_FALSE: {
+      int16_t offset = READ_SHORT();
+      if (isFalsey(PEEK(0))) frame->ip += offset;
+      break;
+    }
+    case OP_POP_JUMP_IF_FALSE: {
+      int16_t offset = READ_SHORT();
+      if (isFalsey(POP)) frame->ip += offset;
+      break;
+    }
+    case OP_NEW: {
+      int argCount = READ_BYTE();
+      Value handlerConstant = POP;
+      CoThread *thread = newThread(current);
+      int size = argCount + 1;
+
+      thread->handler = AS_INT(handlerConstant) != -1 ? AS_CLOSURE(handlerConstant) : NULL;
+      memcpy(thread->fields, stackTop - size, size * sizeof(Value));
+      thread->savedStackTop += size;
+      stackTop -= size;
+      PUSH(OBJ_VAL(thread));
+
+      if (thread->callValue(*thread->fields, argCount)) {
+        current->savedStackTop = stackTop;
+        current = thread;
+        frame = &current->frames[current->frameCount - 1];
+        stackTop = current->savedStackTop;
+      }
+      else
+        return INTERPRET_RUNTIME_ERROR;
+      break;
+    }
+    case OP_CALL: {
+      int argCount = READ_BYTE();
+
+      current->savedStackTop = stackTop;
+
+      if (!current->callValue(PEEK(argCount), argCount))
+        return INTERPRET_RUNTIME_ERROR;
+
+      frame = &current->frames[current->frameCount - 1];
+      break;
+    }
+    case OP_CLOSURE: {
+      ObjFunction *function = AS_FUNCTION(READ_CONSTANT());
+      ObjClosure *closure = newClosure(function, current);
+
+      PUSH(OBJ_VAL(closure));
+
+      for (int i = 0; i < closure->upvalueCount; i++) {
+        uint8_t isLocal = READ_BYTE();
+        uint8_t index = READ_BYTE();
+
+        closure->upvalues[i] = isLocal ? current->captureUpvalue(frame->slots + index) : frame->closure->upvalues[index];
+      }
+      break;
+    }
+    case OP_CLOSE_UPVALUE:
+      current->closeUpvalues(stackTop - 1);
+      POP;
+      break;
+    case OP_RETURN: {
+      if (isFirstInstance() && current->isInInstance()) {
+        current->closeUpvalues(current->frames[0].slots);
+        POP;
+        return INTERPRET_OK;
+      }
+      else {
+        ValueType type = frame->closure->function->type.valueType;
+        Value result = type != VAL_VOID ? POP : (Value) {VAL_VOID};
+
+        if (current->isInInstance())
+          current->onThreadReturn(result);
+        else {
+          current->onReturn(result);
+          frame = &current->frames[current->frameCount - 1];
+          break;
+        }
+      }
+    }
+    // Is is wanted that we do not break here...
+    case OP_HALT: {
+      Obj *native = frame->closure->function->native;
+
+      if (native && native->type == OBJ_NATIVE) {
+        NativeFn nativeFn = ((ObjNative *) native)->function;
+        int argCount = stackTop - frame->slots - 1;
+        //TODO: verify result type with frame->closure->function->type.valueType before calling onReturn
+//        ValueType type = frame->closure->function->type.valueType;
+        Value result = nativeFn(argCount, stackTop - argCount);
+
+        current->onReturn(result);
+        frame = &current->frames[current->frameCount - 1];
+      }
+      else {
+        Obj *native = frame->closure->function->native;
+
+        if (native && native->type == OBJ_NATIVE_CLASS) {
+          int argCount = stackTop - frame->slots - 1;
+          NativeClassFn nativeClassFn = ((ObjNativeClass *) native)->classFn;
+          InterpretResult result = nativeClassFn(*vm, argCount, stackTop - argCount);
+        }
+        else
+          if (current->isInInstance() && (!eventFlag || !isFirstInstance()))
+            if (isFirstInstance())
+              return INTERPRET_OK;
+            else {
+    //        CallFrame *frame = &current->frames[--current->frameCount];
+
+    //TODO: fix this        current->closeUpvalues(frame->slots);
+    //        caller->coinstance = caller;
+              if (current->isDone()) {
+    //            FREE(CoThread, coThread->coThread);
+    //            coThread->coThread = NULL;
+              }
+              current->savedStackTop = stackTop;
+              current = current->caller;
+              frame = &current->frames[current->frameCount - 1];
+              stackTop = current->savedStackTop;
+            }
+          else
+            // suspend app
+            return INTERPRET_SUSPEND;
+      }
+      break;
+    }
+    }
+  }
+#undef READ_BYTE
+#undef READ_SHORT
+#undef READ_CONSTANT
+#undef STRING_OP
+#undef BINARY_OP
+#undef PEEK
+#undef POP
+#undef PUSH
+}
+
+bool CoThread::call(ObjClosure *closure, int argCount) {
+  if (frameCount == FRAMES_MAX) {
+    runtimeError("Stack overflow.");
+    return false;
+  }
+
+  CallFrame *frame = &frames[frameCount++];
+  ObjFunction *outFunction = closure->function->uiFunction;
+
+  frame->closure = closure;
+  frame->ip = closure->function->chunk.code;
+  frame->slots = savedStackTop - argCount - 1;
+  frame->uiClosure = outFunction ? newClosure(outFunction, current) : NULL;
+  frame->uiValuesInstance = NULL;
+  frame->uiLayoutInstance = NULL;
+
+  if (outFunction)
+    for (int i = 0; i < outFunction->upvalueCount; i++) {
+      uint8_t isLocal = outFunction->upvalues[i].isLocal;
+      uint8_t index = outFunction->upvalues[i].index;
+
+      frame->uiClosure->upvalues[i] = isLocal ? captureUpvalue(frame->slots + index) : frame->closure->upvalues[index];
+    }
+
+  return true;
+}
+
 Obj *objects = NULL;
 
 Internal::~Internal() {
@@ -168,437 +618,6 @@ LocationUnit *CallFrame::init(VM &vm, Value *values, IndexList *instanceIndexes,
     return NULL;
 }
 */
-bool eventFlag;
-CoThread *current;
-
-Value *stackTop;
-
-void push(Value value) {
-  *stackTop++ = value;
-}
-
-Value pop() {
-  return *--stackTop;
-}
-
-Value peek(int distance) {
-  return stackTop[-1 - distance];
-}
-
-void concatenate() {
-  ObjString *b = AS_STRING(pop());
-  ObjString *a = AS_STRING(pop());
-
-  int length = a->length + b->length;
-  char *chars = ALLOCATE(char, length + 1);
-  memcpy(chars, a->chars, a->length);
-  memcpy(chars + a->length, b->chars, b->length);
-  chars[length] = '\0';
-
-  ObjString *result = takeString(chars, length);
-  push(OBJ_VAL(result));
-}
-
-bool isFirstInstance() {
-  return current->caller == NULL;
-}
-
-static bool isFalsey(Value value) {
-  return (/*IS_BOOL(value) && */!AS_BOOL(value));
-}
-
-extern VM *vm;
-
-InterpretResult run() {
-  CallFrame *frame = &current->frames[current->frameCount - 1];
-#define READ_BYTE() (*frame->ip++)
-#define READ_SHORT() (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
-#define READ_CONSTANT() (frame->closure->function->chunk.constants.values[READ_BYTE()])
-#define BINARY_OP(valueConst, convertMacro, primitiveType, op)                 \
-  do {                                                                         \
-    primitiveType b = convertMacro(pop());                                     \
-    primitiveType a = convertMacro(pop());                                     \
-    push(valueConst(a op b));                                                  \
-  } while (false)
-#define STRING_OP(op)                                                          \
-  do {                                                                         \
-    Value b = pop();                                                           \
-    Value a = pop();                                                           \
-    push(BOOL_VAL(valuesCompare(a, b) op 0));                                  \
-  } while (false)
-
-  stackTop = current->savedStackTop;
-
-  for (;;) {
-#ifdef DEBUG_TRACE_EXECUTION
-    current->printStack();
-    disassembleInstruction(&frame->closure->function->chunk, (int)(frame->ip - frame->closure->function->chunk.code));
-#endif
-    uint8_t instruction = READ_BYTE();
-
-    switch (instruction) {
-    case OP_CONSTANT: {
-//      Value constant = READ_CONSTANT();
-      uint8_t byte = READ_BYTE();
-      Value value = frame->closure->function->chunk.constants.values[byte];
-
-      push(value);//frame->closure->function->type.valueType == VAL_OBJ && AS_OBJ(value)->type == OBJ_INTERNAL ? OBJ_VAL(newInternal()) : value);
-      break;
-    }
-    case OP_TRUE:
-      push(BOOL_VAL(true));
-      break;
-    case OP_FALSE:
-      push(BOOL_VAL(false));
-      break;
-    case OP_POP:
-      pop();
-      break;
-    case OP_GET_UPVALUE: {
-      uint8_t slot = READ_BYTE();
-      push(*frame->closure->upvalues[slot]->location);
-      break;
-    }
-    case OP_SET_UPVALUE: {
-      uint8_t slot = READ_BYTE();
-      *frame->closure->upvalues[slot]->location = peek(0);
-      break;
-    }
-    case OP_GET_PROPERTY: {
-      CoThread *coThread = AS_THREAD(pop());
-      push(coThread->fields[READ_BYTE()]);
-      break;
-    }
-    case OP_SET_PROPERTY: {
-      Value value = pop();
-      CoThread *coThread = AS_THREAD(pop());
-      coThread->fields[READ_BYTE()] = value;
-      push(value);
-      break;
-    }
-    case OP_GET_LOCAL_DIR: {
-      int8_t dir = READ_BYTE();
-      int8_t slot = READ_BYTE();
-
-      push(INT_VAL(AS_INT(frame->slots[slot])));
-      break;
-    }
-    case OP_ADD_LOCAL: {
-      int8_t a = READ_BYTE();
-      int8_t b = READ_BYTE();
-
-      push(INT_VAL(AS_INT(frame->slots[a]) + AS_INT(frame->slots[b])));
-      break;
-    }
-    case OP_MAX_LOCAL: {
-      int8_t a = READ_BYTE();
-      int8_t b = READ_BYTE();
-
-      push(INT_VAL(std::max(AS_INT(frame->slots[a]), AS_INT(frame->slots[b]))));
-      break;
-    }
-    case OP_GET_LOCAL: {
-      int8_t slot = READ_BYTE();
-
-      push(frame->slots[slot]);
-      break;
-    }
-    case OP_SET_LOCAL: {
-      int8_t slot = READ_BYTE();
-      frame->slots[slot] = peek(0);
-      break;
-    }
-    case OP_INT_TO_FLOAT:
-      push(FLOAT_VAL((double) AS_INT(pop())));
-      break;
-    case OP_FLOAT_TO_INT:
-      push(INT_VAL((long) AS_FLOAT(pop())));
-      break;
-    case OP_INT_TO_STRING: {
-      char buffer [sizeof(long)*8+1];
-
-      sprintf(buffer, "%ld", AS_INT(pop()));
-      push(OBJ_VAL(copyString(buffer, strlen(buffer))));
-      break;
-    }
-    case OP_FLOAT_TO_STRING: {
-      char buffer[64];
-
-      sprintf(buffer, "%g", AS_FLOAT(pop()));
-      push(OBJ_VAL(copyString(buffer, strlen(buffer))));
-      break;
-    }
-    case OP_BOOL_TO_STRING: {
-      const char *buffer = AS_BOOL(pop()) ? "true" : "false";
-
-      push(OBJ_VAL(copyString(buffer, strlen(buffer))));
-      break;
-    }
-    case OP_EQUAL_STRING:
-      STRING_OP(==);
-      break;
-    case OP_GREATER_STRING:
-      STRING_OP(>);
-      break;
-    case OP_LESS_STRING:
-      STRING_OP(<);
-      break;
-    case OP_EQUAL_FLOAT:
-      BINARY_OP(BOOL_VAL, AS_FLOAT, double, ==);
-      break;
-    case OP_GREATER_FLOAT:
-      BINARY_OP(BOOL_VAL, AS_FLOAT, double, >);
-      break;
-    case OP_LESS_FLOAT:
-      BINARY_OP(BOOL_VAL, AS_FLOAT, double, <);
-      break;
-    case OP_EQUAL_INT:
-      BINARY_OP(BOOL_VAL, AS_INT, long, ==);
-      break;
-    case OP_GREATER_INT:
-      BINARY_OP(BOOL_VAL, AS_INT, long, >);
-      break;
-    case OP_LESS_INT:
-      BINARY_OP(BOOL_VAL, AS_INT, long, <);
-      break;
-    case OP_ADD_STRING:
-      concatenate();
-      break;
-    case OP_ADD_INT:
-      BINARY_OP(INT_VAL, AS_INT, long, +);
-      break;
-    case OP_SUBTRACT_INT:
-      BINARY_OP(INT_VAL, AS_INT, long, -);
-      break;
-    case OP_MULTIPLY_INT:
-      BINARY_OP(INT_VAL, AS_INT, long, *);
-      break;
-    case OP_DIVIDE_INT:
-      BINARY_OP(INT_VAL, AS_INT, long, /);
-      break;
-    case OP_ADD_FLOAT:
-      BINARY_OP(FLOAT_VAL, AS_FLOAT, double, +);
-      break;
-    case OP_SUBTRACT_FLOAT:
-      BINARY_OP(FLOAT_VAL, AS_FLOAT, double, -);
-      break;
-    case OP_MULTIPLY_FLOAT:
-      BINARY_OP(FLOAT_VAL, AS_FLOAT, double, *);
-      break;
-    case OP_DIVIDE_FLOAT:
-      BINARY_OP(FLOAT_VAL, AS_FLOAT, double, /);
-      break;
-    case OP_NOT:
-      push(BOOL_VAL(isFalsey(pop())));
-      break;
-    case OP_NEGATE_FLOAT:
-      push(FLOAT_VAL(-AS_FLOAT(pop())));
-      break;
-    case OP_NEGATE_INT:
-      push(INT_VAL(-AS_INT(pop())));
-      break;
-    case OP_BITWISE_OR:
-      BINARY_OP(INT_VAL, AS_INT, long, |);
-      break;
-    case OP_BITWISE_AND:
-      BINARY_OP(INT_VAL, AS_INT, long, &);
-      break;
-    case OP_BITWISE_XOR:
-      BINARY_OP(INT_VAL, AS_INT, long, ^);
-      break;
-    case OP_LOGICAL_OR:
-      BINARY_OP(BOOL_VAL, AS_BOOL, bool, ||);
-      break;
-    case OP_LOGICAL_AND:
-      BINARY_OP(BOOL_VAL, AS_BOOL, bool, &&);
-      break;
-    case OP_SHIFT_LEFT:
-      BINARY_OP(INT_VAL, AS_INT, long, <<);
-      break;
-    case OP_SHIFT_RIGHT:
-      BINARY_OP(INT_VAL, AS_INT, long, >>);
-      break;
-    case OP_SHIFT_URIGHT:
-#ifdef __EMSCRIPTEN__
-      BINARY_OP(INT_VAL, AS_INT, long, >>);
-#else
-      BINARY_OP(INT_VAL, AS_INT, unsigned long, >>);
-#endif
-      break;
-    case OP_PRINT: {
-      Value value = pop();
-
-      printObject(value);
-      printf("\n");
-      break;
-    }
-    case OP_JUMP: {
-      int16_t offset = READ_SHORT();
-      frame->ip += offset;
-      break;
-    }
-    case OP_JUMP_IF_FALSE: {
-      int16_t offset = READ_SHORT();
-      if (isFalsey(peek(0))) frame->ip += offset;
-      break;
-    }
-    case OP_POP_JUMP_IF_FALSE: {
-      int16_t offset = READ_SHORT();
-      if (isFalsey(pop())) frame->ip += offset;
-      break;
-    }
-    case OP_NEW: {
-      int argCount = READ_BYTE();
-      Value handlerConstant = pop();
-      CoThread *thread = newThread(current);
-      int size = argCount + 1;
-
-      thread->handler = AS_INT(handlerConstant) != -1 ? AS_CLOSURE(handlerConstant) : NULL;
-      memcpy(thread->fields, stackTop - size, size * sizeof(Value));
-      thread->savedStackTop += size;
-      stackTop -= size;
-      push(OBJ_VAL(thread));
-
-      if (thread->callValue(*thread->fields, argCount)) {
-        current->savedStackTop = stackTop;
-        current = thread;
-        frame = &current->frames[current->frameCount - 1];
-        stackTop = current->savedStackTop;
-      }
-      else
-        return INTERPRET_RUNTIME_ERROR;
-      break;
-    }
-    case OP_CALL: {
-      int argCount = READ_BYTE();
-
-      current->savedStackTop = stackTop;
-
-      if (!current->callValue(peek(argCount), argCount))
-        return INTERPRET_RUNTIME_ERROR;
-
-      frame = &current->frames[current->frameCount - 1];
-      break;
-    }
-    case OP_CLOSURE: {
-      ObjFunction *function = AS_FUNCTION(READ_CONSTANT());
-      ObjClosure *closure = newClosure(function, current);
-
-      push(OBJ_VAL(closure));
-
-      for (int i = 0; i < closure->upvalueCount; i++) {
-        uint8_t isLocal = READ_BYTE();
-        uint8_t index = READ_BYTE();
-
-        closure->upvalues[i] = isLocal ? current->captureUpvalue(frame->slots + index) : frame->closure->upvalues[index];
-      }
-      break;
-    }
-    case OP_CLOSE_UPVALUE:
-      current->closeUpvalues(stackTop - 1);
-      pop();
-      break;
-    case OP_RETURN: {
-      if (isFirstInstance() && current->isInInstance()) {
-        current->closeUpvalues(current->frames[0].slots);
-        pop();
-        return INTERPRET_OK;
-      }
-      else {
-        ValueType type = frame->closure->function->type.valueType;
-        Value result = type != VAL_VOID ? pop() : (Value) {VAL_VOID};
-
-        if (current->isInInstance())
-          current->onThreadReturn(result);
-        else {
-          current->onReturn(result);
-          frame = &current->frames[current->frameCount - 1];
-          break;
-        }
-      }
-    }
-    // Is is wanted that we do not break here...
-    case OP_HALT: {
-      Obj *native = frame->closure->function->native;
-
-      if (native && native->type == OBJ_NATIVE) {
-        NativeFn nativeFn = ((ObjNative *) native)->function;
-        int argCount = stackTop - frame->slots - 1;
-        //TODO: verify result type with frame->closure->function->type.valueType before calling onReturn
-//        ValueType type = frame->closure->function->type.valueType;
-        Value result = nativeFn(argCount, stackTop - argCount);
-
-        current->onReturn(result);
-        frame = &current->frames[current->frameCount - 1];
-      }
-      else {
-        Obj *native = frame->closure->function->native;
-
-        if (native && native->type == OBJ_NATIVE_CLASS) {
-          int argCount = stackTop - frame->slots - 1;
-          NativeClassFn nativeClassFn = ((ObjNativeClass *) native)->classFn;
-          InterpretResult result = nativeClassFn(*vm, argCount, stackTop - argCount);
-        }
-        else
-          if (current->isInInstance() && (!eventFlag || !isFirstInstance()))
-            if (isFirstInstance())
-              return INTERPRET_OK;
-            else {
-    //        CallFrame *frame = &current->frames[--current->frameCount];
-
-    //TODO: fix this        current->closeUpvalues(frame->slots);
-    //        caller->coinstance = caller;
-              if (current->isDone()) {
-    //            FREE(CoThread, coThread->coThread);
-    //            coThread->coThread = NULL;
-              }
-              current->savedStackTop = stackTop;
-              current = current->caller;
-              frame = &current->frames[current->frameCount - 1];
-              stackTop = current->savedStackTop;
-            }
-          else
-            // suspend app
-            return INTERPRET_SUSPEND;
-      }
-      break;
-    }
-    }
-  }
-#undef READ_BYTE
-#undef READ_SHORT
-#undef READ_CONSTANT
-#undef STRING_OP
-#undef BINARY_OP
-}
-
-bool CoThread::call(ObjClosure *closure, int argCount) {
-  if (frameCount == FRAMES_MAX) {
-    runtimeError("Stack overflow.");
-    return false;
-  }
-
-  CallFrame *frame = &frames[frameCount++];
-  ObjFunction *outFunction = closure->function->uiFunction;
-
-  frame->closure = closure;
-  frame->ip = closure->function->chunk.code;
-  frame->slots = savedStackTop - argCount - 1;
-  frame->uiClosure = outFunction ? newClosure(outFunction, current) : NULL;
-  frame->uiValuesInstance = NULL;
-  frame->uiLayoutInstance = NULL;
-
-  if (outFunction)
-    for (int i = 0; i < outFunction->upvalueCount; i++) {
-      uint8_t isLocal = outFunction->upvalues[i].isLocal;
-      uint8_t index = outFunction->upvalues[i].index;
-
-      frame->uiClosure->upvalues[i] = isLocal ? captureUpvalue(frame->slots + index) : frame->closure->upvalues[index];
-    }
-
-  return true;
-}
-
 extern void postMessage(void *param);
 
 bool CoThread::callValue(Value callee, int argCount) {
@@ -785,9 +804,8 @@ void CoThread::initValues() {
 
     *instanceThread->savedStackTop++ = OBJ_VAL(outClosure);
     instanceThread->call(outClosure, 0);
-    current = instanceThread;
-    run();
-    current->savedStackTop = stackTop;
+    run(instanceThread);
+    instanceThread->savedStackTop = stackTop;
 
     for (int ndx2 = -1; (ndx2 = outClosure->function->instanceIndexes->getNext(ndx2)) != -1;)
       ((CoThread *) AS_OBJ(instanceThread->fields[ndx2]))->initValues();
@@ -826,9 +844,8 @@ Point CoThread::recalculateLayout() {
 
     *instanceThread->savedStackTop++ = OBJ_VAL(layoutClosure);
     instanceThread->call(layoutClosure, 0);
-    current = instanceThread;
-    run();
-    current->savedStackTop = stackTop;
+    run(instanceThread);
+    instanceThread->savedStackTop = stackTop;
     current = saved;
 
     long frameSize = AS_INT(instanceThread->fields[layoutClosure->function->fieldCount - 3]);
@@ -875,8 +892,7 @@ void CoThread::paint(Point pos, Point size) {
 
     layoutThread->call(paintClosure, NUM_DIRS << 1);
     CoThread *saved = current;
-    current = layoutThread;
-    run();
+    run(layoutThread);
     layoutThread->onReturn(value);
     current = saved;
   }
@@ -889,7 +905,7 @@ void CoThread::onThreadReturn(Value &returnValue) {
 
     *callerThread->savedStackTop++ = OBJ_VAL(handler);
     callerThread->call(handler, 0);
-    run();
+    run(current);
     callerThread->onReturn(value);
   }
 }
@@ -916,8 +932,7 @@ bool CoThread::onEvent(Event event, Point pos, Point size) {
 
     layoutThread->call(eventClosure, (NUM_DIRS << 1) + 1);
     CoThread *saved = current;
-    current = layoutThread;
-    run();
+    run(layoutThread);
 
     if (layoutThread->frameCount > frameCount)
       flag = AS_BOOL(*--layoutThread->savedStackTop);

@@ -26,6 +26,7 @@
 struct AttrSet;
 
 struct VM {
+  CoThread *coThread;
 	Point totalSize;/*
   std::vector<LayoutObject *> layoutObjects;
 	Obj *current2;

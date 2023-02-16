@@ -326,18 +326,17 @@ extern bool eventFlag;
 extern CoThread *current;
 extern VM *vm;
 extern void suspend();
-extern Value *stackTop;
 
 VM::VM(CoThread *coThread, bool eventFlag) {
   ::vm = this;
   ::eventFlag = eventFlag;
-  current = coThread;
+  this->coThread = coThread;
 }
 
-extern InterpretResult run();
+extern InterpretResult run(CoThread *thread);
 
 InterpretResult VM::run() {
-  InterpretResult result = ::run();
+  InterpretResult result = ::run(coThread);
 
   if (result == INTERPRET_SUSPEND)
     suspend();
@@ -351,12 +350,12 @@ void VM::push(Obj *obj) {
 }
 
 InterpretResult VM::interpret(ObjClosure *closure) {
-  current->call(closure, current->savedStackTop - current->fields - 1);
+  coThread->call(closure, coThread->savedStackTop - coThread->fields - 1);
   return run();
 }
 
 CallFrame *VM::getFrame(int index) {
-  return current->getFrame(index);
+  return coThread->getFrame(index);
 }
 /*
   bool resize(List<int> size) {/ *
