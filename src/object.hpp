@@ -180,11 +180,6 @@ struct CallFrame {
   ObjClosure *uiClosure;
   CoThread *uiValuesInstance;
   CoThread *uiLayoutInstance;
-/*
-	LocationUnit *init(VM &vm, Value *values, IndexList *instanceIndexes, ValueStack<Value *> &valueStack);
-	void refresh(VM &process, const Point &pos, const Point &size, const Point &clipPos, const Point &clipSize);
-	Path locateEvent(VM &process, const Point &pos, const Point &size, const Point &location, Path currentFocusPath);
-	const Point &getTotalSize();*/
 };
 
 struct CoThread {
@@ -197,9 +192,6 @@ struct CoThread {
   ObjUpvalue *openUpvalues;
   Value *savedStackTop;
 
-  static void push(Value value);
-  static Value pop();
-  static Value peek(int distance);
   bool call(ObjClosure *closure, int argCount);
   bool callValue(Value callee, int argCount);
   ObjUpvalue *captureUpvalue(Value *local);
@@ -208,16 +200,12 @@ struct CoThread {
   ObjClosure *pushClosure(ObjFunction *function);
   void reset();
 
-  static void concatenate();
   void resetStack();
   void runtimeError(const char *format, ...);
 #ifdef DEBUG_TRACE_EXECUTION
   void printStack();
 #endif
-  static InterpretResult run();
-
   bool isDone();
-  static bool isFirstInstance();
   bool isInInstance();
   CallFrame *getFrame(int index = 0);
   void onReturn(Value &returnValue);

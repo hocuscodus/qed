@@ -331,11 +331,13 @@ extern Value *stackTop;
 VM::VM(CoThread *coThread, bool eventFlag) {
   ::vm = this;
   ::eventFlag = eventFlag;
-  ::current = coThread;
+  current = coThread;
 }
 
+extern InterpretResult run();
+
 InterpretResult VM::run() {
-  InterpretResult result = CoThread::run();
+  InterpretResult result = ::run();
 
   if (result == INTERPRET_SUSPEND)
     suspend();
@@ -368,10 +370,10 @@ CallFrame *VM::getFrame(int index) {
   }
 */
 bool VM::recalculate() {
-  CoThread *coThread = ::current;
+  CoThread *coThread = current;
 
   totalSize = coThread->repaint();
-  ::current = coThread;
+  current = coThread;
   return true;
 }
 #if 0
@@ -430,10 +432,10 @@ void VM::repaint() {
 }
 
 bool VM::onEvent(Event event, Point pos) {
-  CoThread *coThread = ::current;
+  CoThread *coThread = current;
 
   coThread->onEvent(event, pos, totalSize);
-  ::current = coThread;
+  current = coThread;
   return true;
 }
 
