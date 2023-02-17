@@ -323,12 +323,9 @@ class LayoutObject {
 #endif
 
 extern bool eventFlag;
-extern CoThread *current;
-extern VM *vm;
-extern void suspend();
+extern void suspend(CoThread *thread);
 
 VM::VM(CoThread *coThread, bool eventFlag) {
-  ::vm = this;
   ::eventFlag = eventFlag;
   this->coThread = coThread;
 }
@@ -339,23 +336,14 @@ InterpretResult VM::run() {
   InterpretResult result = ::run(coThread);
 
   if (result == INTERPRET_SUSPEND)
-    suspend();
+    suspend(coThread);
 
   return result;
-}
-
-void VM::push(Obj *obj) {
-//  layoutObjects.push_back(new LayoutObject(obj));
-//  current2 = obj;
 }
 
 InterpretResult VM::interpret(ObjClosure *closure) {
   coThread->call(closure, coThread->savedStackTop - coThread->fields - 1);
   return run();
-}
-
-CallFrame *VM::getFrame(int index) {
-  return coThread->getFrame(index);
 }
 /*
   bool resize(List<int> size) {/ *
@@ -368,13 +356,6 @@ CallFrame *VM::getFrame(int index) {
 * /    return (true);
   }
 */
-bool VM::recalculate() {
-  CoThread *coThread = current;
-
-  totalSize = coThread->repaint();
-  current = coThread;
-  return true;
-}
 #if 0
 void VM::redraw() {
   clipRefresh(createArea(), createAreaWithValue(10000));
@@ -424,17 +405,4 @@ void VM::paint(Canvas canvas, Size size) {
   process.paint = null;
 }
 #endif
-void VM::repaint() {
-//  setState(() {
-    /*process.*/recalculate();
-//  });
-}
-
-bool VM::onEvent(Event event, Point pos) {
-  CoThread *coThread = current;
-
-  coThread->onEvent(event, pos, totalSize);
-  current = coThread;
-  return true;
-}
 

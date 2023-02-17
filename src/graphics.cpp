@@ -17,11 +17,8 @@
  */
 
 #include "qni.hpp"
-#include "vm.hpp"
 
 extern ValueStack2 attStack;
-
-VM *vm;
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -57,11 +54,11 @@ void initDisplay() {
 void uninitDisplay() {
 }
 
-void postMessage(void *param)
+void postMessage(void (*fn)(), void *data)
 {
 }
 
-void suspend() {
+void suspend(CoThread *thread) {
   vm->repaint();
 }
 
@@ -375,14 +372,15 @@ QNI_FN(displayText) {
   return VOID_VAL;
 }
 
-void SDLCALL postMessage(void *param)
+void SDLCALL postMessage(void (*fn)(void *), void *data)
 {
     SDL_Event event;
     SDL_UserEvent userevent;
 
     userevent.type = SDL_USEREVENT + 0; // should be a more official Timer type
     userevent.code = 0;
-    userevent.data1 = param;
+    userevent.data1 = (void *) fn;
+    userevent.data2 = data;
 
     event.type = SDL_USEREVENT;
     event.user = userevent;
@@ -390,15 +388,26 @@ void SDLCALL postMessage(void *param)
     SDL_PushEvent(&event);
 }
 
-void onEvent(Event event, Point pos) {
-  if (vm->onEvent(event, pos)) {
-    vm->repaint();
+Point totalSize;
+
+void repaint2(CoThread *coThread) {
+  totalSize = coThread->repaint();
+}
+
+bool onEvent2(CoThread *coThread, Event event, Point pos) {
+  coThread->onEvent(event, pos, totalSize);
+  return true;
+}
+
+void onEvent(CoThread *coThread, Event event, Point pos) {
+  if (onEvent2(coThread, event, pos)) {
+    repaint2(coThread);
     SDL_RenderPresent(rend2);
   }
 }
 
-void suspend() {
-  vm->repaint();
+void suspend(CoThread *coThread) {
+  repaint2(coThread);
 
   SDL_RenderPresent(rend2);
 
@@ -415,21 +424,18 @@ void suspend() {
     }
 
     switch (event.type) {
-    case SDL_USEREVENT: {
-        Value value = VOID_VAL;
-
-        ((CoThread *) event.user.data1)->onThreadReturn(value);
-        vm->repaint();
-        SDL_RenderPresent(rend2);
-      }
+    case SDL_USEREVENT:
+      (*((void (*)(void *)) event.user.data1))(event.user.data2);
+      repaint2(coThread);
+      SDL_RenderPresent(rend2);
       break;
 
     case SDL_MOUSEBUTTONDOWN:
-      onEvent(EVENT_PRESS, {event.button.x, event.button.y});
+      onEvent(coThread, EVENT_PRESS, {event.button.x, event.button.y});
       break;
 
     case SDL_MOUSEBUTTONUP:
-      onEvent(EVENT_RELEASE, {event.button.x, event.button.y});
+      onEvent(coThread, EVENT_RELEASE, {event.button.x, event.button.y});
       break;
 
     case SDL_QUIT:

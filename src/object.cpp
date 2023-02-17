@@ -28,21 +28,15 @@
 #include "astprinter.hpp"
 #endif
 
-bool eventFlag;
-CoThread *current;
+#define PUSH(value) (*stackTop++ = (value))
+//#define PUSH(value) do {Value val = (value); *stackTop++ = val;} while (false)
+#define POP (*--stackTop)
+
 Value *stackTop;
 
-void push(Value value) {
-  *stackTop++ = value;
-}
-
-Value pop() {
-  return *--stackTop;
-}
-
 void concatenate() {
-  ObjString *b = AS_STRING(pop());
-  ObjString *a = AS_STRING(pop());
+  ObjString *b = AS_STRING(POP);
+  ObjString *a = AS_STRING(POP);
 
   int length = a->length + b->length;
   char *chars = ALLOCATE(char, length + 1);
@@ -51,27 +45,19 @@ void concatenate() {
   chars[length] = '\0';
 
   ObjString *result = takeString(chars, length);
-  push(OBJ_VAL(result));
-}
-
-bool isFirstInstance() {
-  return current->caller == NULL;
+  PUSH(OBJ_VAL(result));
 }
 
 static bool isFalsey(Value value) {
   return (/*IS_BOOL(value) && */!AS_BOOL(value));
 }
 
-extern VM *vm;
+bool eventFlag;
 
-InterpretResult run(CoThread *thread) {
-  current = thread;
-
+InterpretResult run(CoThread *current) {
   CallFrame *frame = &current->frames[current->frameCount - 1];
-#define PUSH(value) (*stackTop++ = (value))
-//#define PUSH(value) do {Value val = (value); *stackTop++ = val;} while (false)
-#define POP (*--stackTop)
 #define PEEK(distance) (stackTop[-1 - distance])
+#define IS_FIRST_INSTANCE (current->caller == NULL)
 #define READ_BYTE() (*frame->ip++)
 #define READ_SHORT() (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
 #define READ_CONSTANT() (frame->closure->function->chunk.constants.values[READ_BYTE()])
@@ -375,7 +361,7 @@ InterpretResult run(CoThread *thread) {
       POP;
       break;
     case OP_RETURN: {
-      if (isFirstInstance() && current->isInInstance()) {
+      if (IS_FIRST_INSTANCE && current->isInInstance()) {
         current->closeUpvalues(current->frames[0].slots);
         POP;
         return INTERPRET_OK;
@@ -413,11 +399,11 @@ InterpretResult run(CoThread *thread) {
         if (native && native->type == OBJ_NATIVE_CLASS) {
           int argCount = stackTop - frame->slots - 1;
           NativeClassFn nativeClassFn = ((ObjNativeClass *) native)->classFn;
-          InterpretResult result = nativeClassFn(*vm, argCount, stackTop - argCount);
+          InterpretResult result = nativeClassFn(*((VM *) NULL), argCount, stackTop - argCount);
         }
         else
-          if (current->isInInstance() && (!eventFlag || !isFirstInstance()))
-            if (isFirstInstance())
+          if (current->isInInstance() && (!eventFlag || !IS_FIRST_INSTANCE))
+            if (IS_FIRST_INSTANCE)
               return INTERPRET_OK;
             else {
     //        CallFrame *frame = &current->frames[--current->frameCount];
@@ -446,9 +432,8 @@ InterpretResult run(CoThread *thread) {
 #undef READ_CONSTANT
 #undef STRING_OP
 #undef BINARY_OP
+#undef IS_FIRST_INSTANCE
 #undef PEEK
-#undef POP
-#undef PUSH
 }
 
 bool CoThread::call(ObjClosure *closure, int argCount) {
@@ -463,7 +448,7 @@ bool CoThread::call(ObjClosure *closure, int argCount) {
   frame->closure = closure;
   frame->ip = closure->function->chunk.code;
   frame->slots = savedStackTop - argCount - 1;
-  frame->uiClosure = outFunction ? newClosure(outFunction, current) : NULL;
+  frame->uiClosure = outFunction ? newClosure(outFunction, this) : NULL;
   frame->uiValuesInstance = NULL;
   frame->uiLayoutInstance = NULL;
 
@@ -618,7 +603,13 @@ LocationUnit *CallFrame::init(VM &vm, Value *values, IndexList *instanceIndexes,
     return NULL;
 }
 */
-extern void postMessage(void *param);
+extern void postMessage(void (*fn)(void *), void *);
+
+void ret(void *data) {
+  Value value = VOID_VAL;
+
+  ((CoThread *) data)->onThreadReturn(value);
+}
 
 bool CoThread::callValue(Value callee, int argCount) {
   switch (OBJ_TYPE(callee)) {
@@ -627,10 +618,10 @@ bool CoThread::callValue(Value callee, int argCount) {
       stackTop -= argCount + 1;
 
       if (argCount)
-        push(stackTop[1]);
+        PUSH(stackTop[1]);
 
       ObjClosure *closure = AS_CLOSURE(callee);
-      postMessage(AS_CLOSURE(callee)->parent);
+      postMessage(ret, AS_CLOSURE(callee)->parent);
       break;
     }
     case OBJ_CLOSURE:
@@ -643,7 +634,7 @@ bool CoThread::callValue(Value callee, int argCount) {
       stackTop -= argCount + 1;
 
       if (AS_CLOSURE(callee)->function->type.valueType != VAL_VOID)
-        push(result);
+        PUSH(result);
 
       break;
     }
@@ -733,12 +724,12 @@ void CoThread::reset() {
 ObjClosure *CoThread::pushClosure(ObjFunction *function) {
   stackTop = savedStackTop;
 //  if (mainClosure == NULL) {
-    push(OBJ_VAL(function));
+    PUSH(OBJ_VAL(function));
 //  }
   ObjClosure *closure = newClosure(function, NULL);
 //  if (mainClosure == NULL) {
-    pop();
-    push(OBJ_VAL(closure));
+    POP;
+    PUSH(OBJ_VAL(closure));
 //    mainClosure = closure;
 //  }
   savedStackTop = stackTop;
@@ -781,7 +772,7 @@ void CoThread::onReturn(Value &returnValue) {
   stackTop = frame->slots;
 
   if (frame->closure->function->type.valueType != VAL_VOID && frame->closure->function->type.valueType != VAL_HANDLER)
-    push(returnValue);
+    PUSH(returnValue);
 }
 
 bool CoThread::getFormFlag() {
@@ -836,19 +827,17 @@ Point CoThread::recalculateLayout() {
     CallFrame &valuesFrame = valuesThread->frames[0];
     ObjClosure *valuesClosure = AS_CLOSURE(valuesThread->fields[0]);
     ObjClosure *layoutClosure = AS_CLOSURE(valuesThread->fields[valuesClosure->function->fieldCount - 1]);
-    CoThread *saved = current;
 
     frames[ndx].uiLayoutInstance = newThread(NULL);
 
-    CoThread *instanceThread = frames[ndx].uiLayoutInstance;
+    CoThread *layoutThread = frames[ndx].uiLayoutInstance;
 
-    *instanceThread->savedStackTop++ = OBJ_VAL(layoutClosure);
-    instanceThread->call(layoutClosure, 0);
-    run(instanceThread);
-    instanceThread->savedStackTop = stackTop;
-    current = saved;
+    *layoutThread->savedStackTop++ = OBJ_VAL(layoutClosure);
+    layoutThread->call(layoutClosure, 0);
+    run(layoutThread);
+    layoutThread->savedStackTop = stackTop;
 
-    long frameSize = AS_INT(instanceThread->fields[layoutClosure->function->fieldCount - 3]);
+    long frameSize = AS_INT(layoutThread->fields[layoutClosure->function->fieldCount - 3]);
 
     for (int dir = 0; dir < NUM_DIRS; dir++)
       size[dir] = std::max(size[dir], (int) (dir ? frameSize & 0xFFFF : frameSize >> 16));
@@ -891,10 +880,8 @@ void CoThread::paint(Point pos, Point size) {
       *layoutThread->savedStackTop++ = INT_VAL(size[dir]);
 
     layoutThread->call(paintClosure, NUM_DIRS << 1);
-    CoThread *saved = current;
     run(layoutThread);
     layoutThread->onReturn(value);
-    current = saved;
   }
 }
 
@@ -905,7 +892,7 @@ void CoThread::onThreadReturn(Value &returnValue) {
 
     *callerThread->savedStackTop++ = OBJ_VAL(handler);
     callerThread->call(handler, 0);
-    run(current);
+    run(callerThread);
     callerThread->onReturn(value);
   }
 }
@@ -931,7 +918,6 @@ bool CoThread::onEvent(Event event, Point pos, Point size) {
       *layoutThread->savedStackTop++ = INT_VAL(size[dir]);
 
     layoutThread->call(eventClosure, (NUM_DIRS << 1) + 1);
-    CoThread *saved = current;
     run(layoutThread);
 
     if (layoutThread->frameCount > frameCount)
@@ -940,7 +926,6 @@ bool CoThread::onEvent(Event event, Point pos, Point size) {
 #ifdef DEBUG_TRACE_EXECUTION
     layoutThread->printStack();
 #endif
-    current = saved;
   }
 
   return flag;

@@ -116,7 +116,6 @@ struct TimerInternal : Internal {
   }
 };
 */
-extern CoThread *current;
 
 QNI_CLASS(Timer) {
   ObjInternal *objInternal = (ObjInternal *) AS_OBJ(args[1]);
@@ -139,16 +138,16 @@ CoListThread::CoListThread(CoThread *coThread, CoListThread *previous, CoListThr
   this->next = next;
 }
 
-QNI_CLASS(CoList) {
+QNI_CLASS(CoList) {/*
   ObjInternal *objInternal = (ObjInternal *) AS_OBJ(current->fields[1]);
 	CoListThread *main = new CoListThread(current->caller, NULL, NULL);
 
-  objInternal->object = main->next = main->previous = main;
+  objInternal->object = main->next = main->previous = main;*/
   return {INTERPRET_OK};//HALT};
 }
 
 static InterpretResult qni__CoListEnd(VM &vm, int argCount, Value *args) {
-  ObjNativeClass *objNativeClass = (ObjNativeClass *) vm.getFrame()->closure->function->native;
+  ObjNativeClass *objNativeClass = NULL;//(ObjNativeClass *) vm.getFrame()->closure->function->native;
   ObjInternal *objInternal = (ObjInternal *) objNativeClass->arg;
   Value value = BOOL_VAL(true);
   CoListThread *main = (CoListThread *) objInternal->object;
@@ -163,8 +162,8 @@ static InterpretResult qni__CoListEnd(VM &vm, int argCount, Value *args) {
 }
 
 QNI_CLASS(CoList_yield) {
-  ObjClosure *closure1 = vm.getFrame(1)->closure;
-  ObjClosure *closure = vm.getFrame()->closure;
+  ObjClosure *closure1 = NULL;//vm.getFrame(1)->closure;
+  ObjClosure *closure = NULL;//vm.getFrame()->closure;
   CoThread *coThread = NULL;//closure->coThread;
   ObjInternal *objInternal = (ObjInternal *) AS_OBJ(coThread->fields[1]);
   CoListThread *main = (CoListThread *) objInternal->object;

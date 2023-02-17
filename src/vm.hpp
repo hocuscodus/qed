@@ -23,41 +23,13 @@
 #include "scanner.hpp"
 #include "object.hpp"
 
-struct AttrSet;
-
 struct VM {
   CoThread *coThread;
-	Point totalSize;/*
-  std::vector<LayoutObject *> layoutObjects;
-	Obj *current2;
-	std::vector<void *> stack;
-	///////
-	Path currentPath;
-	Obj currentObj;
-	AttrSet *currentAttrSet;
-//	List<int> currentPos;
-//	List<int> currentSize;
-	///////
-	Path inputPath;
-	Obj inputObj;
-	AttrSet *inputAttrSet;
-//	List inputValues;
-	int inputIndex;
-	Point inputPos;
-	Point inputSize;
-	int inputColor;
-	int inputFontSize;
-	int inputStyle;
-*/
+
   VM(CoThread *coThread, bool eventFlag);
 
   InterpretResult run();
   InterpretResult interpret(ObjClosure *closure);
-  CallFrame *getFrame(int index = 0);
-  bool recalculate();
-  void repaint();
-  bool onEvent(Event event, Point pos);
-  void push(Obj *obj);
 };
 
 ObjNativeClass *newNativeClass(NativeClassFn classFn);
