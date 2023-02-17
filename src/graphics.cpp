@@ -20,46 +20,94 @@
 
 extern ValueStack2 attStack;
 
+Point totalSize;
+
+void repaint2(CoThread *coThread) {
+  totalSize = coThread->repaint();
+}
+
+bool onEvent2(CoThread *coThread, Event event, Point pos) {
+  coThread->onEvent(event, pos, totalSize);
+  return true;
+}
+
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #include <emscripten/val.h>
+#include <emscripten/html5.h>
 #define _USE_MATH_DEFINES
 #include <math.h>
+#include "memory.h"
 
 #define SCREEN_SIZE_X 512
 #define SCREEN_SIZE_Y 512
+#define TEST_RESULT(x) if (ret != EMSCRIPTEN_RESULT_SUCCESS) printf("%s returned %d.\n", #x, ret);
+
+CoThread *eventThread;
+
+void onEvent(CoThread *coThread, Event event, Point pos) {
+  if (onEvent2(coThread, event, pos))
+    repaint2(coThread);
+}
+
+EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData)
+{
+  int eventTypes[] = {EMSCRIPTEN_EVENT_MOUSEDOWN, EMSCRIPTEN_EVENT_MOUSEUP};
+  Event events[] = {EVENT_PRESS, EVENT_RELEASE};
+
+  for (int index = 0; index < sizeof(events) / sizeof(Event); index++)
+    if (eventTypes[index] == eventType) {
+      onEvent(eventThread, events[index], {e->targetX, e->targetY});
+      break;
+    }
+
+  return 0;
+}
 
 using emscripten::val;
 
 // Use thread_local when you want to retrieve & cache a global JS variable once per thread.
 thread_local const val document = val::global("document");
+bool initialized = false;
 
 void initDisplay() {
-//  const canvas = document.getElementById('canvas');
-//  const ctx = canvas.getContext('2d');
-  const auto canvas = document.call<emscripten::val, std::string>("querySelector", "canvas");
-  auto ctx = canvas.call<emscripten::val, std::string>("getContext", "2d");
-//  val canvas = document.call<val>("getElementById", "canvas");
-//  val ctx = canvas.call<val>("getContext", "2d");
+  if (initialized)
+    return;
 
-//  ctx.fillStyle = 'green';
-//  ctx.fillRect(10, 10, 150, 100);
-/*
-  const auto width = canvas["width"].as<int>();
-  const auto height = canvas["height"].as<int>();
-  ctx.set("fillStyle", "green");
-  ctx.call<void>("fillRect", 10, 10, 150, 100);
-*/}
+  EMSCRIPTEN_RESULT ret = emscripten_set_mousedown_callback("#canvas", 0, 1, mouse_callback);
+  TEST_RESULT(emscripten_set_mousedown_callback);
+  ret = emscripten_set_mouseup_callback("#canvas", 0, 1, mouse_callback);
+  TEST_RESULT(emscripten_set_mouseup_callback);
+  initialized = true;
+}
 
 void uninitDisplay() {
 }
 
-void postMessage(void (*fn)(), void *data)
-{
+typedef struct {
+  em_arg_callback_func fn;
+  void *data;
+} QEDMessage;
+
+void messageHandler(void *data) {
+  QEDMessage *message = (QEDMessage *) data;
+
+  (*message->fn)(message->data);
+  FREE_ARRAY(void *, data, 1);
+  repaint2(eventThread);
 }
 
-void suspend(CoThread *thread) {
-  vm->repaint();
+void postMessage(em_arg_callback_func fn, void *data) {
+  QEDMessage *message = ALLOCATE(QEDMessage, 1);
+
+  message->fn = fn;
+  message->data = data;
+  emscripten_async_call(messageHandler, message, 0);
+}
+
+void suspend(CoThread *coThread) {
+  eventThread = coThread;
+  repaint2(coThread);
 }
 
 QNI_FN(rect) {
@@ -386,17 +434,6 @@ void SDLCALL postMessage(void (*fn)(void *), void *data)
     event.user = userevent;
 
     SDL_PushEvent(&event);
-}
-
-Point totalSize;
-
-void repaint2(CoThread *coThread) {
-  totalSize = coThread->repaint();
-}
-
-bool onEvent2(CoThread *coThread, Event event, Point pos) {
-  coThread->onEvent(event, pos, totalSize);
-  return true;
 }
 
 void onEvent(CoThread *coThread, Event event, Point pos) {

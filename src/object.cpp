@@ -23,9 +23,8 @@
 #include "parser.hpp"
 #include "attrset.hpp"
 
-#ifdef DEBUG_PRINT_CODE
+#ifdef DEBUG_TRACE_EXECUTION
 #include "debug.hpp"
-#include "astprinter.hpp"
 #endif
 
 #define PUSH(value) (*stackTop++ = (value))
@@ -419,9 +418,11 @@ InterpretResult run(CoThread *current) {
               frame = &current->frames[current->frameCount - 1];
               stackTop = current->savedStackTop;
             }
-          else
+          else {
+            current->savedStackTop = stackTop;
             // suspend app
             return INTERPRET_SUSPEND;
+          }
       }
       break;
     }
@@ -775,6 +776,18 @@ void CoThread::onReturn(Value &returnValue) {
     PUSH(returnValue);
 }
 
+void CoThread::onThreadReturn(Value &returnValue) {
+  if (caller && handler) {
+    CoThread *callerThread = caller;
+    Value value = {VAL_VOID};
+
+    *callerThread->savedStackTop++ = OBJ_VAL(handler);
+    callerThread->call(handler, 0);
+    run(callerThread);
+    callerThread->onReturn(value);
+  }
+}
+
 bool CoThread::getFormFlag() {
   bool formFlag = false;
 
@@ -885,18 +898,6 @@ void CoThread::paint(Point pos, Point size) {
   }
 }
 
-void CoThread::onThreadReturn(Value &returnValue) {
-  if (caller && handler) {
-    CoThread *callerThread = caller;
-    Value value = {VAL_VOID};
-
-    *callerThread->savedStackTop++ = OBJ_VAL(handler);
-    callerThread->call(handler, 0);
-    run(callerThread);
-    callerThread->onReturn(value);
-  }
-}
-
 bool CoThread::onEvent(Event event, Point pos, Point size) {
   bool flag = false;
 
@@ -921,7 +922,7 @@ bool CoThread::onEvent(Event event, Point pos, Point size) {
     run(layoutThread);
 
     if (layoutThread->frameCount > frameCount)
-      flag = AS_BOOL(*--layoutThread->savedStackTop);
+      flag = AS_BOOL(layoutThread->frames[frameCount].slots[6]);
     layoutThread->onReturn(value);
 #ifdef DEBUG_TRACE_EXECUTION
     layoutThread->printStack();
