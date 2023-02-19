@@ -110,6 +110,26 @@ void suspend(CoThread *coThread) {
   repaint2(coThread);
 }
 
+bool clipping = false;
+
+QNI_FN(saveContext) {
+  const auto canvas = document.call<emscripten::val, std::string>("querySelector", "canvas");
+  auto ctx = canvas.call<emscripten::val, std::string>("getContext", "2d");
+
+  ctx.call<void>("save");
+  clipping = true;
+
+  return VOID_VAL;
+}
+
+QNI_FN(restoreContext) {
+  const auto canvas = document.call<emscripten::val, std::string>("querySelector", "canvas");
+  auto ctx = canvas.call<emscripten::val, std::string>("getContext", "2d");
+
+  ctx.call<void>("restore");
+  return VOID_VAL;
+}
+
 QNI_FN(rect) {
   long posP = AS_INT(args[0]);
   long sizeP = AS_INT(args[1]);
@@ -122,11 +142,22 @@ QNI_FN(rect) {
   auto ctx = canvas.call<emscripten::val, std::string>("getContext", "2d");
   char colorBuffer[16];
 
-  sprintf(colorBuffer, "#%02X%02X%02X", (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
-  ctx.set("fillStyle", colorBuffer);
-  ctx.set("globalAlpha", opacity);
+  if (!clipping) {
+    sprintf(colorBuffer, "#%02X%02X%02X", (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
+    ctx.set("fillStyle", colorBuffer);
+    ctx.set("globalAlpha", opacity);
+  }
+
   ctx.call<void>("fillRect", pos[0], pos[1], size[0], size[1]);
-  ctx.set("globalAlpha", 1.0);
+
+  if (!clipping) {
+    ctx.set("globalAlpha", 1.0);
+  }
+  else {
+    ctx.call<void>("clip");
+    clipping = false;
+  }
+
 //  SDL_SetRenderDrawBlendMode(rend2, SDL_BLENDMODE_BLEND);
 //	SDL_SetRenderDrawColor(rend2, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, opacityByte);
 //  SDL_RenderFillRect(rend2, &rectangle);
@@ -146,16 +177,24 @@ QNI_FN(oval) {
   auto ctx = canvas.call<emscripten::val, std::string>("getContext", "2d");
   char colorBuffer[16];
 
-  sprintf(colorBuffer, "#%02X%02X%02X", (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
-  ctx.set("fillStyle", colorBuffer);
-  ctx.set("globalAlpha", opacity);
+  if (!clipping) {
+    sprintf(colorBuffer, "#%02X%02X%02X", (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
+    ctx.set("fillStyle", colorBuffer);
+    ctx.set("globalAlpha", opacity);
+  }
+
   ctx.call<void>("beginPath");
   ctx.call<void>("ellipse", pos[0] + size[0], pos[1] + size[1], size[0], size[1], 0, 0, 2*M_PI);
-  ctx.call<void>("fill");
-  ctx.set("globalAlpha", 1.0);
 
-//  filledEllipseRGBA(rend2, pos[0] + rx, pos[1] + ry, rx, ry,
-//                    (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, (int) (opacity * 0xFF));
+  if (!clipping) {
+    ctx.call<void>("fill");
+    ctx.set("globalAlpha", 1.0);
+  }
+  else {
+    ctx.call<void>("clip");
+    clipping = false;
+  }
+
   return VOID_VAL;
 }
 
@@ -334,6 +373,14 @@ void uninitDisplay() {
   //    SDL_GL_DeleteContext(glContext);
     win = NULL;
   }
+}
+
+QNI_FN(saveContext) {
+  return VOID_VAL;
+}
+
+QNI_FN(restoreContext) {
+  return VOID_VAL;
 }
 
 QNI_FN(oval) {

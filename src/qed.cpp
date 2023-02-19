@@ -36,6 +36,8 @@ const char *qedLib =
 "int COLOR_BLUE = 0x0000FF;"
 "int COLOR_BLACK = 0x000000;"
 "float clock();"
+"void saveContext();"
+"void restoreContext();"
 "void oval(int pos, int size);"
 "void rect(int pos, int size);"
 "void pushAttribute(int index, int value);"
