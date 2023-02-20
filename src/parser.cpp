@@ -460,7 +460,7 @@ UIAttributeExpr *Parser::attribute(TokenType endGroupType) {
 
 UIDirectiveExpr *newNode(int childDir, int attCount, UIAttributeExpr **attributes, UIDirectiveExpr *previous, UIDirectiveExpr *lastChild)
 {
-  UIDirectiveExpr *node = new UIDirectiveExpr(childDir, attCount, attributes, previous, lastChild, -1);
+  UIDirectiveExpr *node = new UIDirectiveExpr(childDir, attCount, attributes, previous, lastChild, 0, false);
 
   for (int dir = 0; dir < NUM_DIRS; dir++)
     node->_layoutIndexes[dir] = -1;

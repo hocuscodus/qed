@@ -1565,26 +1565,36 @@ void Resolver::processAttrs(UIDirectiveExpr *expr) {
 ValueStack3 valueStackSize(ATTRIBUTE_ALIGN);
 ValueStack3 valueStackPaint(ATTRIBUTE_COLOR);
 
-static int findAttrName(UIDirectiveExpr *expr, Attribute uiIndex) {
+static UIAttributeExpr *findAttr(UIDirectiveExpr *expr, Attribute uiIndex) {
   static char name[20];
 
   for (int index = 0; index < expr->attCount; index++)
     if (!isEventHandler(expr->attributes[index]) && expr->attributes[index]->_uiIndex == uiIndex)
-      return expr->attributes[index]->_index;
+      return expr->attributes[index];
 
-  return -1;
+  return NULL;
 }
 
-static const char *getValueVariableName(ValueStack3 &valueStack, Attribute uiIndex) {
-  static char name[20];
-  int varIndex = valueStack.get(uiIndex);
+static int findAttrName(UIDirectiveExpr *expr, Attribute uiIndex) {
+  UIAttributeExpr *attrExp = findAttr(expr, uiIndex);
 
-  if (varIndex != -1) {
-    sprintf(name, "v%d", varIndex);
+  return attrExp ? attrExp->_index : -1;
+}
+
+static const char *getValueVariableName(UIDirectiveExpr *expr, Attribute uiIndex) {
+  static char name[20];
+  UIAttributeExpr *attrExpr = findAttr(expr, uiIndex);
+
+  if (attrExpr) {
+    sprintf(name, "v%d", attrExpr->_index);
     return name;
   }
   else
     return NULL;
+}
+
+static bool hasAreas(UIDirectiveExpr *expr) {
+  return expr->childrenViewFlag || expr->viewIndex;
 }
 
 // viewIndex = -1 -> non-sized unit or group
@@ -1610,39 +1620,38 @@ void Resolver::pushAreas(UIDirectiveExpr *expr) {
   if (expr->lastChild) {
     accept<int>(expr->lastChild);
 
-    for (UIDirectiveExpr *child = expr->lastChild; expr->viewIndex == -1 && child; child = child->previous)
-      expr->viewIndex = child->viewIndex != -1 ? 0 : -1;
+    for (UIDirectiveExpr *child = expr->lastChild; !expr->childrenViewFlag && child; child = child->previous)
+      expr->childrenViewFlag = hasAreas(child);
+  }
+
+  const char *size = getValueVariableName(expr, ATTRIBUTE_SIZE);
+
+  if (size != NULL) {
+    expr->viewIndex = aCount;
+    (*ss) << "  var a" << aCount++ << " = (" << size << " << 16) | " << size << "\n";
   }
   else {
-    const char *size = getValueVariableName(valueStackSize, ATTRIBUTE_SIZE);
+    const char *name = getValueVariableName(expr, ATTRIBUTE_OUT);
 
-    if (size != NULL) {
-      expr->viewIndex = aCount;
-      (*ss) << "  var a" << aCount++ << " = (" << size << " << 16) | " << size << "\n";
-    }
-    else {
-      const char *name = getValueVariableName(valueStackSize, ATTRIBUTE_OUT);
+    if (name != NULL) {
+      Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
+      Type outType = current->enclosing->locals[current->enclosing->resolveLocal(&token)].type;
+      char *callee = NULL;
 
-      if (name != NULL) {
-        Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
-        Type outType = current->enclosing->locals[current->enclosing->resolveLocal(&token)].type;
-        char *callee = NULL;
+      if (outType.valueType == VAL_OBJ && outType.objType) {
+        switch (outType.objType->type) {
+          case OBJ_INSTANCE:
+            callee = "getInstanceSize";
+            break;
 
-        if (outType.valueType == VAL_OBJ && outType.objType) {
-          switch (outType.objType->type) {
-            case OBJ_INSTANCE:
-              callee = "getInstanceSize";
-              break;
+          case OBJ_STRING:
+            callee = "getTextSize";
+            break;
+        }
 
-            case OBJ_STRING:
-              callee = "getTextSize";
-              break;
-          }
-
-          if (callee) {
-            expr->viewIndex = aCount;
-            (*ss) << "  var a" << aCount++ << " = " << callee << "(" << name << ")\n";
-          }
+        if (callee) {
+          expr->viewIndex = aCount;
+          (*ss) << "  var a" << aCount++ << " = " << callee << "(" << name << ")\n";
         }
       }
     }
@@ -1660,9 +1669,6 @@ void Resolver::pushAreas(UIDirectiveExpr *expr) {
 }
 
 static const char *getUnitName(UIDirectiveExpr *expr, int dir) {
-  if (expr->viewIndex == -1)
-    return NULL;
-
   if (expr->viewIndex) {
     static char name[16];
 
@@ -1675,16 +1681,13 @@ static const char *getUnitName(UIDirectiveExpr *expr, int dir) {
 
 static UIDirectiveExpr *getPrevious(UIDirectiveExpr *expr) {
   for (UIDirectiveExpr *previous = expr->previous; previous; previous = previous->previous)
-    if (previous->viewIndex != -1)
+    if (hasAreas(previous))
       return previous;
 
   return NULL;
 }
 
 static const char *getGroupName(UIDirectiveExpr *expr, int dir) {
-  if (expr->viewIndex == -1)
-    return NULL;
-
   if (getPrevious(expr)) {
     static char name[16];
 
@@ -1709,7 +1712,7 @@ void Resolver::recalcLayout(UIDirectiveExpr *expr) {
     parent = oldParent;
   }
 
-  if (expr->viewIndex != -1) {
+  if (hasAreas(expr)) {
     UIDirectiveExpr *previous = getPrevious(expr);
 
     if (expr->viewIndex || previous)
@@ -1766,7 +1769,7 @@ int Resolver::adjustLayout(UIDirectiveExpr *expr) {
         insertTabs();
         (*ss) << "int childSize" << dir << " = ";
 
-        if (expr->viewIndex != -1) {
+        if (hasAreas(expr)) {
           (*ss) << getUnitName(expr, dir);
 
           if (expand != -1)
@@ -1776,7 +1779,7 @@ int Resolver::adjustLayout(UIDirectiveExpr *expr) {
           (*ss) << "size" << dir;
 
         if (expand != -1) {
-          if (expr->viewIndex != -1)
+          if (hasAreas(expr))
             (*ss) << "size" << dir << " - " << getUnitName(expr, dir) << ")";
 
           (*ss) << " * v" << expand << "\n";
@@ -1836,6 +1839,47 @@ void Resolver::paint(UIDirectiveExpr *expr) {
       }
   }
 
+  char *name = (char *) getValueVariableName(expr, ATTRIBUTE_OUT);
+  char *callee = NULL;
+
+  if (name) {
+    Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
+    Type outType = current->enclosing->enclosing->locals[current->enclosing->enclosing->resolveLocal(&token)].type;
+
+    if (outType.valueType == VAL_OBJ && outType.objType) {
+      switch (outType.objType->type) {
+        case OBJ_INSTANCE:
+          callee = "displayInstance";
+          break;
+
+        case OBJ_STRING:
+          callee = "displayText";
+          break;
+
+        case OBJ_FUNCTION:
+          callee = ((ObjFunction *) outType.objType)->name->chars;
+          name[0] = 0;
+          break;
+      }
+
+      if (callee) {
+        if (expr->lastChild) {
+          insertTabs();
+          (*ss) << "saveContext()\n";
+        }
+
+        insertTabs();
+        (*ss) << callee << "(" << name << (name[0] ? ", " : "");
+        insertPoint("pos");
+        (*ss) << ", ";
+        insertPoint("size");
+        (*ss) << ")\n";
+      }
+    }
+    else
+      parser.error("Out value having an illegal type");
+  }
+
   if (expr->lastChild) {
     UIDirectiveExpr *oldParent = parent;
 
@@ -1843,42 +1887,11 @@ void Resolver::paint(UIDirectiveExpr *expr) {
     accept<int>(expr->lastChild);
     parent = oldParent;
   }
-  else
-    if (valueStackPaint.get(ATTRIBUTE_OUT) != -1) {
-      char *name = (char *) getValueVariableName(valueStackPaint, ATTRIBUTE_OUT);
-      Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
-      Type outType = current->enclosing->enclosing->locals[current->enclosing->enclosing->resolveLocal(&token)].type;
 
-      if (outType.valueType == VAL_OBJ && outType.objType) {
-        char *callee = NULL;
-
-        switch (outType.objType->type) {
-          case OBJ_INSTANCE:
-            callee = "displayInstance";
-            break;
-
-          case OBJ_STRING:
-            callee = "displayText";
-            break;
-
-          case OBJ_FUNCTION:
-            callee = ((ObjFunction *) outType.objType)->name->chars;
-            name[0] = 0;
-            break;
-        }
-
-        if (callee) {
-          insertTabs();
-          (*ss) << callee << "(" << name << (name[0] ? ", " : "");
-          insertPoint("pos");
-          (*ss) << ", ";
-          insertPoint("size");
-          (*ss) << ")\n";
-        }
-      }
-      else
-        parser.error("Out value having an illegal type");
-    }
+  if (name && callee && expr->lastChild) {
+    insertTabs();
+    (*ss) << "restoreContext()\n";
+  }
 
   for (int index = expr->attCount - 1; index >= 0; index--)
     if (!isEventHandler(expr->attributes[index]) && expr->attributes[index]->_uiIndex != -1 && expr->attributes[index]->_index != -1) {
@@ -1943,7 +1956,7 @@ void Resolver::onEvent(UIDirectiveExpr *expr) {
       parent = oldParent;
     }
     else {
-      const char *name = getValueVariableName(valueStackPaint, ATTRIBUTE_OUT);
+      const char *name = getValueVariableName(expr, ATTRIBUTE_OUT);
       Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
       int index = current->enclosing->enclosing->resolveLocal(&token);
       Type outType = current->enclosing->enclosing->locals[index].type;

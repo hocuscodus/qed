@@ -137,10 +137,11 @@ struct UIDirectiveExpr : public Expr {
   UIDirectiveExpr* previous;
   UIDirectiveExpr* lastChild;
   int viewIndex;
+  bool childrenViewFlag;
   int _layoutIndexes[NUM_DIRS];
   long _eventFlags;
 
-  UIDirectiveExpr(int childDir, int attCount, UIAttributeExpr** attributes, UIDirectiveExpr* previous, UIDirectiveExpr* lastChild, int viewIndex);
+  UIDirectiveExpr(int childDir, int attCount, UIAttributeExpr** attributes, UIDirectiveExpr* previous, UIDirectiveExpr* lastChild, int viewIndex, bool childrenViewFlag);
   void accept(ExprVisitor *visitor);
 };
 

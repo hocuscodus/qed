@@ -71,14 +71,18 @@ thread_local const val document = val::global("document");
 bool initialized = false;
 
 void initDisplay() {
-  if (initialized)
-    return;
+  if (!initialized) {
+    EMSCRIPTEN_RESULT ret = emscripten_set_mousedown_callback("#canvas", 0, 1, mouse_callback);
+    TEST_RESULT(emscripten_set_mousedown_callback);
+    ret = emscripten_set_mouseup_callback("#canvas", 0, 1, mouse_callback);
+    TEST_RESULT(emscripten_set_mouseup_callback);
+    initialized = true;
+  }
 
-  EMSCRIPTEN_RESULT ret = emscripten_set_mousedown_callback("#canvas", 0, 1, mouse_callback);
-  TEST_RESULT(emscripten_set_mousedown_callback);
-  ret = emscripten_set_mouseup_callback("#canvas", 0, 1, mouse_callback);
-  TEST_RESULT(emscripten_set_mouseup_callback);
-  initialized = true;
+  const auto canvas = document.call<emscripten::val, std::string>("querySelector", "canvas");
+  auto ctx = canvas.call<emscripten::val, std::string>("getContext", "2d");
+
+  ctx.call<void>("clearRect", 0, 0, canvas["width"], canvas["height"]);
 }
 
 void uninitDisplay() {
