@@ -4,9 +4,9 @@ The code is quite short but does a lot. It implements a yellow oval increment/de
 
 ```
 void Button(String text) {
-  float solid = 20%
+  float shade = 20%
 
-  <out: rect; opacity: solid; size: 35; onPress: solid = 35%; onRelease: {solid = 20%; return()}>
+  <out: rect; opacity: shade; size: 35; onPress: shade = 35%; onRelease: {shade = 20%; return()}>
   <out: text; opacity: 60%; align: 50%; fontSize: 40;>
 }
 
@@ -14,14 +14,14 @@ int count = 0
 var decButton = new Button("-") -> count--
 var incButton = new Button("+") -> count++
 
-<out: oval; color: count > 0 ? COLOR_GREEN : count < 0 ? COLOR_RED : COLOR_YELLOW;>
-<_ color: COLOR_BLACK;
-  <out: decButton;>
-  <.
-    <size: 80;>
-    <out: count; opacity: 70%; align: 50%; fontSize: 50;>
+<out: oval; color: count > 0 ? COLOR_GREEN : count < 0 ? COLOR_RED : COLOR_YELLOW;
+  <_ color: COLOR_BLACK;
+    <out: decButton;>
+    <size: 80;
+      <out: count; opacity: 70%; align: 50%; fontSize: 50;>
+    >
+    <out: incButton;>
   >
-  <out: incButton;>
 >
 ```
 
@@ -46,6 +46,10 @@ To display both `decButton` and `incButton` instances, QED referts to their UI d
 User input
 
 Other UI attributes...
+
+Explain what we tell QED
+
+Explain what QED infers for us
 
 How does QED know the size of the oval?
 

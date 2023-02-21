@@ -25,7 +25,6 @@ struct ValueStack2 {
   ValueStack2() {
     push(ATTRIBUTE_ALIGN, FLOAT_VAL(0));
     push(ATTRIBUTE_POS, INT_VAL(0));
-    push(ATTRIBUTE_COLOR, INT_VAL(0xFFFFFF));
     push(ATTRIBUTE_OPACITY, FLOAT_VAL(1));
   }
 
@@ -37,8 +36,12 @@ struct ValueStack2 {
     map[key].pop();
   }
 
+	bool empty(int key) {
+    return map[key].empty();
+  }
+
 	Value get(int key) {
-    return map[key].top();
+    return empty(key) ? VOID_VAL : map[key].top();
   }
 };
 

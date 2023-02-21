@@ -145,8 +145,9 @@ QNI_FN(rect) {
   const auto canvas = document.call<emscripten::val, std::string>("querySelector", "canvas");
   auto ctx = canvas.call<emscripten::val, std::string>("getContext", "2d");
   char colorBuffer[16];
+  bool drawFlag = !clipping || !attStack.empty(ATTRIBUTE_COLOR);
 
-  if (!clipping) {
+  if (drawFlag) {
     sprintf(colorBuffer, "#%02X%02X%02X", (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
     ctx.set("fillStyle", colorBuffer);
     ctx.set("globalAlpha", opacity);
@@ -154,10 +155,7 @@ QNI_FN(rect) {
 
   ctx.call<void>("fillRect", pos[0], pos[1], size[0], size[1]);
 
-  if (!clipping) {
-    ctx.set("globalAlpha", 1.0);
-  }
-  else {
+  if (clipping) {
     ctx.call<void>("clip");
     clipping = false;
   }
@@ -180,8 +178,9 @@ QNI_FN(oval) {
   const auto canvas = document.call<emscripten::val, std::string>("querySelector", "canvas");
   auto ctx = canvas.call<emscripten::val, std::string>("getContext", "2d");
   char colorBuffer[16];
+  bool drawFlag = !clipping || !attStack.empty(ATTRIBUTE_COLOR);
 
-  if (!clipping) {
+  if (drawFlag) {
     sprintf(colorBuffer, "#%02X%02X%02X", (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
     ctx.set("fillStyle", colorBuffer);
     ctx.set("globalAlpha", opacity);
@@ -190,11 +189,10 @@ QNI_FN(oval) {
   ctx.call<void>("beginPath");
   ctx.call<void>("ellipse", pos[0] + size[0], pos[1] + size[1], size[0], size[1], 0, 0, 2*M_PI);
 
-  if (!clipping) {
+  if (drawFlag)
     ctx.call<void>("fill");
-    ctx.set("globalAlpha", 1.0);
-  }
-  else {
+
+  if (clipping) {
     ctx.call<void>("clip");
     clipping = false;
   }

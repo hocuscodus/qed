@@ -9,12 +9,10 @@ int count = 0
 var decButton = new Button("-") -> count--
 var incButton = new Button("+") -> count++
 
-<out: oval;
-  <out: rect; color: count > 0 ? COLOR_GREEN : count < 0 ? COLOR_RED : COLOR_YELLOW;>
+<out: oval; color: count > 0 ? COLOR_GREEN : count < 0 ? COLOR_RED : COLOR_YELLOW;
   <_ color: COLOR_BLACK;
     <out: decButton;>
-    <
-      <size: 80;>
+    <size: 80;
       <out: count; opacity: 70%; align: 50%; fontSize: 50;>
     >
     <out: incButton;>
