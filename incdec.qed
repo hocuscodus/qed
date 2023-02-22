@@ -1,7 +1,11 @@
+int[] vv = [1, 6]
+
 void Button(String text) {
   float shade = 20%
 
-  <out: rect; opacity: shade; size: 35; onPress: shade = 35%; onRelease: {shade = 20%; return()}>
+  <out: rect; opacity: shade; size: 35//[35, -1]
+   onPress: shade = 35%//{shade = 35%; captureMouse()}
+   onRelease: {shade = 20%; return()}>//if (hovering) return()}>
   <out: text; opacity: 60%; align: 50%; fontSize: 40;>
 }
 
@@ -12,7 +16,7 @@ var incButton = new Button("+") -> count++
 <out: oval; color: count > 0 ? COLOR_GREEN : count < 0 ? COLOR_RED : COLOR_YELLOW;
   <_ color: COLOR_BLACK;
     <out: decButton;>
-    <size: 80;
+    <size: 80;//[100, 80];
       <out: count; opacity: 70%; align: 50%; fontSize: 50;>
     >
     <out: incButton;>

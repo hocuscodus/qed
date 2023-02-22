@@ -30,6 +30,7 @@
 #define IS_FUNCTION(value)     isObjType(value, OBJ_FUNCTION)
 #define IS_NATIVE(value)       isObjType(value, OBJ_NATIVE)
 #define IS_STRING(value)       isObjType(value, OBJ_STRING)
+#define IS_ARRAY(value)        isObjType(value, OBJ_ARRAY)
 
 #define AS_THREAD(value)       ((CoThread*)AS_OBJ(value))
 #define AS_INSTANCE(value)     ((ObjInstance*)AS_OBJ(value))
@@ -41,6 +42,7 @@
 #define AS_PRIMITIVE(value)    ((ObjPrimitive*)AS_OBJ(value))
 #define AS_STRING(value)       ((ObjString*)AS_OBJ(value))
 #define AS_CSTRING(value)      (((ObjString*)AS_OBJ(value))->chars)
+#define AS_ARRAY(value)        ((ObjArray*)AS_OBJ(value))
 
 typedef struct ObjString ObjString;
 
@@ -55,6 +57,7 @@ typedef enum {
   OBJ_PRIMITIVE,
   OBJ_STRING,
   OBJ_UPVALUE,
+  OBJ_ARRAY,
   OBJ_FUNCTION_PTR,
   OBJ_INTERNAL
 } ObjType;
@@ -221,6 +224,13 @@ struct CoThread {
   bool onEvent(Event event, Point pos, Point size);
 };
 
+typedef struct {
+  Obj obj;
+  int count;
+  int capacity;
+  Value *values;
+} ObjArray;
+
 struct ObjInstance {
   Obj obj;
   ObjCallable *callable;
@@ -250,7 +260,10 @@ ObjFunctionPtr *newFunctionPtr(Type type, int arity, Type *parms);
 ObjString *takeString(char *chars, int length);
 ObjString *copyString(const char *chars, int length);
 ObjUpvalue *newUpvalue(Value *slot);
+ObjArray *newArray();
+#ifdef DEBUG_TRACE_EXECUTION
 void printObject(Value value);
+#endif
 void freeObjects();
 
 extern Obj *objects;

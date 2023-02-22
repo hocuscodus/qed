@@ -398,8 +398,8 @@ QNI_FN(oval) {
 //  SDL_SetTextureBlendMode(rend2, SDL_BLENDMODE_ADD);
   filledEllipseRGBA(rend2, pos[0] + rx, pos[1] + ry, rx, ry,
                     (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, (int) (opacity * 0xFF));
-//  aaellipseRGBA(rend2, pos[0] + rx, pos[1] + ry, rx, ry,
-//                    (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, (int) (opacity * 0xFF));
+  aaellipseRGBA(rend2, pos[0] + rx, pos[1] + ry, rx, ry,
+                    (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, (int) (opacity * 0xFF));
   return VOID_VAL;
 }
 

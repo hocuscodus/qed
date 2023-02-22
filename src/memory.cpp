@@ -96,6 +96,10 @@ static void freeObject(Obj *object) {
       FREE(ObjUpvalue, object);
       break;
 
+    case OBJ_ARRAY:
+      FREE(ObjArray, object);
+      break;
+
     case OBJ_FUNCTION_PTR:
       ObjFunctionPtr *functionPtr = (ObjFunctionPtr *)object;
 

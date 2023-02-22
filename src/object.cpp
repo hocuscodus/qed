@@ -288,9 +288,10 @@ InterpretResult run(CoThread *current) {
       break;
     case OP_PRINT: {
       Value value = POP;
-
+#ifdef DEBUG_TRACE_EXECUTION
       printObject(value);
       printf("\n");
+#endif
       break;
     }
     case OP_JUMP: {
@@ -1086,6 +1087,14 @@ ObjUpvalue *newUpvalue(Value *slot) {
   return upvalue;
 }
 
+ObjArray *newArray() {
+  ObjArray *array = ALLOCATE_OBJ(ObjArray, OBJ_ARRAY);
+  array->count = 0;
+  array->capacity = 0;
+  array->values = NULL;
+  return array;
+}
+
 static void printFunction(ObjCallable *function) {
   if (function->name == NULL) {
     printf("<script>");
@@ -1095,6 +1104,7 @@ static void printFunction(ObjCallable *function) {
   printf("<fn %s>", function->name->chars);
 }
 
+#ifdef DEBUG_TRACE_EXECUTION
 void printObject(Value value) {
   switch (OBJ_TYPE(value)) {
   case OBJ_INTERNAL:
@@ -1130,8 +1140,19 @@ void printObject(Value value) {
   case OBJ_UPVALUE:
     printf("upvalue");
     break;
+  case OBJ_ARRAY:
+    printf(i < AS_ARRAY(value)->count - 1 ? "," : "]");
+    for (int i = 0; i < AS_ARRAY(value)->count; i++) {
+      if (i)
+        printf(", ");
+
+      printValue(AS_ARRAY(value)->values[i]);
+    }
+    printf("]");
+    break;
   }
 }
+#endif
 #if 0
 /*
  *    Copyright (C) 2016 Hocus Codus Software inc.
