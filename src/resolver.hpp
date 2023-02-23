@@ -96,6 +96,7 @@ public:
 
   void checkDeclaration(Token *name);
   Type removeLocal();
+  Type readType(ListExpr *expr, int &offset);
   bool resolve(Compiler *compiler);
   void acceptGroupingExprUnits(GroupingExpr *expr);
   void acceptSubExpr(Expr *expr);

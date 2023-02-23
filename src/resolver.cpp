@@ -758,16 +758,11 @@ void Resolver::visitGroupingExpr(GroupingExpr *expr)
 // );
 void Resolver::visitListExpr(ListExpr *expr)
 {
-  Expr *subExpr = expr->expressions[0];
+  int index = 0;
+  Type returnType = readType(expr, index);
 
-  accept<int>(subExpr, 0);
-  Type type = removeLocal();
-
-  if (isType(type)) {
-    // parse declaration
-    Type returnType = convertType(type);
-
-    subExpr = expr->expressions[1];
+  if (index) {
+    Expr *subExpr = expr->expressions[index];
 
     switch (subExpr->type)
     {
@@ -801,14 +796,12 @@ void Resolver::visitListExpr(ListExpr *expr)
       current->addLocal(returnType);
       current->setLocalName(&assignExpr->varExp->name);
 
-      if (expr->count > 2)
+      if (expr->count > index + 1)
         parser.error("Expect ';' or newline after variable declaration.");
       return;
     }
     case EXPR_CALL:
     {
-      Expr *bodyExpr = expr->count > 2 ? expr->expressions[2] : NULL;
-
       expr->listType = subExpr->type;
 
       CallExpr *callExpr = (CallExpr *)subExpr;
@@ -837,20 +830,17 @@ void Resolver::visitListExpr(ListExpr *expr)
         for (int index = 0; index < callExpr->count; index++)
           if (callExpr->arguments[index]->type == EXPR_LIST) {
             ListExpr *param = (ListExpr *)callExpr->arguments[index];
-            Expr *paramExpr = param->expressions[0];
+            int ndx = 0;
+            Type type = readType(param, ndx);
 
-            accept<int>(paramExpr, 0);
-            Type type = removeLocal();
-
-            if (isType(type))
-            {
-              paramExpr = param->expressions[1];
+            if (ndx) {
+              Expr *paramExpr = param->expressions[ndx];
 
               if (paramExpr->type != EXPR_VARIABLE)
                 parser.error("Parameter name must be a string.");
               else
               {
-                current->addLocal(convertType(type));
+                current->addLocal(type);
                 current->setLocalName(&((VariableExpr *)paramExpr)->name);
 
                 if (param->count > 2)
@@ -863,9 +853,11 @@ void Resolver::visitListExpr(ListExpr *expr)
           else
             parser.error("Parameter consists of a type and a name.");
 
+        compiler.function->bodyExpr = expr->count > index + 1 ? expr->expressions[index + 1] : NULL;
+
         if (returnType.valueType != VAL_HANDLER && strcmp(compiler.function->name->chars, "return"))
           if (returnType.valueType == VAL_VOID)
-            bodyExpr = parse("void return();", 0, 0, bodyExpr);
+            compiler.function->bodyExpr = parse("void return();", 0, 0, compiler.function->bodyExpr);
           else {
             char returnDec[128];
 
@@ -873,12 +865,12 @@ void Resolver::visitListExpr(ListExpr *expr)
 //            parse(returnDec);
           }
 
-        if (bodyExpr)
-          if (bodyExpr->type == EXPR_GROUPING && ((GroupingExpr *)bodyExpr)->name.type == TOKEN_RIGHT_BRACE)
-            acceptGroupingExprUnits((GroupingExpr *)bodyExpr);
+        if (compiler.function->bodyExpr)
+          if (compiler.function->bodyExpr->type == EXPR_GROUPING && ((GroupingExpr *)compiler.function->bodyExpr)->name.type == TOKEN_RIGHT_BRACE)
+            acceptGroupingExprUnits((GroupingExpr *)compiler.function->bodyExpr);
           else
           {
-            accept<int>(bodyExpr, 0);
+            accept<int>(compiler.function->bodyExpr, 0);
             removeLocal();
           }
 
@@ -1215,6 +1207,38 @@ Type Resolver::removeLocal()
        current->addLocal(VAL_VOID);
      }
  */
+}
+
+Type Resolver::readType(ListExpr *expr, int &offset) {
+  Expr *subExpr = expr->expressions[offset];
+
+  accept<int>(subExpr, 0);
+
+  Type type = removeLocal();
+  Type returnType = {VAL_VOID};
+
+  if (isType(type)) {
+    returnType = convertType(type);
+
+    while (true) {
+      subExpr = expr->expressions[++offset];
+
+      if (subExpr->type == EXPR_GROUPING) {
+        GroupingExpr *group = (GroupingExpr *) subExpr;
+
+        if (!group->count && group->name.start[0] == ']') {
+          ObjArray *array = newArray();
+
+          array->elementtype = returnType;
+          returnType = {VAL_OBJ, &array->obj};
+        }
+      }
+      else
+        break;
+    }
+  }
+
+  return returnType;
 }
 
 bool Resolver::resolve(Compiler *compiler)

@@ -206,17 +206,17 @@ void CodeGenerator::visitGroupingExpr(GroupingExpr *expr) {
 void CodeGenerator::visitListExpr(ListExpr *expr) {
     switch(expr->listType) {
     case EXPR_ASSIGN: {
-      AssignExpr *subExpr = (AssignExpr *) expr->expressions[1];
+      AssignExpr *subExpr = (AssignExpr *) expr->expressions[expr->count - 1];
 
       accept<int>(subExpr->value, 0);
       break;
     }
     case EXPR_CALL: {
-      CallExpr *subExpr = (CallExpr *) expr->expressions[1];
       CodeGenerator generator(parser, expr->function);
+      Expr *bodyExpr = expr->function->bodyExpr;
 
-      if (expr->count > 2)
-        generator.emitCode(expr->expressions[2]);
+      if (bodyExpr)
+        generator.emitCode(bodyExpr);
 
       generator.endCompiler();
 

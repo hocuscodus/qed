@@ -21,6 +21,7 @@
 #include "common.h"
 #include "chunk.hpp"
 #include "value.h"
+#include "expr.hpp"
 
 #define OBJ_TYPE(value)        (AS_OBJ(value)->type)
 
@@ -118,6 +119,7 @@ struct IndexList {
 };
 
 struct ObjFunction : ObjCallable {
+  Expr *bodyExpr;
   Chunk chunk;
   Obj *native;
   IndexList *instanceIndexes;
@@ -226,6 +228,7 @@ struct CoThread {
 
 typedef struct {
   Obj obj;
+  Type elementtype;
   int count;
   int capacity;
   Value *values;
