@@ -159,6 +159,32 @@ static Expr *convertToFloat(Expr *expr, Type &type, Parser &parser)
   return expr;
 }
 
+static Expr *convertToObj(Obj *srcObjType, Expr *expr, Type &type, Parser &parser)
+{
+  switch (srcObjType->type) {
+  case OBJ_ARRAY:
+    expr = convertToArray(OP_BOOL_TO_STRING, expr);
+    break;
+/*
+  OBJ_CLOSURE
+  OBJ_FUNCTION
+  OBJ_NATIVE
+  OBJ_NATIVE_CLASS
+  OBJ_STRING
+  OBJ_FUNCTION_PTR
+*/
+  case OBJ_STRING:
+    expr = convertToString(expr, type, parser);
+    break;
+
+  default:
+    parser.error("Cannot convert to object");
+    break;
+  }
+
+  return expr;
+}
+
 static Expr *convertToType(Type srcType, Expr *expr, Type &type, Parser &parser)
 {
   switch (srcType.valueType)
@@ -180,7 +206,7 @@ static Expr *convertToType(Type srcType, Expr *expr, Type &type, Parser &parser)
     break;
 
   case VAL_OBJ:
-    expr = convertToString(expr, type, parser);
+    expr = convertToObj(srcType.objType, expr, type, parser);
     break;
 
   default:

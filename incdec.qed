@@ -1,4 +1,4 @@
-int[] vv = [1, 6]
+int[] vv = [1; 6]
 
 void Button(String text) {
   float shade = 20%
