@@ -50,8 +50,7 @@ void onEvent(CoThread *coThread, Event event, Point pos) {
     repaint2(coThread);
 }
 
-EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData)
-{
+EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData) {
   int eventTypes[] = {EMSCRIPTEN_EVENT_MOUSEDOWN, EMSCRIPTEN_EVENT_MOUSEUP};
   Event events[] = {EVENT_PRESS, EVENT_RELEASE};
 
@@ -469,8 +468,7 @@ QNI_FN(displayText) {
   return VOID_VAL;
 }
 
-void SDLCALL postMessage(void (*fn)(void *), void *data)
-{
+void SDLCALL postMessage(void (*fn)(void *), void *data) {
     SDL_Event event;
     SDL_UserEvent userevent;
 

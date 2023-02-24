@@ -458,8 +458,7 @@ UIAttributeExpr *Parser::attribute(TokenType endGroupType) {
   return new UIAttributeExpr(identifier, handler);
 }
 
-UIDirectiveExpr *newNode(int childDir, int attCount, UIAttributeExpr **attributes, UIDirectiveExpr *previous, UIDirectiveExpr *lastChild)
-{
+UIDirectiveExpr *newNode(int childDir, int attCount, UIAttributeExpr **attributes, UIDirectiveExpr *previous, UIDirectiveExpr *lastChild) {
   UIDirectiveExpr *node = new UIDirectiveExpr(childDir, attCount, attributes, previous, lastChild, 0, false);
 
   for (int dir = 0; dir < NUM_DIRS; dir++)

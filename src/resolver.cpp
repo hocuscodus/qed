@@ -50,17 +50,14 @@ static Obj *primitives[] = {
   &newPrimitive("handler", {VAL_HANDLER})->obj
 };
 
-static bool identifiersEqual2(Token *a, ObjString *b)
-{
+static bool identifiersEqual2(Token *a, ObjString *b) {
   return a->length != 0 && a->length == b->length &&
          memcmp(a->start, b->chars, a->length) == 0;
 }
 
-static bool isType(Type &type)
-{
+static bool isType(Type &type) {
   if (type.valueType == VAL_OBJ)
-    switch (type.objType->type)
-    {
+    switch (type.objType->type) {
     case OBJ_FUNCTION:
     case OBJ_NATIVE:
     {
@@ -77,17 +74,14 @@ static bool isType(Type &type)
   return false;
 }
 
-static Type convertType(Type &type)
-{
+static Type convertType(Type &type) {
   return type.objType->type == OBJ_PRIMITIVE
              ? ((ObjPrimitive *)type.objType)->type
              : type;
 }
 
-static Expr *convertToString(Expr *expr, Type &type, Parser &parser)
-{
-  switch (type.valueType)
-  {
+static Expr *convertToString(Expr *expr, Type &type, Parser &parser) {
+  switch (type.valueType) {
   case VAL_INT:
     expr = new OpcodeExpr(OP_INT_TO_STRING, expr);
     break;
@@ -115,10 +109,8 @@ static Expr *convertToString(Expr *expr, Type &type, Parser &parser)
   return expr;
 }
 
-static Expr *convertToInt(Expr *expr, Type &type, Parser &parser)
-{
-  switch (type.valueType)
-  {
+static Expr *convertToInt(Expr *expr, Type &type, Parser &parser) {
+  switch (type.valueType) {
   case VAL_INT:
     break;
 
@@ -137,10 +129,8 @@ static Expr *convertToInt(Expr *expr, Type &type, Parser &parser)
   return expr;
 }
 
-static Expr *convertToFloat(Expr *expr, Type &type, Parser &parser)
-{
-  switch (type.valueType)
-  {
+static Expr *convertToFloat(Expr *expr, Type &type, Parser &parser) {
+  switch (type.valueType) {
   case VAL_INT:
     expr = new OpcodeExpr(OP_INT_TO_FLOAT, expr);
     break;
@@ -159,8 +149,7 @@ static Expr *convertToFloat(Expr *expr, Type &type, Parser &parser)
   return expr;
 }
 
-static Expr *convertToObj(Obj *srcObjType, Expr *expr, Type &type, Parser &parser)
-{
+static Expr *convertToObj(Obj *srcObjType, Expr *expr, Type &type, Parser &parser) {
   switch (srcObjType->type) {
   case OBJ_ARRAY:
     expr = convertToArray(OP_BOOL_TO_STRING, expr);
@@ -185,10 +174,8 @@ static Expr *convertToObj(Obj *srcObjType, Expr *expr, Type &type, Parser &parse
   return expr;
 }
 
-static Expr *convertToType(Type srcType, Expr *expr, Type &type, Parser &parser)
-{
-  switch (srcType.valueType)
-  {
+static Expr *convertToType(Type srcType, Expr *expr, Type &type, Parser &parser) {
+  switch (srcType.valueType) {
   case VAL_INT:
     expr = convertToInt(expr, type, parser);
     break;
@@ -216,8 +203,7 @@ static Expr *convertToType(Type srcType, Expr *expr, Type &type, Parser &parser)
   return expr;
 }
 
-static void resolveVariableExpr(VariableExpr *expr)
-{
+static void resolveVariableExpr(VariableExpr *expr) {
   if (expr->index != -1) {
     current->addLocal({VAL_OBJ, primitives[expr->index]});
     return;
@@ -242,8 +228,7 @@ Resolver::Resolver(Parser &parser, Expr *exp) : ExprVisitor(), parser(parser) {
   uiParseCount = -1;
 }
 
-static OpCode getOpCode(Type type, Token token)
-{
+static OpCode getOpCode(Type type, Token token) {
   OpCode opCode = OP_FALSE;
 
   switch (token.type) {
@@ -319,8 +304,7 @@ static OpCode getOpCode(Type type, Token token)
   return opCode;
 }
 
-void Resolver::visitAssignExpr(AssignExpr *expr)
-{
+void Resolver::visitAssignExpr(AssignExpr *expr) {
   //  accept<int>(expr->index, 0);
   if (expr->value)
     accept<int>(expr->value, 0);
@@ -434,8 +418,7 @@ void Resolver::visitDirectiveExpr(UIDirectiveExpr *expr) {
         valueStack.pop(expr->attributes[index]->name.getString());*/
 }
 #endif
-void Resolver::visitBinaryExpr(BinaryExpr *expr)
-{
+void Resolver::visitBinaryExpr(BinaryExpr *expr) {
   //  if (expr->left) {
   accept<int>(expr->left, 0);
   //    expr->type = expr->left->type;
@@ -453,8 +436,7 @@ void Resolver::visitBinaryExpr(BinaryExpr *expr)
 
   expr->opCode = getOpCode(type, expr->op);
 
-  switch (expr->op.type)
-  {
+  switch (expr->op.type) {
   case TOKEN_BANG_EQUAL:
   case TOKEN_GREATER_EQUAL:
   case TOKEN_LESS_EQUAL:
@@ -462,8 +444,7 @@ void Resolver::visitBinaryExpr(BinaryExpr *expr)
     break;
   }
 
-  switch (expr->op.type)
-  {
+  switch (expr->op.type) {
   case TOKEN_PLUS:
     if (type1.valueType == VAL_OBJ) {
       expr->right = convertToString(expr->right, type2, parser);
@@ -479,8 +460,7 @@ void Resolver::visitBinaryExpr(BinaryExpr *expr)
   case TOKEN_LESS:
   case TOKEN_LESS_EQUAL:
     boolVal = expr->op.type != TOKEN_PLUS;
-    if (type1.valueType == VAL_OBJ)
-    {
+    if (type1.valueType == VAL_OBJ) {
       if (type2.valueType != VAL_OBJ)
         parser.error("Second operand must be a string");
 
@@ -493,13 +473,10 @@ void Resolver::visitBinaryExpr(BinaryExpr *expr)
   case TOKEN_STAR:
   case TOKEN_SLASH:
   {
-    switch (type1.valueType)
-    {
+    switch (type1.valueType) {
     case VAL_INT:
-      if (!type1.equals(type2))
-      {
-        if (type2.valueType != VAL_FLOAT)
-        {
+      if (!type1.equals(type2)) {
+        if (type2.valueType != VAL_FLOAT) {
           current->addLocal(VAL_VOID);
           parser.error("Second operand must be numeric");
           return;
@@ -515,10 +492,8 @@ void Resolver::visitBinaryExpr(BinaryExpr *expr)
       break;
 
     case VAL_FLOAT:
-      if (!type1.equals(type2))
-      {
-        if (type2.valueType != VAL_INT)
-        {
+      if (!type1.equals(type2)) {
+        if (type2.valueType != VAL_INT) {
           current->addLocal(VAL_VOID);
           parser.error("Second operand must be numeric");
           return;
@@ -597,10 +572,8 @@ static Expr *generateUIFunction(const char *type, const char *name, char *args, 
     return new ListExpr(3, functionExprs, EXPR_LIST, NULL);
 }
 
-void Resolver::visitCallExpr(CallExpr *expr)
-{
-  if (expr->newFlag && expr->handler != NULL)
-  {
+void Resolver::visitCallExpr(CallExpr *expr) {
+  if (expr->newFlag && expr->handler != NULL) {
     expr->handler = generateUIFunction("void", "handler", NULL, expr->handler, 1, 0, NULL);
     accept<int>(expr->handler);
     removeLocal();
@@ -611,10 +584,8 @@ void Resolver::visitCallExpr(CallExpr *expr)
   Type type = removeLocal();
   //  Local *callerLocal = current->peekLocal(expr->argCount);
 
-  if (type.valueType == VAL_OBJ)
-  {
-    switch (type.objType->type)
-    {
+  if (type.valueType == VAL_OBJ) {
+    switch (type.objType->type) {
     case OBJ_FUNCTION:
     case OBJ_NATIVE: {
       ObjCallable *callable = (ObjCallable *)type.objType;
@@ -648,8 +619,7 @@ void Resolver::visitCallExpr(CallExpr *expr)
       else
         current->addLocal(callable->type.valueType);
 
-      for (int index = 0; index < expr->count; index++)
-      {
+      for (int index = 0; index < expr->count; index++) {
         accept<int>(expr->arguments[index]);
         Type argType = removeLocal();
 
@@ -670,12 +640,10 @@ void Resolver::visitCallExpr(CallExpr *expr)
   }
 }
 
-void Resolver::visitDeclarationExpr(DeclarationExpr *expr)
-{
+void Resolver::visitDeclarationExpr(DeclarationExpr *expr) {
   checkDeclaration(&expr->name);
 
-  if (expr->initExpr != NULL)
-  {
+  if (expr->initExpr != NULL) {
     accept<int>(expr->initExpr, 0);
     Type type1 = removeLocal();
   }
@@ -684,8 +652,7 @@ void Resolver::visitDeclarationExpr(DeclarationExpr *expr)
   current->setLocalName(&expr->name);
 }
 
-void Resolver::visitFunctionExpr(FunctionExpr *expr)
-{
+void Resolver::visitFunctionExpr(FunctionExpr *expr) {
   checkDeclaration(&expr->name);
   current->addLocal(VAL_OBJ);
   current->setLocalName(&expr->name);
@@ -718,8 +685,7 @@ void Resolver::visitFunctionExpr(FunctionExpr *expr)
   expr->function = compiler.function;
 }
 
-void Resolver::visitGetExpr(GetExpr *expr)
-{
+void Resolver::visitGetExpr(GetExpr *expr) {
   accept<int>(expr->object);
 
   Type objectType = removeLocal();
@@ -730,8 +696,7 @@ void Resolver::visitGetExpr(GetExpr *expr)
   {
     ObjFunction *type = (ObjFunction *)objectType.objType;
 
-    for (int i = 0; expr->index == -1 && i < type->fieldCount; i++)
-    {
+    for (int i = 0; expr->index == -1 && i < type->fieldCount; i++) {
       Field *field = &type->fields[i];
 
       if (identifiersEqual2(&expr->name, field->name)) // && local->depth != -1)
@@ -751,8 +716,7 @@ void Resolver::visitGetExpr(GetExpr *expr)
   current->addLocal({VAL_VOID});
 }
 
-void Resolver::visitGroupingExpr(GroupingExpr *expr)
-{
+void Resolver::visitGroupingExpr(GroupingExpr *expr) {
   TokenType type = expr->name.type;
   bool parenFlag = type == TOKEN_RIGHT_PAREN;
   bool groupFlag = type == TOKEN_RIGHT_BRACE || parenFlag;
@@ -782,16 +746,14 @@ void Resolver::visitGroupingExpr(GroupingExpr *expr)
 // (group','
 //   (var 2) (= -1 (+ 2 3))
 // );
-void Resolver::visitListExpr(ListExpr *expr)
-{
+void Resolver::visitListExpr(ListExpr *expr) {
   int index = 0;
   Type returnType = readType(expr, index);
 
   if (index) {
     Expr *subExpr = expr->expressions[index];
 
-    switch (subExpr->type)
-    {
+    switch (subExpr->type) {
     case EXPR_ASSIGN:
     {
       AssignExpr *assignExpr = (AssignExpr *)subExpr;
@@ -799,8 +761,7 @@ void Resolver::visitListExpr(ListExpr *expr)
       expr->listType = subExpr->type;
       checkDeclaration(&assignExpr->varExp->name);
 
-      if (assignExpr->value != NULL)
-      {
+      if (assignExpr->value != NULL) {
         accept<int>(assignExpr->value, 0);
         Type internalType = {VAL_OBJ, &objInternalType};
         Type type1 = removeLocal();
@@ -903,8 +864,7 @@ void Resolver::visitListExpr(ListExpr *expr)
         compiler.function->fieldCount = compiler.localCount;
         compiler.function->fields = ALLOCATE(Field, compiler.localCount);
 
-        for (int index = 0; index < compiler.localCount; index++)
-        {
+        for (int index = 0; index < compiler.localCount; index++) {
           Local *local = &compiler.locals[index];
 
           compiler.function->fields[index].type = local->type;
@@ -931,8 +891,7 @@ void Resolver::visitListExpr(ListExpr *expr)
 
       LiteralExpr *valueExpr = NULL;
 
-      switch (returnType.valueType)
-      {
+      switch (returnType.valueType) {
       case VAL_VOID:
         parser.error("Cannot declare a void variable.");
         break;
@@ -950,8 +909,7 @@ void Resolver::visitListExpr(ListExpr *expr)
         break;
 
       case VAL_OBJ:
-        switch (returnType.objType->type)
-        {
+        switch (returnType.objType->type) {
         case OBJ_STRING:
           valueExpr = new LiteralExpr(VAL_OBJ, {.obj = &copyString("", 0)->obj});
           break;
@@ -963,8 +921,7 @@ void Resolver::visitListExpr(ListExpr *expr)
         break;
       }
 
-      if (valueExpr)
-      {
+      if (valueExpr) {
         expr->expressions[1] = new AssignExpr(
             varExpr, buildToken(TOKEN_EQUAL, "=", 1, varExpr->name.line),
             valueExpr, OP_FALSE, false);
@@ -980,8 +937,7 @@ void Resolver::visitListExpr(ListExpr *expr)
     }
   }
   else // parse array expression
-    for (int index = 0; index < expr->count; index++)
-    {
+    for (int index = 0; index < expr->count; index++) {
       Expr *subExpr = expr->expressions[index];
 
       accept<int>(subExpr, 0);
@@ -993,16 +949,14 @@ void Resolver::visitListExpr(ListExpr *expr)
   current->addLocal({VAL_VOID});
 }
 
-void Resolver::visitLiteralExpr(LiteralExpr *expr)
-{
+void Resolver::visitLiteralExpr(LiteralExpr *expr) {
   if (expr->type == VAL_OBJ)
     current->addLocal(stringType);
   else
     current->addLocal(expr->type);
 }
 
-void Resolver::visitLogicalExpr(LogicalExpr *expr)
-{
+void Resolver::visitLogicalExpr(LogicalExpr *expr) {
   accept(expr->left, 0);
   accept(expr->right, 0);
 
@@ -1015,16 +969,13 @@ void Resolver::visitLogicalExpr(LogicalExpr *expr)
   current->addLocal(VAL_BOOL);
 }
 
-void Resolver::visitOpcodeExpr(OpcodeExpr *expr)
-{
+void Resolver::visitOpcodeExpr(OpcodeExpr *expr) {
   parser.compilerError("In OpcodeExpr!");
   expr->right->accept(this);
 }
 
-void Resolver::visitReturnExpr(ReturnExpr *expr)
-{
-  if (expr->value != NULL)
-  {
+void Resolver::visitReturnExpr(ReturnExpr *expr) {
+  if (expr->value != NULL) {
     accept<int>(expr->value, 0);
 
     Type type = removeLocal();
@@ -1034,8 +985,7 @@ void Resolver::visitReturnExpr(ReturnExpr *expr)
   current->addLocal(VAL_VOID);
 }
 
-void Resolver::visitSetExpr(SetExpr *expr)
-{
+void Resolver::visitSetExpr(SetExpr *expr) {
   accept<int>(expr->object);
   accept<int>(expr->value);
 
@@ -1048,8 +998,7 @@ void Resolver::visitSetExpr(SetExpr *expr)
   {
     ObjFunction *type = (ObjFunction *)objectType.objType;
 
-    for (int i = 0; expr->index == -1 && i < type->fieldCount; i++)
-    {
+    for (int i = 0; expr->index == -1 && i < type->fieldCount; i++) {
       Field *field = &type->fields[i];
 
       if (identifiersEqual2(&expr->name, field->name)) // && local->depth != -1)
@@ -1069,8 +1018,7 @@ void Resolver::visitSetExpr(SetExpr *expr)
   current->addLocal({VAL_VOID});
 }
 
-void Resolver::visitStatementExpr(StatementExpr *expr)
-{
+void Resolver::visitStatementExpr(StatementExpr *expr) {
   int oldLocalCount = current->localCount;
 
   acceptSubExpr(expr->expr);
@@ -1091,8 +1039,7 @@ void Resolver::visitStatementExpr(StatementExpr *expr)
 
 void Resolver::visitSuperExpr(SuperExpr *expr) {}
 
-void Resolver::visitTernaryExpr(TernaryExpr *expr)
-{
+void Resolver::visitTernaryExpr(TernaryExpr *expr) {
   expr->left->accept(this);
 
   Type type = removeLocal();
@@ -1102,8 +1049,7 @@ void Resolver::visitTernaryExpr(TernaryExpr *expr)
 
   expr->middle->accept(this);
 
-  if (expr->right)
-  {
+  if (expr->right) {
     expr->right->accept(this);
     removeLocal();
   }
@@ -1111,14 +1057,12 @@ void Resolver::visitTernaryExpr(TernaryExpr *expr)
 
 void Resolver::visitThisExpr(ThisExpr *expr) {}
 
-void Resolver::visitTypeExpr(TypeExpr *expr)
-{
+void Resolver::visitTypeExpr(TypeExpr *expr) {
   //  current->addLocal({VAL_OBJ, (ObjPrimitiveType) {{OBJ_PRIMITIVE_TYPE},
   //  expr->type}});
 }
 
-void Resolver::visitUnaryExpr(UnaryExpr *expr)
-{
+void Resolver::visitUnaryExpr(UnaryExpr *expr) {
   accept<int>(expr->right, 0);
 
   Type type = removeLocal();
@@ -1126,8 +1070,7 @@ void Resolver::visitUnaryExpr(UnaryExpr *expr)
   if (type.valueType == VAL_VOID)
     parser.error("Value must not be void");
 
-  switch (expr->op.type)
-  {
+  switch (expr->op.type) {
   case TOKEN_PRINT:
     expr->right = convertToString(expr->right, type, parser);
     current->addLocal(VAL_VOID);
@@ -1163,8 +1106,7 @@ void Resolver::visitUnaryExpr(UnaryExpr *expr)
   }
 }
 
-void Resolver::visitVariableExpr(VariableExpr *expr)
-{
+void Resolver::visitVariableExpr(VariableExpr *expr) {
   resolveVariableExpr(expr);
 
   if (expr->index == -1) {
@@ -1182,10 +1124,8 @@ void Resolver::visitSwapExpr(SwapExpr *expr) {
   accept<int>(expr->_expr);
 }
 
-void Resolver::checkDeclaration(Token *name)
-{
-  for (int i = current->localCount - 1; i >= 0; i--)
-  {
+void Resolver::checkDeclaration(Token *name) {
+  for (int i = current->localCount - 1; i >= 0; i--) {
     Local *local = &current->locals[i];
 
     if (local->depth != -1 && local->depth < current->scopeDepth)
@@ -1196,8 +1136,7 @@ void Resolver::checkDeclaration(Token *name)
   }
 }
 
-Type Resolver::removeLocal()
-{
+Type Resolver::removeLocal() {
   Type type = current->removeLocal();
   /*
     if (type.valueType == VAL_VOID && type.objType != NULL) {
@@ -1267,8 +1206,7 @@ Type Resolver::readType(ListExpr *expr, int &offset) {
   return returnType;
 }
 
-bool Resolver::resolve(Compiler *compiler)
-{
+bool Resolver::resolve(Compiler *compiler) {
   Compiler *oldCurrent = current;
 
   current = compiler;
@@ -1449,8 +1387,7 @@ IntTreeUnit *ObjFunction::parseResize(int dir, const Point &limits, LocationUnit
   return topSizers[dir]->parseResize(&areas, Path(limits.size()), dir, limits);
 }
 */
-void Resolver::acceptSubExpr(Expr *expr)
-{
+void Resolver::acceptSubExpr(Expr *expr) {
   accept<int>(expr, 0);
 /*
   if (expr->type == EXPR_VARIABLE) {
