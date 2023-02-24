@@ -234,6 +234,15 @@ void ASTPrinter::visitGroupingExpr(GroupingExpr *expr) {
   printf(")");
 }
 
+void ASTPrinter::visitArrayExpr(ArrayExpr *expr) {
+  printf("[");
+  for (int index = 0; index < expr->count; index++) {
+    if (index) printf(", ");
+    expr->expressions[index]->accept(this);
+  }
+  printf("]");
+}
+
 void ASTPrinter::visitListExpr(ListExpr *expr) {
   printf("(list ");
   for (int index = 0; index < expr->count; index++) {

@@ -17,6 +17,7 @@ typedef enum {
   EXPR_ASSIGN,
   EXPR_BINARY,
   EXPR_GROUPING,
+  EXPR_ARRAY,
   EXPR_CALL,
   EXPR_DECLARATION,
   EXPR_FUNCTION,
@@ -52,6 +53,7 @@ struct UIDirectiveExpr;
 struct AssignExpr;
 struct BinaryExpr;
 struct GroupingExpr;
+struct ArrayExpr;
 struct CallExpr;
 struct DeclarationExpr;
 struct FunctionExpr;
@@ -92,6 +94,7 @@ struct ExprVisitor {
   virtual void visitAssignExpr(AssignExpr *expr) = 0;
   virtual void visitBinaryExpr(BinaryExpr *expr) = 0;
   virtual void visitGroupingExpr(GroupingExpr *expr) = 0;
+  virtual void visitArrayExpr(ArrayExpr *expr) = 0;
   virtual void visitCallExpr(CallExpr *expr) = 0;
   virtual void visitDeclarationExpr(DeclarationExpr *expr) = 0;
   virtual void visitFunctionExpr(FunctionExpr *expr) = 0;
@@ -175,6 +178,15 @@ struct GroupingExpr : public Expr {
   Expr* ui;
 
   GroupingExpr(Token name, int count, Expr** expressions, int popLevels, Expr* ui);
+  void accept(ExprVisitor *visitor);
+};
+
+struct ArrayExpr : public Expr {
+  int count;
+  Expr** expressions;
+  ObjFunction* function;
+
+  ArrayExpr(int count, Expr** expressions, ObjFunction* function);
   void accept(ExprVisitor *visitor);
 };
 

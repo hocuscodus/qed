@@ -62,8 +62,9 @@ void freeValueArray(ValueArray *array) {
   FREE_ARRAY(Value, array->values, array->capacity);
   initValueArray(array);
 }
-#ifdef DEBUG_TRACE_EXECUTION
+
 void printValue(Value &value) {
+#ifdef DEBUG_TRACE_EXECUTION
   switch (value.type) {
     case VAL_BOOL:
       printf(AS_BOOL(value) ? "true" : "false");
@@ -85,5 +86,5 @@ void printValue(Value &value) {
       printObject(value);
       break;
   }
-}
 #endif
+}

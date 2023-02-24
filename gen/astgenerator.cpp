@@ -290,6 +290,7 @@ int main(int argc, const char *argv[]) {
     "Assign      : VariableExpr* varExp, Token op, Expr* value, OpCode opCode, bool suffixFlag",
     "Binary      : Expr* left, Token op, Expr* right, OpCode opCode, bool notFlag",
     "Grouping    : Token name, int count, Expr** expressions, int popLevels, Expr* ui",
+    "Array       : int count, Expr** expressions, ObjFunction* function",
     "Call        : Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler",
     "Declaration : Type type, Token name, Expr* initExpr",
     "Function    : Type type, Token name, int count, Expr** params, Expr* body, ObjFunction* function",

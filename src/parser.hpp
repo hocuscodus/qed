@@ -99,6 +99,7 @@ public:
   UIDirectiveExpr *directive(TokenType endGroupType, UIDirectiveExpr *previous);
   Expr *grouping();
   Expr *grouping(TokenType endGroupType, const char *errorMessage);
+  Expr *array();
   Expr *floatNumber();
   Expr *intNumber();
   Expr *string();

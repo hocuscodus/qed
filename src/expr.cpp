@@ -77,6 +77,16 @@ void GroupingExpr::accept(ExprVisitor *visitor) {
   return visitor->visitGroupingExpr(this);
 }
 
+ArrayExpr::ArrayExpr(int count, Expr** expressions, ObjFunction* function) : Expr(EXPR_ARRAY) {
+  this->count = count;
+  this->expressions = expressions;
+  this->function = function;
+}
+
+void ArrayExpr::accept(ExprVisitor *visitor) {
+  return visitor->visitArrayExpr(this);
+}
+
 CallExpr::CallExpr(Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler) : Expr(EXPR_CALL) {
   this->callee = callee;
   this->paren = paren;

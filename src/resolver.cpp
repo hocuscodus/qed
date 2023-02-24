@@ -152,7 +152,7 @@ static Expr *convertToFloat(Expr *expr, Type &type, Parser &parser) {
 static Expr *convertToObj(Obj *srcObjType, Expr *expr, Type &type, Parser &parser) {
   switch (srcObjType->type) {
   case OBJ_ARRAY:
-    expr = convertToArray(OP_BOOL_TO_STRING, expr);
+//    expr = convertToArray(OP_BOOL_TO_STRING, expr);
     break;
 /*
   OBJ_CLOSURE
@@ -188,12 +188,12 @@ static Expr *convertToType(Type srcType, Expr *expr, Type &type, Parser &parser)
 //    expr = convertToBool(OP_BOOL_TO_STRING, expr);
     break;
 
-  case VAL_VOID:
-    parser.error("Value must not be void");
-    break;
-
   case VAL_OBJ:
     expr = convertToObj(srcType.objType, expr, type, parser);
+    break;
+
+  case VAL_VOID:
+    parser.error("Value must not be void");
     break;
 
   default:
@@ -735,6 +735,29 @@ void Resolver::visitGroupingExpr(GroupingExpr *expr) {
     current->addLocal(parenType);
 }
 
+void Resolver::visitArrayExpr(ArrayExpr *expr) {
+  ObjArray *objArray = newArray();
+  Type type = {VAL_OBJ, &objArray->obj};
+  Compiler compiler(parser, current);
+
+  compiler.beginScope();
+  current = &compiler;
+
+  for (int index = 0; index < expr->count; index++) {
+    acceptSubExpr(expr->expressions[index]);
+
+    Type subType = removeLocal();
+
+    objArray->elementtype = subType;
+  }
+
+  current = current->enclosing;
+  compiler.function->type = type;
+  current->setLocalObjType(compiler.function);
+  expr->function = compiler.function;
+  current->addLocal(type);
+}
+
 // DECLARATIONS:
 // Type(EXP_VARIABLE) Call(EXP_CALL(EXP_VARIABLE(-1) type-var-1*))
 // Group(EXP_GROUPING) => function Type(EXP_VARIABLE) Assignment(-1) =>
@@ -1188,10 +1211,10 @@ Type Resolver::readType(ListExpr *expr, int &offset) {
     while (true) {
       subExpr = expr->expressions[++offset];
 
-      if (subExpr->type == EXPR_GROUPING) {
-        GroupingExpr *group = (GroupingExpr *) subExpr;
+      if (subExpr->type == EXPR_ARRAY) {
+        ArrayExpr *group = (ArrayExpr *) subExpr;
 
-        if (!group->count && group->name.start[0] == ']') {
+        if (!group->count) {
           ObjArray *array = newArray();
 
           array->elementtype = returnType;

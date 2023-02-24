@@ -264,9 +264,7 @@ ObjString *takeString(char *chars, int length);
 ObjString *copyString(const char *chars, int length);
 ObjUpvalue *newUpvalue(Value *slot);
 ObjArray *newArray();
-#ifdef DEBUG_TRACE_EXECUTION
 void printObject(Value value);
-#endif
 void freeObjects();
 
 extern Obj *objects;

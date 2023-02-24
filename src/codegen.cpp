@@ -203,6 +203,22 @@ void CodeGenerator::visitGroupingExpr(GroupingExpr *expr) {
   }*/
 }
 
+void CodeGenerator::visitArrayExpr(ArrayExpr *expr) {
+  CodeGenerator generator(parser, expr->function);
+
+  for (int index = 0; index < expr->count; index++)
+    generator.emitCode(expr->expressions[index]);
+
+  generator.endCompiler();
+
+  if (parser.hadError)
+    return;
+
+  emitBytes(OP_CLOSURE, makeConstant(OBJ_VAL(expr->function)));
+  emitConstant(INT_VAL(-1));
+  emitBytes(OP_NEW, 0);
+}
+
 void CodeGenerator::visitListExpr(ListExpr *expr) {
     switch(expr->listType) {
     case EXPR_ASSIGN: {

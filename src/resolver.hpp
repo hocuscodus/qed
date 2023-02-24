@@ -79,6 +79,7 @@ public:
   void visitFunctionExpr(FunctionExpr *expr);
   void visitGetExpr(GetExpr *expr);
   void visitGroupingExpr(GroupingExpr *expr);
+  void visitArrayExpr(ArrayExpr *expr);
   void visitListExpr(ListExpr *expr);
   void visitLiteralExpr(LiteralExpr *expr);
   void visitLogicalExpr(LogicalExpr *expr);

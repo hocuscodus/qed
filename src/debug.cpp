@@ -30,11 +30,9 @@ void disassembleChunk(Chunk *chunk, const char *name) {
 
 static int constantInstruction(const char *name, Chunk *chunk, int offset) {
   uint8_t index = chunk->code[++offset];
-#ifdef DEBUG_TRACE_EXECUTION
   printf("%-16s %4d '", name, index);
   printValue(chunk->constants.values[index]);
   printf("'\n");
-#endif
   return ++offset;
 }
 
@@ -240,11 +238,11 @@ int disassembleInstruction(Chunk *chunk, int offset) {
       offset++;
 
       uint8_t constant = chunk->code[offset++];
-#ifdef DEBUG_TRACE_EXECUTION
+
       printf("%-16s %4d ", "OP_CLOSURE", constant);
-      printValue(chunk->constants.values[constant]);
+      printObject(chunk->constants.values[constant]);
       printf("\n");
-#endif
+
       ObjCallable *function = AS_CALLABLE(chunk->constants.values[constant]);
 
       for (int j = 0; j < function->upvalueCount; j++) {
@@ -254,6 +252,7 @@ int disassembleInstruction(Chunk *chunk, int offset) {
         printf("%04d      |                     %s %d\n", offset - 2, isLocal ? "local" : "upvalue", index);
       }
 
+      printf("\n");
       return offset;
     }
 

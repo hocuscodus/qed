@@ -288,10 +288,8 @@ InterpretResult run(CoThread *current) {
       break;
     case OP_PRINT: {
       Value value = POP;
-#ifdef DEBUG_TRACE_EXECUTION
       printObject(value);
       printf("\n");
-#endif
       break;
     }
     case OP_JUMP: {
@@ -738,7 +736,6 @@ ObjClosure *CoThread::pushClosure(ObjFunction *function) {
 
   return closure;
 }
-
 #ifdef DEBUG_TRACE_EXECUTION
 void CoThread::printStack() {
   CallFrame *frame = &frames[frameCount - 1];
@@ -752,7 +749,6 @@ void CoThread::printStack() {
   printf("\n");
 }
 #endif
-
 bool CoThread::isDone() {
   Chunk *chunk = &frames[0].closure->function->chunk;
 
@@ -1104,7 +1100,6 @@ static void printFunction(ObjCallable *function) {
   printf("<fn %s>", function->name->chars);
 }
 
-#ifdef DEBUG_TRACE_EXECUTION
 void printObject(Value value) {
   switch (OBJ_TYPE(value)) {
   case OBJ_INTERNAL:
@@ -1141,7 +1136,7 @@ void printObject(Value value) {
     printf("upvalue");
     break;
   case OBJ_ARRAY:
-    printf(i < AS_ARRAY(value)->count - 1 ? "," : "]");
+    printf("[");
     for (int i = 0; i < AS_ARRAY(value)->count; i++) {
       if (i)
         printf(", ");
@@ -1152,7 +1147,6 @@ void printObject(Value value) {
     break;
   }
 }
-#endif
 #if 0
 /*
  *    Copyright (C) 2016 Hocus Codus Software inc.

@@ -414,11 +414,6 @@ Expr *Parser::grouping() {
     endGroupType = TOKEN_RIGHT_PAREN;
     break;
 
-  case TOKEN_LEFT_BRACKET:
-    closingChar = ']';
-    endGroupType = TOKEN_RIGHT_BRACKET;
-    break;
-
   case TOKEN_LEFT_BRACE:
     closingChar = '}';
     endGroupType = TOKEN_RIGHT_BRACE;
@@ -547,6 +542,25 @@ Expr *Parser::grouping(TokenType endGroupType, const char *errorMessage) {
 
   scopeDepth--;
   return exp != NULL ? exp : new GroupingExpr(previous, count, expList, 0, ui);
+}
+
+Expr *Parser::array() {
+  TokenType tokens[] = {TOKEN_SEPARATOR, TOKEN_RIGHT_BRACKET, TOKEN_ELSE, TOKEN_EOF};
+  int count = 0;
+  Expr **expList = NULL;
+
+  passSeparator();
+
+  while (!check(TOKEN_RIGHT_BRACKET) && !check(TOKEN_EOF)) {
+    Expr *exp = expression(tokens);
+
+    expList = RESIZE_ARRAY(Expr *, expList, count, count + 1);
+    expList[count++] = exp;
+    passSeparator();
+  }
+
+  consume(TOKEN_RIGHT_BRACKET, "Expect ']' after expression.");
+  return new ArrayExpr(count, expList, NULL);
 }
 
 Expr *Parser::floatNumber() {

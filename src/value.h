@@ -98,8 +98,6 @@ int valuesCompare(Value a, Value b);
 void initValueArray(ValueArray *array);
 void writeValueArray(ValueArray *array, Value value);
 void freeValueArray(ValueArray *array);
-#ifdef DEBUG_TRACE_EXECUTION
 void printValue(Value &value);
-#endif
 
 #endif
