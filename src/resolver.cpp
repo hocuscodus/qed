@@ -59,13 +59,13 @@ static bool isType(Type &type) {
   if (type.valueType == VAL_OBJ)
     switch (type.objType->type) {
     case OBJ_FUNCTION:
-    case OBJ_NATIVE:
-    {
+    case OBJ_NATIVE: {
       ObjString *name = ((ObjNamed *)type.objType)->name;
 
       return name != NULL && name->chars[0] >= 'A' && name->chars[0] <= 'Z';
     }
 
+    case OBJ_ARRAY:
     case OBJ_PRIMITIVE:
     case OBJ_FUNCTION_PTR:
       return true;
@@ -75,9 +75,7 @@ static bool isType(Type &type) {
 }
 
 static Type convertType(Type &type) {
-  return type.objType->type == OBJ_PRIMITIVE
-             ? ((ObjPrimitive *)type.objType)->type
-             : type;
+  return type.objType->type == OBJ_PRIMITIVE ? ((ObjPrimitive *)type.objType)->type : type;
 }
 
 static Expr *convertToString(Expr *expr, Type &type, Parser &parser) {
@@ -471,8 +469,7 @@ void Resolver::visitBinaryExpr(BinaryExpr *expr) {
 
   case TOKEN_MINUS:
   case TOKEN_STAR:
-  case TOKEN_SLASH:
-  {
+  case TOKEN_SLASH: {
     switch (type1.valueType) {
     case VAL_INT:
       if (!type1.equals(type2)) {
@@ -607,8 +604,7 @@ void Resolver::visitCallExpr(CallExpr *expr) {
       }
       break;
     }
-    case OBJ_FUNCTION_PTR:
-    {
+    case OBJ_FUNCTION_PTR: {
       ObjFunctionPtr *callable = (ObjFunctionPtr *)type.objType;
 
       if (expr->count != callable->arity)
@@ -633,11 +629,80 @@ void Resolver::visitCallExpr(CallExpr *expr) {
       break; // Non-callable object type.
     }
   }
-  else
-  {
+  else {
     parser.error("Non-callable object type");
     //    return INTERPRET_RUNTIME_ERROR;
   }
+}
+
+void Resolver::visitArrayElementExpr(ArrayElementExpr *expr) {
+  accept<int>(expr->callee);
+
+  Type type = removeLocal();
+
+  if (!expr->count)
+    if (isType(type)) {
+      Type returnType = convertType(type);
+      ObjArray *array = newArray();
+
+      array->elementType = returnType;
+      current->addLocal({VAL_OBJ, &array->obj});
+    }
+    else {
+      parser.error("No index defined.");
+      current->addLocal(VAL_VOID);
+    }
+  else
+    if (isType(type)) {
+      parser.error("A type cannot have an index.");
+      current->addLocal(VAL_VOID);
+    }
+    else
+      if (type.valueType == VAL_OBJ) {
+        switch (type.objType->type) {
+        case OBJ_ARRAY: {
+          ObjArray *array = (ObjArray *)type.objType;
+
+          if (expr->count != array->count)
+            parser.error("Expected %d indexes but got %d.", array->count, expr->count);
+
+          current->addLocal(array->elementType);
+
+          for (int index = 0; index < expr->count; index++) {
+            accept<int>(expr->indexes[index]);
+
+            Type argType = removeLocal();
+
+            argType = argType;
+          }
+          break;
+        }
+        case OBJ_STRING: {/*
+          ObjString *string = (ObjString *)type.objType;
+
+          if (expr->count != string->arity)
+            parser.error("Expected %d arguments but got %d.", string->arity, expr->count);
+
+          current->addLocal(string->type.valueType);
+
+          for (int index = 0; index < expr->count; index++) {
+            accept<int>(expr->indexes[index]);
+            Type argType = removeLocal();
+
+            argType = argType;
+          }*/
+          break;
+        }
+        default:
+          parser.error("Non-indexable object type");
+          current->addLocal(VAL_VOID);
+          break; // Non-indexable object type.
+        }
+      }
+      else {
+        parser.error("Non-indexable object type");
+        //    return INTERPRET_RUNTIME_ERROR;
+      }
 }
 
 void Resolver::visitDeclarationExpr(DeclarationExpr *expr) {
@@ -692,8 +757,7 @@ void Resolver::visitGetExpr(GetExpr *expr) {
 
   if (objectType.valueType != VAL_OBJ || objectType.objType->type != OBJ_INSTANCE)
     parser.errorAt(&expr->name, "Only instances have properties.");
-  else
-  {
+  else {
     ObjFunction *type = (ObjFunction *)objectType.objType;
 
     for (int i = 0; expr->index == -1 && i < type->fieldCount; i++) {
@@ -706,8 +770,7 @@ void Resolver::visitGetExpr(GetExpr *expr) {
     if (expr->index == -1)
       parser.errorAt(&expr->name, "Field '%.*s' not found.", expr->name.length,
                      expr->name.start);
-    else
-    {
+    else {
       current->addLocal(type->fields[expr->index].type);
       return;
     }
@@ -748,7 +811,7 @@ void Resolver::visitArrayExpr(ArrayExpr *expr) {
 
     Type subType = removeLocal();
 
-    objArray->elementtype = subType;
+    objArray->elementType = subType;
   }
 
   current = current->enclosing;
@@ -770,15 +833,16 @@ void Resolver::visitArrayExpr(ArrayExpr *expr) {
 //   (var 2) (= -1 (+ 2 3))
 // );
 void Resolver::visitListExpr(ListExpr *expr) {
-  int index = 0;
-  Type returnType = readType(expr, index);
+  accept<int>(expr->expressions[0], 0);
 
-  if (index) {
-    Expr *subExpr = expr->expressions[index];
+  Type type = removeLocal();
+
+  if (isType(type)) {
+    Type returnType = convertType(type);
+    Expr *subExpr = expr->expressions[1];
 
     switch (subExpr->type) {
-    case EXPR_ASSIGN:
-    {
+    case EXPR_ASSIGN: {
       AssignExpr *assignExpr = (AssignExpr *)subExpr;
 
       expr->listType = subExpr->type;
@@ -806,12 +870,11 @@ void Resolver::visitListExpr(ListExpr *expr) {
       current->addLocal(returnType);
       current->setLocalName(&assignExpr->varExp->name);
 
-      if (expr->count > index + 1)
+      if (expr->count > 2)
         parser.error("Expect ';' or newline after variable declaration.");
       return;
     }
-    case EXPR_CALL:
-    {
+    case EXPR_CALL: {
       expr->listType = subExpr->type;
 
       CallExpr *callExpr = (CallExpr *)subExpr;
@@ -840,17 +903,19 @@ void Resolver::visitListExpr(ListExpr *expr) {
         for (int index = 0; index < callExpr->count; index++)
           if (callExpr->arguments[index]->type == EXPR_LIST) {
             ListExpr *param = (ListExpr *)callExpr->arguments[index];
-            int ndx = 0;
-            Type type = readType(param, ndx);
+            Expr *paramExpr = param->expressions[0];
 
-            if (ndx) {
-              Expr *paramExpr = param->expressions[ndx];
+            accept<int>(paramExpr, 0);
+
+            Type type = removeLocal();
+
+            if (isType(type)) {
+              paramExpr = param->expressions[1];
 
               if (paramExpr->type != EXPR_VARIABLE)
                 parser.error("Parameter name must be a string.");
-              else
-              {
-                current->addLocal(type);
+              else {
+                current->addLocal(convertType(type));
                 current->setLocalName(&((VariableExpr *)paramExpr)->name);
 
                 if (param->count > 2)
@@ -863,7 +928,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
           else
             parser.error("Parameter consists of a type and a name.");
 
-        compiler.function->bodyExpr = expr->count > index + 1 ? expr->expressions[index + 1] : NULL;
+        compiler.function->bodyExpr = expr->count > 2 ? expr->expressions[2] : NULL;
 
         if (returnType.valueType != VAL_HANDLER && strcmp(compiler.function->name->chars, "return"))
           if (returnType.valueType == VAL_VOID)
@@ -878,8 +943,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
         if (compiler.function->bodyExpr)
           if (compiler.function->bodyExpr->type == EXPR_GROUPING && ((GroupingExpr *)compiler.function->bodyExpr)->name.type == TOKEN_RIGHT_BRACE)
             acceptGroupingExprUnits((GroupingExpr *)compiler.function->bodyExpr);
-          else
-          {
+          else {
             accept<int>(compiler.function->bodyExpr, 0);
             removeLocal();
           }
@@ -900,8 +964,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
       }
       return;
     }
-    case EXPR_VARIABLE:
-    {
+    case EXPR_VARIABLE: {
       VariableExpr *varExpr = (VariableExpr *)subExpr;
 /*
       resolveVariableExpr(varExpr);
@@ -1017,8 +1080,7 @@ void Resolver::visitSetExpr(SetExpr *expr) {
 
   if (objectType.valueType != VAL_OBJ || objectType.objType->type != OBJ_INSTANCE)
     parser.errorAt(&expr->name, "Only instances have properties.");
-  else
-  {
+  else {
     ObjFunction *type = (ObjFunction *)objectType.objType;
 
     for (int i = 0; expr->index == -1 && i < type->fieldCount; i++) {
@@ -1031,8 +1093,7 @@ void Resolver::visitSetExpr(SetExpr *expr) {
     if (expr->index == -1)
       parser.errorAt(&expr->name, "Field '%.*s' not found.", expr->name.length,
                      expr->name.start);
-    else
-    {
+    else {
       current->addLocal(type->fields[expr->index].type);
       return;
     }
@@ -1099,8 +1160,7 @@ void Resolver::visitUnaryExpr(UnaryExpr *expr) {
     current->addLocal(VAL_VOID);
     break;
 
-  case TOKEN_NEW:
-  {
+  case TOKEN_NEW: {
     bool errorFlag = true;
 
     if (type.valueType == VAL_OBJ)
@@ -1195,38 +1255,6 @@ Type Resolver::removeLocal() {
        current->addLocal(VAL_VOID);
      }
  */
-}
-
-Type Resolver::readType(ListExpr *expr, int &offset) {
-  Expr *subExpr = expr->expressions[offset];
-
-  accept<int>(subExpr, 0);
-
-  Type type = removeLocal();
-  Type returnType = {VAL_VOID};
-
-  if (isType(type)) {
-    returnType = convertType(type);
-
-    while (true) {
-      subExpr = expr->expressions[++offset];
-
-      if (subExpr->type == EXPR_ARRAY) {
-        ArrayExpr *group = (ArrayExpr *) subExpr;
-
-        if (!group->count) {
-          ObjArray *array = newArray();
-
-          array->elementtype = returnType;
-          returnType = {VAL_OBJ, &array->obj};
-        }
-      }
-      else
-        break;
-    }
-  }
-
-  return returnType;
 }
 
 bool Resolver::resolve(Compiler *compiler) {

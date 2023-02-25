@@ -100,6 +100,17 @@ void CallExpr::accept(ExprVisitor *visitor) {
   return visitor->visitCallExpr(this);
 }
 
+ArrayElementExpr::ArrayElementExpr(Expr* callee, Token bracket, int count, Expr** indexes) : Expr(EXPR_ARRAYELEMENT) {
+  this->callee = callee;
+  this->bracket = bracket;
+  this->count = count;
+  this->indexes = indexes;
+}
+
+void ArrayElementExpr::accept(ExprVisitor *visitor) {
+  return visitor->visitArrayElementExpr(this);
+}
+
 DeclarationExpr::DeclarationExpr(Type type, Token name, Expr* initExpr) : Expr(EXPR_DECLARATION) {
   this->type = type;
   this->name = name;

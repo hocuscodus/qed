@@ -292,6 +292,7 @@ int main(int argc, const char *argv[]) {
     "Grouping    : Token name, int count, Expr** expressions, int popLevels, Expr* ui",
     "Array       : int count, Expr** expressions, ObjFunction* function",
     "Call        : Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler",
+    "ArrayElement: Expr* callee, Token bracket, int count, Expr** indexes",
     "Declaration : Type type, Token name, Expr* initExpr",
     "Function    : Type type, Token name, int count, Expr** params, Expr* body, ObjFunction* function",
     "Get         : Expr* object, Token name, int index",

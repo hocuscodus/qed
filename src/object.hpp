@@ -228,7 +228,7 @@ struct CoThread {
 
 typedef struct {
   Obj obj;
-  Type elementtype;
+  Type elementType;
   int count;
   int capacity;
   Value *values;

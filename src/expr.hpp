@@ -19,6 +19,7 @@ typedef enum {
   EXPR_GROUPING,
   EXPR_ARRAY,
   EXPR_CALL,
+  EXPR_ARRAYELEMENT,
   EXPR_DECLARATION,
   EXPR_FUNCTION,
   EXPR_GET,
@@ -55,6 +56,7 @@ struct BinaryExpr;
 struct GroupingExpr;
 struct ArrayExpr;
 struct CallExpr;
+struct ArrayElementExpr;
 struct DeclarationExpr;
 struct FunctionExpr;
 struct GetExpr;
@@ -96,6 +98,7 @@ struct ExprVisitor {
   virtual void visitGroupingExpr(GroupingExpr *expr) = 0;
   virtual void visitArrayExpr(ArrayExpr *expr) = 0;
   virtual void visitCallExpr(CallExpr *expr) = 0;
+  virtual void visitArrayElementExpr(ArrayElementExpr *expr) = 0;
   virtual void visitDeclarationExpr(DeclarationExpr *expr) = 0;
   virtual void visitFunctionExpr(FunctionExpr *expr) = 0;
   virtual void visitGetExpr(GetExpr *expr) = 0;
@@ -199,6 +202,16 @@ struct CallExpr : public Expr {
   Expr* handler;
 
   CallExpr(Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler);
+  void accept(ExprVisitor *visitor);
+};
+
+struct ArrayElementExpr : public Expr {
+  Expr* callee;
+  Token bracket;
+  int count;
+  Expr** indexes;
+
+  ArrayElementExpr(Expr* callee, Token bracket, int count, Expr** indexes);
   void accept(ExprVisitor *visitor);
 };
 

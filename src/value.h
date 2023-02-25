@@ -34,8 +34,8 @@ typedef enum {
   VAL_BOOL,
   VAL_INT,
   VAL_FLOAT,
-  VAL_POINT,
   VAL_OBJ,
+  VAL_POINT,
   VAL_HANDLER,
 } ValueType;
 

@@ -340,6 +340,17 @@ InterpretResult run(CoThread *current) {
       frame = &current->frames[current->frameCount - 1];
       break;
     }
+    case OP_ARRAY_INDEX: {
+      int argCount = READ_BYTE();
+
+      current->savedStackTop = stackTop;
+
+      if (!current->callValue(PEEK(argCount), argCount))
+        return INTERPRET_RUNTIME_ERROR;
+
+      frame = &current->frames[current->frameCount - 1];
+      break;
+    }
     case OP_CLOSURE: {
       ObjFunction *function = AS_FUNCTION(READ_CONSTANT());
       ObjClosure *closure = newClosure(function, current);

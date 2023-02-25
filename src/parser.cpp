@@ -350,6 +350,30 @@ Expr *Parser::call(Expr *left) {
   return new CallExpr(left, previous, argCount, expList, false, handler);
 }
 
+Expr *Parser::arrayElement(Expr *left) {
+  TokenType tokens[] = {TOKEN_RIGHT_BRACKET, TOKEN_COMMA, TOKEN_ELSE, TOKEN_EOF};
+  uint8_t indexCount = 0;
+  Expr **expList = NULL;
+  Expr *handler = NULL;
+
+  do {
+    if (check(TOKEN_RIGHT_BRACKET))
+      break;
+
+    Expr *expr = expression(tokens);
+
+    if (indexCount == 255)
+      error("Can't have more than 255 indexes.");
+
+    expList = RESIZE_ARRAY(Expr *, expList, indexCount, indexCount + 1);
+    expList[indexCount++] = expr;
+  } while (match(TOKEN_COMMA));
+
+  consume(TOKEN_RIGHT_BRACKET, "Expect ']' after indexes.");
+
+  return new ArrayElementExpr(left, previous, indexCount, expList);
+}
+
 Expr *Parser::logical(Expr *left) {
   Token op = previous;
   ParseExpRule *rule = getExpRule(op.type);

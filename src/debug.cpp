@@ -230,9 +230,11 @@ int disassembleInstruction(Chunk *chunk, int offset) {
     case OP_NEW:
       return byteInstruction("OP_NEW", chunk, offset);
 
-    case OP_CALL: {
+    case OP_CALL:
       return byteInstruction("OP_CALL", chunk, offset);
-    }
+
+    case OP_ARRAY_INDEX:
+      return byteInstruction("OP_ARRAY_INDEX", chunk, offset);
 
     case OP_CLOSURE: {
       offset++;

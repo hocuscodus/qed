@@ -91,6 +91,7 @@ public:
   uint8_t argumentList();
   Expr *dot(Expr *left);
   Expr *call(Expr *left);
+  Expr *arrayElement(Expr *left);
   Expr *logical(Expr *left);
   Expr *literal();
   Expr *swap();

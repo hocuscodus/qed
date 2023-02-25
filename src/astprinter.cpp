@@ -204,6 +204,16 @@ void ASTPrinter::visitCallExpr(CallExpr *expr) {
   printf(")");
 }
 
+void ASTPrinter::visitArrayElementExpr(ArrayElementExpr *expr) {
+  printf("[index ");
+  expr->callee->accept(this);
+  for (int index = 0; index < expr->count; index++) {
+    printf(" ");
+    expr->indexes[index]->accept(this);
+  }
+  printf("]");
+}
+
 void ASTPrinter::visitDeclarationExpr(DeclarationExpr *expr) {
   printf("(var %.*s", expr->name.length, expr->name.start);
   accept<int>(expr->initExpr, 0);

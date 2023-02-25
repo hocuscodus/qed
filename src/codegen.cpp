@@ -101,6 +101,15 @@ void CodeGenerator::visitCallExpr(CallExpr *expr) {
   emitBytes(expr->newFlag ? OP_NEW : OP_CALL, expr->count);
 }
 
+void CodeGenerator::visitArrayElementExpr(ArrayElementExpr *expr) {
+  accept<int>(expr->callee, 0);
+
+  for (int index = 0; index < expr->count; index++)
+    accept<int>(expr->indexes[index]);
+
+  emitBytes(OP_ARRAY_INDEX, expr->count);
+}
+
 void CodeGenerator::visitDeclarationExpr(DeclarationExpr *expr) {
   accept<int>(expr->initExpr, 0);
 }

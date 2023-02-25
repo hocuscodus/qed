@@ -75,6 +75,7 @@ public:
   void visitUIDirectiveExpr(UIDirectiveExpr *expr);
   void visitBinaryExpr(BinaryExpr *expr);
   void visitCallExpr(CallExpr *expr);
+  void visitArrayElementExpr(ArrayElementExpr *expr);
   void visitDeclarationExpr(DeclarationExpr *expr);
   void visitFunctionExpr(FunctionExpr *expr);
   void visitGetExpr(GetExpr *expr);
@@ -97,7 +98,6 @@ public:
 
   void checkDeclaration(Token *name);
   Type removeLocal();
-  Type readType(ListExpr *expr, int &offset);
   bool resolve(Compiler *compiler);
   void acceptGroupingExprUnits(GroupingExpr *expr);
   void acceptSubExpr(Expr *expr);
