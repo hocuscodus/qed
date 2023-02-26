@@ -663,9 +663,6 @@ void Resolver::visitArrayElementExpr(ArrayElementExpr *expr) {
         case OBJ_ARRAY: {
           ObjArray *array = (ObjArray *)type.objType;
 
-          if (expr->count != array->count)
-            parser.error("Expected %d indexes but got %d.", array->count, expr->count);
-
           current->addLocal(array->elementType);
 
           for (int index = 0; index < expr->count; index++) {

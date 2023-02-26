@@ -229,9 +229,6 @@ struct CoThread {
 typedef struct {
   Obj obj;
   Type elementType;
-  int count;
-  int capacity;
-  Value *values;
 } ObjArray;
 
 struct ObjInstance {

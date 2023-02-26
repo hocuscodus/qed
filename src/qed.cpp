@@ -23,7 +23,6 @@
 #include "qni.hpp"
 
 const char *qedLib =
-"int[] vz = [1; 6];"
 "void println(String str);"
 "//void print(String str)\n"
 "int max(int a, int b);"

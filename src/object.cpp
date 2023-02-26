@@ -1096,9 +1096,7 @@ ObjUpvalue *newUpvalue(Value *slot) {
 
 ObjArray *newArray() {
   ObjArray *array = ALLOCATE_OBJ(ObjArray, OBJ_ARRAY);
-  array->count = 0;
-  array->capacity = 0;
-  array->values = NULL;
+  array->elementType = {VAL_VOID};
   return array;
 }
 
@@ -1147,14 +1145,7 @@ void printObject(Value value) {
     printf("upvalue");
     break;
   case OBJ_ARRAY:
-    printf("[");
-    for (int i = 0; i < AS_ARRAY(value)->count; i++) {
-      if (i)
-        printf(", ");
-
-      printValue(AS_ARRAY(value)->values[i]);
-    }
-    printf("]");
+    printf("[]");
     break;
   }
 }

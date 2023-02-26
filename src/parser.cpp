@@ -415,7 +415,7 @@ Expr *Parser::primitiveType() {
   case 'v':
     switch (previous.start[1]) {
     case 'a':
-      return new VariableExpr(previous, 5, false);
+      return new VariableExpr(previous, VAL_VAR, false);
     case 'o':
       return new VariableExpr(previous, VAL_VOID, false);
     }
@@ -569,19 +569,28 @@ Expr *Parser::grouping(TokenType endGroupType, const char *errorMessage) {
 }
 
 Expr *Parser::array() {
-  TokenType tokens[] = {TOKEN_SEPARATOR, TOKEN_RIGHT_BRACKET, TOKEN_ELSE, TOKEN_EOF};
+  TokenType tokens[] = {TOKEN_RIGHT_BRACKET, TOKEN_COMMA, TOKEN_ELSE, TOKEN_EOF};
   int count = 0;
   Expr **expList = NULL;
 
-  passSeparator();
+  do {
+    passSeparator();
 
-  while (!check(TOKEN_RIGHT_BRACKET) && !check(TOKEN_EOF)) {
+    if (check(TOKEN_RIGHT_BRACKET))
+      break;
+
     Expr *exp = expression(tokens);
 
-    expList = RESIZE_ARRAY(Expr *, expList, count, count + 1);
-    expList[count++] = exp;
+    if (exp) {
+      if (count >= 255)
+        errorAtCurrent("Can't have more than 255 parameters.");
+
+      expList = RESIZE_ARRAY(Expr *, expList, count, count + 1);
+      expList[count++] = exp;
+    }
+
     passSeparator();
-  }
+  } while (match(TOKEN_COMMA));
 
   consume(TOKEN_RIGHT_BRACKET, "Expect ']' after expression.");
   return new ArrayExpr(count, expList, NULL);
