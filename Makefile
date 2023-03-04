@@ -36,8 +36,8 @@ endif
 EMXX = em++
 ##EMXXFLAGS = $(COMMONFLAGS) -O0 -s USE_SDL_TTF=2 -s USE_SDL=2 -s USE_SDL_IMAGE=2 -s USE_SDL_GFX=2 -g -fdebug-compilation-dir='..'
 ##EMXXFLAGS = $(COMMONFLAGS) -Oz -s USE_SDL_TTF=2 -s USE_SDL=2 -s USE_SDL_IMAGE=2 -s USE_SDL_GFX=2
-EMXXFLAGS = $(COMMONFLAGS) -O0 -g -fdebug-compilation-dir='..'
-#EMXXFLAGS = $(COMMONFLAGS) -Oz
+#EMXXFLAGS = $(COMMONFLAGS) -O0 -g -fdebug-compilation-dir='..'
+EMXXFLAGS = $(COMMONFLAGS) -Oz
 # -s SAFE_HEAP=1 -s ASSERTIONS=2 --profiling  -s DEMANGLE_SUPPORT=1
 EMXXLINK = -s TOTAL_MEMORY=50331648 -s ALLOW_MEMORY_GROWTH=1 --use-preload-plugins \
 	-s EXPORTED_RUNTIME_METHODS="['callMain', 'ccall', 'cwrap']" \
@@ -46,7 +46,7 @@ EMXXLINK = -s TOTAL_MEMORY=50331648 -s ALLOW_MEMORY_GROWTH=1 --use-preload-plugi
 
 all: $(BINDIR)/qed
 
-$(WWWDIR): $(WWWDIR)/index.html $(WWWDIR)/_main.js
+$(WWWDIR): $(WWWDIR)/index.html $(WWWDIR)/qed.js
 
 $(BINDIR)/qed: $(MODULES:%=$(BUILDDIR)/%.o) Makefile
 	$(CXX) $(LOCALFLAGS) $(filter %.o,$^) $(LOCALLIBS) -o $@
@@ -54,7 +54,7 @@ $(BINDIR)/qed: $(MODULES:%=$(BUILDDIR)/%.o) Makefile
 $(WWWDIR)/index.html: emscripten-shell.html
 	cp emscripten-shell.html $(dir $@)index.html
 
-$(WWWDIR)/_main.js: $(MODULES:%=$(BUILDDIR)/%.em.o) $(ASSETS) Makefile
+$(WWWDIR)/qed.js: $(MODULES:%=$(BUILDDIR)/%.em.o) $(ASSETS) Makefile
 	$(EMXX) $(EMXXFLAGS) $(EMXXLINK) $(filter %.o,$^) $(ASSETS:%=--preload-file %) -o $@
 
 $(BUILDDIR)/%.em.o: src/%.cpp Makefile
