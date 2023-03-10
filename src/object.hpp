@@ -66,6 +66,8 @@ typedef enum {
 struct Obj {
   ObjType type;
   struct Obj *next;
+
+  const char *toString();
 };
 
 typedef struct {
@@ -98,11 +100,8 @@ struct ObjCallable : ObjNamed {
   int arity;
   int fieldCount;
   Field *fields;
-  int upvalueCount;
-  Upvalue upvalues[UINT8_COUNT];
 
   bool isClass();
-  int addUpvalue(uint8_t index, bool isLocal, Type type, Parser &parser);
 };
 
 struct IndexList {
@@ -119,17 +118,22 @@ struct IndexList {
 };
 
 struct ObjFunction : ObjCallable {
+  int upvalueCount;
+  Upvalue upvalues[UINT8_COUNT];
   Expr *bodyExpr;
   Chunk chunk;
   Obj *native;
   IndexList *instanceIndexes;
   long eventFlags;
   ObjFunction *uiFunction;
+
+  int addUpvalue(uint8_t index, bool isLocal, Type type, Parser &parser);
 };
 
 typedef Value (*NativeFn)(int argCount, Value *args);
 
-struct ObjNative : ObjCallable {
+struct ObjNative {
+  Obj obj;
   NativeFn function;
 };
 
@@ -165,7 +169,8 @@ struct CoThread;
 
 typedef InterpretResult (*NativeClassFn)(VM &vm, int argCount, Value *args);
 
-struct ObjNativeClass : ObjCallable {
+struct ObjNativeClass {
+  Obj obj;
   NativeClassFn classFn;
   void *arg;
 };

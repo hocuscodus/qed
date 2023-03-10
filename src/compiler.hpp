@@ -55,7 +55,11 @@ struct Compiler {
   int addUpvalue(uint8_t index, Type type, bool isLocal);
 };
 
+struct ObjCallable;
+
 bool identifiersEqual(Token *a, Token *b);
+void pushSignature(ObjCallable *signature);
+void popSignature();
 
 #endif
 

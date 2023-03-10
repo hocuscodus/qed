@@ -58,8 +58,7 @@ static bool identifiersEqual2(Token *a, ObjString *b) {
 static bool isType(Type &type) {
   if (type.valueType == VAL_OBJ)
     switch (type.objType->type) {
-    case OBJ_FUNCTION:
-    case OBJ_NATIVE: {
+    case OBJ_FUNCTION: {
       ObjString *name = ((ObjNamed *)type.objType)->name;
 
       return name != NULL && name->chars[0] >= 'A' && name->chars[0] <= 'Z';
@@ -209,16 +208,27 @@ static void resolveVariableExpr(VariableExpr *expr) {
 
   expr->index = current->resolveLocal(&expr->name);
 
-  if (expr->index != (int8_t)-1) {
-    Local *local = &current->locals[expr->index];
+  switch (expr->index) {
+  case -2:
+    expr->index = -1;
+    current->addLocal(VAL_VOID);
+    break;
 
-    current->addLocal(local->type);
-  }
-  else 
+  case -1:
     if ((expr->index = current->resolveUpvalue(&expr->name)) != -1) {
       expr->upvalueFlag = true;
       current->addLocal(current->function->upvalues[expr->index].type);
     }
+    else {
+      current->parser.error("Variable '%.*s' must be defined", expr->name.length, expr->name.start);
+      current->addLocal(VAL_VOID);
+    }
+    break;
+
+  default:
+    current->addLocal(current->locals[expr->index].type);
+    break;
+  }
 }
 
 Resolver::Resolver(Parser &parser, Expr *exp) : ExprVisitor(), parser(parser) {
@@ -570,57 +580,48 @@ static Expr *generateUIFunction(const char *type, const char *name, char *args, 
 }
 
 void Resolver::visitCallExpr(CallExpr *expr) {
+  Field fields[expr->count];
+  ObjCallable signature;
+
+  signature.arity = expr->count;
+  signature.fields = fields;
+
   if (expr->newFlag && expr->handler != NULL) {
     expr->handler = generateUIFunction("void", "handler", NULL, expr->handler, 1, 0, NULL);
     accept<int>(expr->handler);
-    removeLocal();
+    signature.type = removeLocal();
   }
 
+  for (int index = 0; index < expr->count; index++) {
+    accept<int>(expr->arguments[index]);
+    fields[index].type = removeLocal();
+  }
+
+  pushSignature(&signature);
   accept<int>(expr->callee);
+  popSignature();
 
   Type type = removeLocal();
   //  Local *callerLocal = current->peekLocal(expr->argCount);
 
   if (type.valueType == VAL_OBJ) {
     switch (type.objType->type) {
-    case OBJ_FUNCTION:
-    case OBJ_NATIVE: {
+    case OBJ_FUNCTION: {
       ObjCallable *callable = (ObjCallable *)type.objType;
-
-      if (expr->count != callable->arity)
-        parser.error("Expected %d arguments but got %d.", callable->arity, expr->count);
 
       if (expr->newFlag)
         current->addLocal((Type) {VAL_OBJ, &newInstance(callable)->obj});
       else
         current->addLocal(callable->type);
-
-      for (int index = 0; index < expr->count; index++) {
-        accept<int>(expr->arguments[index]);
-
-        Type argType = removeLocal();
-
-        argType = argType;
-      }
       break;
     }
     case OBJ_FUNCTION_PTR: {
       ObjFunctionPtr *callable = (ObjFunctionPtr *)type.objType;
 
-      if (expr->count != callable->arity)
-        parser.error("Expected %d arguments but got %d.", callable->arity, expr->count);
-
       if (expr->newFlag)
 ;//        current->addLocal((Type) {VAL_OBJ, &newInstance(callable)->obj});
       else
         current->addLocal(callable->type.valueType);
-
-      for (int index = 0; index < expr->count; index++) {
-        accept<int>(expr->arguments[index]);
-        Type argType = removeLocal();
-
-        argType = argType;
-      }
       break;
     }
     default:
@@ -631,6 +632,7 @@ void Resolver::visitCallExpr(CallExpr *expr) {
   }
   else {
     parser.error("Non-callable object type");
+    current->addLocal(VAL_VOID);
     //    return INTERPRET_RUNTIME_ERROR;
   }
 }
@@ -738,8 +740,7 @@ void Resolver::visitFunctionExpr(FunctionExpr *expr) {
     Local *local = &compiler.locals[index];
 
     compiler.function->fields[index].type = local->type;
-    compiler.function->fields[index].name =
-        copyString(local->name.start, local->name.length);
+    compiler.function->fields[index].name = copyString(local->name.start, local->name.length);
   }
 
   current = current->enclosing;
@@ -927,7 +928,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
 
         compiler.function->bodyExpr = expr->count > 2 ? expr->expressions[2] : NULL;
 
-        if (returnType.valueType != VAL_HANDLER && strcmp(compiler.function->name->chars, "return"))
+        if (returnType.valueType != VAL_HANDLER && !varExp->name.equal("return"))
           if (returnType.valueType == VAL_VOID)
             compiler.function->bodyExpr = parse("void return();", 0, 0, compiler.function->bodyExpr);
           else {
@@ -1163,7 +1164,6 @@ void Resolver::visitUnaryExpr(UnaryExpr *expr) {
     if (type.valueType == VAL_OBJ)
       switch (type.objType->type) {
       case OBJ_FUNCTION:
-      case OBJ_NATIVE:
         errorFlag = false;
         break;
       }
@@ -1188,12 +1188,6 @@ void Resolver::visitUnaryExpr(UnaryExpr *expr) {
 
 void Resolver::visitVariableExpr(VariableExpr *expr) {
   resolveVariableExpr(expr);
-
-  if (expr->index == -1) {
-//    resolveVariableExpr(expr);
-    parser.error("Variable '%.*s' must be defined", expr->name.length, expr->name.start);
-    current->addLocal(VAL_VOID);
-  }
 }
 
 static std::list<Expr *> uiExprs;
@@ -1212,7 +1206,7 @@ void Resolver::checkDeclaration(Token *name) {
       break;
 
     if (identifiersEqual(name, &local->name))
-      parser.error("Already a variable '%.*s' with this name in this scope.", name->length, name->start);
+;//      parser.error("Already a variable '%.*s' with this name in this scope.", name->length, name->start);
   }
 }
 
@@ -1632,6 +1626,14 @@ static bool hasAreas(UIDirectiveExpr *expr) {
   return expr->childrenViewFlag || expr->viewIndex;
 }
 
+static bool isAreaHeritable(int uiIndex) {
+  return uiIndex > ATTRIBUTE_AREA_HERITABLE && uiIndex < ATTRIBUTE_AREA_END;
+}
+
+static bool isHeritable(int uiIndex) {
+  return isAreaHeritable(uiIndex) || (uiIndex > ATTRIBUTE_HERITABLE && uiIndex < ATTRIBUTE_END);
+}
+
 // viewIndex = -1 -> non-sized unit or group
 // viewIndex = 0  -> sized group
 // viewIndex > 0  -> sized unit, has an associated variable
@@ -1644,7 +1646,7 @@ void Resolver::pushAreas(UIDirectiveExpr *expr) {
       valueStackSize.push(expr->attributes[index]->_uiIndex, expr->attributes[index]->_index);
 
   for (int index = 0; index < expr->attCount; index++)
-    if (!isEventHandler(expr->attributes[index]) && expr->attributes[index]->_uiIndex == ATTRIBUTE_FONTSIZE && expr->attributes[index]->_index != -1) {
+    if (!isEventHandler(expr->attributes[index]) && isAreaHeritable(expr->attributes[index]->_uiIndex) && expr->attributes[index]->_index != -1) {
       char name[20] = "";
 
       sprintf(name, "v%d", expr->attributes[index]->_index);
@@ -1693,7 +1695,7 @@ void Resolver::pushAreas(UIDirectiveExpr *expr) {
   }
 
   for (int index = expr->attCount - 1; index >= 0; index--)
-    if (!isEventHandler(expr->attributes[index]) && expr->attributes[index]->_uiIndex == ATTRIBUTE_FONTSIZE && expr->attributes[index]->_index != -1) {
+    if (!isEventHandler(expr->attributes[index]) && isAreaHeritable(expr->attributes[index]->_uiIndex) && expr->attributes[index]->_index != -1) {
       insertTabs();
       (*ss) << "popAttribute(" << expr->attributes[index]->_uiIndex << ")\n";
     }
@@ -1856,7 +1858,7 @@ void Resolver::paint(UIDirectiveExpr *expr) {
       valueStackPaint.push(expr->attributes[index]->_uiIndex, expr->attributes[index]->_index);
 
   for (int index = 0; index < expr->attCount; index++)
-    if (!isEventHandler(expr->attributes[index]) && expr->attributes[index]->_uiIndex != -1 && expr->attributes[index]->_index != -1) {
+    if (!isEventHandler(expr->attributes[index]) && isHeritable(expr->attributes[index]->_uiIndex) && expr->attributes[index]->_index != -1) {
       char name[20] = "";
 
       sprintf(name, "v%d", expr->attributes[index]->_index);
@@ -1929,7 +1931,7 @@ void Resolver::paint(UIDirectiveExpr *expr) {
   }
 
   for (int index = expr->attCount - 1; index >= 0; index--)
-    if (!isEventHandler(expr->attributes[index]) && expr->attributes[index]->_uiIndex != -1 && expr->attributes[index]->_index != -1) {
+    if (!isEventHandler(expr->attributes[index]) && isHeritable(expr->attributes[index]->_uiIndex) && expr->attributes[index]->_index != -1) {
       insertTabs();
       (*ss) << "popAttribute(" << expr->attributes[index]->_uiIndex << ")\n";
     }

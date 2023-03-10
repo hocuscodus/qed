@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stack>
 #include "compiler.hpp"
 #include "resolver.hpp"
 #include "codegen.hpp"
@@ -27,6 +28,20 @@
 #ifdef DEBUG_PRINT_CODE
 #include "debug.hpp"
 #endif
+
+static std::stack<ObjCallable *> signatures;
+
+void pushSignature(ObjCallable *signature) {
+  signatures.push(signature);
+}
+
+void popSignature() {
+  signatures.pop();
+}
+
+static ObjCallable *getSignature() {
+  return signatures.empty() ? NULL : signatures.top();
+}
 
 Compiler::Compiler(Parser &parser, Compiler *enclosing) : parser(parser) {
   ObjString *enclosingNameObj = enclosing ? enclosing->function->name : NULL;
@@ -141,29 +156,122 @@ void Compiler::setLocalObjType(ObjFunction *function) {
 }
 
 int Compiler::resolveLocal(Token *name) {
-  for (int i = localCount - 1; i >= 0; i--) {
+  int found = -1;
+  char buffer[2048] = "";
+  ObjCallable *signature = getSignature();
+
+  for (int i = localCount - 1; found < 0 && i >= 0; i--) {
     Local *local = &locals[i];
 
-    if (identifiersEqual(name, &local->name)) // && local->depth != -1)
-      return i;
+    if (identifiersEqual(name, &local->name)) {// && local->depth != -1)
+      Type type = local->type;
+
+      if (signature && type.valueType == VAL_OBJ)
+        switch (type.objType->type) {
+        case OBJ_FUNCTION: {
+          ObjCallable *callable = (ObjCallable *)type.objType;
+          bool isSignature = signature->arity == callable->arity;
+
+          for (int index = 0; isSignature && index < signature->arity; index++)
+            isSignature = signature->fields[index].type.equals(callable->fields[index + 1].type);
+
+          found = i;//isSignature ? i : -2; // -2 = found name, no good signature yet
+
+          if (found == -2) {
+            char buf[512];
+
+            sprintf(buf, "'%.*s(", name->length, name->start);
+
+            for (int index = 0; index < callable->arity; index++) {
+              if (index)
+                strcat(buf, ", ");
+
+              strcat(buf, callable->fields[index + 1].type.toString());
+            }
+
+            strcat(buf, ")'");
+
+            if (buffer[0])
+              strcat(buffer, ", ");
+
+            strcat(buffer, buf);
+          }
+          break;
+        }
+        case OBJ_FUNCTION_PTR: {
+          ObjFunctionPtr *callable = (ObjFunctionPtr *)type.objType;
+          bool isSignature = signature->arity == callable->arity;
+
+          for (int index = 0; isSignature && index < signature->arity; index++)
+            isSignature = signature->fields[index].type.equals(callable->parms[index + 1]);
+
+          found = isSignature ? i : -2; // -2 = found name, no good signature yet
+
+          if (found == -2) {
+            char buf[512];
+
+            sprintf(buf, "'%.*s(", name->length, name->start);
+
+            for (int index = 0; index < callable->arity; index++) {
+              if (index)
+                strcat(buf, ", ");
+
+              strcat(buf, callable->parms[index + 1].toString());
+            }
+
+            strcat(buf, ")'");
+
+            if (buffer[0])
+              strcat(buffer, ", ");
+
+            strcat(buffer, buf);
+          }
+          break;
+        }
+        default:
+          parser.error("Variable '%.*s' is not a call.", name->length, name->start);
+          return -2;
+        }
+      else
+        found = i;
+    }
   }
 
-  return -1;
+  if (found == -2) {
+    char parms[512] = "";
+
+    for (int index = 0; index < signature->arity; index++) {
+      if (index)
+        strcat(parms, ", ");
+
+      strcat(parms, signature->fields[index].type.toString());
+    }
+
+    parser.error("Call '%.*s(%s)' does not match %s.", name->length, name->start, parms, buffer);
+  }
+
+  return found;
 }
 
 int Compiler::resolveUpvalue(Token *name) {
   if (enclosing != NULL) {
     int local = enclosing->resolveLocal(name);
 
-    if (local != -1) {
+    switch (local) {
+    case -2:
+      break;
+
+    case -1: {
+      int upvalue = enclosing->resolveUpvalue(name);
+
+      if (upvalue != -1)
+        return addUpvalue((uint8_t) upvalue, enclosing->function->upvalues[upvalue].type, false);
+      break;
+    }
+    default:
       enclosing->locals[local].isCaptured = true;
       return addUpvalue((uint8_t) local, enclosing->locals[local].type, true);
     }
-
-    int upvalue = enclosing->resolveUpvalue(name);
-
-    if (upvalue != -1)
-      return addUpvalue((uint8_t) upvalue, enclosing->function->upvalues[upvalue].type, false);
   }
 
   return -1;

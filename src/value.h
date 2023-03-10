@@ -45,6 +45,7 @@ struct Type {
   Obj *objType;
 
   bool equals(Type &type);
+  const char *toString();
 };
 
 typedef union {

@@ -488,11 +488,49 @@ Obj *allocateObject(size_t size, ObjType type) {
   return object;
 }
 
+const char *Obj::toString() {
+  static char buf[256];
+
+  switch (type) {
+    case OBJ_STRING: return "String";
+    case OBJ_ARRAY: {
+      char buf2[256];
+
+      sprintf(buf2, "%s[]", ((ObjArray *) this)->elementType.toString());
+      strcpy(buf, buf2);
+      return buf;
+    }
+    case OBJ_FUNCTION: {
+      ObjString *name = ((ObjFunction *) this)->name;
+
+      sprintf(buf, "%.*s", name->length, name->chars);
+      return buf;
+    }
+    case OBJ_INSTANCE: {
+      ObjCallable *callable = ((ObjInstance *) this)->callable;
+      ObjString *name = callable->name;
+
+      sprintf(buf, "%.*s", name->length, name->chars);
+      return buf;
+    }
+    case OBJ_THREAD:
+    case OBJ_CLOSURE:
+    case OBJ_RETURN:
+    case OBJ_NATIVE:
+    case OBJ_NATIVE_CLASS:
+    case OBJ_PRIMITIVE:
+    case OBJ_UPVALUE:
+    case OBJ_FUNCTION_PTR:
+    case OBJ_INTERNAL:
+      return "!unknownObj!";
+  }
+}
+
 bool ObjCallable::isClass() {
   return name == NULL || (name->chars[0] >= 'A' && name->chars[0] <= 'Z');
 }
 
-int ObjCallable::addUpvalue(uint8_t index, bool isLocal, Type type, Parser &parser) {
+int ObjFunction::addUpvalue(uint8_t index, bool isLocal, Type type, Parser &parser) {
   for (int i = 0; i < upvalueCount; i++) {
     Upvalue *upvalue = &upvalues[i];
 
@@ -718,9 +756,6 @@ void CoThread::runtimeError(const char *format, ...) {
 ObjNativeClass *newNativeClass(NativeClassFn classFn) {
   ObjNativeClass *native = ALLOCATE_OBJ(ObjNativeClass, OBJ_NATIVE_CLASS);
 
-  native->arity = 0;
-  native->upvalueCount = 0;
-  native->name = NULL;
   native->classFn = classFn;
   return native;
 }
@@ -1038,9 +1073,6 @@ ObjFunction *newFunction() {
 ObjNative *newNative(NativeFn function) {
   ObjNative *native = ALLOCATE_OBJ(ObjNative, OBJ_NATIVE);
 
-  native->arity = 0;
-  native->upvalueCount = 0;
-  native->name = NULL;
   native->function = function;
   return native;
 }
@@ -1135,7 +1167,6 @@ void printObject(Value value) {
     printFunction(AS_CLOSURE(value)->function);
     break;
   case OBJ_FUNCTION:
-  case OBJ_NATIVE:
     printFunction(AS_CALLABLE(value));
     break;
   case OBJ_STRING:

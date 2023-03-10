@@ -25,6 +25,20 @@ bool Type::equals(Type &type) {
   return valueType == type.valueType && (valueType != VAL_OBJ || objType == type.objType);
 }
 
+const char *Type::toString() {
+  switch (valueType) {
+    case VAL_VOID: return "void";
+    case VAL_BOOL: return "bool";
+    case VAL_INT: return "int";
+    case VAL_FLOAT: return "float";
+    case VAL_VAR: return "!var!";
+    case VAL_HANDLER: return "!handler!";
+    case VAL_POINT: return "!point!";
+    case VAL_OBJ: return objType->toString();
+    default: return "!unknown!";
+  }
+}
+
 int valuesCompare(Value a, Value b) {/*
   if (a.type != b.type) return false;
   switch (a.type) {

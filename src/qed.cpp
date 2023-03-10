@@ -41,6 +41,7 @@ const char *qedLib =
 "void oval(int pos, int size);"
 "void rect(int pos, int size);"
 "void pushAttribute(int index, int value);"
+"void pushAttribute(int index, float value);"
 "void popAttribute(int index);"
 "int getTextSize(String text);"
 "int getInstanceSize(int instance);"

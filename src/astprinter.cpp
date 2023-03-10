@@ -389,7 +389,6 @@ void ASTPrinter::printType(Type *type) {
 void ASTPrinter::printObjType(Obj *obj) {
   switch(obj->type) {
     case OBJ_STRING: printf("String"); return;
-    case OBJ_NATIVE:
     case OBJ_FUNCTION: {
       ObjString *name = ((ObjCallable *) obj)->name;
 
