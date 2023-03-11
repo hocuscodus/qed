@@ -166,7 +166,8 @@ int Compiler::resolveLocal(Token *name) {
     if (identifiersEqual(name, &local->name)) {// && local->depth != -1)
       Type type = local->type;
 
-      if (signature && type.valueType == VAL_OBJ)
+//      if (signature && type.valueType == VAL_OBJ)
+      if (signature && type.valueType == VAL_OBJ && name->getString().find("Instance") == std::string::npos)
         switch (type.objType->type) {
         case OBJ_FUNCTION: {
           ObjCallable *callable = (ObjCallable *)type.objType;
@@ -175,7 +176,7 @@ int Compiler::resolveLocal(Token *name) {
           for (int index = 0; isSignature && index < signature->arity; index++)
             isSignature = signature->fields[index].type.equals(callable->fields[index + 1].type);
 
-          found = i;//isSignature ? i : -2; // -2 = found name, no good signature yet
+          found = isSignature ? i : -2; // -2 = found name, no good signature yet
 
           if (found == -2) {
             char buf[512];

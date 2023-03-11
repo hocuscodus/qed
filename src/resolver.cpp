@@ -1495,7 +1495,7 @@ int Resolver::getParseDir() {
   return uiParseCount - PARSE_LAYOUT;
 }
 
-#define UI_ATTRIBUTE_DEF( identifier, text )  text
+#define UI_ATTRIBUTE_DEF( identifier, text, conversionFunction )  text
 static const char *uiAttributes[] = { UI_ATTRIBUTES_DEF };
 #undef UI_ATTRIBUTE_DEF
 

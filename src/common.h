@@ -29,21 +29,21 @@
 
 // put above ATTRIBUTE_COLOR all size-related attributes
 #define UI_ATTRIBUTES_DEF \
-    UI_ATTRIBUTE_DEF( ATTRIBUTE_OUT, "out" ), \
-    UI_ATTRIBUTE_DEF( ATTRIBUTE_SIZE, "size" ), \
-    UI_ATTRIBUTE_DEF( ATTRIBUTE_AREA_HERITABLE, "" ), \
-    UI_ATTRIBUTE_DEF( ATTRIBUTE_ZOOM, "zoom" ), \
-    UI_ATTRIBUTE_DEF( ATTRIBUTE_FONTSIZE, "fontSize" ), \
-    UI_ATTRIBUTE_DEF( ATTRIBUTE_AREA_END, "" ), \
-    UI_ATTRIBUTE_DEF( ATTRIBUTE_ALIGN, "align" ), \
-    UI_ATTRIBUTE_DEF( ATTRIBUTE_EXPAND, "expand" ), \
-    UI_ATTRIBUTE_DEF( ATTRIBUTE_POS, "pos" ), \
-    UI_ATTRIBUTE_DEF( ATTRIBUTE_HERITABLE, "" ), \
-    UI_ATTRIBUTE_DEF( ATTRIBUTE_COLOR, "color" ), \
-    UI_ATTRIBUTE_DEF( ATTRIBUTE_OPACITY, "opacity" ), \
-    UI_ATTRIBUTE_DEF( ATTRIBUTE_END, NULL ), \
+    UI_ATTRIBUTE_DEF( ATTRIBUTE_OUT, "out", NULL ), \
+    UI_ATTRIBUTE_DEF( ATTRIBUTE_SIZE, "size", convertToPoint ), \
+    UI_ATTRIBUTE_DEF( ATTRIBUTE_AREA_HERITABLE, "", NULL ), \
+    UI_ATTRIBUTE_DEF( ATTRIBUTE_ZOOM, "zoom", convertToFloat ), \
+    UI_ATTRIBUTE_DEF( ATTRIBUTE_FONTSIZE, "fontSize", convertToInt ), \
+    UI_ATTRIBUTE_DEF( ATTRIBUTE_AREA_END, "", NULL ), \
+    UI_ATTRIBUTE_DEF( ATTRIBUTE_ALIGN, "align", convertToFloatPoint ), \
+    UI_ATTRIBUTE_DEF( ATTRIBUTE_EXPAND, "expand", convertToFloatPoint ), \
+    UI_ATTRIBUTE_DEF( ATTRIBUTE_POS, "pos", convertToPoint ), \
+    UI_ATTRIBUTE_DEF( ATTRIBUTE_HERITABLE, "", NULL ), \
+    UI_ATTRIBUTE_DEF( ATTRIBUTE_COLOR, "color", convertToInt ), \
+    UI_ATTRIBUTE_DEF( ATTRIBUTE_OPACITY, "opacity", convertToFloat ), \
+    UI_ATTRIBUTE_DEF( ATTRIBUTE_END, NULL, NULL ), \
 
-#define UI_ATTRIBUTE_DEF( identifier, text )  identifier
+#define UI_ATTRIBUTE_DEF( identifier, text, conversionFunction )  identifier
 typedef enum { UI_ATTRIBUTES_DEF } Attribute;
 #undef UI_ATTRIBUTE_DEF
 

@@ -48,6 +48,12 @@ const char *qedLib =
 "void displayText(String text, int pos, int size);"
 "void displayInstance(int instance, int pos, int size);"
 "bool onInstanceEvent(int instance, int event, int pos, int size);"
+/*"int[] convertToPoint(int point) {return([point, point])}"
+"int[] convertToPoint(int[] point) {return(point)}"
+"float[] convertToFloatPoint(float point) {return([point, point])}"
+"float[] convertToFloatPoint(float[] point) {return(point)}"
+"int convertToInt(int x) {return(x)}"
+"float convertToFloat(float x) {return(x)}"*/
 ""
 "void Timer(int timeoutMillis) {"
 "  var _timerObj;"
