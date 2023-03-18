@@ -250,6 +250,12 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
 #ifdef DEBUG_PRINT_CODE
       else
         disassembleChunk(&expr->function->chunk, expr->function->name->chars);
+        for (int index = 0; index < expr->function->fieldCount; index++) {
+          const char *name = expr->function->fields[index].name->chars;
+
+          printf("<%s %s> ", expr->function->fields[index].type.toString(), name ? name : "");
+        }
+        printf("\n");
 #endif
       emitBytes(OP_CLOSURE, makeConstant(OBJ_VAL(expr->function)));
 
@@ -306,7 +312,7 @@ void CodeGenerator::visitReturnExpr(ReturnExpr *expr) {
   if (expr->value != NULL)
     accept<int>(expr->value, 0);
 
-  emitByte(OP_RETURN);
+  emitByte(OP_HALT); // OP_RETURN later
 }
 
 void CodeGenerator::visitSetExpr(SetExpr *expr) {

@@ -309,17 +309,16 @@ InterpretResult run(CoThread *current) {
     }
     case OP_NEW: {
       int argCount = READ_BYTE();
-      Value handlerConstant = POP;
+      int handlerCount = 1;
       CoThread *thread = newThread(current);
-      int size = argCount + 1;
+      int size = argCount + 1 + handlerCount;
 
-      thread->handler = AS_INT(handlerConstant) != -1 ? AS_CLOSURE(handlerConstant) : NULL;
       memcpy(thread->fields, stackTop - size, size * sizeof(Value));
       thread->savedStackTop += size;
       stackTop -= size;
       PUSH(OBJ_VAL(thread));
 
-      if (thread->callValue(*thread->fields, argCount)) {
+      if (thread->callValue(*thread->fields, argCount + handlerCount)) {
         current->savedStackTop = stackTop;
         current = thread;
         frame = &current->frames[current->frameCount - 1];
@@ -369,7 +368,7 @@ InterpretResult run(CoThread *current) {
       current->closeUpvalues(stackTop - 1);
       POP;
       break;
-    case OP_RETURN: {
+    case OP_RETURN:
       if (IS_FIRST_INSTANCE && current->isInInstance()) {
         current->closeUpvalues(current->frames[0].slots);
         POP;
@@ -379,16 +378,10 @@ InterpretResult run(CoThread *current) {
         ValueType type = frame->closure->function->type.valueType;
         Value result = type != VAL_VOID ? POP : (Value) {VAL_VOID};
 
-        if (current->isInInstance())
-          current->onThreadReturn(result);
-        else {
-          current->onReturn(result);
-          frame = &current->frames[current->frameCount - 1];
-          break;
-        }
+        current->onReturn(result);
+        frame = &current->frames[current->frameCount - 1];
       }
-    }
-    // Is is wanted that we do not break here...
+      break;
     case OP_HALT: {
       Obj *native = frame->closure->function->native;
 
@@ -494,7 +487,7 @@ const char *Obj::toString() {
   switch (type) {
     case OBJ_STRING: return "String";
     case OBJ_ARRAY: {
-      char buf2[256];
+      char buf2[256] = "??";
 
       sprintf(buf2, "%s[]", ((ObjArray *) this)->elementType.toString());
       strcpy(buf, buf2);
@@ -503,7 +496,8 @@ const char *Obj::toString() {
     case OBJ_FUNCTION: {
       ObjString *name = ((ObjFunction *) this)->name;
 
-      sprintf(buf, "%.*s", name->length, name->chars);
+      if (name)
+        sprintf(buf, "%.*s", name->length, name->chars);
       return buf;
     }
     case OBJ_INSTANCE: {
@@ -515,7 +509,6 @@ const char *Obj::toString() {
     }
     case OBJ_THREAD:
     case OBJ_CLOSURE:
-    case OBJ_RETURN:
     case OBJ_NATIVE:
     case OBJ_NATIVE_CLASS:
     case OBJ_PRIMITIVE:
@@ -654,25 +647,9 @@ LocationUnit *CallFrame::init(VM &vm, Value *values, IndexList *instanceIndexes,
 */
 extern void postMessage(void (*fn)(void *), void *);
 
-void ret(void *data) {
-  Value value = VOID_VAL;
-
-  ((CoThread *) data)->onThreadReturn(value);
-}
-
 bool CoThread::callValue(Value callee, int argCount) {
   switch (OBJ_TYPE(callee)) {
 //    case OBJ_NATIVE_CLASS:
-    case OBJ_RETURN: {
-      stackTop -= argCount + 1;
-
-      if (argCount)
-        PUSH(stackTop[1]);
-
-      ObjClosure *closure = AS_CLOSURE(callee);
-      postMessage(ret, AS_CLOSURE(callee)->parent);
-      break;
-    }
     case OBJ_CLOSURE:
       return call(AS_CLOSURE(callee), argCount);
 
@@ -819,18 +796,6 @@ void CoThread::onReturn(Value &returnValue) {
     PUSH(returnValue);
 }
 
-void CoThread::onThreadReturn(Value &returnValue) {
-  if (caller && handler) {
-    CoThread *callerThread = caller;
-    Value value = {VAL_VOID};
-
-    *callerThread->savedStackTop++ = OBJ_VAL(handler);
-    callerThread->call(handler, 0);
-    run(callerThread);
-    callerThread->onReturn(value);
-  }
-}
-
 bool CoThread::getFormFlag() {
   bool formFlag = false;
 
@@ -974,6 +939,29 @@ bool CoThread::onEvent(Event event, Point pos, Point size) {
 
   return flag;
 }
+
+bool CoThread::runHandler(ObjClosure *closure) {
+  bool flag = false;
+  Value value = {VOID_VAL};
+  int oldFrameCount = frameCount;
+
+  *savedStackTop++ = OBJ_VAL(closure);
+  call(closure, 0);
+  run(this);
+
+  if (frameCount > oldFrameCount)
+    flag = false;
+#ifdef DEBUG_TRACE_EXECUTION
+  printStack();
+#endif
+  onReturn(value);
+  onReturn(value);
+#ifdef DEBUG_TRACE_EXECUTION
+  printStack();
+#endif
+
+  return flag;
+}
 #if 0
 Object parseCreateUIValuesSub(QEDProcess process, Object value, Path path, int flags, LambdaDeclaration handler) {
   Object childValue = process.execCmdRaw(value, handler, null);
@@ -1023,7 +1011,6 @@ CoThread *newThread(CoThread *caller) {
   CoThread *coThread = ALLOCATE_OBJ(CoThread, OBJ_THREAD);
 
   coThread->caller = caller;
-  coThread->handler = NULL;
   coThread->fields = ALLOCATE(Value, 64);
   coThread->resetStack();
   coThread->frameCount = 0;
@@ -1045,8 +1032,7 @@ ObjClosure *newClosure(ObjFunction *function, CoThread *parent) {
     upvalues[i] = NULL;
   }
 
-  ObjType objType = function->name && !strcmp(function->name->chars, "return") ? OBJ_RETURN : OBJ_CLOSURE;
-  ObjClosure *closure = ALLOCATE_OBJ(ObjClosure, objType);
+  ObjClosure *closure = ALLOCATE_OBJ(ObjClosure, OBJ_CLOSURE);
 
   closure->parent = parent;
   closure->function = function;
@@ -1163,7 +1149,6 @@ void printObject(Value value) {
     break;
   }
   case OBJ_CLOSURE:
-  case OBJ_RETURN:
     printFunction(AS_CLOSURE(value)->function);
     break;
   case OBJ_FUNCTION:

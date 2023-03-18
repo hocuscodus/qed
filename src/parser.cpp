@@ -902,8 +902,8 @@ Expr *Parser::statement(TokenType endGroupType) {
 
   if (match(TOKEN_PRINT))
     return printStatement(endGroupType);
-//  else if (match(TOKEN_RETURN))
-//    return returnStatement(endGroupType);
+  else if (match(TOKEN_RETURN))
+    return returnStatement(endGroupType);
   else if (match(TOKEN_IF))
     return ifStatement(endGroupType);
   else if (match(TOKEN_WHILE))
@@ -928,7 +928,7 @@ void Parser::synchronize() {
     case TOKEN_IF:
     case TOKEN_WHILE:
     case TOKEN_PRINT:
-//    case TOKEN_RETURN:
+    case TOKEN_RETURN:
       return;
 
     default:; // Do nothing.

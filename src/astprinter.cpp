@@ -310,7 +310,7 @@ void ASTPrinter::visitOpcodeExpr(OpcodeExpr *expr) {
 }
 
 void ASTPrinter::visitReturnExpr(ReturnExpr *expr) {
-  printf("return ", expr->value);
+  printf("return ");
   if (expr->value != NULL)
     accept<int>(expr->value, 0);
   printf(";");

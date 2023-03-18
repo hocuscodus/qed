@@ -52,7 +52,6 @@ typedef enum {
   OBJ_INSTANCE,
   OBJ_CLOSURE,
   OBJ_FUNCTION,
-  OBJ_RETURN,
   OBJ_NATIVE,
   OBJ_NATIVE_CLASS,
   OBJ_PRIMITIVE,
@@ -195,7 +194,6 @@ struct CallFrame {
 struct CoThread {
   Obj obj;
   CoThread *caller;
-  ObjClosure *handler;
   Value *fields;
   int frameCount;
   CallFrame frames[FRAMES_MAX];
@@ -227,8 +225,8 @@ struct CoThread {
   Point recalculateLayout();
   Point repaint();
   void paint(Point pos, Point size);
-  void onThreadReturn(Value &returnValue);
   bool onEvent(Event event, Point pos, Point size);
+  bool runHandler(ObjClosure *closure);
 };
 
 typedef struct {

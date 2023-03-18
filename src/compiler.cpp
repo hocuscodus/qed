@@ -88,8 +88,15 @@ ObjFunction *Compiler::compile() {
   if (parser.hadError)
     function->chunk.reset();
 #ifdef DEBUG_PRINT_CODE
-  else
+  else {
     disassembleChunk(&function->chunk, function->name != NULL ? function->name->chars : "<script>");
+    for (int index = 0; index < localCount; index++) {
+      const char *name = locals[index].name.start;
+
+      printf("<%s %s> ", locals[index].type.toString(), name ? name : "");
+    }
+    printf("\n");
+  }
 #endif
 
   return parser.hadError ? NULL : function;
@@ -167,7 +174,9 @@ int Compiler::resolveLocal(Token *name) {
       Type type = local->type;
 
 //      if (signature && type.valueType == VAL_OBJ)
-      if (signature && type.valueType == VAL_OBJ && name->getString().find("Instance") == std::string::npos)
+      // Remove these patches ASAP
+//      if (signature && type.valueType == VAL_OBJ && name->getString().find("Instance") == std::string::npos)
+      if (signature && type.valueType == VAL_OBJ && name->getString().find("Instance") == std::string::npos && strcmp(name->getString().c_str(), "post"))
         switch (type.objType->type) {
         case OBJ_FUNCTION: {
           ObjCallable *callable = (ObjCallable *)type.objType;

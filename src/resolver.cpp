@@ -201,11 +201,6 @@ static Expr *convertToType(Type srcType, Expr *expr, Type &type, Parser &parser)
 }
 
 static void resolveVariableExpr(VariableExpr *expr) {
-  if (expr->index != -1) {
-    current->addLocal({VAL_OBJ, primitives[expr->index]});
-    return;
-  }
-
   expr->index = current->resolveLocal(&expr->name);
 
   switch (expr->index) {
@@ -586,12 +581,6 @@ void Resolver::visitCallExpr(CallExpr *expr) {
   signature.arity = expr->count;
   signature.fields = fields;
 
-  if (expr->newFlag && expr->handler != NULL) {
-    expr->handler = generateUIFunction("void", "handler", NULL, expr->handler, 1, 0, NULL);
-    accept<int>(expr->handler);
-    signature.type = removeLocal();
-  }
-
   for (int index = 0; index < expr->count; index++) {
     accept<int>(expr->arguments[index]);
     fields[index].type = removeLocal();
@@ -609,8 +598,20 @@ void Resolver::visitCallExpr(CallExpr *expr) {
     case OBJ_FUNCTION: {
       ObjCallable *callable = (ObjCallable *)type.objType;
 
-      if (expr->newFlag)
+      if (expr->newFlag) {
+        if (expr->handler != NULL) {
+          char buffer[256] = "";
+
+          if (callable->type.valueType != VAL_VOID)
+            sprintf(buffer, "%s _ret", callable->type.toString());
+
+          expr->handler = generateUIFunction("void", "__returnHandler", callable->type.valueType != VAL_VOID ? buffer : NULL, expr->handler, 1, 0, NULL);
+          accept<int>(expr->handler);
+          removeLocal();
+        }
+
         current->addLocal((Type) {VAL_OBJ, &newInstance(callable)->obj});
+      }
       else
         current->addLocal(callable->type);
       break;
@@ -618,8 +619,20 @@ void Resolver::visitCallExpr(CallExpr *expr) {
     case OBJ_FUNCTION_PTR: {
       ObjFunctionPtr *callable = (ObjFunctionPtr *)type.objType;
 
-      if (expr->newFlag)
+      if (expr->newFlag) {
+        if (expr->handler != NULL) {
+          char buffer[256] = "";
+
+          if (callable->type.valueType != VAL_VOID)
+            sprintf(buffer, "%s _ret", callable->type.toString());
+
+          expr->handler = generateUIFunction("void", "__returnHandler", callable->type.valueType != VAL_VOID ? buffer : NULL, expr->handler, 1, 0, NULL);
+          accept<int>(expr->handler);
+          removeLocal();
+        }
+
 ;//        current->addLocal((Type) {VAL_OBJ, &newInstance(callable)->obj});
+      }
       else
         current->addLocal(callable->type.valueType);
       break;
@@ -926,17 +939,23 @@ void Resolver::visitListExpr(ListExpr *expr) {
           else
             parser.error("Parameter consists of a type and a name.");
 
+        char firstChar = varExp->name.getString().c_str()[0];
+
+        if (returnType.valueType != VAL_HANDLER && firstChar >= 'A' && firstChar <= 'Z') {
+          char buffer[256] = "";
+          char buf[256];
+
+          if (returnType.valueType != VAL_VOID)
+            sprintf(buffer, "%s _ret", returnType.toString());
+
+          sprintf(buf, "void __returnHandler(%s);", buffer);
+
+          Expr *handlerExpr = parse(buf, 0, 0, compiler.function->bodyExpr);
+
+          accept<int>(handlerExpr, 0);
+        }
+
         compiler.function->bodyExpr = expr->count > 2 ? expr->expressions[2] : NULL;
-
-        if (returnType.valueType != VAL_HANDLER && !varExp->name.equal("return"))
-          if (returnType.valueType == VAL_VOID)
-            compiler.function->bodyExpr = parse("void return();", 0, 0, compiler.function->bodyExpr);
-          else {
-            char returnDec[128];
-
-//            sprintf(returnDec, "void return(%s value);", returnType.valueType);
-//            parse(returnDec);
-          }
 
         if (compiler.function->bodyExpr)
           if (compiler.function->bodyExpr->type == EXPR_GROUPING && ((GroupingExpr *)compiler.function->bodyExpr)->name.type == TOKEN_RIGHT_BRACE)
@@ -1058,12 +1077,29 @@ void Resolver::visitOpcodeExpr(OpcodeExpr *expr) {
   expr->right->accept(this);
 }
 
+static std::list<Expr *> uiExprs;
+
 void Resolver::visitReturnExpr(ReturnExpr *expr) {
-  if (expr->value != NULL) {
+//  if (isInstance) {
+    if (expr->value)
+      uiExprs.push_back(expr->value);
+
+    Expr *retExpr = parse(expr->value ? "void __ret() {__returnHandler($EXPR)}" : "void __ret() {__returnHandler()}", 0, 0, NULL);
+    Expr *callee = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "post", 4, -1), -1, false);
+    Expr **args = RESIZE_ARRAY(Expr *, NULL, 0, 1);
+
+    args[0] = retExpr;
+    expr->value = new CallExpr(callee, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), 1, args, false, NULL);
+//  }
+
+  // sync processing below
+
+  if (expr->value) {
     accept<int>(expr->value, 0);
 
     Type type = removeLocal();
-    // verify that type is the function return type
+    // verify that type is the function return type if not an instance
+    // else return void
   }
 
   current->addLocal(VAL_VOID);
@@ -1187,10 +1223,11 @@ void Resolver::visitUnaryExpr(UnaryExpr *expr) {
 }
 
 void Resolver::visitVariableExpr(VariableExpr *expr) {
-  resolveVariableExpr(expr);
+  if (expr->index != -1)
+    current->addLocal({VAL_OBJ, primitives[expr->index]});
+  else
+    resolveVariableExpr(expr);
 }
-
-static std::list<Expr *> uiExprs;
 
 void Resolver::visitSwapExpr(SwapExpr *expr) {
   expr->_expr = uiExprs.front();
@@ -1452,6 +1489,7 @@ void Resolver::acceptSubExpr(Expr *expr) {
 Expr *Resolver::parse(const char *source, int index, int replace, Expr *body) {
   Scanner scanner((new std::string(source))->c_str());
   Parser parser(scanner);
+  printf(source);
   GroupingExpr *group = (GroupingExpr *) parser.parse() ? (GroupingExpr *) parser.expr : NULL;
 
   if (body == NULL)

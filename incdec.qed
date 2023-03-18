@@ -1,4 +1,4 @@
-var vv = [1, 6]
+//var vv = [1, 6]
 
 int getInt(int a) {
 //  return(a);
@@ -9,7 +9,7 @@ void Button(String text) {
 
   <out: rect; opacity: shade; size: 35//getInt(35)//[35, -1]
    onPress: shade = 35%//{shade = 35%; captureMouse()}
-   onRelease: {shade = 20%; return()}>//if (hovering) return()}>
+   onRelease: {shade = 20%; return}>//if (hovering) return()}>
   <out: text; opacity: 60%; align: 50%; fontSize: 40;>
 }
 
