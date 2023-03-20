@@ -792,7 +792,7 @@ void CoThread::onReturn(Value &returnValue) {
   closeUpvalues(frame->slots);
   stackTop = frame->slots;
 
-  if (frame->closure->function->type.valueType != VAL_VOID && frame->closure->function->type.valueType != VAL_HANDLER)
+  if (frame->closure->function->type.valueType != VAL_VOID)
     PUSH(returnValue);
 }
 

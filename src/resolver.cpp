@@ -47,7 +47,6 @@ static Obj *primitives[] = {
   &newPrimitive("float", {VAL_FLOAT})->obj,
   &newPrimitive("String", stringType)->obj,
   &newPrimitive("var", {VAL_OBJ, &objInternalType})->obj,
-  &newPrimitive("handler", {VAL_HANDLER})->obj
 };
 
 static bool identifiersEqual2(Token *a, ObjString *b) {
@@ -567,7 +566,13 @@ static Expr *generateUIFunction(const char *type, const char *name, char *args, 
     for (int index = 0; index < restLength; index++)
       bodyExprs[count + index] = rest[index];
 
-    functionExprs[0] = new VariableExpr(buildToken(TOKEN_IDENTIFIER, type, strlen(type), -1), VAL_HANDLER, false);
+    int typeIndex = -1;
+
+    for (int index = 0; typeIndex == -1 && index < sizeof(primitives) / sizeof(Obj *); index++)
+      if (!strcmp(((ObjPrimitive *) primitives[index])->name->chars, type))
+        typeIndex = index;
+
+    functionExprs[0] = new VariableExpr(buildToken(TOKEN_IDENTIFIER, type, strlen(type), -1), typeIndex, false);
     functionExprs[1] = new CallExpr(nameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), nbParms, parms, false, NULL);
     functionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), count + restLength, bodyExprs, 0, NULL);
 
@@ -605,7 +610,7 @@ void Resolver::visitCallExpr(CallExpr *expr) {
           if (callable->type.valueType != VAL_VOID)
             sprintf(buffer, "%s _ret", callable->type.toString());
 
-          expr->handler = generateUIFunction("void", "__returnHandler", callable->type.valueType != VAL_VOID ? buffer : NULL, expr->handler, 1, 0, NULL);
+          expr->handler = generateUIFunction("void", "ReturnHandler_", callable->type.valueType != VAL_VOID ? buffer : NULL, expr->handler, 1, 0, NULL);
           accept<int>(expr->handler);
           removeLocal();
         }
@@ -626,7 +631,7 @@ void Resolver::visitCallExpr(CallExpr *expr) {
           if (callable->type.valueType != VAL_VOID)
             sprintf(buffer, "%s _ret", callable->type.toString());
 
-          expr->handler = generateUIFunction("void", "__returnHandler", callable->type.valueType != VAL_VOID ? buffer : NULL, expr->handler, 1, 0, NULL);
+          expr->handler = generateUIFunction("void", "ReturnHandler_", callable->type.valueType != VAL_VOID ? buffer : NULL, expr->handler, 1, 0, NULL);
           accept<int>(expr->handler);
           removeLocal();
         }
@@ -939,18 +944,20 @@ void Resolver::visitListExpr(ListExpr *expr) {
           else
             parser.error("Parameter consists of a type and a name.");
 
-        char firstChar = varExp->name.getString().c_str()[0];
+        const char *str = varExp->name.getString().c_str();
+        char firstChar = str[0];
+        bool handlerFlag = str[strlen(str) - 1] == '_';
 
-        if (returnType.valueType != VAL_HANDLER && firstChar >= 'A' && firstChar <= 'Z') {
+        if (!handlerFlag && firstChar >= 'A' && firstChar <= 'Z') {
           char buffer[256] = "";
           char buf[256];
 
           if (returnType.valueType != VAL_VOID)
             sprintf(buffer, "%s _ret", returnType.toString());
 
-          sprintf(buf, "void __returnHandler(%s);", buffer);
+          sprintf(buf, "void ReturnHandler_(%s);", buffer);
 
-          Expr *handlerExpr = parse(buf, 0, 0, compiler.function->bodyExpr);
+          Expr *handlerExpr = parse(buf, 0, 0, NULL);
 
           accept<int>(handlerExpr, 0);
         }
@@ -1084,7 +1091,7 @@ void Resolver::visitReturnExpr(ReturnExpr *expr) {
     if (expr->value)
       uiExprs.push_back(expr->value);
 
-    Expr *retExpr = parse(expr->value ? "void __ret() {__returnHandler($EXPR)}" : "void __ret() {__returnHandler()}", 0, 0, NULL);
+    Expr *retExpr = parse(expr->value ? "void __ret() {ReturnHandler_($EXPR)}" : "void __ret() {ReturnHandler_()}", 0, 0, NULL);
     Expr *callee = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "post", 4, -1), -1, false);
     Expr **args = RESIZE_ARRAY(Expr *, NULL, 0, 1);
 
@@ -1372,12 +1379,12 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
       uiFunctions[0] = paintFunction;
       uiFunctions[1] = clickFunction;
 
-      Expr *layoutFunction = generateUIFunction("void", "Layout", NULL, expr->ui, 3, 2, uiFunctions);
+      Expr *layoutFunction = generateUIFunction("void", "Layout_", NULL, expr->ui, 3, 2, uiFunctions);
       Expr **layoutExprs = new Expr *[1];
 
       layoutExprs[0] = layoutFunction;
 
-      Expr *valueFunction = generateUIFunction("void", "UI$", NULL, expr->ui, 1, 1, layoutExprs);
+      Expr *valueFunction = generateUIFunction("void", "UI_", NULL, expr->ui, 1, 1, layoutExprs);
 
       aCount = 1;
       accept<int>(valueFunction, 0);

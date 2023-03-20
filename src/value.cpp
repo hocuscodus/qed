@@ -32,7 +32,6 @@ const char *Type::toString() {
     case VAL_INT: return "int";
     case VAL_FLOAT: return "float";
     case VAL_VAR: return "!var!";
-    case VAL_HANDLER: return "!handler!";
     case VAL_POINT: return "!point!";
     case VAL_OBJ: return objType->toString();
     default: return "!unknown!";
