@@ -955,7 +955,6 @@ bool CoThread::runHandler(ObjClosure *closure) {
   printStack();
 #endif
   onReturn(value);
-  onReturn(value);
 #ifdef DEBUG_TRACE_EXECUTION
   printStack();
 #endif

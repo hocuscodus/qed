@@ -1088,15 +1088,15 @@ static std::list<Expr *> uiExprs;
 
 void Resolver::visitReturnExpr(ReturnExpr *expr) {
 //  if (isInstance) {
-    if (expr->value)
+//    char buf[128] = "{void Ret_() {ReturnHandler_()}; post(Ret_)}";
+    char buf[128] = "{post(ReturnHandler_)}";
+
+    if (expr->value) {
       uiExprs.push_back(expr->value);
+      strcpy(buf, "{void Ret_() {ReturnHandler_($EXPR)}; post(Ret_)}");
+    }
 
-    Expr *retExpr = parse(expr->value ? "void __ret() {ReturnHandler_($EXPR)}" : "void __ret() {ReturnHandler_()}", 0, 0, NULL);
-    Expr *callee = new VariableExpr(buildToken(TOKEN_IDENTIFIER, "post", 4, -1), -1, false);
-    Expr **args = RESIZE_ARRAY(Expr *, NULL, 0, 1);
-
-    args[0] = retExpr;
-    expr->value = new CallExpr(callee, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), 1, args, false, NULL);
+    expr->value = parse(buf, 0, 0, NULL);
 //  }
 
   // sync processing below
@@ -1104,7 +1104,7 @@ void Resolver::visitReturnExpr(ReturnExpr *expr) {
   if (expr->value) {
     accept<int>(expr->value, 0);
 
-    Type type = removeLocal();
+//    Type type = removeLocal();
     // verify that type is the function return type if not an instance
     // else return void
   }

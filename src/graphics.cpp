@@ -88,7 +88,8 @@ void uninitDisplay() {
 }
 
 typedef struct {
-  em_arg_callback_func fn;
+    CoThread *coThread = (CoThread *) AS_OBJ(args[0]);
+ fn;
   void *data;
 } QEDMessage;
 
