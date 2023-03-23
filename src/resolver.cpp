@@ -1087,7 +1087,7 @@ void Resolver::visitOpcodeExpr(OpcodeExpr *expr) {
 static std::list<Expr *> uiExprs;
 
 void Resolver::visitReturnExpr(ReturnExpr *expr) {
-//  if (isInstance) {
+  if (current->function->isClass()) {
 //    char buf[128] = "{void Ret_() {ReturnHandler_()}; post(Ret_)}";
     char buf[128] = "{post(ReturnHandler_)}";
 
@@ -1097,13 +1097,14 @@ void Resolver::visitReturnExpr(ReturnExpr *expr) {
     }
 
     expr->value = parse(buf, 0, 0, NULL);
-//  }
+  }
 
   // sync processing below
 
   if (expr->value) {
     accept<int>(expr->value, 0);
 
+//  if (!current->function->isClass())
 //    Type type = removeLocal();
     // verify that type is the function return type if not an instance
     // else return void
@@ -1496,7 +1497,6 @@ void Resolver::acceptSubExpr(Expr *expr) {
 Expr *Resolver::parse(const char *source, int index, int replace, Expr *body) {
   Scanner scanner((new std::string(source))->c_str());
   Parser parser(scanner);
-  printf(source);
   GroupingExpr *group = (GroupingExpr *) parser.parse() ? (GroupingExpr *) parser.expr : NULL;
 
   if (body == NULL)
@@ -2065,7 +2065,7 @@ void Resolver::onEvent(UIDirectiveExpr *expr) {
                 nTabs++;
 
                 insertTabs();
-                (*ss) << "$EXPR\n";
+                (*ss) << "{void Ret_() {$EXPR}; post(Ret_)}\n";
                 uiExprs.push_back(attExpr->handler);
                 attExpr->handler = NULL;
 

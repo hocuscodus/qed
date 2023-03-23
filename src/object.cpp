@@ -368,13 +368,13 @@ InterpretResult run(CoThread *current) {
       current->closeUpvalues(stackTop - 1);
       POP;
       break;
-    case OP_RETURN:
+    case OP_RETURN:/*
       if (IS_FIRST_INSTANCE && current->isInInstance()) {
         current->closeUpvalues(current->frames[0].slots);
         POP;
         return INTERPRET_OK;
       }
-      else {
+      else */{
         ValueType type = frame->closure->function->type.valueType;
         Value result = type != VAL_VOID ? POP : (Value) {VAL_VOID};
 
@@ -789,7 +789,7 @@ CallFrame *CoThread::getFrame(int index) {
 void CoThread::onReturn(Value &returnValue) {
   CallFrame *frame = &frames[--frameCount];
 
-  closeUpvalues(frame->slots);
+  closeUpvalues(frame->slots); // objectify the stack frame
   stackTop = frame->slots;
 
   if (frame->closure->function->type.valueType != VAL_VOID)

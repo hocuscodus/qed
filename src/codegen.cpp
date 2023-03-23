@@ -312,7 +312,7 @@ void CodeGenerator::visitReturnExpr(ReturnExpr *expr) {
   if (expr->value != NULL)
     accept<int>(expr->value, 0);
 
-  emitByte(OP_HALT); // OP_RETURN later
+  emitByte(expr->value != NULL && expr->value->type == EXPR_GROUPING && ((GroupingExpr *) expr->value)->name.type != TOKEN_RIGHT_PAREN ? OP_HALT : OP_RETURN); // OP_RETURN later
 }
 
 void CodeGenerator::visitSetExpr(SetExpr *expr) {
