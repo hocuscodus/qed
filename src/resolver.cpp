@@ -718,11 +718,8 @@ void Resolver::visitFunctionExpr(FunctionExpr *expr) {
   getCurrent()->addLocal(VAL_OBJ);
   getCurrent()->setLocalName(&expr->name);
 
-  Compiler compiler;
+  Compiler compiler(newFunction(expr->type, copyString(expr->name.start, expr->name.length), expr->count));
 
-  compiler.function->type = expr->type;
-  compiler.function->name = copyString(expr->name.start, expr->name.length);
-  compiler.function->arity = expr->count;
   compiler.beginScope();
 
   for (int index = 0; index < expr->count; index++)
@@ -740,7 +737,7 @@ void Resolver::visitFunctionExpr(FunctionExpr *expr) {
   }
 
   compiler.endScope();
-  getCurrent()->enclosing->setLocalObjType(compiler.function);
+  getCurrent()->setLocalObjType(compiler.function);
   expr->function = compiler.function;
 }
 
@@ -795,7 +792,7 @@ void Resolver::visitGroupingExpr(GroupingExpr *expr) {
 void Resolver::visitArrayExpr(ArrayExpr *expr) {
   ObjArray *objArray = newArray();
   Type type = {VAL_OBJ, &objArray->obj};
-  Compiler compiler;
+  Compiler compiler(newFunction({VAL_VOID}, NULL, 0));
 
   compiler.beginScope();
 
@@ -809,9 +806,9 @@ void Resolver::visitArrayExpr(ArrayExpr *expr) {
 
   compiler.endScope();
   compiler.function->type = type;
-  getCurrent()->enclosing->setLocalObjType(compiler.function);
+  getCurrent()->setLocalObjType(compiler.function);
   expr->function = compiler.function;
-  getCurrent()->enclosing->addLocal(type);
+  getCurrent()->addLocal(type);
 }
 
 // DECLARATIONS:
@@ -883,13 +880,9 @@ void Resolver::visitListExpr(ListExpr *expr) {
         getCurrent()->addLocal(VAL_OBJ);
         getCurrent()->setLocalName(&varExp->name);
 
-        Compiler compiler;
+        Compiler compiler(newFunction(returnType, copyString(varExp->name.start, varExp->name.length), callExpr->count));
 
-        compiler.function->type = returnType;
-        compiler.function->name = copyString(varExp->name.start, varExp->name.length);
-        compiler.function->arity = callExpr->count;
         compiler.beginScope();
-
         bindFunction(compiler.prefix, compiler.function);
 
         for (int index = 0; index < callExpr->count; index++)
@@ -959,7 +952,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
         }
 
         compiler.endScope();
-        getCurrent()->enclosing->setLocalObjType(compiler.function);
+        getCurrent()->setLocalObjType(compiler.function);
         expr->function = compiler.function;
       }
       return;

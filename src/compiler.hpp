@@ -30,17 +30,18 @@ typedef struct {
 } Local;
 
 struct Compiler {
-  std::string prefix;
   Parser &parser;
+  std::string prefix;
   Compiler *enclosing;
   ObjFunction *function = NULL;
   Local locals[UINT8_COUNT];
+  int localStart;
   int localCount;
   int scopeDepth;
 
   Compiler(Parser &parser);
+  Compiler(ObjFunction *function);
   Compiler();
-  ~Compiler();
 
   ObjFunction *compile();
 

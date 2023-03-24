@@ -248,7 +248,7 @@ ObjInternal *newInternal();
 CoThread *newThread(CoThread *caller);
 ObjInstance *newInstance(ObjCallable *callable);
 ObjClosure *newClosure(ObjFunction *function, CoThread *parent);
-ObjFunction *newFunction();
+ObjFunction *newFunction(Type type, ObjString *name, int arity);
 ObjNative *newNative(NativeFn function);
 ObjPrimitive *newPrimitive(char *name, Type type);
 ObjFunctionPtr *newFunctionPtr(Type type, int arity, Type *parms);

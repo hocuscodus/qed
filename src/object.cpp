@@ -1040,12 +1040,13 @@ ObjClosure *newClosure(ObjFunction *function, CoThread *parent) {
   return closure;
 }
 
-ObjFunction *newFunction() {
+ObjFunction *newFunction(Type type, ObjString *name, int arity) {
   ObjFunction *function = ALLOCATE_OBJ(ObjFunction, OBJ_FUNCTION);
 
-  function->arity = 0;
+  function->type = type;
+  function->arity = arity;
   function->upvalueCount = 0;
-  function->name = NULL;
+  function->name = name;
   function->chunk.init();
   function->native = NULL;
   function->instanceIndexes = new IndexList();

@@ -48,30 +48,23 @@ Compiler *Compiler::current = NULL;
 
 Compiler::Compiler(Parser &parser) : parser(parser) {
   prefix = "qni";
+  localStart = 0;
   localCount = 0;
   scopeDepth = 0;
-  function = newFunction();
+  function = newFunction({VAL_VOID}, NULL, 0);
   enclosing = NULL;
   current = this;
   addLocal({VAL_OBJ, &function->obj});
 }
 
-Compiler::Compiler() : parser(current->parser) {
-  this->enclosing = current;
-  current = this;
-
-  ObjString *enclosingNameObj = enclosing->function->name;
-  std::string enclosingName = enclosingNameObj ? std::string("_") + enclosingNameObj->chars : "";
-
-  prefix = enclosing->prefix + enclosingName;
-  localCount = 0;
+Compiler::Compiler(ObjFunction *function) : parser(current->parser) {
+  this->function = function;
   scopeDepth = 0;
-  function = newFunction();
-  addLocal({VAL_OBJ, &function->obj});
 }
 
-Compiler::~Compiler() {
-  current = enclosing;
+Compiler::Compiler() : parser(current->parser) {
+  function = current->function;
+  scopeDepth = 0;
 }
 
 ObjFunction *Compiler::compile() {
@@ -126,6 +119,24 @@ ObjFunction *Compiler::compile() {
 }
 
 void Compiler::beginScope() {
+  if (!scopeDepth) {
+    this->enclosing = current;
+    current = this;
+
+    bool withinFunction = function == enclosing->function;
+    ObjString *enclosingNameObj = enclosing->function->name;
+    std::string enclosingName = enclosingNameObj ? std::string("_") + enclosingNameObj->chars : "";
+
+    prefix = withinFunction ? enclosing->prefix : enclosing->prefix + enclosingName;
+    localStart = withinFunction ? enclosing->localStart + enclosing->localCount : 0;
+    localCount = 0;
+
+    if (!withinFunction)
+      addLocal({VAL_OBJ, &function->obj});
+//    else
+//      scopeDepth = enclosing->scopeDepth;
+  }
+
   scopeDepth++;
 }
 
@@ -138,6 +149,9 @@ int Compiler::endScope() {
     numRefs++;
     localCount--;
   }
+
+  if (!scopeDepth)
+    current = enclosing;
 
   return numRefs;
 }
@@ -266,7 +280,7 @@ int Compiler::resolveLocal(Token *name) {
           return -2;
         }
       else
-        found = i;
+        found = localStart + i;
     }
   }
 
