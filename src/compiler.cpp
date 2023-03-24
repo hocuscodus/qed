@@ -21,6 +21,7 @@
 #include <stack>
 #include "compiler.hpp"
 #include "resolver.hpp"
+#include "reifier.hpp"
 #include "codegen.hpp"
 #include "astprinter.hpp"
 #include "object.hpp"
@@ -43,16 +44,34 @@ static ObjCallable *getSignature() {
   return signatures.empty() ? NULL : signatures.top();
 }
 
-Compiler::Compiler(Parser &parser, Compiler *enclosing) : parser(parser) {
-  ObjString *enclosingNameObj = enclosing ? enclosing->function->name : NULL;
-  std::string enclosingName = enclosingNameObj ? std::string("_") + enclosingNameObj->chars : "";
+Compiler *Compiler::current = NULL;
 
-  prefix = enclosing ? enclosing->prefix + enclosingName : "qni";
+Compiler::Compiler(Parser &parser) : parser(parser) {
+  prefix = "qni";
   localCount = 0;
   scopeDepth = 0;
   function = newFunction();
-  this->enclosing = enclosing;
+  enclosing = NULL;
+  current = this;
   addLocal({VAL_OBJ, &function->obj});
+}
+
+Compiler::Compiler() : parser(current->parser) {
+  this->enclosing = current;
+  current = this;
+
+  ObjString *enclosingNameObj = enclosing->function->name;
+  std::string enclosingName = enclosingNameObj ? std::string("_") + enclosingNameObj->chars : "";
+
+  prefix = enclosing->prefix + enclosingName;
+  localCount = 0;
+  scopeDepth = 0;
+  function = newFunction();
+  addLocal({VAL_OBJ, &function->obj});
+}
+
+Compiler::~Compiler() {
+  current = enclosing;
 }
 
 ObjFunction *Compiler::compile() {
@@ -63,8 +82,12 @@ ObjFunction *Compiler::compile() {
   ASTPrinter().print(parser.expr);
 #endif
   Resolver resolver(parser, parser.expr);
+  Reifier reifier(parser);
 
   if (!resolver.resolve(this))
+    return NULL;
+
+  if (!reifier.reify())
     return NULL;
 #ifdef DEBUG_PRINT_CODE
   printf("Adapted parse: ");
@@ -107,38 +130,16 @@ void Compiler::beginScope() {
 }
 
 int Compiler::endScope() {
-  int popLevels = 0;
+  int numRefs = 0;
 
   scopeDepth--;
 
   while (localCount > 0 && locals[localCount - 1].depth > scopeDepth) {
-    popLevels++;
+    numRefs++;
     localCount--;
   }
 
-  int fieldIndex = 0;
-  int localIndex = 0;
-
-  for (int index = 0; index < popLevels; index++) {
-    Local *local = &locals[localCount + index];
-
-    local->realIndex = local->isField ? fieldIndex++ : localIndex++;
-
-//    if (IS_FUNCTION(local->type))
-    for (int i = 0; i < function->upvalueCount; i++) {
-      Upvalue *upvalue = &function->upvalues[i];
-
-      if (upvalue->isLocal) {
-        if (locals[upvalue->index].isField)
-          upvalue->index = upvalue->index;
-        else
-          upvalue->index = upvalue->index;
-        upvalue->index = upvalue->index;//locals[upvalue->index].realIndex;
-      }
-    }
-  }
-
-  return popLevels;
+  return numRefs;
 }
 
 Local *Compiler::addLocal(ValueType type) {

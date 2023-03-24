@@ -80,7 +80,7 @@ static void repl() {
   strcpy(buffer, qedLib);
   Scanner scanner(buffer);
   Parser parser(scanner);
-  Compiler compiler(parser, NULL);
+  Compiler compiler(parser);
   CoThread *coThread = newThread(NULL);
   VM vm(coThread, false);
   ObjClosure *closure = coThread->pushClosure(compiler.function);
@@ -167,7 +167,7 @@ void runSource(const char *source) {
 
   Scanner scanner(buffer);
   Parser parser(scanner);
-  Compiler compiler(parser, NULL);
+  Compiler compiler(parser);
   CoThread *coThread = newThread(NULL);
   VM vm(coThread, true);
   ObjClosure *closure = coThread->pushClosure(compiler.function);

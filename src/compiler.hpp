@@ -38,7 +38,9 @@ struct Compiler {
   int localCount;
   int scopeDepth;
 
-  Compiler(Parser &parser, Compiler *enclosing);
+  Compiler(Parser &parser);
+  Compiler();
+  ~Compiler();
 
   ObjFunction *compile();
 
@@ -54,6 +56,12 @@ struct Compiler {
   int resolveLocal(Token *name);
   int resolveUpvalue(Token *name);
   int addUpvalue(uint8_t index, Type type, bool isLocal);
+
+  static inline Compiler *getCurrent() {
+    return current;
+  }
+private:
+  static Compiler *current;
 };
 
 struct ObjCallable;
@@ -61,6 +69,11 @@ struct ObjCallable;
 bool identifiersEqual(Token *a, Token *b);
 void pushSignature(ObjCallable *signature);
 void popSignature();
+
+
+static inline Compiler *getCurrent() {
+  return Compiler::getCurrent();
+}
 
 #endif
 
