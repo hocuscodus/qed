@@ -25,7 +25,8 @@ typedef struct {
   Type type;
   Token name;
   int depth;
-  bool isCaptured;
+  bool isField;
+  int realIndex;
 } Local;
 
 struct Compiler {

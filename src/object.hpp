@@ -25,14 +25,6 @@
 
 #define OBJ_TYPE(value)        (AS_OBJ(value)->type)
 
-#define IS_THREAD(value)       isObjType(value, OBJ_THREAD)
-#define IS_INSTANCE(value)     isObjType(value, OBJ_INSTANCE)
-#define IS_CLOSURE(value)      isObjType(value, OBJ_CLOSURE)
-#define IS_FUNCTION(value)     isObjType(value, OBJ_FUNCTION)
-#define IS_NATIVE(value)       isObjType(value, OBJ_NATIVE)
-#define IS_STRING(value)       isObjType(value, OBJ_STRING)
-#define IS_ARRAY(value)        isObjType(value, OBJ_ARRAY)
-
 #define AS_THREAD(value)       ((CoThread*)AS_OBJ(value))
 #define AS_INSTANCE(value)     ((ObjInstance*)AS_OBJ(value))
 #define AS_CLOSURE(value)      ((ObjClosure*)AS_OBJ(value))
@@ -269,14 +261,8 @@ void freeObjects();
 
 extern Obj *objects;
 
-#ifdef DEBUG_TRACE_EXECUTION
-static inline bool isObjType(Value &value, ObjType objType) {
-  return value.type == VAL_OBJ && value.as.obj->type == objType;
+static inline bool isObjType(Type &type, ObjType objType) {
+  return AS_OBJ_TYPE(type) == objType;
 }
-#else
-static inline bool isObjType(Value &value, ObjType objType) {
-  return value.obj->type == objType;
-}
-#endif
 
 #endif

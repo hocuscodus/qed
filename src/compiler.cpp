@@ -116,6 +116,28 @@ int Compiler::endScope() {
     localCount--;
   }
 
+  int fieldIndex = 0;
+  int localIndex = 0;
+
+  for (int index = 0; index < popLevels; index++) {
+    Local *local = &locals[localCount + index];
+
+    local->realIndex = local->isField ? fieldIndex++ : localIndex++;
+
+//    if (IS_FUNCTION(local->type))
+    for (int i = 0; i < function->upvalueCount; i++) {
+      Upvalue *upvalue = &function->upvalues[i];
+
+      if (upvalue->isLocal) {
+        if (locals[upvalue->index].isField)
+          upvalue->index = upvalue->index;
+        else
+          upvalue->index = upvalue->index;
+        upvalue->index = upvalue->index;//locals[upvalue->index].realIndex;
+      }
+    }
+  }
+
   return popLevels;
 }
 
@@ -135,7 +157,7 @@ Local *Compiler::addLocal(Type type) {
   local->name.start = "";
   local->name.length = 0;
   local->depth = scopeDepth;
-  local->isCaptured = false;
+  local->isField = false;
   return local;
 }
 
@@ -176,10 +198,10 @@ int Compiler::resolveLocal(Token *name) {
 //      if (signature && type.valueType == VAL_OBJ)
       // Remove these patches ASAP
 //      if (signature && type.valueType == VAL_OBJ && name->getString().find("Instance") == std::string::npos)
-      if (signature && type.valueType == VAL_OBJ && name->getString().find("Instance") == std::string::npos && strcmp(name->getString().c_str(), "post"))
-        switch (type.objType->type) {
+      if (signature && IS_OBJ(type) && name->getString().find("Instance") == std::string::npos && strcmp(name->getString().c_str(), "post"))
+        switch (AS_OBJ_TYPE(type)) {
         case OBJ_FUNCTION: {
-          ObjCallable *callable = (ObjCallable *)type.objType;
+          ObjCallable *callable = AS_FUNCTION_TYPE(type);
           bool isSignature = signature->arity == callable->arity;
 
           for (int index = 0; isSignature && index < signature->arity; index++)
@@ -279,7 +301,7 @@ int Compiler::resolveUpvalue(Token *name) {
       break;
     }
     default:
-      enclosing->locals[local].isCaptured = true;
+      enclosing->locals[local].isField = true;
       return addUpvalue((uint8_t) local, enclosing->locals[local].type, true);
     }
   }
