@@ -199,32 +199,6 @@ static Expr *convertToType(Type srcType, Expr *expr, Type &type, Parser &parser)
   return expr;
 }
 
-static void resolveVariableExpr(VariableExpr *expr) {
-  expr->index = getCurrent()->resolveLocal(&expr->name);
-
-  switch (expr->index) {
-  case -2:
-    expr->index = -1;
-    getCurrent()->addLocal(VAL_VOID);
-    break;
-
-  case -1:
-    if ((expr->index = getCurrent()->resolveUpvalue(&expr->name)) != -1) {
-      expr->upvalueFlag = true;
-      getCurrent()->addLocal(getCurrent()->function->upvalues[expr->index].type);
-    }
-    else {
-      getCurrent()->parser.error("Variable '%.*s' must be defined", expr->name.length, expr->name.start);
-      getCurrent()->addLocal(VAL_VOID);
-    }
-    break;
-
-  default:
-    getCurrent()->addLocal(getCurrent()->locals[expr->index].type);
-    break;
-  }
-}
-
 Resolver::Resolver(Parser &parser, Expr *exp) : ExprVisitor(), parser(parser) {
   this->exp = exp;
   uiParseCount = -1;
@@ -774,16 +748,21 @@ void Resolver::visitGroupingExpr(GroupingExpr *expr) {
   TokenType type = expr->name.type;
   bool parenFlag = type == TOKEN_RIGHT_PAREN;
   bool groupFlag = type == TOKEN_RIGHT_BRACE || parenFlag;
+  Type parenType;
 
-  if (groupFlag)
+  if (groupFlag) {
+    Compiler compiler;
+
+//    compiler.beginScope();
     getCurrent()->beginScope();
-
-  acceptGroupingExprUnits(expr);
-
-  Type parenType = parenFlag ? removeLocal() : (Type){VAL_VOID};
-
-  if (groupFlag)
+    acceptGroupingExprUnits(expr);
+    parenType = parenFlag ? removeLocal() : (Type){VAL_VOID};
     expr->popLevels = getCurrent()->endScope();
+  }
+  else {
+    acceptGroupingExprUnits(expr);
+    parenType = parenFlag ? removeLocal() : (Type){VAL_VOID};
+  }
 
   if (type != TOKEN_EOF)
     getCurrent()->addLocal(parenType);
@@ -1202,7 +1181,7 @@ void Resolver::visitVariableExpr(VariableExpr *expr) {
   if (expr->index != -1)
     getCurrent()->addLocal({VAL_OBJ, primitives[expr->index]});
   else
-    resolveVariableExpr(expr);
+    getCurrent()->resolveVariableExpr(expr);
 }
 
 void Resolver::visitSwapExpr(SwapExpr *expr) {

@@ -123,7 +123,7 @@ void Compiler::beginScope() {
     this->enclosing = current;
     current = this;
 
-    bool withinFunction = function == enclosing->function;
+    bool withinFunction = inLocalBlock();
     ObjString *enclosingNameObj = enclosing->function->name;
     std::string enclosingName = enclosingNameObj ? std::string("_") + enclosingNameObj->chars : "";
 
@@ -326,4 +326,37 @@ int Compiler::resolveUpvalue(Token *name) {
 
 int Compiler::addUpvalue(uint8_t index, Type type, bool isLocal) {
   return function->addUpvalue(index, isLocal, type, parser);
+}
+
+void Compiler::resolveVariableExpr(VariableExpr *expr) {
+  expr->index = resolveLocal(&expr->name);
+
+  switch (expr->index) {
+  case -2:
+    expr->index = -1;
+    addLocal(VAL_VOID);
+    break;
+
+  case -1:
+    if (inLocalBlock())
+      enclosing->resolveVariableExpr(expr);
+    else
+      if ((expr->index = resolveUpvalue(&expr->name)) != -1) {
+        expr->upvalueFlag = true;
+        addLocal(function->upvalues[expr->index].type);
+      }
+      else {
+        parser.error("Variable '%.*s' must be defined", expr->name.length, expr->name.start);
+        addLocal(VAL_VOID);
+      }
+    break;
+
+  default:
+    addLocal(locals[expr->index].type);
+    break;
+  }
+}
+
+bool Compiler::inLocalBlock() {
+  return enclosing && enclosing->function == function;
 }

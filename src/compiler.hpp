@@ -57,6 +57,8 @@ struct Compiler {
   int resolveLocal(Token *name);
   int resolveUpvalue(Token *name);
   int addUpvalue(uint8_t index, Type type, bool isLocal);
+  void resolveVariableExpr(VariableExpr *expr);
+  bool inLocalBlock();
 
   static inline Compiler *getCurrent() {
     return current;
