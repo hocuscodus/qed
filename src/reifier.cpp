@@ -67,9 +67,9 @@ void Reifier::visitGetExpr(GetExpr *expr) {
 void Reifier::visitGroupingExpr(GroupingExpr *expr) {
   int fieldIndex = 0;
   int localIndex = 0;
-/*
-  for (int index = 0; index < expr->popLevels; index++) {
-    Local *local = &locals[localCount + index];
+
+  for (int index = 0; index < expr->_compiler.localCount; index++) {
+    Local *local = &expr->_compiler.locals[expr->_compiler.localCount + index];
     ObjFunction *function = AS_FUNCTION_TYPE(local->type);
 
     local->realIndex = local->isField ? fieldIndex++ : localIndex++;
@@ -79,7 +79,7 @@ void Reifier::visitGroupingExpr(GroupingExpr *expr) {
         Upvalue *upvalue = &function->upvalues[i];
 
         if (upvalue->isLocal) {
-          Local &local = locals[upvalue->index];
+          Local &local = expr->_compiler.locals[upvalue->index];
 
           if (!local.isField)
             upvalue->index = upvalue->index;
@@ -88,7 +88,7 @@ void Reifier::visitGroupingExpr(GroupingExpr *expr) {
         }
       }
   }
-*/
+
   for (int index = 0; index < expr->count; index++) {
     expr->expressions[index]->accept(this);
   }

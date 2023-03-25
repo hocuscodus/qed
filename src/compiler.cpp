@@ -56,8 +56,6 @@ ObjFunction *Compiler::compile(Parser &parser) {
   localStart = 0;
   addLocal({VAL_OBJ, &function->obj});
 
-  if (!parser.parse())
-    return NULL;
 #ifdef DEBUG_PRINT_CODE
   printf("Original parse: ");
   ASTPrinter().print(parser.expr);
@@ -102,6 +100,7 @@ ObjFunction *Compiler::compile(Parser &parser) {
     printf("\n");
   }
 #endif
+  current = enclosing;
 
   return parser.hadError ? NULL : function;
 }

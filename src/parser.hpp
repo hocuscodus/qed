@@ -65,7 +65,7 @@ class Parser {
   uint64_t statementExprs = 0L; // Helper booleans in groups
 public:
   bool hadError;
-  Expr *expr;
+  GroupingExpr *expr;
 public:
   Parser(Scanner &scanner);
 private:
@@ -80,6 +80,7 @@ public:
   void compilerError(const char *fmt, ...);
   void errorAt(Token *token, const char *fmt, ...);
 ////
+  ObjFunction *compile();
   bool parse();
   void passSeparator();
 

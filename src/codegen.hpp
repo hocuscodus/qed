@@ -18,8 +18,7 @@
 #ifndef qed_codegen_h
 #define qed_codegen_h
 
-#include "compiler.hpp"
-#include "chunk.hpp"
+#include "parser.hpp"
 
 class CodeGenerator : public ExprVisitor {
   Parser &parser;

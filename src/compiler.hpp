@@ -19,7 +19,8 @@
 #define qed_compiler_h
 
 #include <iostream>
-#include "parser.hpp"
+#include "object.hpp"
+#include "scanner.hpp"
 
 typedef struct {
   Type type;
@@ -28,14 +29,17 @@ typedef struct {
   int realIndex;
 } Local;
 
+class Parser;
+struct VariableExpr;
+
 struct Compiler {
   Parser *parser;
   std::string prefix;
   Compiler *enclosing;
   ObjFunction *function = NULL;
   int localCount;
-private:
   Local locals[UINT8_COUNT];
+private:
   int localStart;
 public:
   ObjFunction *compile(Parser &parser);

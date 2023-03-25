@@ -169,6 +169,10 @@ void Parser::errorAt(Token *token, const char *fmt, ...) {
 
 #undef FORMAT_MESSAGE
 
+ObjFunction *Parser::compile() {
+  return parse() ? expr->_compiler.compile(*this) : NULL;
+}
+
 bool Parser::parse() {
   /*
     int line = -1;
@@ -186,7 +190,7 @@ bool Parser::parse() {
       if (token.type == TOKEN_EOF) break;
     }
   */
-  expr = grouping(TOKEN_EOF, "Expect end of file.");
+  expr = (GroupingExpr *) grouping(TOKEN_EOF, "Expect end of file.");
 
   return !hadError;
 }

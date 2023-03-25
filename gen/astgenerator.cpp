@@ -124,7 +124,7 @@ public:
     fprintf(file, "#ifndef %s_h\n", toLowerCase(baseName));
     fprintf(file, "#define %s_h\n\n", toLowerCase(baseName));
     fprintf(file, "#include \"chunk.hpp\"\n");
-    fprintf(file, "#include \"scanner.hpp\"\n\n");
+    fprintf(file, "#include \"compiler.hpp\"\n\n");
     fprintf(file, "struct ObjFunction;\n\n");
 
     // The enum types for AST classes.
@@ -289,7 +289,7 @@ int main(int argc, const char *argv[]) {
     "UIDirective : int childDir, int attCount, UIAttributeExpr** attributes, UIDirectiveExpr* previous, UIDirectiveExpr* lastChild, int viewIndex, bool childrenViewFlag, int _layoutIndexes[NUM_DIRS], long _eventFlags",
     "Assign      : VariableExpr* varExp, Token op, Expr* value, OpCode opCode, bool suffixFlag",
     "Binary      : Expr* left, Token op, Expr* right, OpCode opCode, bool notFlag",
-    "Grouping    : Token name, int count, Expr** expressions, int popLevels, Expr* ui",
+    "Grouping    : Token name, int count, Expr** expressions, int popLevels, Expr* ui, Compiler _compiler",
     "Array       : int count, Expr** expressions, ObjFunction* function",
     "Call        : Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler",
     "ArrayElement: Expr* callee, Token bracket, int count, Expr** indexes",

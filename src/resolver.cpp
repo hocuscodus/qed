@@ -692,7 +692,7 @@ void Resolver::visitFunctionExpr(FunctionExpr *expr) {
   getCurrent()->addLocal(VAL_OBJ);
   getCurrent()->setLocalName(&expr->name);
 
-  Compiler compiler;
+  Compiler &compiler = ((GroupingExpr *) expr->body)->_compiler;
 
   compiler.beginScope(newFunction(expr->type, copyString(expr->name.start, expr->name.length), expr->count));
 
@@ -751,13 +751,11 @@ void Resolver::visitGroupingExpr(GroupingExpr *expr) {
   Type parenType;
 
   if (groupFlag) {
-    Compiler compiler;
-
-    compiler.beginScope();
+    expr->_compiler.beginScope();
     acceptGroupingExprUnits(expr);
     parenType = parenFlag ? removeLocal() : (Type){VAL_VOID};
-    expr->popLevels = compiler.localCount;
-    compiler.endScope();
+    expr->popLevels = expr->_compiler.localCount;
+    expr->_compiler.endScope();
   }
   else {
     acceptGroupingExprUnits(expr);
@@ -859,7 +857,21 @@ void Resolver::visitListExpr(ListExpr *expr) {
         getCurrent()->addLocal(VAL_OBJ);
         getCurrent()->setLocalName(&varExp->name);
 
-        Compiler compiler;
+        Expr *bodyExpr = expr->count > 2 ? expr->expressions[2] : NULL;
+        GroupingExpr *body;
+
+        if (bodyExpr && bodyExpr->type == EXPR_GROUPING && ((GroupingExpr *) bodyExpr)->name.type == TOKEN_RIGHT_BRACE)
+          body = (GroupingExpr *) bodyExpr;
+        else {
+          Expr **expList = bodyExpr ? RESIZE_ARRAY(Expr *, NULL, 0, 1) : NULL;
+
+          if (expList)
+            expList[0] = bodyExpr;
+
+          body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), expList ? 1 : 0, expList, 0, NULL);
+        }
+
+        Compiler &compiler = body->_compiler;
 
         compiler.beginScope(newFunction(returnType, copyString(varExp->name.start, varExp->name.length), callExpr->count));
         bindFunction(compiler.prefix, compiler.function);
@@ -910,15 +922,10 @@ void Resolver::visitListExpr(ListExpr *expr) {
           accept<int>(handlerExpr, 0);
         }
 
-        compiler.function->bodyExpr = expr->count > 2 ? expr->expressions[2] : NULL;
+        compiler.function->bodyExpr = body;
 
-        if (compiler.function->bodyExpr)
-          if (compiler.function->bodyExpr->type == EXPR_GROUPING && ((GroupingExpr *)compiler.function->bodyExpr)->name.type == TOKEN_RIGHT_BRACE)
-            acceptGroupingExprUnits((GroupingExpr *)compiler.function->bodyExpr);
-          else {
-            accept<int>(compiler.function->bodyExpr, 0);
-            removeLocal();
-          }
+        if (body)
+          acceptGroupingExprUnits(body);
 
         compiler.function->fieldCount = compiler.getLocalCount();
         compiler.function->fields = ALLOCATE(Field, compiler.getLocalCount());

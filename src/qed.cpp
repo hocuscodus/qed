@@ -18,7 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "compiler.hpp"
+#include "parser.hpp"
 #include "vm.hpp"
 #include "qni.hpp"
 
@@ -80,8 +80,11 @@ static void repl() {
   strcpy(buffer, qedLib);
   Scanner scanner(buffer);
   Parser parser(scanner);
-  Compiler compiler;
-  ObjFunction *function = compiler.compile(parser);
+  ObjFunction *function = parser.compile();
+
+  if (!function)
+    return;
+
   CoThread *coThread = newThread(NULL);
   VM vm(coThread, false);
   ObjClosure *closure = coThread->pushClosure(function);
@@ -110,7 +113,8 @@ static void repl() {
     }
 
     strcat(buffer, line);
-    function = compiler.compile(parser);
+
+    parser.compile();
   }
 
   freeObjects();
@@ -167,8 +171,11 @@ void runSource(const char *source) {
 
   Scanner scanner(buffer);
   Parser parser(scanner);
-  Compiler compiler;
-  ObjFunction *function = compiler.compile(parser);
+  ObjFunction *function = parser.compile();
+
+  if (!function)
+    return;
+
   CoThread *coThread = newThread(NULL);
   VM vm(coThread, true);
   ObjClosure *closure = coThread->pushClosure(function);

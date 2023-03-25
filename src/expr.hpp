@@ -6,7 +6,7 @@
 #define expr_h
 
 #include "chunk.hpp"
-#include "scanner.hpp"
+#include "compiler.hpp"
 
 struct ObjFunction;
 
@@ -179,6 +179,7 @@ struct GroupingExpr : public Expr {
   Expr** expressions;
   int popLevels;
   Expr* ui;
+  Compiler _compiler;
 
   GroupingExpr(Token name, int count, Expr** expressions, int popLevels, Expr* ui);
   void accept(ExprVisitor *visitor);
