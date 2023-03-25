@@ -16,8 +16,21 @@
  * along with this program.  If not, see <http: *www.gnu.org/licenses/>.
  */
 
+#include <stack>
 #include "reifier.hpp"
 #include "object.hpp"
+
+typedef struct {
+  Compiler *compiler;
+  int localIndex;
+  int fieldIndex;
+} ReinferData;
+
+static std::stack<ReinferData> reinferStack;
+
+ReinferData *top() {
+  return reinferStack.empty() ? NULL : &reinferStack.top();
+}
 
 Reifier::Reifier(Parser &parser) : ExprVisitor(), parser(parser) {
 }
@@ -65,32 +78,12 @@ void Reifier::visitGetExpr(GetExpr *expr) {
 }
 
 void Reifier::visitGroupingExpr(GroupingExpr *expr) {
-  int fieldIndex = 0;
-  int localIndex = 0;
-
-  for (int index = 0; index < expr->_compiler.localCount; index++) {
-    Local *local = &expr->_compiler.locals[expr->_compiler.localCount + index];
-    ObjFunction *function = AS_FUNCTION_TYPE(local->type);
-
-    local->realIndex = local->isField ? fieldIndex++ : localIndex++;
-
-    if (function)
-      for (int i = 0; i < function->upvalueCount; i++) {
-        Upvalue *upvalue = &function->upvalues[i];
-
-        if (upvalue->isLocal) {
-          Local &local = expr->_compiler.locals[upvalue->index];
-
-          if (!local.isField)
-            upvalue->index = upvalue->index;
-
-          upvalue->index = upvalue->index;//local.realIndex;
-        }
-      }
-  }
+  reinferStack.push({&expr->_compiler, 0, 0});
 
   for (int index = 0; index < expr->count; index++)
     expr->expressions[index]->accept(this);
+
+  reinferStack.pop();
 }
 
 void Reifier::visitArrayExpr(ArrayExpr *expr) {
@@ -100,6 +93,29 @@ void Reifier::visitArrayExpr(ArrayExpr *expr) {
 }
 
 void Reifier::visitListExpr(ListExpr *expr) {
+  Local *local = expr->_local.type.valueType != VAL_VOID ? &expr->_local : NULL;
+
+  if (local) {
+    local->realIndex = local->isField ? top()->fieldIndex++ : top()->localIndex++;
+
+    if (IS_FUNCTION(local->type)) {
+      ObjFunction *function = AS_FUNCTION_TYPE(local->type);
+
+      for (int i = 0; i < function->upvalueCount; i++) {
+        Upvalue *upvalue = &function->upvalues[i];
+
+        if (upvalue->isLocal) {
+          Local &local = top()->compiler->locals[upvalue->index];
+
+          if (!local.isField)
+            upvalue->index = upvalue->index;
+
+          upvalue->index = upvalue->index;//local.realIndex;
+        }
+      }
+    }
+  }
+
   for (int index = 0; index < expr->count; index++) {
     expr->expressions[index]->accept(this);
   }

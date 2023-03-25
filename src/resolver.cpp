@@ -801,6 +801,7 @@ void Resolver::visitArrayExpr(ArrayExpr *expr) {
 // );
 void Resolver::visitListExpr(ListExpr *expr) {
   accept<int>(expr->expressions[0], 0);
+  expr->_local.type.valueType = VAL_VOID;
 
   Type type = removeLocal();
 
