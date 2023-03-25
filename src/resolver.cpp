@@ -692,9 +692,9 @@ void Resolver::visitFunctionExpr(FunctionExpr *expr) {
   getCurrent()->addLocal(VAL_OBJ);
   getCurrent()->setLocalName(&expr->name);
 
-  Compiler compiler(newFunction(expr->type, copyString(expr->name.start, expr->name.length), expr->count));
+  Compiler compiler;
 
-  compiler.beginScope();
+  compiler.beginScope(newFunction(expr->type, copyString(expr->name.start, expr->name.length), expr->count));
 
   for (int index = 0; index < expr->count; index++)
     accept<int>(expr->params[index]);
@@ -754,10 +754,10 @@ void Resolver::visitGroupingExpr(GroupingExpr *expr) {
     Compiler compiler;
 
     compiler.beginScope();
-//    getCurrent()->beginScope();
     acceptGroupingExprUnits(expr);
     parenType = parenFlag ? removeLocal() : (Type){VAL_VOID};
-    expr->popLevels = compiler.endScope();
+    expr->popLevels = compiler.localCount;
+    compiler.endScope();
   }
   else {
     acceptGroupingExprUnits(expr);
@@ -771,9 +771,9 @@ void Resolver::visitGroupingExpr(GroupingExpr *expr) {
 void Resolver::visitArrayExpr(ArrayExpr *expr) {
   ObjArray *objArray = newArray();
   Type type = {VAL_OBJ, &objArray->obj};
-  Compiler compiler(newFunction({VAL_VOID}, NULL, 0));
+  Compiler compiler;
 
-  compiler.beginScope();
+  compiler.beginScope(newFunction({VAL_VOID}, NULL, 0));
 
   for (int index = 0; index < expr->count; index++) {
     acceptSubExpr(expr->expressions[index]);
@@ -859,9 +859,9 @@ void Resolver::visitListExpr(ListExpr *expr) {
         getCurrent()->addLocal(VAL_OBJ);
         getCurrent()->setLocalName(&varExp->name);
 
-        Compiler compiler(newFunction(returnType, copyString(varExp->name.start, varExp->name.length), callExpr->count));
+        Compiler compiler;
 
-        compiler.beginScope();
+        compiler.beginScope(newFunction(returnType, copyString(varExp->name.start, varExp->name.length), callExpr->count));
         bindFunction(compiler.prefix, compiler.function);
 
         for (int index = 0; index < callExpr->count; index++)

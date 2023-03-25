@@ -24,13 +24,12 @@
 typedef struct {
   Type type;
   Token name;
-  int depth;
   bool isField;
   int realIndex;
 } Local;
 
 struct Compiler {
-  Parser &parser;
+  Parser *parser;
   std::string prefix;
   Compiler *enclosing;
   ObjFunction *function = NULL;
@@ -38,16 +37,12 @@ struct Compiler {
 private:
   Local locals[UINT8_COUNT];
   int localStart;
-  int scopeDepth;
 public:
-  Compiler(Parser &parser);
-  Compiler(ObjFunction *function);
-  Compiler();
+  ObjFunction *compile(Parser &parser);
 
-  ObjFunction *compile();
-
+  void beginScope(ObjFunction *function);
   void beginScope();
-  int endScope();
+  void endScope();
 
   Local *addLocal(ValueType type);
   Local *addLocal(Type type);

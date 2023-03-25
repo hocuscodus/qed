@@ -46,28 +46,16 @@ static ObjCallable *getSignature() {
 
 Compiler *Compiler::current = NULL;
 
-Compiler::Compiler(Parser &parser) : parser(parser) {
-  prefix = "qni";
-  localStart = 0;
-  localCount = 0;
-  scopeDepth = 0;
-  function = newFunction({VAL_VOID}, NULL, 0);
+ObjFunction *Compiler::compile(Parser &parser) {
+  this->parser = &parser;
   enclosing = NULL;
   current = this;
+  localCount = 0;
+  function = newFunction({VAL_VOID}, NULL, 0);
+  prefix = "qni";
+  localStart = 0;
   addLocal({VAL_OBJ, &function->obj});
-}
 
-Compiler::Compiler(ObjFunction *function) : parser(current->parser) {
-  this->function = function;
-  scopeDepth = 0;
-}
-
-Compiler::Compiler() : parser(current->parser) {
-  function = current->function;
-  scopeDepth = 0;
-}
-
-ObjFunction *Compiler::compile() {
   if (!parser.parse())
     return NULL;
 #ifdef DEBUG_PRINT_CODE
@@ -90,9 +78,9 @@ ObjFunction *Compiler::compile() {
     Token *token = &locals[i].name;
 
     if (token != NULL)
-      printf("[ %.*s;%d ]", token->length, token->start, locals[i].depth);
+      printf("[ %.*s ]", token->length, token->start);
     else
-      printf("[ N/A;%d ]", locals[i].depth);
+      printf("[ N/A ]");
   }
   printf("\n");
 #endif
@@ -118,42 +106,33 @@ ObjFunction *Compiler::compile() {
   return parser.hadError ? NULL : function;
 }
 
-void Compiler::beginScope() {
-  if (!scopeDepth) {
-    this->enclosing = current;
-    current = this;
+void Compiler::beginScope(ObjFunction *function) {
+  parser = current->parser;
+  this->enclosing = current;
+  current = this;
+  localCount = 0;
 
-    bool withinFunction = inLocalBlock();
-    ObjString *enclosingNameObj = enclosing->function->name;
-    std::string enclosingName = enclosingNameObj ? std::string("_") + enclosingNameObj->chars : "";
+  ObjString *enclosingNameObj = enclosing->function->name;
+  std::string enclosingName = enclosingNameObj ? std::string("_") + enclosingNameObj->chars : "";
 
-    prefix = withinFunction ? enclosing->prefix : enclosing->prefix + enclosingName;
-    localStart = withinFunction ? enclosing->localStart + enclosing->localCount : 0;
-    localCount = 0;
-
-    if (!withinFunction)
-      addLocal({VAL_OBJ, &function->obj});
-//    else
-//      scopeDepth = enclosing->scopeDepth;
-  }
-
-  scopeDepth++;
+  this->function = function;
+  prefix = enclosing->prefix + enclosingName;
+  localStart = 0;
+  addLocal({VAL_OBJ, &function->obj});
 }
 
-int Compiler::endScope() {
-  int numRefs = 0;
+void Compiler::beginScope() {
+  parser = current->parser;
+  this->enclosing = current;
+  current = this;
+  localCount = 0;
+  function = enclosing->function;
+  prefix = enclosing->prefix;
+  localStart = enclosing->localStart + enclosing->localCount;
+}
 
-  scopeDepth--;
-
-  while (localCount > 0 && locals[localCount - 1].depth > scopeDepth) {
-    numRefs++;
-    localCount--;
-  }
-
-  if (!scopeDepth)
-    current = enclosing;
-
-  return numRefs;
+void Compiler::endScope() {
+  current = enclosing;
 }
 
 Local *Compiler::addLocal(ValueType type) {
@@ -162,7 +141,7 @@ Local *Compiler::addLocal(ValueType type) {
 
 Local *Compiler::addLocal(Type type) {
   if (localCount == UINT8_COUNT) {
-    parser.error("Too many local variables in function.");
+    parser->error("Too many local variables in function.");
     return NULL;
   }
 
@@ -171,7 +150,6 @@ Local *Compiler::addLocal(Type type) {
   local->type = type;
   local->name.start = "";
   local->name.length = 0;
-  local->depth = scopeDepth;
   local->isField = false;
   return local;
 }
@@ -276,7 +254,7 @@ int Compiler::resolveLocal(Token *name) {
           break;
         }
         default:
-          parser.error("Variable '%.*s' is not a call.", name->length, name->start);
+          parser->error("Variable '%.*s' is not a call.", name->length, name->start);
           return -2;
         }
       else
@@ -294,7 +272,7 @@ int Compiler::resolveLocal(Token *name) {
       strcat(parms, signature->fields[index].type.toString());
     }
 
-    parser.error("Call '%.*s(%s)' does not match %s.", name->length, name->start, parms, buffer);
+    parser->error("Call '%.*s(%s)' does not match %s.", name->length, name->start, parms, buffer);
   }
 
   return found;
@@ -336,7 +314,7 @@ int Compiler::resolveUpvalue(Token *name) {
 }
 
 int Compiler::addUpvalue(uint8_t index, Type type, bool isLocal) {
-  return function->addUpvalue(index, isLocal, type, parser);
+  return function->addUpvalue(index, isLocal, type, *parser);
 }
 
 void Compiler::resolveVariableExpr(VariableExpr *expr) {
@@ -363,7 +341,7 @@ void Compiler::resolveVariableExpr(VariableExpr *expr) {
       addLocal(function->upvalues[expr->index].type);
     }
     else {
-      parser.error("Variable '%.*s' must be defined", expr->name.length, expr->name.start);
+      parser->error("Variable '%.*s' must be defined", expr->name.length, expr->name.start);
       addLocal(VAL_VOID);
     }
     break;
@@ -378,11 +356,8 @@ void Compiler::checkDeclaration(Token *name) {
   for (int i = localCount - 1; i >= 0; i--) {
     Local *local = &locals[i];
 
-    if (local->depth != -1 && local->depth < scopeDepth)
-      break;
-
     if (identifiersEqual(name, &local->name))
-;//      parser.error("Already a variable '%.*s' with this name in this scope.", name->length, name->start);
+;//      parser->error("Already a variable '%.*s' with this name in this scope.", name->length, name->start);
   }
 }
 

@@ -80,11 +80,11 @@ static void repl() {
   strcpy(buffer, qedLib);
   Scanner scanner(buffer);
   Parser parser(scanner);
-  Compiler compiler(parser);
+  Compiler compiler;
+  ObjFunction *function = compiler.compile(parser);
   CoThread *coThread = newThread(NULL);
   VM vm(coThread, false);
-  ObjClosure *closure = coThread->pushClosure(compiler.function);
-  ObjFunction *function = compiler.compile();
+  ObjClosure *closure = coThread->pushClosure(function);
 
 //  strcpy(buffer, "");
 //  scanner.reset(buffer);
@@ -110,7 +110,7 @@ static void repl() {
     }
 
     strcat(buffer, line);
-    function = compiler.compile();
+    function = compiler.compile(parser);
   }
 
   freeObjects();
@@ -167,11 +167,11 @@ void runSource(const char *source) {
 
   Scanner scanner(buffer);
   Parser parser(scanner);
-  Compiler compiler(parser);
+  Compiler compiler;
+  ObjFunction *function = compiler.compile(parser);
   CoThread *coThread = newThread(NULL);
   VM vm(coThread, true);
-  ObjClosure *closure = coThread->pushClosure(compiler.function);
-  ObjFunction *function = compiler.compile();
+  ObjClosure *closure = coThread->pushClosure(function);
 
   if (function == NULL)
     exit(65);
