@@ -144,11 +144,10 @@ void GetExpr::accept(ExprVisitor *visitor) {
   return visitor->visitGetExpr(this);
 }
 
-ListExpr::ListExpr(int count, Expr** expressions, ExprType listType, ObjFunction* function) : Expr(EXPR_LIST) {
+ListExpr::ListExpr(int count, Expr** expressions, ExprType listType) : Expr(EXPR_LIST) {
   this->count = count;
   this->expressions = expressions;
   this->listType = listType;
-  this->function = function;
 }
 
 void ListExpr::accept(ExprVisitor *visitor) {

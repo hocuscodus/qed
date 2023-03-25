@@ -37,11 +37,9 @@ struct Compiler {
   std::string prefix;
   Compiler *enclosing;
   ObjFunction *function = NULL;
+  int localStart;
   int localCount;
   Local locals[UINT8_COUNT];
-private:
-  int localStart;
-public:
   ObjFunction *compile(Parser &parser);
 
   void beginScope(ObjFunction *function);

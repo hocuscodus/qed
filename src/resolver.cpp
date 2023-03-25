@@ -542,7 +542,7 @@ static Expr *generateUIFunction(const char *type, const char *name, char *args, 
     functionExprs[1] = new CallExpr(nameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), nbParms, parms, false, NULL);
     functionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), count + restLength, bodyExprs, 0, NULL);
 
-    return new ListExpr(3, functionExprs, EXPR_LIST, NULL);
+    return new ListExpr(3, functionExprs, EXPR_LIST);
 }
 
 void Resolver::visitCallExpr(CallExpr *expr) {
@@ -836,6 +836,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
 
       getCurrent()->addLocal(returnType);
       getCurrent()->setLocalName(&assignExpr->varExp->name);
+      expr->_local = *getCurrent()->peekLocal(0);
 
       if (expr->count > 2)
         parser.error("Expect ';' or newline after variable declaration.");
@@ -939,7 +940,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
 
         compiler.endScope();
         getCurrent()->setLocalObjType(compiler.function);
-        expr->function = compiler.function;
+        expr->_local = *getCurrent()->peekLocal(0);
       }
       return;
     }

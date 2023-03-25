@@ -89,11 +89,8 @@ void Reifier::visitGroupingExpr(GroupingExpr *expr) {
       }
   }
 
-  for (int index = 0; index < expr->count; index++) {
+  for (int index = 0; index < expr->count; index++)
     expr->expressions[index]->accept(this);
-  }
-  if (expr->ui)
-    accept<int>(expr->ui, 0);
 }
 
 void Reifier::visitArrayExpr(ArrayExpr *expr) {

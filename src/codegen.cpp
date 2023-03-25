@@ -237,8 +237,9 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
       break;
     }
     case EXPR_CALL: {
-      CodeGenerator generator(parser, expr->function);
-      Expr *bodyExpr = expr->function->bodyExpr;
+      ObjFunction *function = (ObjFunction *) expr->_local.type.objType;
+      CodeGenerator generator(parser, function);
+      Expr *bodyExpr = function->bodyExpr;
 
       if (bodyExpr)
         generator.emitCode(bodyExpr);
@@ -249,19 +250,19 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
         return;
 #ifdef DEBUG_PRINT_CODE
       else
-        disassembleChunk(&expr->function->chunk, expr->function->name->chars);
-        for (int index = 0; index < expr->function->fieldCount; index++) {
-          const char *name = expr->function->fields[index].name->chars;
+        disassembleChunk(&function->chunk, function->name->chars);
+        for (int index = 0; index < function->fieldCount; index++) {
+          const char *name = function->fields[index].name->chars;
 
-          printf("<%s %s> ", expr->function->fields[index].type.toString(), name ? name : "");
+          printf("<%s %s> ", function->fields[index].type.toString(), name ? name : "");
         }
         printf("\n");
 #endif
-      emitBytes(OP_CLOSURE, makeConstant(OBJ_VAL(expr->function)));
+      emitBytes(OP_CLOSURE, makeConstant(OBJ_VAL(function)));
 
-      for (int i = 0; i < expr->function->upvalueCount; i++) {
-        emitByte(expr->function->upvalues[i].isLocal ? 1 : 0);
-        emitByte(expr->function->upvalues[i].index);
+      for (int i = 0; i < function->upvalueCount; i++) {
+        emitByte(function->upvalues[i].isLocal ? 1 : 0);
+        emitByte(function->upvalues[i].index);
       }
       break;
     }

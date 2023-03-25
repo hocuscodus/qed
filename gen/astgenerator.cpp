@@ -296,7 +296,7 @@ int main(int argc, const char *argv[]) {
     "Declaration : Type type, Token name, Expr* initExpr",
     "Function    : Type type, Token name, int count, Expr** params, Expr* body, ObjFunction* function",
     "Get         : Expr* object, Token name, int index",
-    "List        : int count, Expr** expressions, ExprType listType, ObjFunction* function",
+    "List        : int count, Expr** expressions, ExprType listType, Local _local",
     "Literal     : ValueType type, As as",
     "Logical     : Expr* left, Token op, Expr* right",
     "Opcode      : OpCode op, Expr* right",

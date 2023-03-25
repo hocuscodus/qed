@@ -250,9 +250,9 @@ struct ListExpr : public Expr {
   int count;
   Expr** expressions;
   ExprType listType;
-  ObjFunction* function;
+  Local _local;
 
-  ListExpr(int count, Expr** expressions, ExprType listType, ObjFunction* function);
+  ListExpr(int count, Expr** expressions, ExprType listType);
   void accept(ExprVisitor *visitor);
 };
 

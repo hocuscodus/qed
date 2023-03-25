@@ -713,7 +713,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
     expList[count++] = exp2;
   }
 
-  return expList != NULL ? new ListExpr(count, expList, EXPR_LIST, NULL) : exp;
+  return expList != NULL ? new ListExpr(count, expList, EXPR_LIST) : exp;
 }
 
 Expr *Parser::function(Type *type, TokenType endGroupType) {
