@@ -96,7 +96,6 @@ public:
   void visitVariableExpr(VariableExpr *expr);
   void visitSwapExpr(SwapExpr *expr);
 
-  void checkDeclaration(Token *name);
   Type removeLocal();
   bool resolve(Compiler *compiler);
   void acceptGroupingExprUnits(GroupingExpr *expr);

@@ -676,7 +676,7 @@ void Resolver::visitArrayElementExpr(ArrayElementExpr *expr) {
 }
 
 void Resolver::visitDeclarationExpr(DeclarationExpr *expr) {
-  checkDeclaration(&expr->name);
+  getCurrent()->checkDeclaration(&expr->name);
 
   if (expr->initExpr != NULL) {
     accept<int>(expr->initExpr, 0);
@@ -688,7 +688,7 @@ void Resolver::visitDeclarationExpr(DeclarationExpr *expr) {
 }
 
 void Resolver::visitFunctionExpr(FunctionExpr *expr) {
-  checkDeclaration(&expr->name);
+  getCurrent()->checkDeclaration(&expr->name);
   getCurrent()->addLocal(VAL_OBJ);
   getCurrent()->setLocalName(&expr->name);
 
@@ -700,11 +700,11 @@ void Resolver::visitFunctionExpr(FunctionExpr *expr) {
     accept<int>(expr->params[index]);
 
   accept<int>(expr->body, 0);
-  compiler.function->fieldCount = compiler.localCount;
-  compiler.function->fields = ALLOCATE(Field, compiler.localCount);
+  compiler.function->fieldCount = compiler.getLocalCount();
+  compiler.function->fields = ALLOCATE(Field, compiler.getLocalCount());
 
-  for (int index = 0; index < compiler.localCount; index++) {
-    Local *local = &compiler.locals[index];
+  for (int index = 0; index < compiler.getLocalCount(); index++) {
+    Local *local = &compiler.getLocal(index);
 
     compiler.function->fields[index].type = local->type;
     compiler.function->fields[index].name = copyString(local->name.start, local->name.length);
@@ -753,11 +753,11 @@ void Resolver::visitGroupingExpr(GroupingExpr *expr) {
   if (groupFlag) {
     Compiler compiler;
 
-//    compiler.beginScope();
-    getCurrent()->beginScope();
+    compiler.beginScope();
+//    getCurrent()->beginScope();
     acceptGroupingExprUnits(expr);
     parenType = parenFlag ? removeLocal() : (Type){VAL_VOID};
-    expr->popLevels = getCurrent()->endScope();
+    expr->popLevels = compiler.endScope();
   }
   else {
     acceptGroupingExprUnits(expr);
@@ -815,7 +815,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
       AssignExpr *assignExpr = (AssignExpr *)subExpr;
 
       expr->listType = subExpr->type;
-      checkDeclaration(&assignExpr->varExp->name);
+      getCurrent()->checkDeclaration(&assignExpr->varExp->name);
 
       if (assignExpr->value != NULL) {
         accept<int>(assignExpr->value, 0);
@@ -855,7 +855,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
       else {
         VariableExpr *varExp = (VariableExpr *)callExpr->callee;
 
-        checkDeclaration(&varExp->name);
+        getCurrent()->checkDeclaration(&varExp->name);
         getCurrent()->addLocal(VAL_OBJ);
         getCurrent()->setLocalName(&varExp->name);
 
@@ -920,11 +920,11 @@ void Resolver::visitListExpr(ListExpr *expr) {
             removeLocal();
           }
 
-        compiler.function->fieldCount = compiler.localCount;
-        compiler.function->fields = ALLOCATE(Field, compiler.localCount);
+        compiler.function->fieldCount = compiler.getLocalCount();
+        compiler.function->fields = ALLOCATE(Field, compiler.getLocalCount());
 
-        for (int index = 0; index < compiler.localCount; index++) {
-          Local *local = &compiler.locals[index];
+        for (int index = 0; index < compiler.getLocalCount(); index++) {
+          Local *local = &compiler.getLocal(index);
 
           compiler.function->fields[index].type = local->type;
           compiler.function->fields[index].name = copyString(local->name.start, local->name.length);
@@ -943,7 +943,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
       if (expr->index != -1 && !expr->upvalueFlag)// && getCurrent()->locals[expr->index].depth == getCurrent()->scopeDepth)
         if (getCurrent()->locals[expr->index].depth == getCurrent()->scopeDepth)
         parser.error("Already a variable with this name in this scope.");*/
-      checkDeclaration(&varExpr->name);
+      getCurrent()->checkDeclaration(&varExpr->name);
       getCurrent()->addLocal(returnType);
       getCurrent()->setLocalName(&varExpr->name);
 
@@ -1093,16 +1093,16 @@ void Resolver::visitSetExpr(SetExpr *expr) {
 }
 
 void Resolver::visitStatementExpr(StatementExpr *expr) {
-  int oldLocalCount = getCurrent()->localCount;
+  int oldLocalCount = getCurrent()->getLocalCount();
 
   acceptSubExpr(expr->expr);
 
   if (expr->expr->type != EXPR_LIST || ((ListExpr *)expr->expr)->listType == EXPR_LIST) {
     Type type = removeLocal();
 
-    if (oldLocalCount != getCurrent()->localCount)
+    if (oldLocalCount != getCurrent()->getLocalCount())
       parser.compilerError("COMPILER ERROR: oldLocalCount: %d localCount: %d",
-                           oldLocalCount, getCurrent()->localCount);
+                           oldLocalCount, getCurrent()->getLocalCount());
 
     if (!IS_VOID(type))
       expr->expr = new OpcodeExpr(OP_POP, expr->expr);
@@ -1188,18 +1188,6 @@ void Resolver::visitSwapExpr(SwapExpr *expr) {
   expr->_expr = uiExprs.front();
   uiExprs.pop_front();
   accept<int>(expr->_expr);
-}
-
-void Resolver::checkDeclaration(Token *name) {
-  for (int i = getCurrent()->localCount - 1; i >= 0; i--) {
-    Local *local = &getCurrent()->locals[i];
-
-    if (local->depth != -1 && local->depth < getCurrent()->scopeDepth)
-      break;
-
-    if (identifiersEqual(name, &local->name))
-;//      parser.error("Already a variable '%.*s' with this name in this scope.", name->length, name->start);
-  }
 }
 
 Type Resolver::removeLocal() {
@@ -1555,15 +1543,15 @@ void Resolver::processAttrs(UIDirectiveExpr *expr) {
           }
 
           if (AS_OBJ_TYPE(type) == OBJ_INSTANCE) {
-            getCurrent()->function->instanceIndexes->set(getCurrent()->localCount);
+            getCurrent()->function->instanceIndexes->set(getCurrent()->getLocalCount());
             expr->_eventFlags |= ((ObjFunction *) AS_INSTANCE_TYPE(type)->callable)->uiFunction->eventFlags;
           }
 
-          char *name = generateInternalVarName("v", getCurrent()->localCount);
+          char *name = generateInternalVarName("v", getCurrent()->getLocalCount());
           DeclarationExpr *decExpr = new DeclarationExpr(type, buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1), attExpr->handler);
 
           attExpr->handler = NULL;
-          attExpr->_index = getCurrent()->localCount;
+          attExpr->_index = getCurrent()->getLocalCount();
           uiExprs.push_back(decExpr);
           getCurrent()->addLocal(type);
           getCurrent()->setLocalName(&decExpr->name);
@@ -1660,7 +1648,7 @@ void Resolver::pushAreas(UIDirectiveExpr *expr) {
 
     if (name != NULL) {
       Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
-      Type outType = getCurrent()->enclosing->locals[getCurrent()->enclosing->resolveLocal(&token)].type;
+      Type outType = getCurrent()->enclosing->getLocal(getCurrent()->enclosing->resolveLocal(&token)).type;
       char *callee = NULL;
 
       switch (AS_OBJ_TYPE(outType)) {
@@ -1867,7 +1855,7 @@ void Resolver::paint(UIDirectiveExpr *expr) {
 
   if (name) {
     Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
-    Type outType = getCurrent()->enclosing->enclosing->locals[getCurrent()->enclosing->enclosing->resolveLocal(&token)].type;
+    Type outType = getCurrent()->enclosing->enclosing->getLocal(getCurrent()->enclosing->enclosing->resolveLocal(&token)).type;
 
     switch (AS_OBJ_TYPE(outType)) {
       case OBJ_INSTANCE:
@@ -1983,7 +1971,7 @@ void Resolver::onEvent(UIDirectiveExpr *expr) {
       const char *name = getValueVariableName(expr, ATTRIBUTE_OUT);
       Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
       int index = getCurrent()->enclosing->enclosing->resolveLocal(&token);
-      Type outType = getCurrent()->enclosing->enclosing->locals[index].type;
+      Type outType = getCurrent()->enclosing->enclosing->getLocal(index).type;
 
       switch (AS_OBJ_TYPE(outType)) {
         case OBJ_INSTANCE:

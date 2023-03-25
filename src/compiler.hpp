@@ -34,11 +34,12 @@ struct Compiler {
   std::string prefix;
   Compiler *enclosing;
   ObjFunction *function = NULL;
+  int localCount;
+private:
   Local locals[UINT8_COUNT];
   int localStart;
-  int localCount;
   int scopeDepth;
-
+public:
   Compiler(Parser &parser);
   Compiler(ObjFunction *function);
   Compiler();
@@ -58,10 +59,19 @@ struct Compiler {
   int resolveUpvalue(Token *name);
   int addUpvalue(uint8_t index, Type type, bool isLocal);
   void resolveVariableExpr(VariableExpr *expr);
+  void checkDeclaration(Token *name);
   bool inLocalBlock();
 
   static inline Compiler *getCurrent() {
     return current;
+  }
+
+  inline int getLocalCount() {
+    return localStart + localCount;
+  }
+
+  inline Local &getLocal(int index) {
+    return locals[index - localStart];
   }
 private:
   static Compiler *current;

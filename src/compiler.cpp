@@ -302,22 +302,33 @@ int Compiler::resolveLocal(Token *name) {
 
 int Compiler::resolveUpvalue(Token *name) {
   if (enclosing != NULL) {
-    int local = enclosing->resolveLocal(name);
+    int local = -1;
+
+    Compiler *current = enclosing;
+
+    while (true) {
+      local = current->resolveLocal(name);
+
+      if (local == -1 && current->inLocalBlock())
+        current = current->enclosing;
+      else
+        break;
+    }
 
     switch (local) {
     case -2:
       break;
 
     case -1: {
-      int upvalue = enclosing->resolveUpvalue(name);
+      int upvalue = current->resolveUpvalue(name);
 
       if (upvalue != -1)
         return addUpvalue((uint8_t) upvalue, enclosing->function->upvalues[upvalue].type, false);
       break;
     }
     default:
-      enclosing->locals[local].isField = true;
-      return addUpvalue((uint8_t) local, enclosing->locals[local].type, true);
+      current->getLocal(local).isField = true;
+      return addUpvalue((uint8_t) local, current->getLocal(local).type, true);
     }
   }
 
@@ -329,7 +340,16 @@ int Compiler::addUpvalue(uint8_t index, Type type, bool isLocal) {
 }
 
 void Compiler::resolveVariableExpr(VariableExpr *expr) {
-  expr->index = resolveLocal(&expr->name);
+  Compiler *current = this;
+
+  while (true) {
+    expr->index = current->resolveLocal(&expr->name);
+
+    if (expr->index == -1 && current->inLocalBlock())
+      current = current->enclosing;
+    else
+      break;
+  }
 
   switch (expr->index) {
   case -2:
@@ -338,22 +358,31 @@ void Compiler::resolveVariableExpr(VariableExpr *expr) {
     break;
 
   case -1:
-    if (inLocalBlock())
-      enclosing->resolveVariableExpr(expr);
-    else
-      if ((expr->index = resolveUpvalue(&expr->name)) != -1) {
-        expr->upvalueFlag = true;
-        addLocal(function->upvalues[expr->index].type);
-      }
-      else {
-        parser.error("Variable '%.*s' must be defined", expr->name.length, expr->name.start);
-        addLocal(VAL_VOID);
-      }
+    if ((expr->index = current->resolveUpvalue(&expr->name)) != -1) {
+      expr->upvalueFlag = true;
+      addLocal(function->upvalues[expr->index].type);
+    }
+    else {
+      parser.error("Variable '%.*s' must be defined", expr->name.length, expr->name.start);
+      addLocal(VAL_VOID);
+    }
     break;
 
   default:
-    addLocal(locals[expr->index].type);
+    addLocal(current->getLocal(expr->index).type);
     break;
+  }
+}
+
+void Compiler::checkDeclaration(Token *name) {
+  for (int i = localCount - 1; i >= 0; i--) {
+    Local *local = &locals[i];
+
+    if (local->depth != -1 && local->depth < scopeDepth)
+      break;
+
+    if (identifiersEqual(name, &local->name))
+;//      parser.error("Already a variable '%.*s' with this name in this scope.", name->length, name->start);
   }
 }
 
