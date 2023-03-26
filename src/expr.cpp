@@ -1,6 +1,6 @@
 /*
  * The QED Programming Language
- * Copyright (C) 2022  Hocus Codus Software inc.
+ * Copyright (C) 2022-2023  Hocus Codus Software inc.
  */
 #include "expr.hpp"
 
