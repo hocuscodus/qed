@@ -20,6 +20,9 @@
 
 #include "parser.hpp"
 
+/*
+ * The palindrome class...
+ */
 class Reifier : public ExprVisitor {
   Parser &parser;
 public:

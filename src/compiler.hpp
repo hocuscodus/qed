@@ -37,6 +37,9 @@ struct Compiler {
   std::string prefix;
   Compiler *enclosing;
   ObjFunction *function = NULL;
+  int fieldCount;
+  int realLocalStart;
+  int realLocalCount;
   int localStart;
   int localCount;
   Local locals[UINT8_COUNT];

@@ -728,7 +728,7 @@ void Resolver::visitGetExpr(GetExpr *expr) {
     for (int i = 0; expr->index == -1 && i < type->fieldCount; i++) {
       Field *field = &type->fields[i];
 
-      if (identifiersEqual2(&expr->name, field->name)) // && local->depth != -1)
+      if (identifiersEqual2(&expr->name, field->name))
         expr->index = i;
     }
 
@@ -947,11 +947,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
     }
     case EXPR_VARIABLE: {
       VariableExpr *varExpr = (VariableExpr *)subExpr;
-/*
-      resolveVariableExpr(varExpr);
-      if (expr->index != -1 && !expr->upvalueFlag)// && getCurrent()->locals[expr->index].depth == getCurrent()->scopeDepth)
-        if (getCurrent()->locals[expr->index].depth == getCurrent()->scopeDepth)
-        parser.error("Already a variable with this name in this scope.");*/
+
       getCurrent()->checkDeclaration(&varExpr->name);
       getCurrent()->addLocal(returnType);
       getCurrent()->setLocalName(&varExpr->name);
@@ -1085,7 +1081,7 @@ void Resolver::visitSetExpr(SetExpr *expr) {
     for (int i = 0; expr->index == -1 && i < type->fieldCount; i++) {
       Field *field = &type->fields[i];
 
-      if (identifiersEqual2(&expr->name, field->name)) // && local->depth != -1)
+      if (identifiersEqual2(&expr->name, field->name))
         expr->index = i;
     }
 

@@ -22,8 +22,7 @@
 
 typedef struct {
   Compiler *compiler;
-  int localIndex;
-  int fieldIndex;
+  int localStart;
 } ReinferData;
 
 static std::stack<ReinferData> reinferStack;
@@ -78,7 +77,10 @@ void Reifier::visitGetExpr(GetExpr *expr) {
 }
 
 void Reifier::visitGroupingExpr(GroupingExpr *expr) {
-  reinferStack.push({&expr->_compiler, 0, 0});
+  int localStart = top() ? top()->localStart : 0;
+
+  reinferStack.push({&expr->_compiler, localStart});
+  top()->compiler->realLocalStart = localStart;
 
   for (int index = 0; index < expr->count; index++)
     expr->expressions[index]->accept(this);
@@ -96,7 +98,10 @@ void Reifier::visitListExpr(ListExpr *expr) {
   Local *local = expr->_local.type.valueType != VAL_VOID ? &expr->_local : NULL;
 
   if (local) {
-    local->realIndex = local->isField ? top()->fieldIndex++ : top()->localIndex++;
+    local->realIndex = local->isField ? top()->compiler->fieldCount++ : top()->compiler->realLocalStart + top()->compiler->realLocalCount++;
+
+    if (!local->isField)
+      top()->localStart = local->realIndex + 1;
 
     if (IS_FUNCTION(local->type)) {
       ObjFunction *function = AS_FUNCTION_TYPE(local->type);

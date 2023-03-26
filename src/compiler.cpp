@@ -48,13 +48,7 @@ Compiler *Compiler::current = NULL;
 
 ObjFunction *Compiler::compile(Parser &parser) {
   this->parser = &parser;
-  enclosing = NULL;
-  current = this;
-  localCount = 0;
-  function = newFunction({VAL_VOID}, NULL, 0);
-  prefix = "qni";
-  localStart = 0;
-  addLocal({VAL_OBJ, &function->obj});
+  beginScope(newFunction({VAL_VOID}, NULL, 0));
 
 #ifdef DEBUG_PRINT_CODE
   printf("Original parse: ");
@@ -106,17 +100,24 @@ ObjFunction *Compiler::compile(Parser &parser) {
 }
 
 void Compiler::beginScope(ObjFunction *function) {
-  parser = current->parser;
+  parser = current ? current->parser : parser;
   this->enclosing = current;
   current = this;
-  localCount = 0;
-
-  ObjString *enclosingNameObj = enclosing->function->name;
-  std::string enclosingName = enclosingNameObj ? std::string("_") + enclosingNameObj->chars : "";
-
-  this->function = function;
-  prefix = enclosing->prefix + enclosingName;
+  fieldCount = 0;
+  realLocalStart = 0;
+  realLocalCount = 0;
   localStart = 0;
+  localCount = 0;
+  this->function = function;
+
+  if (enclosing) {
+    ObjString *enclosingNameObj = enclosing->function->name;
+    std::string enclosingName = enclosingNameObj ? std::string("_") + enclosingNameObj->chars : "";
+
+    prefix = enclosing->prefix + enclosingName;
+  }
+  else
+    prefix = "qni";
   addLocal({VAL_OBJ, &function->obj});
 }
 
@@ -124,10 +125,13 @@ void Compiler::beginScope() {
   parser = current->parser;
   this->enclosing = current;
   current = this;
+  fieldCount = 0;
+  realLocalStart = 0;
+  realLocalCount = 0;
+  localStart = enclosing->localStart + enclosing->localCount;
   localCount = 0;
   function = enclosing->function;
   prefix = enclosing->prefix;
-  localStart = enclosing->localStart + enclosing->localCount;
 }
 
 void Compiler::endScope() {
@@ -184,7 +188,7 @@ int Compiler::resolveLocal(Token *name) {
   for (int i = localCount - 1; found < 0 && i >= 0; i--) {
     Local *local = &locals[i];
 
-    if (identifiersEqual(name, &local->name)) {// && local->depth != -1)
+    if (identifiersEqual(name, &local->name)) {
       Type type = local->type;
 
 //      if (signature && type.valueType == VAL_OBJ)
