@@ -10,17 +10,8 @@
 #include "common.h"
 #include "chunk.hpp"
 #include "value.h"
-#include "expr.hpp"
 
 #define OBJ_TYPE(value)        (AS_OBJ(value)->type)
-
-#define IS_THREAD(value)       isObjType(value, OBJ_THREAD)
-#define IS_INSTANCE(value)     isObjType(value, OBJ_INSTANCE)
-#define IS_CLOSURE(value)      isObjType(value, OBJ_CLOSURE)
-#define IS_FUNCTION(value)     isObjType(value, OBJ_FUNCTION)
-#define IS_NATIVE(value)       isObjType(value, OBJ_NATIVE)
-#define IS_STRING(value)       isObjType(value, OBJ_STRING)
-#define IS_ARRAY(value)        isObjType(value, OBJ_ARRAY)
 
 #define AS_THREAD(value)       ((CoThread*)AS_OBJ(value))
 #define AS_INSTANCE(value)     ((ObjInstance*)AS_OBJ(value))
@@ -41,7 +32,6 @@ typedef enum {
   OBJ_INSTANCE,
   OBJ_CLOSURE,
   OBJ_FUNCTION,
-  OBJ_RETURN,
   OBJ_NATIVE,
   OBJ_NATIVE_CLASS,
   OBJ_PRIMITIVE,
@@ -55,6 +45,8 @@ typedef enum {
 struct Obj {
   ObjType type;
   struct Obj *next;
+
+  const char *toString();
 };
 
 typedef struct {
@@ -87,11 +79,8 @@ struct ObjCallable : ObjNamed {
   int arity;
   int fieldCount;
   Field *fields;
-  int upvalueCount;
-  Upvalue upvalues[UINT8_COUNT];
 
   bool isClass();
-  int addUpvalue(uint8_t index, bool isLocal, Type type, Parser &parser);
 };
 
 struct IndexList {
@@ -107,18 +96,26 @@ struct IndexList {
   int get(int index);
 };
 
+struct Expr;
+struct VariableExpr;
+
 struct ObjFunction : ObjCallable {
+  int upvalueCount;
+  Upvalue upvalues[UINT8_COUNT];
   Expr *bodyExpr;
   Chunk chunk;
   Obj *native;
   IndexList *instanceIndexes;
   long eventFlags;
   ObjFunction *uiFunction;
+
+  int addUpvalue(uint8_t index, bool isLocal, Type type, Parser &parser);
 };
 
 typedef Value (*NativeFn)(int argCount, Value *args);
 
-struct ObjNative : ObjCallable {
+struct ObjNative {
+  Obj obj;
   NativeFn function;
 };
 
@@ -154,7 +151,8 @@ struct CoThread;
 
 typedef InterpretResult (*NativeClassFn)(VM &vm, int argCount, Value *args);
 
-struct ObjNativeClass : ObjCallable {
+struct ObjNativeClass {
+  Obj obj;
   NativeClassFn classFn;
   void *arg;
 };
@@ -179,7 +177,6 @@ struct CallFrame {
 struct CoThread {
   Obj obj;
   CoThread *caller;
-  ObjClosure *handler;
   Value *fields;
   int frameCount;
   CallFrame frames[FRAMES_MAX];
@@ -211,8 +208,8 @@ struct CoThread {
   Point recalculateLayout();
   Point repaint();
   void paint(Point pos, Point size);
-  void onThreadReturn(Value &returnValue);
   bool onEvent(Event event, Point pos, Point size);
+  bool runHandler(ObjClosure *closure);
 };
 
 typedef struct {
@@ -242,7 +239,7 @@ ObjInternal *newInternal();
 CoThread *newThread(CoThread *caller);
 ObjInstance *newInstance(ObjCallable *callable);
 ObjClosure *newClosure(ObjFunction *function, CoThread *parent);
-ObjFunction *newFunction();
+ObjFunction *newFunction(Type type, ObjString *name, int arity);
 ObjNative *newNative(NativeFn function);
 ObjPrimitive *newPrimitive(char *name, Type type);
 ObjFunctionPtr *newFunctionPtr(Type type, int arity, Type *parms);
@@ -255,14 +252,8 @@ void freeObjects();
 
 extern Obj *objects;
 
-#ifdef DEBUG_TRACE_EXECUTION
-static inline bool isObjType(Value &value, ObjType objType) {
-  return value.type == VAL_OBJ && value.as.obj->type == objType;
+static inline bool isObjType(Type &type, ObjType objType) {
+  return AS_OBJ_TYPE(type) == objType;
 }
-#else
-static inline bool isObjType(Value &value, ObjType objType) {
-  return value.obj->type == objType;
-}
-#endif
 
 #endif

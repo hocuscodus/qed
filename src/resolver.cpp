@@ -26,7 +26,6 @@ extern ParseExpRule expRules[];
 #include "debug.hpp"
 #endif
 */
-static Compiler *current = NULL;
 
 static Obj objInternalType = {OBJ_INTERNAL};
 static Obj *primitives[] = {
@@ -36,7 +35,6 @@ static Obj *primitives[] = {
   &newPrimitive("float", {VAL_FLOAT})->obj,
   &newPrimitive("String", stringType)->obj,
   &newPrimitive("var", {VAL_OBJ, &objInternalType})->obj,
-  &newPrimitive("handler", {VAL_HANDLER})->obj
 };
 
 static bool identifiersEqual2(Token *a, ObjString *b) {
@@ -45,26 +43,26 @@ static bool identifiersEqual2(Token *a, ObjString *b) {
 }
 
 static bool isType(Type &type) {
-  if (type.valueType == VAL_OBJ)
-    switch (type.objType->type) {
-    case OBJ_FUNCTION:
-    case OBJ_NATIVE: {
-      ObjString *name = ((ObjNamed *)type.objType)->name;
+  switch (AS_OBJ_TYPE(type)) {
+  case OBJ_FUNCTION: {
+    ObjString *name = AS_FUNCTION_TYPE(type)->name;
 
-      return name != NULL && name->chars[0] >= 'A' && name->chars[0] <= 'Z';
-    }
+    return name != NULL && name->chars[0] >= 'A' && name->chars[0] <= 'Z';
+  }
 
-    case OBJ_ARRAY:
-    case OBJ_PRIMITIVE:
-    case OBJ_FUNCTION_PTR:
-      return true;
-    }
+  case OBJ_ARRAY:
+  case OBJ_PRIMITIVE:
+  case OBJ_FUNCTION_PTR:
+    return true;
+  }
 
   return false;
 }
 
 static Type convertType(Type &type) {
-  return type.objType->type == OBJ_PRIMITIVE ? ((ObjPrimitive *)type.objType)->type : type;
+  ObjPrimitive *primitiveType = AS_PRIMITIVE_TYPE(type);
+
+  return primitiveType ? primitiveType->type : type;
 }
 
 static Expr *convertToString(Expr *expr, Type &type, Parser &parser) {
@@ -190,26 +188,6 @@ static Expr *convertToType(Type srcType, Expr *expr, Type &type, Parser &parser)
   return expr;
 }
 
-static void resolveVariableExpr(VariableExpr *expr) {
-  if (expr->index != -1) {
-    current->addLocal({VAL_OBJ, primitives[expr->index]});
-    return;
-  }
-
-  expr->index = current->resolveLocal(&expr->name);
-
-  if (expr->index != (int8_t)-1) {
-    Local *local = &current->locals[expr->index];
-
-    current->addLocal(local->type);
-  }
-  else 
-    if ((expr->index = current->resolveUpvalue(&expr->name)) != -1) {
-      expr->upvalueFlag = true;
-      current->addLocal(current->function->upvalues[expr->index].type);
-    }
-}
-
 Resolver::Resolver(Parser &parser, Expr *exp) : ExprVisitor(), parser(parser) {
   this->exp = exp;
   uiParseCount = -1;
@@ -222,51 +200,43 @@ static OpCode getOpCode(Type type, Token token) {
   case TOKEN_PLUS:
   case TOKEN_PLUS_PLUS:
   case TOKEN_PLUS_EQUAL:
-    opCode = type.valueType == VAL_OBJ   ? OP_ADD_STRING
-                    : type.valueType == VAL_INT ? OP_ADD_INT
-                                                : OP_ADD_FLOAT;
+    opCode = IS_OBJ(type) ? OP_ADD_STRING : IS_INT(type) ? OP_ADD_INT : OP_ADD_FLOAT;
     break;
   case TOKEN_MINUS:
   case TOKEN_MINUS_MINUS:
   case TOKEN_MINUS_EQUAL:
-    opCode = type.valueType == VAL_INT ? OP_SUBTRACT_INT : OP_SUBTRACT_FLOAT;
+    opCode = IS_INT(type) ? OP_SUBTRACT_INT : OP_SUBTRACT_FLOAT;
     break;
   case TOKEN_STAR:
   case TOKEN_STAR_EQUAL:
-    opCode = type.valueType == VAL_INT ? OP_MULTIPLY_INT : OP_MULTIPLY_FLOAT;
+    opCode = IS_INT(type) ? OP_MULTIPLY_INT : OP_MULTIPLY_FLOAT;
     break;
   case TOKEN_SLASH:
   case TOKEN_SLASH_EQUAL:
-    opCode = type.valueType == VAL_INT ? OP_DIVIDE_INT : OP_DIVIDE_FLOAT;
+    opCode = IS_INT(type) ? OP_DIVIDE_INT : OP_DIVIDE_FLOAT;
     break;
   case TOKEN_BANG_EQUAL:
   case TOKEN_EQUAL_EQUAL:
-    opCode = type.valueType == VAL_OBJ   ? OP_EQUAL_STRING
-                    : type.valueType == VAL_INT ? OP_EQUAL_INT
-                                                : OP_EQUAL_FLOAT;
+    opCode = IS_STRING(type) ? OP_EQUAL_STRING : IS_INT(type) ? OP_EQUAL_INT : OP_EQUAL_FLOAT;
     break;
   case TOKEN_GREATER:
   case TOKEN_LESS_EQUAL:
-    opCode = (type.valueType == VAL_OBJ   ? OP_GREATER_STRING
-                    : type.valueType == VAL_INT ? OP_GREATER_INT
-                                                : OP_GREATER_FLOAT);
+    opCode = IS_STRING(type) ? OP_GREATER_STRING : IS_INT(type) ? OP_GREATER_INT : OP_GREATER_FLOAT;
     break;
   case TOKEN_GREATER_EQUAL:
   case TOKEN_LESS:
-    opCode = (type.valueType == VAL_OBJ   ? OP_LESS_STRING
-                    : type.valueType == VAL_INT ? OP_LESS_INT
-                                                : OP_LESS_FLOAT);
+    opCode = IS_STRING(type) ? OP_LESS_STRING : IS_INT(type) ? OP_LESS_INT : OP_LESS_FLOAT;
     break;
   case TOKEN_OR:
   case TOKEN_OR_EQUAL:
-    opCode = type.valueType == VAL_INT ? OP_BITWISE_OR : OP_LOGICAL_OR;
+    opCode = IS_INT(type) ? OP_BITWISE_OR : OP_LOGICAL_OR;
     break;
   case TOKEN_OR_OR:
     opCode = OP_LOGICAL_OR;
     break;
   case TOKEN_AND:
   case TOKEN_AND_EQUAL:
-    opCode = type.valueType == VAL_INT ? OP_BITWISE_AND : OP_LOGICAL_AND;
+    opCode = IS_INT(type) ? OP_BITWISE_AND : OP_LOGICAL_AND;
     break;
   case TOKEN_AND_AND:
     opCode = OP_LOGICAL_AND;
@@ -303,7 +273,7 @@ void Resolver::visitAssignExpr(AssignExpr *expr) {
 
   expr->opCode = getOpCode(type1, expr->op);
 
-  if (type1.valueType == VAL_VOID)
+  if (IS_VOID(type1))
     parser.error("Variable not found");
   else if (!type1.equals(type2)) {
     expr->value = convertToType(type2, expr->value, type1, parser);
@@ -313,7 +283,7 @@ void Resolver::visitAssignExpr(AssignExpr *expr) {
     }
   }
 
-  current->addLocal(type2);
+  getCurrent()->addLocal(type2);
 }
 
 void Resolver::visitUIAttributeExpr(UIAttributeExpr *expr) {
@@ -345,18 +315,18 @@ void Resolver::visitDirectiveExpr(UIDirectiveExpr *expr) {
       int index = valueStack.get("out");
 
       if (index != -1) {
-        Type &type = current->enclosing->locals[index].type;
+        Type &type = getCurrent()->enclosing->locals[index].type;
 
         if (type.valueType == VAL_OBJ)
           switch (type.objType->type) {
           case OBJ_INSTANCE:
-            expr->viewIndex = current->localCount;
-            current->addLocal({VAL_INT});
+            expr->viewIndex = getCurrent()->localCount;
+            getCurrent()->addLocal({VAL_INT});
             break;
 
           case OBJ_STRING:
-            expr->viewIndex = current->localCount;
-            current->addLocal({VAL_OBJ, &newInternal()->obj});
+            expr->viewIndex = getCurrent()->localCount;
+            getCurrent()->addLocal({VAL_OBJ, &newInternal()->obj});
             break;
           }
       }
@@ -433,9 +403,9 @@ void Resolver::visitBinaryExpr(BinaryExpr *expr) {
 
   switch (expr->op.type) {
   case TOKEN_PLUS:
-    if (type1.valueType == VAL_OBJ) {
+    if (IS_OBJ(type1)) {
       expr->right = convertToString(expr->right, type2, parser);
-      current->addLocal(stringType);
+      getCurrent()->addLocal(stringType);
       return;
     }
     // no break statement, fall through
@@ -447,11 +417,11 @@ void Resolver::visitBinaryExpr(BinaryExpr *expr) {
   case TOKEN_LESS:
   case TOKEN_LESS_EQUAL:
     boolVal = expr->op.type != TOKEN_PLUS;
-    if (type1.valueType == VAL_OBJ) {
-      if (type2.valueType != VAL_OBJ)
+    if (IS_OBJ(type1)) {
+      if (!IS_OBJ(type2))
         parser.error("Second operand must be a string");
 
-      current->addLocal(VAL_BOOL);
+      getCurrent()->addLocal(VAL_BOOL);
       return;
     }
     // no break statement, fall through
@@ -462,8 +432,8 @@ void Resolver::visitBinaryExpr(BinaryExpr *expr) {
     switch (type1.valueType) {
     case VAL_INT:
       if (!type1.equals(type2)) {
-        if (type2.valueType != VAL_FLOAT) {
-          current->addLocal(VAL_VOID);
+        if (!IS_FLOAT(type2)) {
+          getCurrent()->addLocal(VAL_VOID);
           parser.error("Second operand must be numeric");
           return;
         }
@@ -471,16 +441,16 @@ void Resolver::visitBinaryExpr(BinaryExpr *expr) {
         expr->left = convertToFloat(expr->left, type1, parser);
         expr->opCode =
             (OpCode)((int)expr->opCode + (int)OP_ADD_FLOAT - (int)OP_ADD_INT);
-        current->addLocal(boolVal ? VAL_BOOL : VAL_FLOAT);
+        getCurrent()->addLocal(boolVal ? VAL_BOOL : VAL_FLOAT);
       }
       else
-        current->addLocal(boolVal ? VAL_BOOL : VAL_INT);
+        getCurrent()->addLocal(boolVal ? VAL_BOOL : VAL_INT);
       break;
 
     case VAL_FLOAT:
       if (!type1.equals(type2)) {
-        if (type2.valueType != VAL_INT) {
-          current->addLocal(VAL_VOID);
+        if (!IS_INT(type2)) {
+          getCurrent()->addLocal(VAL_VOID);
           parser.error("Second operand must be numeric");
           return;
         }
@@ -488,19 +458,19 @@ void Resolver::visitBinaryExpr(BinaryExpr *expr) {
         expr->right = convertToFloat(expr->right, type2, parser);
       }
 
-      current->addLocal(boolVal ? VAL_BOOL : VAL_FLOAT);
+      getCurrent()->addLocal(boolVal ? VAL_BOOL : VAL_FLOAT);
       break;
 
     default:
       parser.error("First operand must be numeric");
-      current->addLocal(type1);
+      getCurrent()->addLocal(type1);
       break;
     }
   }
   break;
 
   case TOKEN_XOR:
-    current->addLocal(type1.valueType == VAL_BOOL ? VAL_BOOL : VAL_FLOAT);
+    getCurrent()->addLocal(IS_BOOL(type1) ? VAL_BOOL : VAL_FLOAT);
     break;
 
   case TOKEN_OR:
@@ -508,12 +478,12 @@ void Resolver::visitBinaryExpr(BinaryExpr *expr) {
   case TOKEN_GREATER_GREATER_GREATER:
   case TOKEN_GREATER_GREATER:
   case TOKEN_LESS_LESS:
-    current->addLocal(VAL_INT);
+    getCurrent()->addLocal(VAL_INT);
     break;
 
   case TOKEN_OR_OR:
   case TOKEN_AND_AND:
-    current->addLocal(VAL_BOOL);
+    getCurrent()->addLocal(VAL_BOOL);
     break;
 
     break;
@@ -551,76 +521,85 @@ static Expr *generateUIFunction(const char *type, const char *name, char *args, 
     for (int index = 0; index < restLength; index++)
       bodyExprs[count + index] = rest[index];
 
-    functionExprs[0] = new VariableExpr(buildToken(TOKEN_IDENTIFIER, type, strlen(type), -1), VAL_HANDLER, false);
+    int typeIndex = -1;
+
+    for (int index = 0; typeIndex == -1 && index < sizeof(primitives) / sizeof(Obj *); index++)
+      if (!strcmp(((ObjPrimitive *) primitives[index])->name->chars, type))
+        typeIndex = index;
+
+    functionExprs[0] = new VariableExpr(buildToken(TOKEN_IDENTIFIER, type, strlen(type), -1), typeIndex, false);
     functionExprs[1] = new CallExpr(nameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), nbParms, parms, false, NULL);
     functionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), count + restLength, bodyExprs, 0, NULL);
 
-    return new ListExpr(3, functionExprs, EXPR_LIST, NULL);
+    return new ListExpr(3, functionExprs, EXPR_LIST);
 }
 
 void Resolver::visitCallExpr(CallExpr *expr) {
-  if (expr->newFlag && expr->handler != NULL) {
-    expr->handler = generateUIFunction("void", "handler", NULL, expr->handler, 1, 0, NULL);
-    accept<int>(expr->handler);
-    removeLocal();
+  Field fields[expr->count];
+  ObjCallable signature;
+
+  signature.arity = expr->count;
+  signature.fields = fields;
+
+  for (int index = 0; index < expr->count; index++) {
+    accept<int>(expr->arguments[index]);
+    fields[index].type = removeLocal();
   }
 
+  pushSignature(&signature);
   accept<int>(expr->callee);
+  popSignature();
 
   Type type = removeLocal();
-  //  Local *callerLocal = current->peekLocal(expr->argCount);
+  //  Local *callerLocal = getCurrent()->peekLocal(expr->argCount);
 
-  if (type.valueType == VAL_OBJ) {
-    switch (type.objType->type) {
-    case OBJ_FUNCTION:
-    case OBJ_NATIVE: {
-      ObjCallable *callable = (ObjCallable *)type.objType;
+  switch (AS_OBJ_TYPE(type)) {
+  case OBJ_FUNCTION: {
+    ObjCallable *callable = AS_FUNCTION_TYPE(type);
 
-      if (expr->count != callable->arity)
-        parser.error("Expected %d arguments but got %d.", callable->arity, expr->count);
+    if (expr->newFlag) {
+      if (expr->handler != NULL) {
+        char buffer[256] = "";
 
-      if (expr->newFlag)
-        current->addLocal((Type) {VAL_OBJ, &newInstance(callable)->obj});
-      else
-        current->addLocal(callable->type);
+        if (!IS_VOID(callable->type))
+          sprintf(buffer, "%s _ret", callable->type.toString());
 
-      for (int index = 0; index < expr->count; index++) {
-        accept<int>(expr->arguments[index]);
-
-        Type argType = removeLocal();
-
-        argType = argType;
+        expr->handler = generateUIFunction("void", "ReturnHandler_", !IS_VOID(callable->type) ? buffer : NULL, expr->handler, 1, 0, NULL);
+        accept<int>(expr->handler);
+        removeLocal();
       }
-      break;
+
+      getCurrent()->addLocal((Type) {VAL_OBJ, &newInstance(callable)->obj});
     }
-    case OBJ_FUNCTION_PTR: {
-      ObjFunctionPtr *callable = (ObjFunctionPtr *)type.objType;
-
-      if (expr->count != callable->arity)
-        parser.error("Expected %d arguments but got %d.", callable->arity, expr->count);
-
-      if (expr->newFlag)
-;//        current->addLocal((Type) {VAL_OBJ, &newInstance(callable)->obj});
-      else
-        current->addLocal(callable->type.valueType);
-
-      for (int index = 0; index < expr->count; index++) {
-        accept<int>(expr->arguments[index]);
-        Type argType = removeLocal();
-
-        argType = argType;
-      }
-      break;
-    }
-    default:
-      parser.error("Non-callable object type");
-      current->addLocal(VAL_VOID);
-      break; // Non-callable object type.
-    }
+    else
+      getCurrent()->addLocal(callable->type);
+    break;
   }
-  else {
+  case OBJ_FUNCTION_PTR: {
+    ObjFunctionPtr *callable = (ObjFunctionPtr *)type.objType;
+
+    if (expr->newFlag) {
+      if (expr->handler != NULL) {
+        char buffer[256] = "";
+
+        if (!IS_VOID(callable->type))
+          sprintf(buffer, "%s _ret", callable->type.toString());
+
+        expr->handler = generateUIFunction("void", "ReturnHandler_", !IS_VOID(callable->type) ? buffer : NULL, expr->handler, 1, 0, NULL);
+        accept<int>(expr->handler);
+        removeLocal();
+      }
+
+;//        getCurrent()->addLocal((Type) {VAL_OBJ, &newInstance(callable)->obj});
+    }
+    else
+      getCurrent()->addLocal(callable->type.valueType);
+    break;
+  }
+  default:
     parser.error("Non-callable object type");
-    //    return INTERPRET_RUNTIME_ERROR;
+    getCurrent()->addLocal(VAL_VOID);
+    break; // Non-callable object type.
   }
 }
 
@@ -635,104 +614,93 @@ void Resolver::visitArrayElementExpr(ArrayElementExpr *expr) {
       ObjArray *array = newArray();
 
       array->elementType = returnType;
-      current->addLocal({VAL_OBJ, &array->obj});
+      getCurrent()->addLocal({VAL_OBJ, &array->obj});
     }
     else {
       parser.error("No index defined.");
-      current->addLocal(VAL_VOID);
+      getCurrent()->addLocal(VAL_VOID);
     }
   else
     if (isType(type)) {
       parser.error("A type cannot have an index.");
-      current->addLocal(VAL_VOID);
+      getCurrent()->addLocal(VAL_VOID);
     }
     else
-      if (type.valueType == VAL_OBJ) {
-        switch (type.objType->type) {
-        case OBJ_ARRAY: {
-          ObjArray *array = (ObjArray *)type.objType;
+      switch (AS_OBJ_TYPE(type)) {
+      case OBJ_ARRAY: {
+        ObjArray *array = AS_ARRAY_TYPE(type);
 
-          current->addLocal(array->elementType);
+        getCurrent()->addLocal(array->elementType);
 
-          for (int index = 0; index < expr->count; index++) {
-            accept<int>(expr->indexes[index]);
+        for (int index = 0; index < expr->count; index++) {
+          accept<int>(expr->indexes[index]);
 
-            Type argType = removeLocal();
+          Type argType = removeLocal();
 
-            argType = argType;
-          }
-          break;
+          argType = argType;
         }
-        case OBJ_STRING: {/*
-          ObjString *string = (ObjString *)type.objType;
-
-          if (expr->count != string->arity)
-            parser.error("Expected %d arguments but got %d.", string->arity, expr->count);
-
-          current->addLocal(string->type.valueType);
-
-          for (int index = 0; index < expr->count; index++) {
-            accept<int>(expr->indexes[index]);
-            Type argType = removeLocal();
-
-            argType = argType;
-          }*/
-          break;
-        }
-        default:
-          parser.error("Non-indexable object type");
-          current->addLocal(VAL_VOID);
-          break; // Non-indexable object type.
-        }
+        break;
       }
-      else {
+      case OBJ_STRING: {/*
+        ObjString *string = (ObjString *)type.objType;
+
+        if (expr->count != string->arity)
+          parser.error("Expected %d arguments but got %d.", string->arity, expr->count);
+
+        getCurrent()->addLocal(string->type.valueType);
+
+        for (int index = 0; index < expr->count; index++) {
+          accept<int>(expr->indexes[index]);
+          Type argType = removeLocal();
+
+          argType = argType;
+        }*/
+        break;
+      }
+      default:
         parser.error("Non-indexable object type");
-        //    return INTERPRET_RUNTIME_ERROR;
+        getCurrent()->addLocal(VAL_VOID);
+        break; // Non-indexable object type.
       }
 }
 
 void Resolver::visitDeclarationExpr(DeclarationExpr *expr) {
-  checkDeclaration(&expr->name);
+  getCurrent()->checkDeclaration(&expr->name);
 
   if (expr->initExpr != NULL) {
     accept<int>(expr->initExpr, 0);
     Type type1 = removeLocal();
   }
 
-  current->addLocal(expr->type);
-  current->setLocalName(&expr->name);
+  getCurrent()->addLocal(expr->type);
+  getCurrent()->setLocalName(&expr->name);
 }
 
 void Resolver::visitFunctionExpr(FunctionExpr *expr) {
-  checkDeclaration(&expr->name);
-  current->addLocal(VAL_OBJ);
-  current->setLocalName(&expr->name);
+  getCurrent()->checkDeclaration(&expr->name);
+  getCurrent()->addLocal(VAL_OBJ);
+  getCurrent()->setLocalName(&expr->name);
 
-  Compiler compiler(parser, current);
+  Compiler &compiler = ((GroupingExpr *) expr->body)->_compiler;
 
-  compiler.function->type = expr->type;
-  compiler.function->name = copyString(expr->name.start, expr->name.length);
-  compiler.function->arity = expr->count;
-  compiler.beginScope();
-  current = &compiler;
+  compiler.beginScope(newFunction(expr->type, copyString(expr->name.start, expr->name.length), expr->count));
 
   for (int index = 0; index < expr->count; index++)
     accept<int>(expr->params[index]);
 
   accept<int>(expr->body, 0);
-  compiler.function->fieldCount = compiler.localCount;
-  compiler.function->fields = ALLOCATE(Field, compiler.localCount);
+  compiler.function->fieldCount = compiler.getLocalCount();
+  compiler.function->fields = ALLOCATE(Field, compiler.getLocalCount());
 
-  for (int index = 0; index < compiler.localCount; index++) {
-    Local *local = &compiler.locals[index];
+  for (int index = 0; index < compiler.getLocalCount(); index++) {
+    Local *local = &compiler.getLocal(index);
 
     compiler.function->fields[index].type = local->type;
-    compiler.function->fields[index].name =
-        copyString(local->name.start, local->name.length);
+    compiler.function->fields[index].name = copyString(local->name.start, local->name.length);
   }
 
-  current = current->enclosing;
-  current->setLocalObjType(compiler.function);
+  compiler.endScope();
+  getCurrent()->setLocalObjType(compiler.function);
   expr->function = compiler.function;
 }
 
@@ -741,15 +709,15 @@ void Resolver::visitGetExpr(GetExpr *expr) {
 
   Type objectType = removeLocal();
 
-  if (objectType.valueType != VAL_OBJ || objectType.objType->type != OBJ_INSTANCE)
+  if (AS_OBJ_TYPE(objectType) != OBJ_INSTANCE)
     parser.errorAt(&expr->name, "Only instances have properties.");
   else {
-    ObjFunction *type = (ObjFunction *)objectType.objType;
+    ObjFunction *type = AS_FUNCTION_TYPE(objectType);
 
     for (int i = 0; expr->index == -1 && i < type->fieldCount; i++) {
       Field *field = &type->fields[i];
 
-      if (identifiersEqual2(&expr->name, field->name)) // && local->depth != -1)
+      if (identifiersEqual2(&expr->name, field->name))
         expr->index = i;
     }
 
@@ -757,40 +725,42 @@ void Resolver::visitGetExpr(GetExpr *expr) {
       parser.errorAt(&expr->name, "Field '%.*s' not found.", expr->name.length,
                      expr->name.start);
     else {
-      current->addLocal(type->fields[expr->index].type);
+      getCurrent()->addLocal(type->fields[expr->index].type);
       return;
     }
   }
 
-  current->addLocal({VAL_VOID});
+  getCurrent()->addLocal({VAL_VOID});
 }
 
 void Resolver::visitGroupingExpr(GroupingExpr *expr) {
   TokenType type = expr->name.type;
   bool parenFlag = type == TOKEN_RIGHT_PAREN;
   bool groupFlag = type == TOKEN_RIGHT_BRACE || parenFlag;
+  Type parenType;
 
-  if (groupFlag)
-    current->beginScope();
-
-  acceptGroupingExprUnits(expr);
-
-  Type parenType = parenFlag ? removeLocal() : (Type){VAL_VOID};
-
-  if (groupFlag)
-    expr->popLevels = current->endScope();
+  if (groupFlag) {
+    expr->_compiler.beginScope();
+    acceptGroupingExprUnits(expr);
+    parenType = parenFlag ? removeLocal() : (Type){VAL_VOID};
+    expr->popLevels = expr->_compiler.localCount;
+    expr->_compiler.endScope();
+  }
+  else {
+    acceptGroupingExprUnits(expr);
+    parenType = parenFlag ? removeLocal() : (Type){VAL_VOID};
+  }
 
   if (type != TOKEN_EOF)
-    current->addLocal(parenType);
+    getCurrent()->addLocal(parenType);
 }
 
 void Resolver::visitArrayExpr(ArrayExpr *expr) {
   ObjArray *objArray = newArray();
   Type type = {VAL_OBJ, &objArray->obj};
-  Compiler compiler(parser, current);
+  Compiler compiler;
 
-  compiler.beginScope();
-  current = &compiler;
+  compiler.beginScope(newFunction({VAL_VOID}, NULL, 0));
 
   for (int index = 0; index < expr->count; index++) {
     acceptSubExpr(expr->expressions[index]);
@@ -800,11 +770,11 @@ void Resolver::visitArrayExpr(ArrayExpr *expr) {
     objArray->elementType = subType;
   }
 
-  current = current->enclosing;
+  compiler.endScope();
   compiler.function->type = type;
-  current->setLocalObjType(compiler.function);
+  getCurrent()->setLocalObjType(compiler.function);
   expr->function = compiler.function;
-  current->addLocal(type);
+  getCurrent()->addLocal(type);
 }
 
 // DECLARATIONS:
@@ -820,6 +790,7 @@ void Resolver::visitArrayExpr(ArrayExpr *expr) {
 // );
 void Resolver::visitListExpr(ListExpr *expr) {
   accept<int>(expr->expressions[0], 0);
+  expr->_local.type.valueType = VAL_VOID;
 
   Type type = removeLocal();
 
@@ -832,7 +803,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
       AssignExpr *assignExpr = (AssignExpr *)subExpr;
 
       expr->listType = subExpr->type;
-      checkDeclaration(&assignExpr->varExp->name);
+      getCurrent()->checkDeclaration(&assignExpr->varExp->name);
 
       if (assignExpr->value != NULL) {
         accept<int>(assignExpr->value, 0);
@@ -853,8 +824,9 @@ void Resolver::visitListExpr(ListExpr *expr) {
         }
       }
 
-      current->addLocal(returnType);
-      current->setLocalName(&assignExpr->varExp->name);
+      getCurrent()->addLocal(returnType);
+      getCurrent()->setLocalName(&assignExpr->varExp->name);
+      expr->_local = *getCurrent()->peekLocal(0);
 
       if (expr->count > 2)
         parser.error("Expect ';' or newline after variable declaration.");
@@ -872,18 +844,27 @@ void Resolver::visitListExpr(ListExpr *expr) {
       else {
         VariableExpr *varExp = (VariableExpr *)callExpr->callee;
 
-        checkDeclaration(&varExp->name);
-        current->addLocal(VAL_OBJ);
-        current->setLocalName(&varExp->name);
+        getCurrent()->checkDeclaration(&varExp->name);
+        getCurrent()->addLocal(VAL_OBJ);
+        getCurrent()->setLocalName(&varExp->name);
 
-        Compiler compiler(parser, current);
+        Expr *bodyExpr = expr->count > 2 ? expr->expressions[2] : NULL;
+        GroupingExpr *body;
 
-        compiler.function->type = returnType;
-        compiler.function->name = copyString(varExp->name.start, varExp->name.length);
-        compiler.function->arity = callExpr->count;
-        compiler.beginScope();
-        current = &compiler;
+        if (bodyExpr && bodyExpr->type == EXPR_GROUPING && ((GroupingExpr *) bodyExpr)->name.type == TOKEN_RIGHT_BRACE)
+          body = (GroupingExpr *) bodyExpr;
+        else {
+          Expr **expList = bodyExpr ? RESIZE_ARRAY(Expr *, NULL, 0, 1) : NULL;
 
+          if (expList)
+            expList[0] = bodyExpr;
+
+          body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), expList ? 1 : 0, expList, 0, NULL);
+        }
+
+        Compiler &compiler = body->_compiler;
+
+        compiler.beginScope(newFunction(returnType, copyString(varExp->name.start, varExp->name.length), callExpr->count));
         bindFunction(compiler.prefix, compiler.function);
 
         for (int index = 0; index < callExpr->count; index++)
@@ -901,8 +882,8 @@ void Resolver::visitListExpr(ListExpr *expr) {
               if (paramExpr->type != EXPR_VARIABLE)
                 parser.error("Parameter name must be a string.");
               else {
-                current->addLocal(convertType(type));
-                current->setLocalName(&((VariableExpr *)paramExpr)->name);
+                getCurrent()->addLocal(convertType(type));
+                getCurrent()->setLocalName(&((VariableExpr *)paramExpr)->name);
 
                 if (param->count > 2)
                   parser.error("Syntax error");
@@ -914,52 +895,51 @@ void Resolver::visitListExpr(ListExpr *expr) {
           else
             parser.error("Parameter consists of a type and a name.");
 
-        compiler.function->bodyExpr = expr->count > 2 ? expr->expressions[2] : NULL;
+        const char *str = varExp->name.getString().c_str();
+        char firstChar = str[0];
+        bool handlerFlag = str[strlen(str) - 1] == '_';
 
-        if (returnType.valueType != VAL_HANDLER && strcmp(compiler.function->name->chars, "return"))
-          if (returnType.valueType == VAL_VOID)
-            compiler.function->bodyExpr = parse("void return();", 0, 0, compiler.function->bodyExpr);
-          else {
-            char returnDec[128];
+        if (!handlerFlag && firstChar >= 'A' && firstChar <= 'Z') {
+          char buffer[256] = "";
+          char buf[256];
 
-//            sprintf(returnDec, "void return(%s value);", returnType.valueType);
-//            parse(returnDec);
-          }
+          if (!IS_VOID(returnType))
+            sprintf(buffer, "%s _ret", returnType.toString());
 
-        if (compiler.function->bodyExpr)
-          if (compiler.function->bodyExpr->type == EXPR_GROUPING && ((GroupingExpr *)compiler.function->bodyExpr)->name.type == TOKEN_RIGHT_BRACE)
-            acceptGroupingExprUnits((GroupingExpr *)compiler.function->bodyExpr);
-          else {
-            accept<int>(compiler.function->bodyExpr, 0);
-            removeLocal();
-          }
+          sprintf(buf, "void ReturnHandler_(%s);", buffer);
 
-        compiler.function->fieldCount = compiler.localCount;
-        compiler.function->fields = ALLOCATE(Field, compiler.localCount);
+          Expr *handlerExpr = parse(buf, 0, 0, NULL);
 
-        for (int index = 0; index < compiler.localCount; index++) {
-          Local *local = &compiler.locals[index];
+          accept<int>(handlerExpr, 0);
+        }
+
+        compiler.function->bodyExpr = body;
+
+        if (body)
+          acceptGroupingExprUnits(body);
+
+        compiler.function->fieldCount = compiler.getLocalCount();
+        compiler.function->fields = ALLOCATE(Field, compiler.getLocalCount());
+
+        for (int index = 0; index < compiler.getLocalCount(); index++) {
+          Local *local = &compiler.getLocal(index);
 
           compiler.function->fields[index].type = local->type;
           compiler.function->fields[index].name = copyString(local->name.start, local->name.length);
         }
 
-        current = current->enclosing;
-        current->setLocalObjType(compiler.function);
-        expr->function = compiler.function;
+        compiler.endScope();
+        getCurrent()->setLocalObjType(compiler.function);
+        expr->_local = *getCurrent()->peekLocal(0);
       }
       return;
     }
     case EXPR_VARIABLE: {
       VariableExpr *varExpr = (VariableExpr *)subExpr;
-/*
-      resolveVariableExpr(varExpr);
-      if (expr->index != -1 && !expr->upvalueFlag)// && current->locals[expr->index].depth == current->scopeDepth)
-        if (current->locals[expr->index].depth == current->scopeDepth)
-        parser.error("Already a variable with this name in this scope.");*/
-      checkDeclaration(&varExpr->name);
-      current->addLocal(returnType);
-      current->setLocalName(&varExpr->name);
+
+      getCurrent()->checkDeclaration(&varExpr->name);
+      getCurrent()->addLocal(returnType);
+      getCurrent()->setLocalName(&varExpr->name);
 
       LiteralExpr *valueExpr = NULL;
 
@@ -981,7 +961,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
         break;
 
       case VAL_OBJ:
-        switch (returnType.objType->type) {
+        switch (AS_OBJ_TYPE(returnType)) {
         case OBJ_STRING:
           valueExpr = new LiteralExpr(VAL_OBJ, {.obj = &copyString("", 0)->obj});
           break;
@@ -1014,18 +994,18 @@ void Resolver::visitListExpr(ListExpr *expr) {
 
       accept<int>(subExpr, 0);
 
-      if (current->peekLocal(0)->type.valueType == VAL_VOID)
+      if (IS_VOID(getCurrent()->peekLocal(0)->type))
         removeLocal();
     }
 
-  current->addLocal({VAL_VOID});
+  getCurrent()->addLocal({VAL_VOID});
 }
 
 void Resolver::visitLiteralExpr(LiteralExpr *expr) {
   if (expr->type == VAL_OBJ)
-    current->addLocal(stringType);
+    getCurrent()->addLocal(stringType);
   else
-    current->addLocal(expr->type);
+    getCurrent()->addLocal(expr->type);
 }
 
 void Resolver::visitLogicalExpr(LogicalExpr *expr) {
@@ -1035,10 +1015,10 @@ void Resolver::visitLogicalExpr(LogicalExpr *expr) {
   Type type2 = removeLocal();
   Type type1 = removeLocal();
 
-  if (type1.valueType != VAL_BOOL || type2.valueType != VAL_BOOL)
+  if (!IS_BOOL(type1) || !IS_BOOL(type2))
     parser.error("Value must be boolean");
 
-  current->addLocal(VAL_BOOL);
+  getCurrent()->addLocal(VAL_BOOL);
 }
 
 void Resolver::visitOpcodeExpr(OpcodeExpr *expr) {
@@ -1046,15 +1026,33 @@ void Resolver::visitOpcodeExpr(OpcodeExpr *expr) {
   expr->right->accept(this);
 }
 
-void Resolver::visitReturnExpr(ReturnExpr *expr) {
-  if (expr->value != NULL) {
-    accept<int>(expr->value, 0);
+static std::list<Expr *> uiExprs;
 
-    Type type = removeLocal();
-    // verify that type is the function return type
+void Resolver::visitReturnExpr(ReturnExpr *expr) {
+  if (getCurrent()->function->isClass()) {
+//    char buf[128] = "{void Ret_() {ReturnHandler_()}; post(Ret_)}";
+    char buf[128] = "{post(ReturnHandler_)}";
+
+    if (expr->value) {
+      uiExprs.push_back(expr->value);
+      strcpy(buf, "{void Ret_() {ReturnHandler_($EXPR)}; post(Ret_)}");
+    }
+
+    expr->value = parse(buf, 0, 0, NULL);
   }
 
-  current->addLocal(VAL_VOID);
+  // sync processing below
+
+  if (expr->value) {
+    accept<int>(expr->value, 0);
+
+//  if (!getCurrent()->function->isClass())
+//    Type type = removeLocal();
+    // verify that type is the function return type if not an instance
+    // else return void
+  }
+
+  getCurrent()->addLocal(VAL_VOID);
 }
 
 void Resolver::visitSetExpr(SetExpr *expr) {
@@ -1064,15 +1062,15 @@ void Resolver::visitSetExpr(SetExpr *expr) {
   Type valueType = removeLocal();
   Type objectType = removeLocal();
 
-  if (objectType.valueType != VAL_OBJ || objectType.objType->type != OBJ_INSTANCE)
+  if (AS_OBJ_TYPE(objectType) != OBJ_INSTANCE)
     parser.errorAt(&expr->name, "Only instances have properties.");
   else {
-    ObjFunction *type = (ObjFunction *)objectType.objType;
+    ObjFunction *type = AS_FUNCTION_TYPE(objectType);
 
     for (int i = 0; expr->index == -1 && i < type->fieldCount; i++) {
       Field *field = &type->fields[i];
 
-      if (identifiersEqual2(&expr->name, field->name)) // && local->depth != -1)
+      if (identifiersEqual2(&expr->name, field->name))
         expr->index = i;
     }
 
@@ -1080,30 +1078,30 @@ void Resolver::visitSetExpr(SetExpr *expr) {
       parser.errorAt(&expr->name, "Field '%.*s' not found.", expr->name.length,
                      expr->name.start);
     else {
-      current->addLocal(type->fields[expr->index].type);
+      getCurrent()->addLocal(type->fields[expr->index].type);
       return;
     }
   }
 
-  current->addLocal({VAL_VOID});
+  getCurrent()->addLocal({VAL_VOID});
 }
 
 void Resolver::visitStatementExpr(StatementExpr *expr) {
-  int oldLocalCount = current->localCount;
+  int oldLocalCount = getCurrent()->getLocalCount();
 
   acceptSubExpr(expr->expr);
 
   if (expr->expr->type != EXPR_LIST || ((ListExpr *)expr->expr)->listType == EXPR_LIST) {
     Type type = removeLocal();
 
-    if (oldLocalCount != current->localCount)
+    if (oldLocalCount != getCurrent()->getLocalCount())
       parser.compilerError("COMPILER ERROR: oldLocalCount: %d localCount: %d",
-                           oldLocalCount, current->localCount);
+                           oldLocalCount, getCurrent()->getLocalCount());
 
-    if (type.valueType != VAL_VOID)
+    if (!IS_VOID(type))
       expr->expr = new OpcodeExpr(OP_POP, expr->expr);
 
-    current->addLocal(VAL_VOID);
+    getCurrent()->addLocal(VAL_VOID);
   }
 }
 
@@ -1114,7 +1112,7 @@ void Resolver::visitTernaryExpr(TernaryExpr *expr) {
 
   Type type = removeLocal();
 
-  if (type.valueType == VAL_VOID)
+  if (IS_VOID(type))
     parser.error("Value must not be void");
 
   expr->middle->accept(this);
@@ -1128,7 +1126,7 @@ void Resolver::visitTernaryExpr(TernaryExpr *expr) {
 void Resolver::visitThisExpr(ThisExpr *expr) {}
 
 void Resolver::visitTypeExpr(TypeExpr *expr) {
-  //  current->addLocal({VAL_OBJ, (ObjPrimitiveType) {{OBJ_PRIMITIVE_TYPE},
+  //  getCurrent()->addLocal({VAL_OBJ, (ObjPrimitiveType) {{OBJ_PRIMITIVE_TYPE},
   //  expr->type}});
 }
 
@@ -1137,55 +1135,48 @@ void Resolver::visitUnaryExpr(UnaryExpr *expr) {
 
   Type type = removeLocal();
 
-  if (type.valueType == VAL_VOID)
+  if (IS_VOID(type))
     parser.error("Value must not be void");
 
   switch (expr->op.type) {
   case TOKEN_PRINT:
     expr->right = convertToString(expr->right, type, parser);
-    current->addLocal(VAL_VOID);
+    getCurrent()->addLocal(VAL_VOID);
     break;
 
   case TOKEN_NEW: {
     bool errorFlag = true;
 
-    if (type.valueType == VAL_OBJ)
-      switch (type.objType->type) {
-      case OBJ_FUNCTION:
-      case OBJ_NATIVE:
-        errorFlag = false;
-        break;
-      }
+    switch (AS_OBJ_TYPE(type)) {
+    case OBJ_FUNCTION:
+      errorFlag = false;
+      break;
+    }
 
     if (errorFlag)
       parser.error("Operator new must target a callable function");
 
-    current->localCount++;
+    getCurrent()->localCount++;
     break;
   }
 
   case TOKEN_PERCENT:
     expr->right = convertToFloat(expr->right, type, parser);
-    current->addLocal({VAL_FLOAT});
+    getCurrent()->addLocal({VAL_FLOAT});
     break;
 
   default:
-    current->addLocal(type);
+    getCurrent()->addLocal(type);
     break;
   }
 }
 
 void Resolver::visitVariableExpr(VariableExpr *expr) {
-  resolveVariableExpr(expr);
-
-  if (expr->index == -1) {
-//    resolveVariableExpr(expr);
-    parser.error("Variable '%.*s' must be defined", expr->name.length, expr->name.start);
-    current->addLocal(VAL_VOID);
-  }
+  if (expr->index != -1)
+    getCurrent()->addLocal({VAL_OBJ, primitives[expr->index]});
+  else
+    getCurrent()->resolveVariableExpr(expr);
 }
-
-static std::list<Expr *> uiExprs;
 
 void Resolver::visitSwapExpr(SwapExpr *expr) {
   expr->_expr = uiExprs.front();
@@ -1193,31 +1184,19 @@ void Resolver::visitSwapExpr(SwapExpr *expr) {
   accept<int>(expr->_expr);
 }
 
-void Resolver::checkDeclaration(Token *name) {
-  for (int i = current->localCount - 1; i >= 0; i--) {
-    Local *local = &current->locals[i];
-
-    if (local->depth != -1 && local->depth < current->scopeDepth)
-      break;
-
-    if (identifiersEqual(name, &local->name))
-      parser.error("Already a variable '%.*s' with this name in this scope.", name->length, name->start);
-  }
-}
-
 Type Resolver::removeLocal() {
-  Type type = current->removeLocal();
+  Type type = getCurrent()->removeLocal();
   /*
     if (type.valueType == VAL_VOID && type.objType != NULL) {
       VariableExpr *variableExpr = (VariableExpr *) type.objType;
-      int index = current->resolveLocal(&variableExpr->name);
+      int index = getCurrent()->resolveLocal(&variableExpr->name);
 
       if (index != (int8_t) -128) {
-        Local *local = &current->locals[current->localCount + index];
+        Local *local = &getCurrent()->locals[getCurrent()->localCount + index];
 
         return local->type;
       }
-      else if ((index = current->resolveUpvalue(&variableExpr->name)) != -1)
+      else if ((index = getCurrent()->resolveUpvalue(&variableExpr->name)) != -1)
         return {VAL_VOID}; // TODO: change this...
       else {
         parser.error("Variable must be defined");
@@ -1228,27 +1207,23 @@ Type Resolver::removeLocal() {
   return type; /*
    if (type == VAL_VOID)
    accept<int>(expr->right, 0);
-     expr->index = current->resolveLocal(&previous);
+     expr->index = getCurrent()->resolveLocal(&previous);
 
      if (expr->index != (int8_t) -128) {
-       Local *local = &current->locals[current->localCount + expr->index];
+       Local *local = &getCurrent()->locals[getCurrent()->localCount + expr->index];
 
-       current->addLocal(local->type, local->objType);
-     } else if ((expr->index = current->resolveUpvalue(&expr->name)) != -1)
+       getCurrent()->addLocal(local->type, local->objType);
+     } else if ((expr->index = getCurrent()->resolveUpvalue(&expr->name)) != -1)
        expr->upvalueFlag = true;
      else {
        parser.error("Variable must be defined");
-       current->addLocal(VAL_VOID);
+       getCurrent()->addLocal(VAL_VOID);
      }
  */
 }
 
 bool Resolver::resolve(Compiler *compiler) {
-  Compiler *oldCurrent = current;
-
-  current = compiler;
   accept(exp, 0);
-  current = oldCurrent;
   return !parser.hadError;
 }
 
@@ -1300,7 +1275,7 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
         expr = (GroupingExpr *) parse(ss->str().c_str(), index, 1, expr);
       }
       else {
-        current->function->eventFlags = exprUI->_eventFlags;
+        getCurrent()->function->eventFlags = exprUI->_eventFlags;
         expr->expressions = RESIZE_ARRAY(Expr *, expr->expressions, expr->count, expr->count + uiExprs.size() - 1);
         memmove(&expr->expressions[index + uiExprs.size()], &expr->expressions[index + 1], (--expr->count - index) * sizeof(Expr *));
 
@@ -1314,7 +1289,7 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
       index--;
     }
     else
-      if (current->peekLocal(0)->type.valueType == VAL_VOID && (!parenFlag || index < expr->count - 1))
+      if (IS_VOID(getCurrent()->peekLocal(0)->type) && (!parenFlag || index < expr->count - 1))
         removeLocal();
   }
 
@@ -1330,17 +1305,17 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
       uiFunctions[0] = paintFunction;
       uiFunctions[1] = clickFunction;
 
-      Expr *layoutFunction = generateUIFunction("void", "Layout", NULL, expr->ui, 3, 2, uiFunctions);
+      Expr *layoutFunction = generateUIFunction("void", "Layout_", NULL, expr->ui, 3, 2, uiFunctions);
       Expr **layoutExprs = new Expr *[1];
 
       layoutExprs[0] = layoutFunction;
 
-      Expr *valueFunction = generateUIFunction("void", "UI$", NULL, expr->ui, 1, 1, layoutExprs);
+      Expr *valueFunction = generateUIFunction("void", "UI_", NULL, expr->ui, 1, 1, layoutExprs);
 
       aCount = 1;
       accept<int>(valueFunction, 0);
       Type type = removeLocal();
-      current->function->uiFunction = type.valueType == VAL_OBJ ? (ObjFunction *) type.objType : NULL;
+      getCurrent()->function->uiFunction = AS_FUNCTION_TYPE(type);
       delete expr->ui;
       expr->ui = valueFunction;
       uiParseCount = -1;
@@ -1440,7 +1415,7 @@ void Resolver::acceptSubExpr(Expr *expr) {
       type.objType = &newFunctionPtr(function->type, function->arity, parms)->obj;
     }
 
-    current->addLocal(type);
+    getCurrent()->addLocal(type);
   }*/
 }
 
@@ -1490,7 +1465,7 @@ int Resolver::getParseDir() {
   return uiParseCount - PARSE_LAYOUT;
 }
 
-#define UI_ATTRIBUTE_DEF( identifier, text )  text
+#define UI_ATTRIBUTE_DEF( identifier, text, conversionFunction )  text
 static const char *uiAttributes[] = { UI_ATTRIBUTES_DEF };
 #undef UI_ATTRIBUTE_DEF
 
@@ -1553,27 +1528,27 @@ void Resolver::processAttrs(UIDirectiveExpr *expr) {
 
         Type type = removeLocal();
 
-        if (type.valueType != VAL_VOID) {
+        if (!IS_VOID(type)) {
           if (attExpr->_uiIndex == ATTRIBUTE_OUT) {
-            if (type.valueType != VAL_OBJ || (type.objType->type != OBJ_INSTANCE && type.objType->type != OBJ_FUNCTION)) {
+            if (AS_OBJ_TYPE(type) != OBJ_INSTANCE && AS_OBJ_TYPE(type) != OBJ_FUNCTION) {
               attExpr->handler = convertToString(attExpr->handler, type, parser);
               type = stringType;
             }
           }
 
-          if (type.valueType == VAL_OBJ && type.objType && type.objType->type == OBJ_INSTANCE) {
-            current->function->instanceIndexes->set(current->localCount);
-            expr->_eventFlags |= ((ObjFunction *) ((ObjInstance *) type.objType)->callable)->uiFunction->eventFlags;
+          if (AS_OBJ_TYPE(type) == OBJ_INSTANCE) {
+            getCurrent()->function->instanceIndexes->set(getCurrent()->getLocalCount());
+            expr->_eventFlags |= ((ObjFunction *) AS_INSTANCE_TYPE(type)->callable)->uiFunction->eventFlags;
           }
 
-          char *name = generateInternalVarName("v", current->localCount);
+          char *name = generateInternalVarName("v", getCurrent()->getLocalCount());
           DeclarationExpr *decExpr = new DeclarationExpr(type, buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1), attExpr->handler);
 
           attExpr->handler = NULL;
-          attExpr->_index = current->localCount;
+          attExpr->_index = getCurrent()->getLocalCount();
           uiExprs.push_back(decExpr);
-          current->addLocal(type);
-          current->setLocalName(&decExpr->name);
+          getCurrent()->addLocal(type);
+          getCurrent()->setLocalName(&decExpr->name);
         }
         else
           parser.error("Value must not be void");
@@ -1621,6 +1596,14 @@ static bool hasAreas(UIDirectiveExpr *expr) {
   return expr->childrenViewFlag || expr->viewIndex;
 }
 
+static bool isAreaHeritable(int uiIndex) {
+  return uiIndex > ATTRIBUTE_AREA_HERITABLE && uiIndex < ATTRIBUTE_AREA_END;
+}
+
+static bool isHeritable(int uiIndex) {
+  return isAreaHeritable(uiIndex) || (uiIndex > ATTRIBUTE_HERITABLE && uiIndex < ATTRIBUTE_END);
+}
+
 // viewIndex = -1 -> non-sized unit or group
 // viewIndex = 0  -> sized group
 // viewIndex > 0  -> sized unit, has an associated variable
@@ -1633,7 +1616,7 @@ void Resolver::pushAreas(UIDirectiveExpr *expr) {
       valueStackSize.push(expr->attributes[index]->_uiIndex, expr->attributes[index]->_index);
 
   for (int index = 0; index < expr->attCount; index++)
-    if (!isEventHandler(expr->attributes[index]) && expr->attributes[index]->_uiIndex == ATTRIBUTE_FONTSIZE && expr->attributes[index]->_index != -1) {
+    if (!isEventHandler(expr->attributes[index]) && isAreaHeritable(expr->attributes[index]->_uiIndex) && expr->attributes[index]->_index != -1) {
       char name[20] = "";
 
       sprintf(name, "v%d", expr->attributes[index]->_index);
@@ -1659,30 +1642,28 @@ void Resolver::pushAreas(UIDirectiveExpr *expr) {
 
     if (name != NULL) {
       Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
-      Type outType = current->enclosing->locals[current->enclosing->resolveLocal(&token)].type;
+      Type outType = getCurrent()->enclosing->getLocal(getCurrent()->enclosing->resolveLocal(&token)).type;
       char *callee = NULL;
 
-      if (outType.valueType == VAL_OBJ && outType.objType) {
-        switch (outType.objType->type) {
-          case OBJ_INSTANCE:
-            callee = "getInstanceSize";
-            break;
+      switch (AS_OBJ_TYPE(outType)) {
+        case OBJ_INSTANCE:
+          callee = "getInstanceSize";
+          break;
 
-          case OBJ_STRING:
-            callee = "getTextSize";
-            break;
-        }
+        case OBJ_STRING:
+          callee = "getTextSize";
+          break;
+      }
 
-        if (callee) {
-          expr->viewIndex = aCount;
-          (*ss) << "  var a" << aCount++ << " = " << callee << "(" << name << ")\n";
-        }
+      if (callee) {
+        expr->viewIndex = aCount;
+        (*ss) << "  var a" << aCount++ << " = " << callee << "(" << name << ")\n";
       }
     }
   }
 
   for (int index = expr->attCount - 1; index >= 0; index--)
-    if (!isEventHandler(expr->attributes[index]) && expr->attributes[index]->_uiIndex == ATTRIBUTE_FONTSIZE && expr->attributes[index]->_index != -1) {
+    if (!isEventHandler(expr->attributes[index]) && isAreaHeritable(expr->attributes[index]->_uiIndex) && expr->attributes[index]->_index != -1) {
       insertTabs();
       (*ss) << "popAttribute(" << expr->attributes[index]->_uiIndex << ")\n";
     }
@@ -1845,7 +1826,7 @@ void Resolver::paint(UIDirectiveExpr *expr) {
       valueStackPaint.push(expr->attributes[index]->_uiIndex, expr->attributes[index]->_index);
 
   for (int index = 0; index < expr->attCount; index++)
-    if (!isEventHandler(expr->attributes[index]) && expr->attributes[index]->_uiIndex != -1 && expr->attributes[index]->_index != -1) {
+    if (!isEventHandler(expr->attributes[index]) && isHeritable(expr->attributes[index]->_uiIndex) && expr->attributes[index]->_index != -1) {
       char name[20] = "";
 
       sprintf(name, "v%d", expr->attributes[index]->_index);
@@ -1868,40 +1849,41 @@ void Resolver::paint(UIDirectiveExpr *expr) {
 
   if (name) {
     Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
-    Type outType = current->enclosing->enclosing->locals[current->enclosing->enclosing->resolveLocal(&token)].type;
+    Type outType = getCurrent()->enclosing->enclosing->getLocal(getCurrent()->enclosing->enclosing->resolveLocal(&token)).type;
 
-    if (outType.valueType == VAL_OBJ && outType.objType) {
-      switch (outType.objType->type) {
-        case OBJ_INSTANCE:
-          callee = "displayInstance";
-          break;
+    switch (AS_OBJ_TYPE(outType)) {
+      case OBJ_INSTANCE:
+        callee = "displayInstance";
+        break;
 
-        case OBJ_STRING:
-          callee = "displayText";
-          break;
+      case OBJ_STRING:
+        callee = "displayText";
+        break;
 
-        case OBJ_FUNCTION:
-          callee = ((ObjFunction *) outType.objType)->name->chars;
-          name[0] = 0;
-          break;
-      }
+      case OBJ_FUNCTION:
+        callee = AS_FUNCTION_TYPE(outType)->name->chars;
+        name[0] = 0;
+        break;
 
-      if (callee) {
-        if (expr->lastChild) {
-          insertTabs();
-          (*ss) << "saveContext()\n";
-        }
-
-        insertTabs();
-        (*ss) << callee << "(" << name << (name[0] ? ", " : "");
-        insertPoint("pos");
-        (*ss) << ", ";
-        insertPoint("size");
-        (*ss) << ")\n";
-      }
+      default:
+        if (!IS_OBJ(outType) || !outType.objType)
+          parser.error("Out value having an illegal type");
+        break;
     }
-    else
-      parser.error("Out value having an illegal type");
+
+    if (callee) {
+      if (expr->lastChild) {
+        insertTabs();
+        (*ss) << "saveContext()\n";
+      }
+
+      insertTabs();
+      (*ss) << callee << "(" << name << (name[0] ? ", " : "");
+      insertPoint("pos");
+      (*ss) << ", ";
+      insertPoint("size");
+      (*ss) << ")\n";
+    }
   }
 
   if (expr->lastChild) {
@@ -1918,7 +1900,7 @@ void Resolver::paint(UIDirectiveExpr *expr) {
   }
 
   for (int index = expr->attCount - 1; index >= 0; index--)
-    if (!isEventHandler(expr->attributes[index]) && expr->attributes[index]->_uiIndex != -1 && expr->attributes[index]->_index != -1) {
+    if (!isEventHandler(expr->attributes[index]) && isHeritable(expr->attributes[index]->_uiIndex) && expr->attributes[index]->_index != -1) {
       insertTabs();
       (*ss) << "popAttribute(" << expr->attributes[index]->_uiIndex << ")\n";
     }
@@ -1982,10 +1964,10 @@ void Resolver::onEvent(UIDirectiveExpr *expr) {
     else {
       const char *name = getValueVariableName(expr, ATTRIBUTE_OUT);
       Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
-      int index = current->enclosing->enclosing->resolveLocal(&token);
-      Type outType = current->enclosing->enclosing->locals[index].type;
+      int index = getCurrent()->enclosing->enclosing->resolveLocal(&token);
+      Type outType = getCurrent()->enclosing->enclosing->getLocal(index).type;
 
-      switch (outType.objType->type) {
+      switch (AS_OBJ_TYPE(outType)) {
         case OBJ_INSTANCE:
           insertTabs();
           (*ss) << "flag = onInstanceEvent(" << name << ", event, ";
@@ -2007,7 +1989,7 @@ void Resolver::onEvent(UIDirectiveExpr *expr) {
                 nTabs++;
 
                 insertTabs();
-                (*ss) << "$EXPR\n";
+                (*ss) << "{void Ret_() {$EXPR}; post(Ret_)}\n";
                 uiExprs.push_back(attExpr->handler);
                 attExpr->handler = NULL;
 

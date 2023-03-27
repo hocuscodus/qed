@@ -234,7 +234,7 @@ int disassembleInstruction(Chunk *chunk, int offset) {
       printObject(chunk->constants.values[constant]);
       printf("\n");
 
-      ObjCallable *function = AS_CALLABLE(chunk->constants.values[constant]);
+      ObjFunction *function = AS_FUNCTION(chunk->constants.values[constant]);
 
       for (int j = 0; j < function->upvalueCount; j++) {
         int isLocal = chunk->code[offset++];

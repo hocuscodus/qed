@@ -158,6 +158,10 @@ void Parser::errorAt(Token *token, const char *fmt, ...) {
 
 #undef FORMAT_MESSAGE
 
+ObjFunction *Parser::compile() {
+  return parse() ? expr->_compiler.compile(*this) : NULL;
+}
+
 bool Parser::parse() {
   /*
     int line = -1;
@@ -175,7 +179,7 @@ bool Parser::parse() {
       if (token.type == TOKEN_EOF) break;
     }
   */
-  expr = grouping(TOKEN_EOF, "Expect end of file.");
+  expr = (GroupingExpr *) grouping(TOKEN_EOF, "Expect end of file.");
 
   return !hadError;
 }
@@ -698,7 +702,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
     expList[count++] = exp2;
   }
 
-  return expList != NULL ? new ListExpr(count, expList, EXPR_LIST, NULL) : exp;
+  return expList != NULL ? new ListExpr(count, expList, EXPR_LIST) : exp;
 }
 
 Expr *Parser::function(Type *type, TokenType endGroupType) {
@@ -891,8 +895,8 @@ Expr *Parser::statement(TokenType endGroupType) {
 
   if (match(TOKEN_PRINT))
     return printStatement(endGroupType);
-//  else if (match(TOKEN_RETURN))
-//    return returnStatement(endGroupType);
+  else if (match(TOKEN_RETURN))
+    return returnStatement(endGroupType);
   else if (match(TOKEN_IF))
     return ifStatement(endGroupType);
   else if (match(TOKEN_WHILE))
@@ -917,7 +921,7 @@ void Parser::synchronize() {
     case TOKEN_IF:
     case TOKEN_WHILE:
     case TOKEN_PRINT:
-//    case TOKEN_RETURN:
+    case TOKEN_RETURN:
       return;
 
     default:; // Do nothing.

@@ -343,7 +343,7 @@ TokenType Scanner::identifierType() {
           case 'r': return checkKeyword(2, 3, "int", TOKEN_PRINT);
         }
       break;
-//    case 'r': return checkKeyword(1, 5, "eturn", TOKEN_RETURN);
+    case 'r': return checkKeyword(1, 5, "eturn", TOKEN_RETURN);
     case 'S': return checkKeyword(1, 5, "tring", TOKEN_TYPE_LITERAL);
     case 's': return checkKeyword(1, 4, "uper", TOKEN_SUPER);
     case 't':

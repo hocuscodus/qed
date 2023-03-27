@@ -7,7 +7,7 @@
 #ifndef qed_resolver_h
 #define qed_resolver_h
 
-#include "compiler.hpp"
+#include "parser.hpp"
 #include <stack>
 
 #define UI_PARSES_DEF \
@@ -85,7 +85,6 @@ public:
   void visitVariableExpr(VariableExpr *expr);
   void visitSwapExpr(SwapExpr *expr);
 
-  void checkDeclaration(Token *name);
   Type removeLocal();
   bool resolve(Compiler *compiler);
   void acceptGroupingExprUnits(GroupingExpr *expr);

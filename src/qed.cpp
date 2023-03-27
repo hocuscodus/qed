@@ -7,13 +7,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "compiler.hpp"
+#include "parser.hpp"
 #include "vm.hpp"
 #include "qni.hpp"
 
 const char *qedLib =
 "void println(String str);"
 "//void print(String str)\n"
+"void post(int handlerFn);"
 "int max(int a, int b);"
 ""
 "var WIDTH = 1;"
@@ -30,12 +31,19 @@ const char *qedLib =
 "void oval(int pos, int size);"
 "void rect(int pos, int size);"
 "void pushAttribute(int index, int value);"
+"void pushAttribute(int index, float value);"
 "void popAttribute(int index);"
 "int getTextSize(String text);"
 "int getInstanceSize(int instance);"
 "void displayText(String text, int pos, int size);"
 "void displayInstance(int instance, int pos, int size);"
 "bool onInstanceEvent(int instance, int event, int pos, int size);"
+/*"int[] convertToPoint(int point) {return([point, point])}"
+"int[] convertToPoint(int[] point) {return(point)}"
+"float[] convertToFloatPoint(float point) {return([point, point])}"
+"float[] convertToFloatPoint(float[] point) {return(point)}"
+"int convertToInt(int x) {return(x)}"
+"float convertToFloat(float x) {return(x)}"*/
 ""
 "void Timer(int timeoutMillis) {"
 "  var _timerObj;"
@@ -61,11 +69,14 @@ static void repl() {
   strcpy(buffer, qedLib);
   Scanner scanner(buffer);
   Parser parser(scanner);
-  Compiler compiler(parser, NULL);
+  ObjFunction *function = parser.compile();
+
+  if (!function)
+    return;
+
   CoThread *coThread = newThread(NULL);
   VM vm(coThread, false);
-  ObjClosure *closure = coThread->pushClosure(compiler.function);
-  ObjFunction *function = compiler.compile();
+  ObjClosure *closure = coThread->pushClosure(function);
 
 //  strcpy(buffer, "");
 //  scanner.reset(buffer);
@@ -91,7 +102,8 @@ static void repl() {
     }
 
     strcat(buffer, line);
-    function = compiler.compile();
+
+    parser.compile();
   }
 
   freeObjects();
@@ -148,11 +160,14 @@ void runSource(const char *source) {
 
   Scanner scanner(buffer);
   Parser parser(scanner);
-  Compiler compiler(parser, NULL);
+  ObjFunction *function = parser.compile();
+
+  if (!function)
+    return;
+
   CoThread *coThread = newThread(NULL);
   VM vm(coThread, true);
-  ObjClosure *closure = coThread->pushClosure(compiler.function);
-  ObjFunction *function = compiler.compile();
+  ObjClosure *closure = coThread->pushClosure(function);
 
   if (function == NULL)
     exit(65);

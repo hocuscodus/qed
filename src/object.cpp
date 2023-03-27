@@ -298,17 +298,16 @@ InterpretResult run(CoThread *current) {
     }
     case OP_NEW: {
       int argCount = READ_BYTE();
-      Value handlerConstant = POP;
+      int handlerCount = 1;
       CoThread *thread = newThread(current);
-      int size = argCount + 1;
+      int size = argCount + 1 + handlerCount;
 
-      thread->handler = AS_INT(handlerConstant) != -1 ? AS_CLOSURE(handlerConstant) : NULL;
       memcpy(thread->fields, stackTop - size, size * sizeof(Value));
       thread->savedStackTop += size;
       stackTop -= size;
       PUSH(OBJ_VAL(thread));
 
-      if (thread->callValue(*thread->fields, argCount)) {
+      if (thread->callValue(*thread->fields, argCount + handlerCount)) {
         current->savedStackTop = stackTop;
         current = thread;
         frame = &current->frames[current->frameCount - 1];
@@ -358,26 +357,20 @@ InterpretResult run(CoThread *current) {
       current->closeUpvalues(stackTop - 1);
       POP;
       break;
-    case OP_RETURN: {
+    case OP_RETURN:/*
       if (IS_FIRST_INSTANCE && current->isInInstance()) {
         current->closeUpvalues(current->frames[0].slots);
         POP;
         return INTERPRET_OK;
       }
-      else {
+      else */{
         ValueType type = frame->closure->function->type.valueType;
         Value result = type != VAL_VOID ? POP : (Value) {VAL_VOID};
 
-        if (current->isInInstance())
-          current->onThreadReturn(result);
-        else {
-          current->onReturn(result);
-          frame = &current->frames[current->frameCount - 1];
-          break;
-        }
+        current->onReturn(result);
+        frame = &current->frames[current->frameCount - 1];
       }
-    }
-    // Is is wanted that we do not break here...
+      break;
     case OP_HALT: {
       Obj *native = frame->closure->function->native;
 
@@ -477,11 +470,49 @@ Obj *allocateObject(size_t size, ObjType type) {
   return object;
 }
 
+const char *Obj::toString() {
+  static char buf[256];
+
+  switch (type) {
+    case OBJ_STRING: return "String";
+    case OBJ_ARRAY: {
+      char buf2[256] = "??";
+
+      sprintf(buf2, "%s[]", ((ObjArray *) this)->elementType.toString());
+      strcpy(buf, buf2);
+      return buf;
+    }
+    case OBJ_FUNCTION: {
+      ObjString *name = ((ObjFunction *) this)->name;
+
+      if (name)
+        sprintf(buf, "%.*s", name->length, name->chars);
+      return buf;
+    }
+    case OBJ_INSTANCE: {
+      ObjCallable *callable = ((ObjInstance *) this)->callable;
+      ObjString *name = callable->name;
+
+      sprintf(buf, "%.*s", name->length, name->chars);
+      return buf;
+    }
+    case OBJ_THREAD:
+    case OBJ_CLOSURE:
+    case OBJ_NATIVE:
+    case OBJ_NATIVE_CLASS:
+    case OBJ_PRIMITIVE:
+    case OBJ_UPVALUE:
+    case OBJ_FUNCTION_PTR:
+    case OBJ_INTERNAL:
+      return "!unknownObj!";
+  }
+}
+
 bool ObjCallable::isClass() {
   return name == NULL || (name->chars[0] >= 'A' && name->chars[0] <= 'Z');
 }
 
-int ObjCallable::addUpvalue(uint8_t index, bool isLocal, Type type, Parser &parser) {
+int ObjFunction::addUpvalue(uint8_t index, bool isLocal, Type type, Parser &parser) {
   for (int i = 0; i < upvalueCount; i++) {
     Upvalue *upvalue = &upvalues[i];
 
@@ -605,25 +636,9 @@ LocationUnit *CallFrame::init(VM &vm, Value *values, IndexList *instanceIndexes,
 */
 extern void postMessage(void (*fn)(void *), void *);
 
-void ret(void *data) {
-  Value value = VOID_VAL;
-
-  ((CoThread *) data)->onThreadReturn(value);
-}
-
 bool CoThread::callValue(Value callee, int argCount) {
   switch (OBJ_TYPE(callee)) {
 //    case OBJ_NATIVE_CLASS:
-    case OBJ_RETURN: {
-      stackTop -= argCount + 1;
-
-      if (argCount)
-        PUSH(stackTop[1]);
-
-      ObjClosure *closure = AS_CLOSURE(callee);
-      postMessage(ret, AS_CLOSURE(callee)->parent);
-      break;
-    }
     case OBJ_CLOSURE:
       return call(AS_CLOSURE(callee), argCount);
 
@@ -707,9 +722,6 @@ void CoThread::runtimeError(const char *format, ...) {
 ObjNativeClass *newNativeClass(NativeClassFn classFn) {
   ObjNativeClass *native = ALLOCATE_OBJ(ObjNativeClass, OBJ_NATIVE_CLASS);
 
-  native->arity = 0;
-  native->upvalueCount = 0;
-  native->name = NULL;
   native->classFn = classFn;
   return native;
 }
@@ -766,23 +778,11 @@ CallFrame *CoThread::getFrame(int index) {
 void CoThread::onReturn(Value &returnValue) {
   CallFrame *frame = &frames[--frameCount];
 
-  closeUpvalues(frame->slots);
+  closeUpvalues(frame->slots); // objectify the stack frame
   stackTop = frame->slots;
 
-  if (frame->closure->function->type.valueType != VAL_VOID && frame->closure->function->type.valueType != VAL_HANDLER)
+  if (frame->closure->function->type.valueType != VAL_VOID)
     PUSH(returnValue);
-}
-
-void CoThread::onThreadReturn(Value &returnValue) {
-  if (caller && handler) {
-    CoThread *callerThread = caller;
-    Value value = {VAL_VOID};
-
-    *callerThread->savedStackTop++ = OBJ_VAL(handler);
-    callerThread->call(handler, 0);
-    run(callerThread);
-    callerThread->onReturn(value);
-  }
 }
 
 bool CoThread::getFormFlag() {
@@ -928,6 +928,28 @@ bool CoThread::onEvent(Event event, Point pos, Point size) {
 
   return flag;
 }
+
+bool CoThread::runHandler(ObjClosure *closure) {
+  bool flag = false;
+  Value value = {VOID_VAL};
+  int oldFrameCount = frameCount;
+
+  *savedStackTop++ = OBJ_VAL(closure);
+  call(closure, 0);
+  run(this);
+
+  if (frameCount > oldFrameCount)
+    flag = false;
+#ifdef DEBUG_TRACE_EXECUTION
+  printStack();
+#endif
+  onReturn(value);
+#ifdef DEBUG_TRACE_EXECUTION
+  printStack();
+#endif
+
+  return flag;
+}
 #if 0
 Object parseCreateUIValuesSub(QEDProcess process, Object value, Path path, int flags, LambdaDeclaration handler) {
   Object childValue = process.execCmdRaw(value, handler, null);
@@ -977,7 +999,6 @@ CoThread *newThread(CoThread *caller) {
   CoThread *coThread = ALLOCATE_OBJ(CoThread, OBJ_THREAD);
 
   coThread->caller = caller;
-  coThread->handler = NULL;
   coThread->fields = ALLOCATE(Value, 64);
   coThread->resetStack();
   coThread->frameCount = 0;
@@ -999,8 +1020,7 @@ ObjClosure *newClosure(ObjFunction *function, CoThread *parent) {
     upvalues[i] = NULL;
   }
 
-  ObjType objType = function->name && !strcmp(function->name->chars, "return") ? OBJ_RETURN : OBJ_CLOSURE;
-  ObjClosure *closure = ALLOCATE_OBJ(ObjClosure, objType);
+  ObjClosure *closure = ALLOCATE_OBJ(ObjClosure, OBJ_CLOSURE);
 
   closure->parent = parent;
   closure->function = function;
@@ -1009,12 +1029,13 @@ ObjClosure *newClosure(ObjFunction *function, CoThread *parent) {
   return closure;
 }
 
-ObjFunction *newFunction() {
+ObjFunction *newFunction(Type type, ObjString *name, int arity) {
   ObjFunction *function = ALLOCATE_OBJ(ObjFunction, OBJ_FUNCTION);
 
-  function->arity = 0;
+  function->type = type;
+  function->arity = arity;
   function->upvalueCount = 0;
-  function->name = NULL;
+  function->name = name;
   function->chunk.init();
   function->native = NULL;
   function->instanceIndexes = new IndexList();
@@ -1027,9 +1048,6 @@ ObjFunction *newFunction() {
 ObjNative *newNative(NativeFn function) {
   ObjNative *native = ALLOCATE_OBJ(ObjNative, OBJ_NATIVE);
 
-  native->arity = 0;
-  native->upvalueCount = 0;
-  native->name = NULL;
   native->function = function;
   return native;
 }
@@ -1120,11 +1138,9 @@ void printObject(Value value) {
     break;
   }
   case OBJ_CLOSURE:
-  case OBJ_RETURN:
     printFunction(AS_CLOSURE(value)->function);
     break;
   case OBJ_FUNCTION:
-  case OBJ_NATIVE:
     printFunction(AS_CALLABLE(value));
     break;
   case OBJ_STRING:

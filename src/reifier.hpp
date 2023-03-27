@@ -4,16 +4,18 @@
  *
  * All rights reserved.
  */
-#ifndef qed_codegen_h
-#define qed_codegen_h
+#ifndef qed_reifier_h
+#define qed_reifier_h
 
 #include "parser.hpp"
 
-class CodeGenerator : public ExprVisitor {
+/*
+ * The palindrome class...
+ */
+class Reifier : public ExprVisitor {
   Parser &parser;
-  ObjFunction *function;
 public:
-  CodeGenerator(Parser &parser, ObjFunction *function);
+  Reifier(Parser &parser);
 
   void visitAssignExpr(AssignExpr *expr);
   void visitUIAttributeExpr(UIAttributeExpr *expr);
@@ -31,8 +33,8 @@ public:
   void visitLogicalExpr(LogicalExpr *expr);
   void visitOpcodeExpr(OpcodeExpr *expr);
   void visitReturnExpr(ReturnExpr *expr);
-  void visitSetExpr(SetExpr *expr);
   void visitStatementExpr(StatementExpr *expr);
+  void visitSetExpr(SetExpr *expr);
   void visitSuperExpr(SuperExpr *expr);
   void visitTernaryExpr(TernaryExpr *expr);
   void visitThisExpr(ThisExpr *expr);
@@ -41,18 +43,9 @@ public:
   void visitVariableExpr(VariableExpr *expr);
   void visitSwapExpr(SwapExpr *expr);
 
-  Chunk *currentChunk();
-  void emitCode(Expr *expr);
-
-  void emitByte(uint8_t byte);
-  void emitBytes(uint8_t byte1, uint8_t byte2);
-  void emitLoop(int loopStart);
-  int emitJump(uint8_t instruction);
-  void emitHalt();
-  uint8_t makeConstant(Value value);
-  void emitConstant(Value value);
-  void patchJump(int offset);
-  void endCompiler();
+  bool reify();
 };
 
 #endif
+
+

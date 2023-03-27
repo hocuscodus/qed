@@ -77,7 +77,8 @@ void uninitDisplay() {
 }
 
 typedef struct {
-  em_arg_callback_func fn;
+    CoThread *coThread = (CoThread *) AS_OBJ(args[0]);
+ fn;
   void *data;
 } QEDMessage;
 
@@ -85,6 +86,7 @@ void messageHandler(void *data) {
   QEDMessage *message = (QEDMessage *) data;
 
   (*message->fn)(message->data);
+  coThread->runHandler((ObjClosure *) event.user.data1);
   FREE_ARRAY(void *, data, 1);
   repaint2(eventThread);
 }
@@ -103,6 +105,13 @@ void suspend(CoThread *coThread) {
 }
 
 bool clipping = false;
+
+QNI_FN(post) {
+  Value &obj = args[0];
+
+//  attStack.push(uiIndex, value);
+  return VOID_VAL;
+}
 
 QNI_FN(saveContext) {
   const auto canvas = document.call<emscripten::val, std::string>("querySelector", "canvas");
@@ -365,6 +374,22 @@ void uninitDisplay() {
   }
 }
 
+QNI_FN(post) {
+  SDL_Event event;
+  SDL_UserEvent userevent;
+  Value &obj = args[0];
+
+  userevent.type = SDL_USEREVENT + 0; // should be a more official Timer type
+  userevent.code = 0;
+  userevent.data1 = AS_CLOSURE(obj);
+
+  event.type = SDL_USEREVENT;
+  event.user = userevent;
+
+  SDL_PushEvent(&event);
+  return VOID_VAL;
+}
+
 QNI_FN(saveContext) {
   return VOID_VAL;
 }
@@ -498,7 +523,7 @@ void suspend(CoThread *coThread) {
 
     switch (event.type) {
     case SDL_USEREVENT:
-      (*((void (*)(void *)) event.user.data1))(event.user.data2);
+      coThread->runHandler((ObjClosure *) event.user.data1);
       repaint2(coThread);
       SDL_RenderPresent(rend2);
       break;
