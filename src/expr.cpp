@@ -8,14 +8,14 @@ Expr::Expr(ExprType type) {
   this->type = type;
 }
 
-VariableExpr::VariableExpr(Token name, int8_t index, bool upvalueFlag) : Expr(EXPR_VARIABLE) {
+ReferenceExpr::ReferenceExpr(Token name, int8_t index, bool upvalueFlag) : Expr(EXPR_REFERENCE) {
   this->name = name;
   this->index = index;
   this->upvalueFlag = upvalueFlag;
 }
 
-void VariableExpr::accept(ExprVisitor *visitor) {
-  return visitor->visitVariableExpr(this);
+void ReferenceExpr::accept(ExprVisitor *visitor) {
+  return visitor->visitReferenceExpr(this);
 }
 
 UIAttributeExpr::UIAttributeExpr(Token name, Expr* handler) : Expr(EXPR_UIATTRIBUTE) {
@@ -41,7 +41,7 @@ void UIDirectiveExpr::accept(ExprVisitor *visitor) {
   return visitor->visitUIDirectiveExpr(this);
 }
 
-AssignExpr::AssignExpr(VariableExpr* varExp, Token op, Expr* value, OpCode opCode, bool suffixFlag) : Expr(EXPR_ASSIGN) {
+AssignExpr::AssignExpr(ReferenceExpr* varExp, Token op, Expr* value, OpCode opCode, bool suffixFlag) : Expr(EXPR_ASSIGN) {
   this->varExp = varExp;
   this->op = op;
   this->value = value;

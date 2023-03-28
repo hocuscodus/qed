@@ -201,8 +201,8 @@ Expr *Parser::assignment(Expr *left) {
     error("Expect expression.");
 
   switch (left->type) {
-  case EXPR_VARIABLE:
-    return new AssignExpr((VariableExpr *) left, op, right, OP_FALSE, false);
+  case EXPR_REFERENCE:
+    return new AssignExpr((ReferenceExpr *) left, op, right, OP_FALSE, false);
 
   case EXPR_GET: {
     GetExpr *getExpr = (GetExpr *) left;
@@ -275,7 +275,7 @@ Expr *Parser::suffix(Expr *left) {
   switch (op.type) {
     case TOKEN_PLUS_PLUS:
     case TOKEN_MINUS_MINUS:
-      return new AssignExpr((VariableExpr *) left, op, NULL, OP_FALSE, true);
+      return new AssignExpr((ReferenceExpr *) left, op, NULL, OP_FALSE, true);
 
     default:
       return new UnaryExpr(op, left);
@@ -408,14 +408,14 @@ Expr *Parser::primitiveType() {
   case 'v':
     switch (previous.start[1]) {
     case 'a':
-      return new VariableExpr(previous, VAL_VAR, false);
+      return new ReferenceExpr(previous, VAL_VAR, false);
     case 'o':
-      return new VariableExpr(previous, VAL_VOID, false);
+      return new ReferenceExpr(previous, VAL_VOID, false);
     }
-  case 'b': return new VariableExpr(previous, VAL_BOOL, false);
-  case 'i': return new VariableExpr(previous, VAL_INT, false);
-  case 'f': return new VariableExpr(previous, VAL_FLOAT, false);
-  case 'S': return new VariableExpr(previous, VAL_OBJ, false);
+  case 'b': return new ReferenceExpr(previous, VAL_BOOL, false);
+  case 'i': return new ReferenceExpr(previous, VAL_INT, false);
+  case 'f': return new ReferenceExpr(previous, VAL_FLOAT, false);
+  case 'S': return new ReferenceExpr(previous, VAL_OBJ, false);
   default: return NULL; // Unreachable.
   }
 }
@@ -606,7 +606,7 @@ Expr *Parser::string() {
 }
 
 Expr *Parser::variable() {
-  return new VariableExpr(previous, -1, false);
+  return new ReferenceExpr(previous, -1, false);
 }
 
 Expr *Parser::unary() {
@@ -634,7 +634,7 @@ Expr *Parser::unary() {
     case TOKEN_MINUS_MINUS: {
       Expr *right = parsePrecedence(PREC_CALL);
 
-      return new AssignExpr((VariableExpr *) right, op, NULL, OP_FALSE, false);
+      return new AssignExpr((ReferenceExpr *) right, op, NULL, OP_FALSE, false);
     }
     default:
       return new UnaryExpr(op, parsePrecedence(PREC_UNARY));
@@ -745,7 +745,7 @@ Type Parser::readType() {
     }
   else {
     consume(TOKEN_IDENTIFIER, "Expect type.");
-    return {VAL_VOID, (Obj *) new VariableExpr(previous, -1, false)};
+    return {VAL_VOID, (Obj *) new ReferenceExpr(previous, -1, false)};
   }
 }
 

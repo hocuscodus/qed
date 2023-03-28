@@ -82,10 +82,10 @@ public:
   void visitThisExpr(ThisExpr *expr);
   void visitTypeExpr(TypeExpr *expr);
   void visitUnaryExpr(UnaryExpr *expr);
-  void visitVariableExpr(VariableExpr *expr);
+  void visitReferenceExpr(ReferenceExpr *expr);
   void visitSwapExpr(SwapExpr *expr);
 
-  Type removeLocal();
+  Type removeDeclaration();
   bool resolve(Compiler *compiler);
   void acceptGroupingExprUnits(GroupingExpr *expr);
   void acceptSubExpr(Expr *expr);

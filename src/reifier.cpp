@@ -69,7 +69,7 @@ void Reifier::visitGroupingExpr(GroupingExpr *expr) {
   int localStart = top() ? top()->localStart : 0;
 
   reinferStack.push({&expr->_compiler, localStart});
-  top()->compiler->realLocalStart = localStart;
+  top()->compiler->localStart = localStart;
 
   for (int index = 0; index < expr->count; index++)
     expr->expressions[index]->accept(this);
@@ -84,24 +84,24 @@ void Reifier::visitArrayExpr(ArrayExpr *expr) {
 }
 
 void Reifier::visitListExpr(ListExpr *expr) {
-  Local *local = expr->_local.type.valueType != VAL_VOID ? &expr->_local : NULL;
+  Declaration *dec = expr->_declaration.type.valueType != VAL_VOID ? &expr->_declaration : NULL;
 
-  if (local) {
-    local->realIndex = local->isField ? top()->compiler->fieldCount++ : top()->compiler->realLocalStart + top()->compiler->realLocalCount++;
+  if (dec) {
+    dec->realIndex = dec->isField ? top()->compiler->fieldCount++ : top()->compiler->localStart + top()->compiler->localCount++;
 
-    if (!local->isField)
-      top()->localStart = local->realIndex + 1;
+    if (!dec->isField)
+      top()->localStart = dec->realIndex + 1;
 
-    if (IS_FUNCTION(local->type)) {
-      ObjFunction *function = AS_FUNCTION_TYPE(local->type);
+    if (IS_FUNCTION(dec->type)) {
+      ObjFunction *function = AS_FUNCTION_TYPE(dec->type);
 
       for (int i = 0; i < function->upvalueCount; i++) {
         Upvalue *upvalue = &function->upvalues[i];
 
         if (upvalue->isLocal) {
-          Local &local = top()->compiler->locals[upvalue->index];
+          Declaration &dec = top()->compiler->declarations[upvalue->index];
 
-          if (!local.isField)
+          if (!dec.isField)
             upvalue->index = upvalue->index;
 
           upvalue->index = upvalue->index;//local.realIndex;
@@ -163,7 +163,7 @@ void Reifier::visitUnaryExpr(UnaryExpr *expr) {
   expr->right->accept(this);
 }
 
-void Reifier::visitVariableExpr(VariableExpr *expr) {
+void Reifier::visitReferenceExpr(ReferenceExpr *expr) {
 }
 
 void Reifier::visitSwapExpr(SwapExpr *expr) {

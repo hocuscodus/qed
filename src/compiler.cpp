@@ -55,8 +55,8 @@ ObjFunction *Compiler::compile(Parser &parser) {
   printf("Adapted parse: ");
   ASTPrinter().print(parser.expr);
   printf("          ");
-  for (int i = 0; i < localCount; i++) {
-    Token *token = &locals[i].name;
+  for (int i = 0; i < declarationCount; i++) {
+    Token *token = &declarations[i].name;
 
     if (token != NULL)
       printf("[ %.*s ]", token->length, token->start);
@@ -75,10 +75,10 @@ ObjFunction *Compiler::compile(Parser &parser) {
 #ifdef DEBUG_PRINT_CODE
   else {
     disassembleChunk(&function->chunk, function->name != NULL ? function->name->chars : "<script>");
-    for (int index = 0; index < localCount; index++) {
-      const char *name = locals[index].name.start;
+    for (int index = 0; index < declarationCount; index++) {
+      const char *name = declarations[index].name.start;
 
-      printf("<%s %s> ", locals[index].type.toString(), name ? name : "");
+      printf("<%s %s> ", declarations[index].type.toString(), name ? name : "");
     }
     printf("\n");
   }
@@ -93,10 +93,10 @@ void Compiler::beginScope(ObjFunction *function) {
   this->enclosing = current;
   current = this;
   fieldCount = 0;
-  realLocalStart = 0;
-  realLocalCount = 0;
   localStart = 0;
   localCount = 0;
+  declarationStart = 0;
+  declarationCount = 0;
   this->function = function;
 
   if (enclosing) {
@@ -107,7 +107,7 @@ void Compiler::beginScope(ObjFunction *function) {
   }
   else
     prefix = "qni";
-  addLocal({VAL_OBJ, &function->obj});
+  addDeclaration({VAL_OBJ, &function->obj});
 }
 
 void Compiler::beginScope() {
@@ -115,10 +115,10 @@ void Compiler::beginScope() {
   this->enclosing = current;
   current = this;
   fieldCount = 0;
-  realLocalStart = 0;
-  realLocalCount = 0;
-  localStart = enclosing->localStart + enclosing->localCount;
+  localStart = 0;
   localCount = 0;
+  declarationStart = enclosing->declarationStart + enclosing->declarationCount;
+  declarationCount = 0;
   function = enclosing->function;
   prefix = enclosing->prefix;
 }
@@ -127,58 +127,58 @@ void Compiler::endScope() {
   current = enclosing;
 }
 
-Local *Compiler::addLocal(ValueType type) {
-  return addLocal({type, NULL});
+Declaration *Compiler::addDeclaration(ValueType type) {
+  return addDeclaration({type, NULL});
 }
 
-Local *Compiler::addLocal(Type type) {
-  if (localCount == UINT8_COUNT) {
-    parser->error("Too many local variables in function.");
+Declaration *Compiler::addDeclaration(Type type) {
+  if (declarationCount == UINT8_COUNT) {
+    parser->error("Too many declarations in function.");
     return NULL;
   }
 
-  Local *local = &locals[localCount++];
+  Declaration *dec = &declarations[declarationCount++];
 
-  local->type = type;
-  local->name.start = "";
-  local->name.length = 0;
-  local->isField = false;
-  return local;
+  dec->type = type;
+  dec->name.start = "";
+  dec->name.length = 0;
+  dec->isField = false;
+  return dec;
 }
 
-Type Compiler::removeLocal() {
-  return locals[--localCount].type;
+Type Compiler::removeDeclaration() {
+  return declarations[--declarationCount].type;
 }
 
-Local *Compiler::peekLocal(int index) {
-  return &locals[localCount - 1 - index];
+Declaration *Compiler::peekDeclaration(int index) {
+  return &declarations[declarationCount - 1 - index];
 }
 
-void Compiler::setLocalName(Token *name) {
-  locals[localCount - 1].name = *name;
+void Compiler::setDeclarationName(Token *name) {
+  declarations[declarationCount - 1].name = *name;
 }
 
-void Compiler::setLocalObjType(ObjFunction *function) {
-  locals[localCount - 1].type.objType = &function->obj;/*
+void Compiler::setDeclarationType(ObjFunction *function) {
+  declarations[declarationCount - 1].type.objType = &function->obj;/*
   Type parms[function->arity];
 
   for (int index = 0; index < function->arity; index++)
     parms[index] = function->fields[index].type;
 
-  locals[localCount - 1].type.objType = &newFunctionPtr(function->type, function->arity, parms)->obj;
+  declarations[declarationCount - 1].type.objType = &newFunctionPtr(function->type, function->arity, parms)->obj;
 */
 }
 
-int Compiler::resolveLocal(Token *name) {
+int Compiler::resolveReference(Token *name) {
   int found = -1;
   char buffer[2048] = "";
   ObjCallable *signature = getSignature();
 
-  for (int i = localCount - 1; found < 0 && i >= 0; i--) {
-    Local *local = &locals[i];
+  for (int i = declarationCount - 1; found < 0 && i >= 0; i--) {
+    Declaration *dec = &declarations[i];
 
-    if (identifiersEqual(name, &local->name)) {
-      Type type = local->type;
+    if (identifiersEqual(name, &dec->name)) {
+      Type type = dec->type;
 
 //      if (signature && type.valueType == VAL_OBJ)
       // Remove these patches ASAP
@@ -250,7 +250,7 @@ int Compiler::resolveLocal(Token *name) {
           return -2;
         }
       else
-        found = localStart + i;
+        found = declarationStart + i;
     }
   }
 
@@ -272,20 +272,20 @@ int Compiler::resolveLocal(Token *name) {
 
 int Compiler::resolveUpvalue(Token *name) {
   if (enclosing != NULL) {
-    int local = -1;
+    int decIndex = -1;
 
     Compiler *current = enclosing;
 
     while (true) {
-      local = current->resolveLocal(name);
+      decIndex = current->resolveReference(name);
 
-      if (local == -1 && current->inLocalBlock())
+      if (decIndex == -1 && current->inBlock())
         current = current->enclosing;
       else
         break;
     }
 
-    switch (local) {
+    switch (decIndex) {
     case -2:
       break;
 
@@ -297,25 +297,25 @@ int Compiler::resolveUpvalue(Token *name) {
       break;
     }
     default:
-      current->getLocal(local).isField = true;
-      return addUpvalue((uint8_t) local, current->getLocal(local).type, true);
+      current->getDeclaration(decIndex).isField = true;
+      return addUpvalue((uint8_t) decIndex, current->getDeclaration(decIndex).type, true);
     }
   }
 
   return -1;
 }
 
-int Compiler::addUpvalue(uint8_t index, Type type, bool isLocal) {
-  return function->addUpvalue(index, isLocal, type, *parser);
+int Compiler::addUpvalue(uint8_t index, Type type, bool isDeclaration) {
+  return function->addUpvalue(index, isDeclaration, type, *parser);
 }
 
-void Compiler::resolveVariableExpr(VariableExpr *expr) {
+void Compiler::resolveReferenceExpr(ReferenceExpr *expr) {
   Compiler *current = this;
 
   while (true) {
-    expr->index = current->resolveLocal(&expr->name);
+    expr->index = current->resolveReference(&expr->name);
 
-    if (expr->index == -1 && current->inLocalBlock())
+    if (expr->index == -1 && current->inBlock())
       current = current->enclosing;
     else
       break;
@@ -324,35 +324,35 @@ void Compiler::resolveVariableExpr(VariableExpr *expr) {
   switch (expr->index) {
   case -2:
     expr->index = -1;
-    addLocal(VAL_VOID);
+    addDeclaration(VAL_VOID);
     break;
 
   case -1:
     if ((expr->index = current->resolveUpvalue(&expr->name)) != -1) {
       expr->upvalueFlag = true;
-      addLocal(function->upvalues[expr->index].type);
+      addDeclaration(function->upvalues[expr->index].type);
     }
     else {
       parser->error("Variable '%.*s' must be defined", expr->name.length, expr->name.start);
-      addLocal(VAL_VOID);
+      addDeclaration(VAL_VOID);
     }
     break;
 
   default:
-    addLocal(current->getLocal(expr->index).type);
+    addDeclaration(current->getDeclaration(expr->index).type);
     break;
   }
 }
 
 void Compiler::checkDeclaration(Token *name) {
-  for (int i = localCount - 1; i >= 0; i--) {
-    Local *local = &locals[i];
+  for (int i = declarationCount - 1; i >= 0; i--) {
+    Declaration *dec = &declarations[i];
 
-    if (identifiersEqual(name, &local->name))
+    if (identifiersEqual(name, &dec->name))
 ;//      parser->error("Already a variable '%.*s' with this name in this scope.", name->length, name->start);
   }
 }
 
-bool Compiler::inLocalBlock() {
+bool Compiler::inBlock() {
   return enclosing && enclosing->function == function;
 }

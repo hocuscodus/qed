@@ -226,7 +226,7 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
       break;
     }
     case EXPR_CALL: {
-      ObjFunction *function = (ObjFunction *) expr->_local.type.objType;
+      ObjFunction *function = (ObjFunction *) expr->_declaration.type.objType;
       CodeGenerator generator(parser, function);
       Expr *bodyExpr = function->bodyExpr;
 
@@ -353,7 +353,7 @@ void CodeGenerator::visitUnaryExpr(UnaryExpr *expr) {
   }
 }
 
-void CodeGenerator::visitVariableExpr(VariableExpr *expr) {
+void CodeGenerator::visitReferenceExpr(ReferenceExpr *expr) {
   emitBytes(expr->upvalueFlag ? OP_GET_UPVALUE : OP_GET_LOCAL, expr->index);
 }
 

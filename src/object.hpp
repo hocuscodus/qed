@@ -97,7 +97,7 @@ struct IndexList {
 };
 
 struct Expr;
-struct VariableExpr;
+struct DeclarationExpr;
 
 struct ObjFunction : ObjCallable {
   int upvalueCount;

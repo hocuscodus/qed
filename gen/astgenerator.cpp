@@ -273,10 +273,10 @@ int main(int argc, const char *argv[]) {
   const char *outputDir = argv[1];
 
   const char *array1[] = {
-    "Variable    : Token name, int8_t index, bool upvalueFlag",
+    "Reference   : Token name, int8_t index, bool upvalueFlag",
     "UIAttribute : Token name, Expr* handler, int _uiIndex, int _index",
     "UIDirective : int childDir, int attCount, UIAttributeExpr** attributes, UIDirectiveExpr* previous, UIDirectiveExpr* lastChild, int viewIndex, bool childrenViewFlag, int _layoutIndexes[NUM_DIRS], long _eventFlags",
-    "Assign      : VariableExpr* varExp, Token op, Expr* value, OpCode opCode, bool suffixFlag",
+    "Assign      : ReferenceExpr* varExp, Token op, Expr* value, OpCode opCode, bool suffixFlag",
     "Binary      : Expr* left, Token op, Expr* right, OpCode opCode, bool notFlag",
     "Grouping    : Token name, int count, Expr** expressions, int popLevels, Expr* ui, Compiler _compiler",
     "Array       : int count, Expr** expressions, ObjFunction* function",
@@ -285,7 +285,7 @@ int main(int argc, const char *argv[]) {
     "Declaration : Type type, Token name, Expr* initExpr",
     "Function    : Type type, Token name, int count, Expr** params, Expr* body, ObjFunction* function",
     "Get         : Expr* object, Token name, int index",
-    "List        : int count, Expr** expressions, ExprType listType, Local _local",
+    "List        : int count, Expr** expressions, ExprType listType, Declaration _declaration",
     "Literal     : ValueType type, As as",
     "Logical     : Expr* left, Token op, Expr* right",
     "Opcode      : OpCode op, Expr* right",

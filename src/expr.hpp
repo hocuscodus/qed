@@ -11,7 +11,7 @@
 struct ObjFunction;
 
 typedef enum {
-  EXPR_VARIABLE,
+  EXPR_REFERENCE,
   EXPR_UIATTRIBUTE,
   EXPR_UIDIRECTIVE,
   EXPR_ASSIGN,
@@ -48,7 +48,7 @@ struct Expr {
   virtual void accept(ExprVisitor *visitor) = 0;
 };
 
-struct VariableExpr;
+struct ReferenceExpr;
 struct UIAttributeExpr;
 struct UIDirectiveExpr;
 struct AssignExpr;
@@ -90,7 +90,7 @@ struct ExprVisitor {
     accept(NULL, buf);
   }
 
-  virtual void visitVariableExpr(VariableExpr *expr) = 0;
+  virtual void visitReferenceExpr(ReferenceExpr *expr) = 0;
   virtual void visitUIAttributeExpr(UIAttributeExpr *expr) = 0;
   virtual void visitUIDirectiveExpr(UIDirectiveExpr *expr) = 0;
   virtual void visitAssignExpr(AssignExpr *expr) = 0;
@@ -117,12 +117,12 @@ struct ExprVisitor {
   virtual void visitSwapExpr(SwapExpr *expr) = 0;
 };
 
-struct VariableExpr : public Expr {
+struct ReferenceExpr : public Expr {
   Token name;
   int8_t index;
   bool upvalueFlag;
 
-  VariableExpr(Token name, int8_t index, bool upvalueFlag);
+  ReferenceExpr(Token name, int8_t index, bool upvalueFlag);
   void accept(ExprVisitor *visitor);
 };
 
@@ -152,13 +152,13 @@ struct UIDirectiveExpr : public Expr {
 };
 
 struct AssignExpr : public Expr {
-  VariableExpr* varExp;
+  ReferenceExpr* varExp;
   Token op;
   Expr* value;
   OpCode opCode;
   bool suffixFlag;
 
-  AssignExpr(VariableExpr* varExp, Token op, Expr* value, OpCode opCode, bool suffixFlag);
+  AssignExpr(ReferenceExpr* varExp, Token op, Expr* value, OpCode opCode, bool suffixFlag);
   void accept(ExprVisitor *visitor);
 };
 
@@ -250,7 +250,7 @@ struct ListExpr : public Expr {
   int count;
   Expr** expressions;
   ExprType listType;
-  Local _local;
+  Declaration _declaration;
 
   ListExpr(int count, Expr** expressions, ExprType listType);
   void accept(ExprVisitor *visitor);

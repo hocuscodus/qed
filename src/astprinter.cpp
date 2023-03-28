@@ -349,7 +349,7 @@ void ASTPrinter::visitUnaryExpr(UnaryExpr *expr) {
   printf(")");
 }
 
-void ASTPrinter::visitVariableExpr(VariableExpr *expr) {
+void ASTPrinter::visitReferenceExpr(ReferenceExpr *expr) {
   printf("(var %d)", expr->index);
 }
 
@@ -361,7 +361,7 @@ void ASTPrinter::printType(Type *type) {
   switch(type->valueType) {
     case VAL_VOID:
       if (type->objType != NULL) {
-        Token *token = &((VariableExpr *) type->objType)->name;
+        Token *token = &((ReferenceExpr *) type->objType)->name;
 
         printf("%.*s", token->length, token->start);
       }

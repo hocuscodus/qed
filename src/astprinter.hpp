@@ -39,7 +39,7 @@ public:
   void visitThisExpr(ThisExpr *expr);
   void visitTypeExpr(TypeExpr *expr);
   void visitUnaryExpr(UnaryExpr *expr);
-  void visitVariableExpr(VariableExpr *expr);
+  void visitReferenceExpr(ReferenceExpr *expr);
   void visitSwapExpr(SwapExpr *expr);
 
   void print(Expr *expr);

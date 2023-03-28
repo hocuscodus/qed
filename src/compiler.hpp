@@ -16,10 +16,10 @@ typedef struct {
   Token name;
   bool isField;
   int realIndex;
-} Local;
+} Declaration;
 
 class Parser;
-struct VariableExpr;
+struct ReferenceExpr;
 
 struct Compiler {
   Parser *parser;
@@ -27,40 +27,40 @@ struct Compiler {
   Compiler *enclosing;
   ObjFunction *function = NULL;
   int fieldCount;
-  int realLocalStart;
-  int realLocalCount;
   int localStart;
   int localCount;
-  Local locals[UINT8_COUNT];
+  int declarationStart;
+  int declarationCount;
+  Declaration declarations[UINT8_COUNT];
   ObjFunction *compile(Parser &parser);
 
   void beginScope(ObjFunction *function);
   void beginScope();
   void endScope();
 
-  Local *addLocal(ValueType type);
-  Local *addLocal(Type type);
-  void setLocalObjType(ObjFunction *function);
-  Type removeLocal();
-  Local *peekLocal(int index);
-  void setLocalName(Token *name);
-  int resolveLocal(Token *name);
+  Declaration *addDeclaration(ValueType type);
+  Declaration *addDeclaration(Type type);
+  void setDeclarationType(ObjFunction *function);
+  Type removeDeclaration();
+  Declaration *peekDeclaration(int index);
+  void setDeclarationName(Token *name);
+  int resolveReference(Token *name);
   int resolveUpvalue(Token *name);
-  int addUpvalue(uint8_t index, Type type, bool isLocal);
-  void resolveVariableExpr(VariableExpr *expr);
+  int addUpvalue(uint8_t index, Type type, bool isDeclaration);
+  void resolveReferenceExpr(ReferenceExpr *expr);
   void checkDeclaration(Token *name);
-  bool inLocalBlock();
+  bool inBlock();
 
   static inline Compiler *getCurrent() {
     return current;
   }
 
-  inline int getLocalCount() {
-    return localStart + localCount;
+  inline int getDeclarationCount() {
+    return declarationStart + declarationCount;
   }
 
-  inline Local &getLocal(int index) {
-    return locals[index - localStart];
+  inline Declaration &getDeclaration(int index) {
+    return declarations[index - declarationStart];
   }
 private:
   static Compiler *current;
