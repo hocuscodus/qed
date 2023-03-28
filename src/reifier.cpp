@@ -6,12 +6,13 @@
  */
 
 #include <stack>
+#include <string.h>
 #include "reifier.hpp"
 #include "object.hpp"
 
 typedef struct {
   Compiler *compiler;
-  int localStart;
+  int index;
 } ReinferData;
 
 static std::stack<ReinferData> reinferStack;
@@ -66,9 +67,9 @@ void Reifier::visitGetExpr(GetExpr *expr) {
 }
 
 void Reifier::visitGroupingExpr(GroupingExpr *expr) {
-  int localStart = top() ? top()->localStart : 0;
+  int localStart = top() ? top()->compiler->localStart : 0;
 
-  reinferStack.push({&expr->_compiler, localStart});
+  reinferStack.push({&expr->_compiler, 0});
   top()->compiler->localStart = localStart;
 
   for (int index = 0; index < expr->count; index++)
@@ -87,11 +88,19 @@ void Reifier::visitListExpr(ListExpr *expr) {
   Declaration *dec = expr->_declaration.type.valueType != VAL_VOID ? &expr->_declaration : NULL;
 
   if (dec) {
-    dec->realIndex = dec->isField ? top()->compiler->fieldCount++ : top()->compiler->localStart + top()->compiler->localCount++;
+    int index = top()->index++;
 
-    if (!dec->isField)
-      top()->localStart = dec->realIndex + 1;
+    dec->realIndex = dec->isField ? top()->compiler->fieldCount++ : top()->compiler->localStart++;
+/*
+    if (!dec->isField) {
+      Declaration *dec = &top()->compiler->declarations[index];
+      Declaration temp = *dec;
+      int length = top()->compiler->declarationCount - index - 1;
 
+      memmove(dec, dec + 1, length);
+      dec[length] = temp;
+    }
+*/
     if (IS_FUNCTION(dec->type)) {
       ObjFunction *function = AS_FUNCTION_TYPE(dec->type);
 

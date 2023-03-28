@@ -94,7 +94,6 @@ void Compiler::beginScope(ObjFunction *function) {
   current = this;
   fieldCount = 0;
   localStart = 0;
-  localCount = 0;
   declarationStart = 0;
   declarationCount = 0;
   this->function = function;
@@ -116,7 +115,6 @@ void Compiler::beginScope() {
   current = this;
   fieldCount = 0;
   localStart = 0;
-  localCount = 0;
   declarationStart = enclosing->declarationStart + enclosing->declarationCount;
   declarationCount = 0;
   function = enclosing->function;
@@ -297,6 +295,9 @@ int Compiler::resolveUpvalue(Token *name) {
       break;
     }
     default:
+      if (!current->getDeclaration(decIndex).isField)
+        current->fieldCount++;
+
       current->getDeclaration(decIndex).isField = true;
       return addUpvalue((uint8_t) decIndex, current->getDeclaration(decIndex).type, true);
     }

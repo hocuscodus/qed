@@ -28,7 +28,6 @@ struct Compiler {
   ObjFunction *function = NULL;
   int fieldCount;
   int localStart;
-  int localCount;
   int declarationStart;
   int declarationCount;
   Declaration declarations[UINT8_COUNT];
