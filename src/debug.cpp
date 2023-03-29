@@ -237,10 +237,10 @@ int disassembleInstruction(Chunk *chunk, int offset) {
       ObjFunction *function = AS_FUNCTION(chunk->constants.values[constant]);
 
       for (int j = 0; j < function->upvalueCount; j++) {
-        int isLocal = chunk->code[offset++];
+        int isField = chunk->code[offset++];
         int index = chunk->code[offset++];
 
-        printf("%04d      |                     %s %d\n", offset - 2, isLocal ? "local" : "upvalue", index);
+        printf("%04d      |                     %s %d\n", offset - 2, isField ? "field" : "upvalue", index);
       }
 
       printf("\n");

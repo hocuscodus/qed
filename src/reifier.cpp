@@ -6,13 +6,13 @@
  */
 
 #include <stack>
-#include <string.h>
 #include "reifier.hpp"
 #include "object.hpp"
 
 typedef struct {
   Compiler *compiler;
-  int index;
+  int fieldIndex;
+  int localStart;
 } ReinferData;
 
 static std::stack<ReinferData> reinferStack;
@@ -67,10 +67,7 @@ void Reifier::visitGetExpr(GetExpr *expr) {
 }
 
 void Reifier::visitGroupingExpr(GroupingExpr *expr) {
-  int localStart = top() ? top()->compiler->localStart : 0;
-
-  reinferStack.push({&expr->_compiler, 0});
-  top()->compiler->localStart = localStart;
+  reinferStack.push({&expr->_compiler, 0, expr->_compiler.inBlock() ? top()->localStart : 0});
 
   for (int index = 0; index < expr->count; index++)
     expr->expressions[index]->accept(this);
@@ -85,35 +82,27 @@ void Reifier::visitArrayExpr(ArrayExpr *expr) {
 }
 
 void Reifier::visitListExpr(ListExpr *expr) {
-  Declaration *dec = expr->_declaration.type.valueType != VAL_VOID ? &expr->_declaration : NULL;
+  Declaration *dec = expr->_declaration;
 
   if (dec) {
-    int index = top()->index++;
+    dec->realIndex = dec->isField ? top()->fieldIndex++ : top()->localStart++;
 
-    dec->realIndex = dec->isField ? top()->compiler->fieldCount++ : top()->compiler->localStart++;
-/*
-    if (!dec->isField) {
-      Declaration *dec = &top()->compiler->declarations[index];
-      Declaration temp = *dec;
-      int length = top()->compiler->declarationCount - index - 1;
-
-      memmove(dec, dec + 1, length);
-      dec[length] = temp;
-    }
-*/
     if (IS_FUNCTION(dec->type)) {
       ObjFunction *function = AS_FUNCTION_TYPE(dec->type);
 
       for (int i = 0; i < function->upvalueCount; i++) {
         Upvalue *upvalue = &function->upvalues[i];
 
-        if (upvalue->isLocal) {
-          Declaration &dec = top()->compiler->declarations[upvalue->index];
+        if (upvalue->isField) {
+          Declaration *dec2 = &top()->compiler->declarations[upvalue->index];
 
-          if (!dec.isField)
+          if (!dec2->isField)
             upvalue->index = upvalue->index;
 
-          upvalue->index = upvalue->index;//local.realIndex;
+#ifdef NO_CLOSURE
+          upvalue->index = dec2->realIndex;
+#endif
+          break;
         }
       }
     }

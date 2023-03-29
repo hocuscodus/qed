@@ -250,7 +250,7 @@ struct ListExpr : public Expr {
   int count;
   Expr** expressions;
   ExprType listType;
-  Declaration _declaration;
+  Declaration* _declaration;
 
   ListExpr(int count, Expr** expressions, ExprType listType);
   void accept(ExprVisitor *visitor);

@@ -93,7 +93,6 @@ void Compiler::beginScope(ObjFunction *function) {
   this->enclosing = current;
   current = this;
   fieldCount = 0;
-  localStart = 0;
   declarationStart = 0;
   declarationCount = 0;
   this->function = function;
@@ -114,7 +113,6 @@ void Compiler::beginScope() {
   this->enclosing = current;
   current = this;
   fieldCount = 0;
-  localStart = 0;
   declarationStart = enclosing->declarationStart + enclosing->declarationCount;
   declarationCount = 0;
   function = enclosing->function;

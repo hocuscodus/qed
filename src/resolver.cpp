@@ -790,7 +790,7 @@ void Resolver::visitArrayExpr(ArrayExpr *expr) {
 // );
 void Resolver::visitListExpr(ListExpr *expr) {
   accept<int>(expr->expressions[0], 0);
-  expr->_declaration.type.valueType = VAL_VOID;
+  expr->_declaration = NULL;
 
   Type type = removeDeclaration();
 
@@ -826,7 +826,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
 
       getCurrent()->addDeclaration(returnType);
       getCurrent()->setDeclarationName(&assignExpr->varExp->name);
-      expr->_declaration = *getCurrent()->peekDeclaration(0);
+      expr->_declaration = getCurrent()->peekDeclaration(0);
 
       if (expr->count > 2)
         parser.error("Expect ';' or newline after variable declaration.");
@@ -865,6 +865,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
         Compiler &compiler = body->_compiler;
 
         compiler.beginScope(newFunction(returnType, copyString(varExp->name.start, varExp->name.length), callExpr->count));
+        expr->_declaration = getCurrent()->peekDeclaration(0);
         bindFunction(compiler.prefix, compiler.function);
 
         for (int index = 0; index < callExpr->count; index++)
@@ -930,7 +931,6 @@ void Resolver::visitListExpr(ListExpr *expr) {
 
         compiler.endScope();
         getCurrent()->setDeclarationType(compiler.function);
-        expr->_declaration = *getCurrent()->peekDeclaration(0);
       }
       return;
     }
@@ -1087,16 +1087,16 @@ void Resolver::visitSetExpr(SetExpr *expr) {
 }
 
 void Resolver::visitStatementExpr(StatementExpr *expr) {
-  int oldLocalCount = getCurrent()->getDeclarationCount();
+  int oldDeclarationCount = getCurrent()->getDeclarationCount();
 
   acceptSubExpr(expr->expr);
 
   if (expr->expr->type != EXPR_LIST || ((ListExpr *)expr->expr)->listType == EXPR_LIST) {
     Type type = removeDeclaration();
 
-    if (oldLocalCount != getCurrent()->getDeclarationCount())
-      parser.compilerError("COMPILER ERROR: oldLocalCount: %d declarationCount: %d",
-                           oldLocalCount, getCurrent()->getDeclarationCount());
+    if (oldDeclarationCount != getCurrent()->getDeclarationCount())
+      parser.compilerError("COMPILER ERROR: oldDeclarationCount: %d declarationCount: %d",
+                           oldDeclarationCount, getCurrent()->getDeclarationCount());
 
     if (!IS_VOID(type))
       expr->expr = new OpcodeExpr(OP_POP, expr->expr);

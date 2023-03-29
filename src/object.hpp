@@ -51,7 +51,7 @@ struct Obj {
 
 typedef struct {
   uint8_t index;
-  bool isLocal;
+  bool isField;
   Type type;
 } Upvalue;
 
@@ -109,7 +109,7 @@ struct ObjFunction : ObjCallable {
   long eventFlags;
   ObjFunction *uiFunction;
 
-  int addUpvalue(uint8_t index, bool isLocal, Type type, Parser &parser);
+  int addUpvalue(uint8_t index, bool isField, Type type, Parser &parser);
 };
 
 typedef Value (*NativeFn)(int argCount, Value *args);
@@ -185,7 +185,7 @@ struct CoThread {
 
   bool call(ObjClosure *closure, int argCount);
   bool callValue(Value callee, int argCount);
-  ObjUpvalue *captureUpvalue(Value *local);
+  ObjUpvalue *captureUpvalue(Value *field);
   void closeUpvalues(Value *last);
 
   ObjClosure *pushClosure(ObjFunction *function);

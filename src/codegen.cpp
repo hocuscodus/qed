@@ -114,7 +114,7 @@ void CodeGenerator::visitFunctionExpr(FunctionExpr *expr) {
   emitBytes(OP_CLOSURE, makeConstant(OBJ_VAL(expr->function)));
 
   for (int i = 0; i < expr->function->upvalueCount; i++) {
-    emitByte(expr->function->upvalues[i].isLocal ? 1 : 0);
+    emitByte(expr->function->upvalues[i].isField ? 1 : 0);
     emitByte(expr->function->upvalues[i].index);
   }
 }
@@ -129,7 +129,7 @@ void CodeGenerator::visitGroupingExpr(GroupingExpr *expr) {
     accept<int>(expr->expressions[index], 0);
 
   for (int popLevels = expr->popLevels - 1; popLevels >= 0; popLevels--)
-    emitByte(/*current->locals[popLevels].isCaptured ? OP_CLOSE_UPVALUE : */OP_POP);
+    emitByte(/*current->declarations[popLevels].isCaptured ? OP_CLOSE_UPVALUE : */OP_POP);
 
   if (expr->name.type == TOKEN_RIGHT_PAREN) {
     emitByte(OP_POP);
@@ -226,7 +226,7 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
       break;
     }
     case EXPR_CALL: {
-      ObjFunction *function = (ObjFunction *) expr->_declaration.type.objType;
+      ObjFunction *function = (ObjFunction *) expr->_declaration->type.objType;
       CodeGenerator generator(parser, function);
       Expr *bodyExpr = function->bodyExpr;
 
@@ -250,7 +250,7 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
       emitBytes(OP_CLOSURE, makeConstant(OBJ_VAL(function)));
 
       for (int i = 0; i < function->upvalueCount; i++) {
-        emitByte(function->upvalues[i].isLocal ? 1 : 0);
+        emitByte(function->upvalues[i].isField ? 1 : 0);
         emitByte(function->upvalues[i].index);
       }
       break;

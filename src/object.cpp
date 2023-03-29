@@ -346,10 +346,10 @@ InterpretResult run(CoThread *current) {
       PUSH(OBJ_VAL(closure));
 
       for (int i = 0; i < closure->upvalueCount; i++) {
-        uint8_t isLocal = READ_BYTE();
+        uint8_t isField = READ_BYTE();
         uint8_t index = READ_BYTE();
 
-        closure->upvalues[i] = isLocal ? current->captureUpvalue(frame->slots + index) : frame->closure->upvalues[index];
+        closure->upvalues[i] = isField ? current->captureUpvalue(frame->slots + index) : frame->closure->upvalues[index];
       }
       break;
     }
@@ -447,10 +447,10 @@ bool CoThread::call(ObjClosure *closure, int argCount) {
 
   if (outFunction)
     for (int i = 0; i < outFunction->upvalueCount; i++) {
-      uint8_t isLocal = outFunction->upvalues[i].isLocal;
+      uint8_t isField = outFunction->upvalues[i].isField;
       uint8_t index = outFunction->upvalues[i].index;
 
-      frame->uiClosure->upvalues[i] = isLocal ? captureUpvalue(frame->slots + index) : frame->closure->upvalues[index];
+      frame->uiClosure->upvalues[i] = isField ? captureUpvalue(frame->slots + index) : frame->closure->upvalues[index];
     }
 
   return true;
@@ -512,11 +512,11 @@ bool ObjCallable::isClass() {
   return name == NULL || (name->chars[0] >= 'A' && name->chars[0] <= 'Z');
 }
 
-int ObjFunction::addUpvalue(uint8_t index, bool isLocal, Type type, Parser &parser) {
+int ObjFunction::addUpvalue(uint8_t index, bool isField, Type type, Parser &parser) {
   for (int i = 0; i < upvalueCount; i++) {
     Upvalue *upvalue = &upvalues[i];
 
-    if (upvalue->index == index && upvalue->isLocal == isLocal)
+    if (upvalue->index == index && upvalue->isField == isField)
       return i;
   }
 
@@ -525,7 +525,7 @@ int ObjFunction::addUpvalue(uint8_t index, bool isLocal, Type type, Parser &pars
     return 0;
   }
 
-  upvalues[upvalueCount].isLocal = isLocal;
+  upvalues[upvalueCount].isField = isField;
   upvalues[upvalueCount].index = index;
   upvalues[upvalueCount].type = type;
 
@@ -659,19 +659,19 @@ bool CoThread::callValue(Value callee, int argCount) {
   return true;
 }
 
-ObjUpvalue *CoThread::captureUpvalue(Value *local) {
+ObjUpvalue *CoThread::captureUpvalue(Value *field) {
   ObjUpvalue *prevUpvalue = NULL;
   ObjUpvalue *upvalue = openUpvalues;
 
-  while (upvalue != NULL && upvalue->location > local) {
+  while (upvalue != NULL && upvalue->location > field) {
     prevUpvalue = upvalue;
     upvalue = upvalue->next;
   }
 
-  if (upvalue != NULL && upvalue->location == local)
+  if (upvalue != NULL && upvalue->location == field)
     return upvalue;
 
-  ObjUpvalue *createdUpvalue = newUpvalue(local);
+  ObjUpvalue *createdUpvalue = newUpvalue(field);
 
   createdUpvalue->next = upvalue;
 
