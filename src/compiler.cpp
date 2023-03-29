@@ -92,7 +92,6 @@ void Compiler::beginScope(ObjFunction *function) {
   parser = current ? current->parser : parser;
   this->enclosing = current;
   current = this;
-  fieldCount = 0;
   declarationStart = 0;
   declarationCount = 0;
   this->function = function;
@@ -112,7 +111,6 @@ void Compiler::beginScope() {
   parser = current->parser;
   this->enclosing = current;
   current = this;
-  fieldCount = 0;
   declarationStart = enclosing->declarationStart + enclosing->declarationCount;
   declarationCount = 0;
   function = enclosing->function;
@@ -138,7 +136,7 @@ Declaration *Compiler::addDeclaration(Type type) {
   dec->type = type;
   dec->name.start = "";
   dec->name.length = 0;
-  dec->isField = false;
+  dec->isField = function->isClass();
   return dec;
 }
 
@@ -186,7 +184,7 @@ int Compiler::resolveReference(Token *name) {
           bool isSignature = signature->arity == callable->arity;
 
           for (int index = 0; isSignature && index < signature->arity; index++)
-            isSignature = signature->fields[index].type.equals(callable->fields[index + 1].type);
+            isSignature = signature->fields[index].type.equals(declarations[index + 1].type);
 
           found = isSignature ? i : -2; // -2 = found name, no good signature yet
 
@@ -199,7 +197,7 @@ int Compiler::resolveReference(Token *name) {
               if (index)
                 strcat(buf, ", ");
 
-              strcat(buf, callable->fields[index + 1].type.toString());
+              strcat(buf, declarations[index + 1].type.toString());
             }
 
             strcat(buf, ")'");
@@ -293,9 +291,6 @@ int Compiler::resolveUpvalue(Token *name) {
       break;
     }
     default:
-      if (!current->getDeclaration(decIndex).isField)
-        current->fieldCount++;
-
       current->getDeclaration(decIndex).isField = true;
       return addUpvalue((uint8_t) decIndex, current->getDeclaration(decIndex).type, true);
     }
