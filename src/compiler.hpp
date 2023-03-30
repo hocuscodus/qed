@@ -9,14 +9,6 @@
 
 #include <iostream>
 #include "object.hpp"
-#include "scanner.hpp"
-
-typedef struct {
-  Type type;
-  Token name;
-  bool isField;
-  int realIndex;
-} Declaration;
 
 class Parser;
 struct ReferenceExpr;

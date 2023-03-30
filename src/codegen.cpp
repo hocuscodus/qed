@@ -240,10 +240,10 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
 #ifdef DEBUG_PRINT_CODE
       else
         disassembleChunk(&function->chunk, function->name->chars);
-        for (int index = 0; index < function->fieldCount; index++) {
-          const char *name = function->fields[index].name->chars;
+        for (int index = 0; index < *function->declarationCount; index++) {
+          Token &name = function->declarations[index].name;
 
-          printf("<%s %s> ", function->fields[index].type.toString(), name ? name : "");
+          printf("<%s %.*s> ", function->declarations[index].type.toString(), name.length, name.start);
         }
         printf("\n");
 #endif

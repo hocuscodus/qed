@@ -8,10 +8,10 @@
 #include <stack>
 #include "reifier.hpp"
 #include "object.hpp"
+#include "memory.h"
 
 typedef struct {
   Compiler *compiler;
-  int fieldIndex;
   int localStart;
 } ReinferData;
 
@@ -67,12 +67,29 @@ void Reifier::visitGetExpr(GetExpr *expr) {
 }
 
 void Reifier::visitGroupingExpr(GroupingExpr *expr) {
-  reinferStack.push({&expr->_compiler, 0, expr->_compiler.inBlock() ? top()->localStart : 0});
+  reinferStack.push({&expr->_compiler, expr->_compiler.inBlock() ? top()->localStart : 0});
 
   for (int index = 0; index < expr->count; index++)
     expr->expressions[index]->accept(this);
 
   reinferStack.pop();
+
+  if (!expr->_compiler.inBlock()) {
+    ObjFunction *function = expr->_compiler.function;
+
+    if (function->fieldCount) {
+      function->fields = ALLOCATE(Field, function->fieldCount);
+
+      for (int count = 0, index = 0; index < expr->_compiler.getDeclarationCount(); index++) {
+        Declaration *dec = &expr->_compiler.getDeclaration(index);
+
+        if (dec->isField) {
+          function->fields[count].type = dec->type;
+          function->fields[count++].name = copyString(dec->name.start, dec->name.length);
+        }
+      }
+    }
+  }
 }
 
 void Reifier::visitArrayExpr(ArrayExpr *expr) {
@@ -85,26 +102,21 @@ void Reifier::visitListExpr(ListExpr *expr) {
   Declaration *dec = expr->_declaration;
 
   if (dec) {
-    dec->realIndex = dec->isField ? top()->fieldIndex++ : top()->localStart++;
+    dec->realIndex = dec->isField ? top()->compiler->function->fieldCount++ : top()->localStart++;
 
     if (IS_FUNCTION(dec->type)) {
       ObjFunction *function = AS_FUNCTION_TYPE(dec->type);
-
+#ifdef NO_CLOSURE
       for (int i = 0; i < function->upvalueCount; i++) {
         Upvalue *upvalue = &function->upvalues[i];
 
         if (upvalue->isField) {
           Declaration *dec2 = &top()->compiler->declarations[upvalue->index];
 
-          if (!dec2->isField)
-            upvalue->index = upvalue->index;
-
-#ifdef NO_CLOSURE
           upvalue->index = dec2->realIndex;
-#endif
-          break;
         }
       }
+#endif
     }
   }
 

@@ -37,11 +37,6 @@ static Obj *primitives[] = {
   &newPrimitive("var", {VAL_OBJ, &objInternalType})->obj,
 };
 
-static bool identifiersEqual2(Token *a, ObjString *b) {
-  return a->length != 0 && a->length == b->length &&
-         memcmp(a->start, b->chars, a->length) == 0;
-}
-
 static bool isType(Type &type) {
   switch (AS_OBJ_TYPE(type)) {
   case OBJ_FUNCTION: {
@@ -535,15 +530,15 @@ static Expr *generateUIFunction(const char *type, const char *name, char *args, 
 }
 
 void Resolver::visitCallExpr(CallExpr *expr) {
-  Field fields[expr->count];
+  Declaration declarations[expr->count];
   ObjCallable signature;
 
   signature.arity = expr->count;
-  signature.fields = fields;
+  signature.declarations = declarations;
 
   for (int index = 0; index < expr->count; index++) {
     accept<int>(expr->arguments[index]);
-    fields[index].type = removeDeclaration();
+    declarations[index].type = removeDeclaration();
   }
 
   pushSignature(&signature);
@@ -676,7 +671,7 @@ void Resolver::visitDeclarationExpr(DeclarationExpr *expr) {
   getCurrent()->setDeclarationName(&expr->name);
 }
 
-void Resolver::visitFunctionExpr(FunctionExpr *expr) {
+void Resolver::visitFunctionExpr(FunctionExpr *expr) {/*
   getCurrent()->checkDeclaration(&expr->name);
   getCurrent()->addDeclaration(VAL_OBJ);
   getCurrent()->setDeclarationName(&expr->name);
@@ -701,7 +696,7 @@ void Resolver::visitFunctionExpr(FunctionExpr *expr) {
 
   compiler.endScope();
   getCurrent()->setDeclarationType(compiler.function);
-  expr->function = compiler.function;
+  expr->function = compiler.function;*/
 }
 
 void Resolver::visitGetExpr(GetExpr *expr) {
@@ -714,20 +709,21 @@ void Resolver::visitGetExpr(GetExpr *expr) {
   else {
     ObjFunction *type = AS_FUNCTION_TYPE(objectType);
 
-    for (int i = 0; expr->index == -1 && i < type->fieldCount; i++) {
-      Field *field = &type->fields[i];
+    for (int count = 0, i = 0; i < *type->declarationCount; i++) {
+      Declaration *dec = &type->declarations[i];
 
-      if (identifiersEqual2(&expr->name, field->name))
-        expr->index = i;
+      if (dec->isField) {
+        if (identifiersEqual(&expr->name, &dec->name)) {
+          expr->index = count;
+          getCurrent()->addDeclaration(dec->type);
+          return;
+        }
+
+        count++;
+      }
     }
 
-    if (expr->index == -1)
-      parser.errorAt(&expr->name, "Field '%.*s' not found.", expr->name.length,
-                     expr->name.start);
-    else {
-      getCurrent()->addDeclaration(type->fields[expr->index].type);
-      return;
-    }
+    parser.errorAt(&expr->name, "Field '%.*s' not found.", expr->name.length, expr->name.start);
   }
 
   getCurrent()->addDeclaration({VAL_VOID});
@@ -918,7 +914,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
 
         if (body)
           acceptGroupingExprUnits(body);
-
+/*
         compiler.function->fieldCount = compiler.getDeclarationCount();
         compiler.function->fields = ALLOCATE(Field, compiler.getDeclarationCount());
 
@@ -928,7 +924,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
           compiler.function->fields[index].type = dec->type;
           compiler.function->fields[index].name = copyString(dec->name.start, dec->name.length);
         }
-
+*/
         compiler.endScope();
         getCurrent()->setDeclarationType(compiler.function);
       }
@@ -1067,20 +1063,21 @@ void Resolver::visitSetExpr(SetExpr *expr) {
   else {
     ObjFunction *type = AS_FUNCTION_TYPE(objectType);
 
-    for (int i = 0; expr->index == -1 && i < type->fieldCount; i++) {
-      Field *field = &type->fields[i];
+    for (int count = 0, i = 0; i < *type->declarationCount; i++) {
+      Declaration *dec = &type->declarations[i];
 
-      if (identifiersEqual2(&expr->name, field->name))
-        expr->index = i;
+      if (dec->isField) {
+        if (identifiersEqual(&expr->name, &dec->name)) {
+          expr->index = count;
+          getCurrent()->addDeclaration(dec->type);
+          return;
+        }
+
+        count++;
+      }
     }
 
-    if (expr->index == -1)
-      parser.errorAt(&expr->name, "Field '%.*s' not found.", expr->name.length,
-                     expr->name.start);
-    else {
-      getCurrent()->addDeclaration(type->fields[expr->index].type);
-      return;
-    }
+    parser.errorAt(&expr->name, "Field '%.*s' not found.", expr->name.length, expr->name.start);
   }
 
   getCurrent()->addDeclaration({VAL_VOID});

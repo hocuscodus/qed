@@ -10,6 +10,7 @@
 #include "common.h"
 #include "chunk.hpp"
 #include "value.h"
+#include "scanner.hpp"
 
 #define OBJ_TYPE(value)        (AS_OBJ(value)->type)
 
@@ -74,11 +75,20 @@ struct ObjNamed {
   ObjString *name;
 };
 
+typedef struct {
+  Type type;
+  Token name;
+  bool isField;
+  int realIndex;
+} Declaration;
+
 struct ObjCallable : ObjNamed {
   Type type;
   int arity;
   int fieldCount;
   Field *fields;
+  int *declarationCount;
+  Declaration *declarations;
 
   bool isClass();
 };

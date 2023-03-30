@@ -836,7 +836,7 @@ Point CoThread::recalculateLayout() {
     CoThread *valuesThread = frames[ndx].uiValuesInstance;
     CallFrame &valuesFrame = valuesThread->frames[0];
     ObjClosure *valuesClosure = AS_CLOSURE(valuesThread->fields[0]);
-    ObjClosure *layoutClosure = AS_CLOSURE(valuesThread->fields[valuesClosure->function->fieldCount - 1]);
+    ObjClosure *layoutClosure = AS_CLOSURE(valuesThread->fields[valuesClosure->function->declarationCount[0] - 1]);
 
     frames[ndx].uiLayoutInstance = newThread(NULL);
 
@@ -847,7 +847,7 @@ Point CoThread::recalculateLayout() {
     run(layoutThread);
     layoutThread->savedStackTop = stackTop;
 
-    long frameSize = AS_INT(layoutThread->fields[layoutClosure->function->fieldCount - 3]);
+    long frameSize = AS_INT(layoutThread->fields[layoutClosure->function->declarationCount[0] - 3]);
 
     for (int dir = 0; dir < NUM_DIRS; dir++)
       size[dir] = std::max(size[dir], (int) (dir ? frameSize & 0xFFFF : frameSize >> 16));
@@ -878,7 +878,7 @@ void CoThread::paint(Point pos, Point size) {
     CoThread *layoutThread = frames[ndx].uiLayoutInstance;
     CallFrame &layoutFrame = layoutThread->frames[0];
     ObjClosure *layoutClosure = AS_CLOSURE(layoutThread->fields[0]);
-    ObjClosure *paintClosure = AS_CLOSURE(layoutThread->fields[layoutClosure->function->fieldCount - 2]);
+    ObjClosure *paintClosure = AS_CLOSURE(layoutThread->fields[layoutClosure->function->declarationCount[0] - 2]);
     Value value = {VOID_VAL};
 
     *layoutThread->savedStackTop++ = OBJ_VAL(paintClosure);
@@ -902,7 +902,7 @@ bool CoThread::onEvent(Event event, Point pos, Point size) {
     CoThread *layoutThread = frames[ndx].uiLayoutInstance;
     CallFrame &layoutFrame = layoutThread->frames[0];
     ObjClosure *layoutClosure = AS_CLOSURE(layoutThread->fields[0]);
-    ObjClosure *eventClosure = AS_CLOSURE(layoutThread->fields[layoutClosure->function->fieldCount - 1]);
+    ObjClosure *eventClosure = AS_CLOSURE(layoutThread->fields[layoutClosure->function->declarationCount[0] - 1]);
     Value value = {VOID_VAL};
     int frameCount = layoutThread->frameCount;
 
@@ -1034,6 +1034,7 @@ ObjFunction *newFunction(Type type, ObjString *name, int arity) {
 
   function->type = type;
   function->arity = arity;
+  function->fieldCount = 0;
   function->upvalueCount = 0;
   function->name = name;
   function->chunk.init();
