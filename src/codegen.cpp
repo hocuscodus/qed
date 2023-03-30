@@ -135,6 +135,18 @@ void CodeGenerator::visitGroupingExpr(GroupingExpr *expr) {
     emitByte(OP_POP);
     emitBytes(OP_GET_LOCAL, expr->popLevels);
   }
+#ifdef DEBUG_PRINT_CODE
+  ObjFunction *function = expr->_compiler.function;
+  ObjString *name = function ? function->name : NULL;
+
+  disassembleChunk(currentChunk(), function ? name ? name->chars : "script" : "SCRIPT");
+  for (int index = 0; index < expr->_compiler.declarationCount; index++) {
+    Token &name = expr->_compiler.declarations[index].name;
+
+    printf("<%s %.*s> ", expr->_compiler.declarations[index].type.toString(), name.length, name.start);
+  }
+  printf("\n");
+#endif
 
   if (expr->ui)
     accept<int>(expr->ui, 0);
@@ -237,16 +249,7 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
 
       if (parser.hadError)
         return;
-#ifdef DEBUG_PRINT_CODE
-      else
-        disassembleChunk(&function->chunk, function->name->chars);
-        for (int index = 0; index < *function->declarationCount; index++) {
-          Token &name = function->declarations[index].name;
 
-          printf("<%s %.*s> ", function->declarations[index].type.toString(), name.length, name.start);
-        }
-        printf("\n");
-#endif
       emitBytes(OP_CLOSURE, makeConstant(OBJ_VAL(function)));
 
       for (int i = 0; i < function->upvalueCount; i++) {

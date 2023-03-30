@@ -1034,7 +1034,6 @@ ObjFunction *newFunction(Type type, ObjString *name, int arity) {
 
   function->type = type;
   function->arity = arity;
-  function->fieldCount = 0;
   function->upvalueCount = 0;
   function->name = name;
   function->chunk.init();

@@ -18,6 +18,7 @@ struct Compiler {
   std::string prefix;
   Compiler *enclosing;
   ObjFunction *function = NULL;
+  int fieldCount;
   int declarationStart;
   int declarationCount;
   Declaration declarations[UINT8_COUNT];

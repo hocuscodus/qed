@@ -94,6 +94,7 @@ void Compiler::beginScope(ObjFunction *function) {
   current = this;
   function->declarationCount = &declarationCount;
   function->declarations = declarations;
+  fieldCount = 0;
   declarationStart = 0;
   declarationCount = 0;
   this->function = function;
@@ -113,6 +114,7 @@ void Compiler::beginScope() {
   parser = current->parser;
   this->enclosing = current;
   current = this;
+  fieldCount = 0;
   declarationStart = enclosing->declarationStart + enclosing->declarationCount;
   declarationCount = 0;
   function = enclosing->function;

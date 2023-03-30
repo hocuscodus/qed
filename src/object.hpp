@@ -65,11 +65,6 @@ struct ObjFunctionPtr {
   Type *parms;
 };
 
-typedef struct {
-  Type type;
-  ObjString *name;
-} Field;
-
 struct ObjNamed {
   Obj obj;
   ObjString *name;
@@ -85,8 +80,6 @@ typedef struct {
 struct ObjCallable : ObjNamed {
   Type type;
   int arity;
-  int fieldCount;
-  Field *fields;
   int *declarationCount;
   Declaration *declarations;
 
