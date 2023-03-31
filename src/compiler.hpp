@@ -8,6 +8,7 @@
 #define qed_compiler_h
 
 #include <iostream>
+#include <stack>
 #include "object.hpp"
 
 class Parser;
@@ -21,19 +22,19 @@ struct Compiler {
   int fieldCount;
   int declarationStart;
   int declarationCount;
+  std::stack<Type> typeStack;
   Declaration declarations[UINT8_COUNT];
   ObjFunction *compile(Parser &parser);
 
-  void beginScope(ObjFunction *function);
+  Declaration *beginScope(ObjFunction *function);
   void beginScope();
   void endScope();
 
-  Declaration *addDeclaration(ValueType type);
-  Declaration *addDeclaration(Type type);
+  void pushType(ValueType type);
+  void pushType(Type type);
+  Type popType();
   Declaration *addDeclaration(Type type, Token &name);
-  Type removeDeclaration();
-  Declaration *peekDeclaration(int index);
-  void setDeclarationName(Token *name);
+  Type &peekDeclaration();
   int resolveReference(Token *name);
   int resolveUpvalue(Token *name);
   int addUpvalue(uint8_t index, Type type, bool isDeclaration);

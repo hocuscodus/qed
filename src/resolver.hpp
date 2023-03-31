@@ -85,7 +85,7 @@ public:
   void visitReferenceExpr(ReferenceExpr *expr);
   void visitSwapExpr(SwapExpr *expr);
 
-  Type removeDeclaration();
+  Type popType();
   bool resolve(Compiler *compiler);
   void acceptGroupingExprUnits(GroupingExpr *expr);
   void acceptSubExpr(Expr *expr);

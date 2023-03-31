@@ -263,8 +263,8 @@ void Resolver::visitAssignExpr(AssignExpr *expr) {
 
   accept<int>(expr->varExp, 0);
 
-  Type type1 = removeDeclaration();
-  Type type2 = expr->value ? removeDeclaration() : type1;
+  Type type1 = popType();
+  Type type2 = expr->value ? popType() : type1;
 
   expr->opCode = getOpCode(type1, expr->op);
 
@@ -278,7 +278,7 @@ void Resolver::visitAssignExpr(AssignExpr *expr) {
     }
   }
 
-  getCurrent()->addDeclaration(type2);
+  getCurrent()->pushType(type2);
 }
 
 void Resolver::visitUIAttributeExpr(UIAttributeExpr *expr) {
@@ -380,8 +380,8 @@ void Resolver::visitBinaryExpr(BinaryExpr *expr) {
   //  if (expr->right)
   accept<int>(expr->right, 0);
 
-  Type type2 = removeDeclaration();
-  Type type1 = removeDeclaration();
+  Type type2 = popType();
+  Type type1 = popType();
 
   Type type = type1;
   bool boolVal = false;
@@ -400,7 +400,7 @@ void Resolver::visitBinaryExpr(BinaryExpr *expr) {
   case TOKEN_PLUS:
     if (IS_OBJ(type1)) {
       expr->right = convertToString(expr->right, type2, parser);
-      getCurrent()->addDeclaration(stringType);
+      getCurrent()->pushType(stringType);
       return;
     }
     // no break statement, fall through
@@ -416,7 +416,7 @@ void Resolver::visitBinaryExpr(BinaryExpr *expr) {
       if (!IS_OBJ(type2))
         parser.error("Second operand must be a string");
 
-      getCurrent()->addDeclaration(VAL_BOOL);
+      getCurrent()->pushType(VAL_BOOL);
       return;
     }
     // no break statement, fall through
@@ -428,7 +428,7 @@ void Resolver::visitBinaryExpr(BinaryExpr *expr) {
     case VAL_INT:
       if (!type1.equals(type2)) {
         if (!IS_FLOAT(type2)) {
-          getCurrent()->addDeclaration(VAL_VOID);
+          getCurrent()->pushType(VAL_VOID);
           parser.error("Second operand must be numeric");
           return;
         }
@@ -436,16 +436,16 @@ void Resolver::visitBinaryExpr(BinaryExpr *expr) {
         expr->left = convertToFloat(expr->left, type1, parser);
         expr->opCode =
             (OpCode)((int)expr->opCode + (int)OP_ADD_FLOAT - (int)OP_ADD_INT);
-        getCurrent()->addDeclaration(boolVal ? VAL_BOOL : VAL_FLOAT);
+        getCurrent()->pushType(boolVal ? VAL_BOOL : VAL_FLOAT);
       }
       else
-        getCurrent()->addDeclaration(boolVal ? VAL_BOOL : VAL_INT);
+        getCurrent()->pushType(boolVal ? VAL_BOOL : VAL_INT);
       break;
 
     case VAL_FLOAT:
       if (!type1.equals(type2)) {
         if (!IS_INT(type2)) {
-          getCurrent()->addDeclaration(VAL_VOID);
+          getCurrent()->pushType(VAL_VOID);
           parser.error("Second operand must be numeric");
           return;
         }
@@ -453,19 +453,19 @@ void Resolver::visitBinaryExpr(BinaryExpr *expr) {
         expr->right = convertToFloat(expr->right, type2, parser);
       }
 
-      getCurrent()->addDeclaration(boolVal ? VAL_BOOL : VAL_FLOAT);
+      getCurrent()->pushType(boolVal ? VAL_BOOL : VAL_FLOAT);
       break;
 
     default:
       parser.error("First operand must be numeric");
-      getCurrent()->addDeclaration(type1);
+      getCurrent()->pushType(type1);
       break;
     }
   }
   break;
 
   case TOKEN_XOR:
-    getCurrent()->addDeclaration(IS_BOOL(type1) ? VAL_BOOL : VAL_FLOAT);
+    getCurrent()->pushType(IS_BOOL(type1) ? VAL_BOOL : VAL_FLOAT);
     break;
 
   case TOKEN_OR:
@@ -473,12 +473,12 @@ void Resolver::visitBinaryExpr(BinaryExpr *expr) {
   case TOKEN_GREATER_GREATER_GREATER:
   case TOKEN_GREATER_GREATER:
   case TOKEN_LESS_LESS:
-    getCurrent()->addDeclaration(VAL_INT);
+    getCurrent()->pushType(VAL_INT);
     break;
 
   case TOKEN_OR_OR:
   case TOKEN_AND_AND:
-    getCurrent()->addDeclaration(VAL_BOOL);
+    getCurrent()->pushType(VAL_BOOL);
     break;
 
     break;
@@ -529,23 +529,27 @@ static Expr *generateUIFunction(const char *type, const char *name, char *args, 
     return new ListExpr(3, functionExprs, EXPR_LIST);
 }
 
+static Token tok = buildToken(TOKEN_IDENTIFIER, "Capital", 7, -1);
 void Resolver::visitCallExpr(CallExpr *expr) {
   Compiler compiler;
-  ObjCallable signature;
+  ObjFunction signature;
 
   signature.arity = expr->count;
   signature.compiler = &compiler;
+  compiler.function = &signature;
+  compiler.function->name = copyString("Capital", 7);
+  compiler.declarationCount = 0;
 
   for (int index = 0; index < expr->count; index++) {
     accept<int>(expr->arguments[index]);
-    compiler.declarations[index].type = removeDeclaration();
+    compiler.addDeclaration(popType(), tok);
   }
 
   pushSignature(&signature);
   accept<int>(expr->callee);
   popSignature();
 
-  Type type = removeDeclaration();
+  Type type = popType();
   //  Declaration *callerLocal = getCurrent()->peekDeclaration(expr->argCount);
 
   switch (AS_OBJ_TYPE(type)) {
@@ -561,13 +565,13 @@ void Resolver::visitCallExpr(CallExpr *expr) {
 
         expr->handler = generateUIFunction("void", "ReturnHandler_", !IS_VOID(callable->type) ? buffer : NULL, expr->handler, 1, 0, NULL);
         accept<int>(expr->handler);
-        removeDeclaration();
+        getCurrent()->declarationCount--;
       }
 
-      getCurrent()->addDeclaration((Type) {VAL_OBJ, &newInstance(callable)->obj});
+      getCurrent()->pushType((Type) {VAL_OBJ, &newInstance(callable)->obj});
     }
     else
-      getCurrent()->addDeclaration(callable->type);
+      getCurrent()->pushType(callable->type);
     break;
   }
   case OBJ_FUNCTION_PTR: {
@@ -582,18 +586,18 @@ void Resolver::visitCallExpr(CallExpr *expr) {
 
         expr->handler = generateUIFunction("void", "ReturnHandler_", !IS_VOID(callable->type) ? buffer : NULL, expr->handler, 1, 0, NULL);
         accept<int>(expr->handler);
-        removeDeclaration();
+        popType();
       }
 
 ;//        getCurrent()->addDeclaration((Type) {VAL_OBJ, &newInstance(callable)->obj});
     }
     else
-      getCurrent()->addDeclaration(callable->type.valueType);
+      getCurrent()->pushType(callable->type.valueType);
     break;
   }
   default:
     parser.error("Non-callable object type");
-    getCurrent()->addDeclaration(VAL_VOID);
+    getCurrent()->pushType(VAL_VOID);
     break; // Non-callable object type.
   }
 }
@@ -601,7 +605,7 @@ void Resolver::visitCallExpr(CallExpr *expr) {
 void Resolver::visitArrayElementExpr(ArrayElementExpr *expr) {
   accept<int>(expr->callee);
 
-  Type type = removeDeclaration();
+  Type type = popType();
 
   if (!expr->count)
     if (isType(type)) {
@@ -609,28 +613,28 @@ void Resolver::visitArrayElementExpr(ArrayElementExpr *expr) {
       ObjArray *array = newArray();
 
       array->elementType = returnType;
-      getCurrent()->addDeclaration({VAL_OBJ, &array->obj});
+      getCurrent()->pushType({VAL_OBJ, &array->obj});
     }
     else {
       parser.error("No index defined.");
-      getCurrent()->addDeclaration(VAL_VOID);
+      getCurrent()->pushType(VAL_VOID);
     }
   else
     if (isType(type)) {
       parser.error("A type cannot have an index.");
-      getCurrent()->addDeclaration(VAL_VOID);
+      getCurrent()->pushType(VAL_VOID);
     }
     else
       switch (AS_OBJ_TYPE(type)) {
       case OBJ_ARRAY: {
         ObjArray *array = AS_ARRAY_TYPE(type);
 
-        getCurrent()->addDeclaration(array->elementType);
+        getCurrent()->pushType(array->elementType);
 
         for (int index = 0; index < expr->count; index++) {
           accept<int>(expr->indexes[index]);
 
-          Type argType = removeDeclaration();
+          Type argType = popType();
 
           argType = argType;
         }
@@ -654,7 +658,7 @@ void Resolver::visitArrayElementExpr(ArrayElementExpr *expr) {
       }
       default:
         parser.error("Non-indexable object type");
-        getCurrent()->addDeclaration(VAL_VOID);
+        getCurrent()->pushType(VAL_VOID);
         break; // Non-indexable object type.
       }
 }
@@ -664,7 +668,7 @@ void Resolver::visitDeclarationExpr(DeclarationExpr *expr) {
 
   if (expr->initExpr != NULL) {
     accept<int>(expr->initExpr, 0);
-    Type type1 = removeDeclaration();
+    Type type1 = popType();
   }
 
   getCurrent()->addDeclaration(expr->type, expr->name);
@@ -699,7 +703,7 @@ void Resolver::visitFunctionExpr(FunctionExpr *expr) {/*
 void Resolver::visitGetExpr(GetExpr *expr) {
   accept<int>(expr->object);
 
-  Type objectType = removeDeclaration();
+  Type objectType = popType();
 
   if (AS_OBJ_TYPE(objectType) != OBJ_INSTANCE)
     parser.errorAt(&expr->name, "Only instances have properties.");
@@ -712,7 +716,7 @@ void Resolver::visitGetExpr(GetExpr *expr) {
       if (dec->isField) {
         if (identifiersEqual(&expr->name, &dec->name)) {
           expr->index = count;
-          getCurrent()->addDeclaration(dec->type);
+          getCurrent()->pushType(dec->type);
           return;
         }
 
@@ -723,7 +727,7 @@ void Resolver::visitGetExpr(GetExpr *expr) {
     parser.errorAt(&expr->name, "Field '%.*s' not found.", expr->name.length, expr->name.start);
   }
 
-  getCurrent()->addDeclaration({VAL_VOID});
+  getCurrent()->pushType({VAL_VOID});
 }
 
 void Resolver::visitGroupingExpr(GroupingExpr *expr) {
@@ -735,17 +739,17 @@ void Resolver::visitGroupingExpr(GroupingExpr *expr) {
   if (groupFlag) {
     expr->_compiler.beginScope();
     acceptGroupingExprUnits(expr);
-    parenType = parenFlag ? removeDeclaration() : (Type){VAL_VOID};
+    parenType = parenFlag ? popType() : (Type){VAL_VOID};
     expr->popLevels = expr->_compiler.declarationCount;
     expr->_compiler.endScope();
   }
   else {
     acceptGroupingExprUnits(expr);
-    parenType = parenFlag ? removeDeclaration() : (Type){VAL_VOID};
+    parenType = parenFlag ? popType() : (Type){VAL_VOID};
   }
 
   if (type != TOKEN_EOF)
-    getCurrent()->addDeclaration(parenType);
+    getCurrent()->pushType(parenType);
 }
 
 void Resolver::visitArrayExpr(ArrayExpr *expr) {
@@ -758,7 +762,7 @@ void Resolver::visitArrayExpr(ArrayExpr *expr) {
   for (int index = 0; index < expr->count; index++) {
     acceptSubExpr(expr->expressions[index]);
 
-    Type subType = removeDeclaration();
+    Type subType = popType();
 
     objArray->elementType = subType;
   }
@@ -766,7 +770,7 @@ void Resolver::visitArrayExpr(ArrayExpr *expr) {
   compiler.endScope();
   compiler.function->type = type;
   expr->function = compiler.function;
-  getCurrent()->addDeclaration(type);
+  getCurrent()->pushType(type);
 }
 
 // DECLARATIONS:
@@ -784,7 +788,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
   accept<int>(expr->expressions[0], 0);
   expr->_declaration = NULL;
 
-  Type type = removeDeclaration();
+  Type type = popType();
 
   if (isType(type)) {
     Type returnType = convertType(type);
@@ -800,7 +804,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
       if (assignExpr->value != NULL) {
         accept<int>(assignExpr->value, 0);
         Type internalType = {VAL_OBJ, &objInternalType};
-        Type type1 = removeDeclaration();
+        Type type1 = popType();
 
         //          if (type1.valueType == VAL_VOID)
         //            parser.error("Variable not found");
@@ -816,8 +820,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
         }
       }
 
-      getCurrent()->addDeclaration(returnType, assignExpr->varExp->name);
-      expr->_declaration = getCurrent()->peekDeclaration(0);
+      expr->_declaration = getCurrent()->addDeclaration(returnType, assignExpr->varExp->name);
 
       if (expr->count > 2)
         parser.error("Expect ';' or newline after variable declaration.");
@@ -855,8 +858,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
         ObjFunction *function = newFunction(returnType, copyString(varExp->name.start, varExp->name.length), callExpr->count);
 
         getCurrent()->addDeclaration({VAL_OBJ, &function->obj}, varExp->name);
-        compiler.beginScope(function);
-        expr->_declaration = getCurrent()->peekDeclaration(0);
+        expr->_declaration = compiler.beginScope(function);
         bindFunction(compiler.prefix, function);
 
         for (int index = 0; index < callExpr->count; index++)
@@ -866,7 +868,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
 
             accept<int>(paramExpr, 0);
 
-            Type type = removeDeclaration();
+            Type type = popType();
 
             if (isType(type)) {
               paramExpr = param->expressions[1];
@@ -982,31 +984,31 @@ void Resolver::visitListExpr(ListExpr *expr) {
 
       accept<int>(subExpr, 0);
 
-      if (IS_VOID(getCurrent()->peekDeclaration(0)->type))
-        removeDeclaration();
+      if (IS_VOID(getCurrent()->peekDeclaration()))
+        popType();
     }
 
-  getCurrent()->addDeclaration({VAL_VOID});
+  getCurrent()->pushType({VAL_VOID});
 }
 
 void Resolver::visitLiteralExpr(LiteralExpr *expr) {
   if (expr->type == VAL_OBJ)
-    getCurrent()->addDeclaration(stringType);
+    getCurrent()->pushType(stringType);
   else
-    getCurrent()->addDeclaration(expr->type);
+    getCurrent()->pushType(expr->type);
 }
 
 void Resolver::visitLogicalExpr(LogicalExpr *expr) {
   accept(expr->left, 0);
   accept(expr->right, 0);
 
-  Type type2 = removeDeclaration();
-  Type type1 = removeDeclaration();
+  Type type2 = popType();
+  Type type1 = popType();
 
   if (!IS_BOOL(type1) || !IS_BOOL(type2))
     parser.error("Value must be boolean");
 
-  getCurrent()->addDeclaration(VAL_BOOL);
+  getCurrent()->pushType(VAL_BOOL);
 }
 
 void Resolver::visitOpcodeExpr(OpcodeExpr *expr) {
@@ -1034,21 +1036,21 @@ void Resolver::visitReturnExpr(ReturnExpr *expr) {
   if (expr->value) {
     accept<int>(expr->value, 0);
 
-//  if (!getCurrent()->function->isClass())
+//  if (!getCurrent()->isClass())
 //    Type type = removeDeclaration();
     // verify that type is the function return type if not an instance
     // else return void
   }
 
-  getCurrent()->addDeclaration(VAL_VOID);
+  getCurrent()->pushType(VAL_VOID);
 }
 
 void Resolver::visitSetExpr(SetExpr *expr) {
   accept<int>(expr->object);
   accept<int>(expr->value);
 
-  Type valueType = removeDeclaration();
-  Type objectType = removeDeclaration();
+  Type valueType = popType();
+  Type objectType = popType();
 
   if (AS_OBJ_TYPE(objectType) != OBJ_INSTANCE)
     parser.errorAt(&expr->name, "Only instances have properties.");
@@ -1061,7 +1063,7 @@ void Resolver::visitSetExpr(SetExpr *expr) {
       if (dec->isField) {
         if (identifiersEqual(&expr->name, &dec->name)) {
           expr->index = count;
-          getCurrent()->addDeclaration(dec->type);
+          getCurrent()->pushType(dec->type);
           return;
         }
 
@@ -1072,25 +1074,25 @@ void Resolver::visitSetExpr(SetExpr *expr) {
     parser.errorAt(&expr->name, "Field '%.*s' not found.", expr->name.length, expr->name.start);
   }
 
-  getCurrent()->addDeclaration({VAL_VOID});
+  getCurrent()->pushType({VAL_VOID});
 }
 
 void Resolver::visitStatementExpr(StatementExpr *expr) {
-  int oldDeclarationCount = getCurrent()->getDeclarationCount();
+  int oldStackSize = getCurrent()->typeStack.size();
 
   acceptSubExpr(expr->expr);
 
   if (expr->expr->type != EXPR_LIST || ((ListExpr *)expr->expr)->listType == EXPR_LIST) {
-    Type type = removeDeclaration();
+    Type type = popType();
 
-    if (oldDeclarationCount != getCurrent()->getDeclarationCount())
-      parser.compilerError("COMPILER ERROR: oldDeclarationCount: %d declarationCount: %d",
-                           oldDeclarationCount, getCurrent()->getDeclarationCount());
+    if (oldStackSize != getCurrent()->typeStack.size())
+      parser.compilerError("COMPILER ERROR: oldStackSize: %d stackSize: %d",
+                           oldStackSize, getCurrent()->typeStack.size());
 
     if (!IS_VOID(type))
       expr->expr = new OpcodeExpr(OP_POP, expr->expr);
 
-    getCurrent()->addDeclaration(VAL_VOID);
+    getCurrent()->pushType(VAL_VOID);
   }
 }
 
@@ -1099,7 +1101,7 @@ void Resolver::visitSuperExpr(SuperExpr *expr) {}
 void Resolver::visitTernaryExpr(TernaryExpr *expr) {
   expr->left->accept(this);
 
-  Type type = removeDeclaration();
+  Type type = popType();
 
   if (IS_VOID(type))
     parser.error("Value must not be void");
@@ -1108,7 +1110,7 @@ void Resolver::visitTernaryExpr(TernaryExpr *expr) {
 
   if (expr->right) {
     expr->right->accept(this);
-    removeDeclaration();
+    popType();
   }
 }
 
@@ -1122,7 +1124,7 @@ void Resolver::visitTypeExpr(TypeExpr *expr) {
 void Resolver::visitUnaryExpr(UnaryExpr *expr) {
   accept<int>(expr->right, 0);
 
-  Type type = removeDeclaration();
+  Type type = popType();
 
   if (IS_VOID(type))
     parser.error("Value must not be void");
@@ -1130,7 +1132,7 @@ void Resolver::visitUnaryExpr(UnaryExpr *expr) {
   switch (expr->op.type) {
   case TOKEN_PRINT:
     expr->right = convertToString(expr->right, type, parser);
-    getCurrent()->addDeclaration(VAL_VOID);
+    getCurrent()->pushType(VAL_VOID);
     break;
 
   case TOKEN_NEW: {
@@ -1145,24 +1147,24 @@ void Resolver::visitUnaryExpr(UnaryExpr *expr) {
     if (errorFlag)
       parser.error("Operator new must target a callable function");
 
-    getCurrent()->declarationCount++;
+    getCurrent()->pushType(type);
     break;
   }
 
   case TOKEN_PERCENT:
     expr->right = convertToFloat(expr->right, type, parser);
-    getCurrent()->addDeclaration({VAL_FLOAT});
+    getCurrent()->pushType({VAL_FLOAT});
     break;
 
   default:
-    getCurrent()->addDeclaration(type);
+    getCurrent()->pushType(type);
     break;
   }
 }
 
 void Resolver::visitReferenceExpr(ReferenceExpr *expr) {
   if (expr->index != -1)
-    getCurrent()->addDeclaration({VAL_OBJ, primitives[expr->index]});
+    getCurrent()->pushType({VAL_OBJ, primitives[expr->index]});
   else
     getCurrent()->resolveReferenceExpr(expr);
 }
@@ -1173,42 +1175,8 @@ void Resolver::visitSwapExpr(SwapExpr *expr) {
   accept<int>(expr->_expr);
 }
 
-Type Resolver::removeDeclaration() {
-  Type type = getCurrent()->removeDeclaration();
-  /*
-    if (type.valueType == VAL_VOID && type.objType != NULL) {
-      DeclarationExpr *DeclarationExpr = (DeclarationExpr *) type.objType;
-      int index = getCurrent()->resolveReference(&DeclarationExpr->name);
-
-      if (index != (int8_t) -128) {
-        Declaration *dec = &getCurrent()->declarations[getCurrent()->declarationCount + index];
-
-        return dec->type;
-      }
-      else if ((index = getCurrent()->resolveUpvalue(&DeclarationExpr->name)) != -1)
-        return {VAL_VOID}; // TODO: change this...
-      else {
-        parser.error("Variable must be defined");
-        return {VAL_VOID};
-      }
-    }
-  */
-  return type; /*
-   if (type == VAL_VOID)
-   accept<int>(expr->right, 0);
-     expr->index = getCurrent()->resolveReference(&previous);
-
-     if (expr->index != (int8_t) -128) {
-       Declaration *dec = &getCurrent()->declarations[getCurrent()->declarationCount + expr->index];
-
-       getCurrent()->addDeclaration(local->type, dec->objType);
-     } else if ((expr->index = getCurrent()->resolveUpvalue(&expr->name)) != -1)
-       expr->upvalueFlag = true;
-     else {
-       parser.error("Variable must be defined");
-       getCurrent()->addDeclaration(VAL_VOID);
-     }
- */
+Type Resolver::popType() {
+  return getCurrent()->popType();
 }
 
 bool Resolver::resolve(Compiler *compiler) {
@@ -1278,8 +1246,8 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
       index--;
     }
     else
-      if (IS_VOID(getCurrent()->peekDeclaration(0)->type) && (!parenFlag || index < expr->count - 1))
-        removeDeclaration();
+      if (IS_VOID(getCurrent()->peekDeclaration()) && (!parenFlag || index < expr->count - 1))
+        popType();
   }
 
   if (expr->ui != NULL) {
@@ -1303,8 +1271,9 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
 
       aCount = 1;
       accept<int>(valueFunction, 0);
-      Type type = removeDeclaration();
+      Type type = getCurrent()->peekDeclaration();// = popType();
       getCurrent()->function->uiFunction = AS_FUNCTION_TYPE(type);
+      getCurrent()->declarationCount--;
       delete expr->ui;
       expr->ui = valueFunction;
       uiParseCount = -1;
@@ -1515,7 +1484,7 @@ void Resolver::processAttrs(UIDirectiveExpr *expr) {
       if (attExpr->_uiIndex != -1 && attExpr->handler) {
         accept<int>(attExpr->handler, 0);
 
-        Type type = removeDeclaration();
+        Type type = popType();
 
         if (!IS_VOID(type)) {
           if (attExpr->_uiIndex == ATTRIBUTE_OUT) {
@@ -1536,8 +1505,7 @@ void Resolver::processAttrs(UIDirectiveExpr *expr) {
           attExpr->handler = NULL;
           attExpr->_index = getCurrent()->getDeclarationCount();
           uiExprs.push_back(decExpr);
-          getCurrent()->addDeclaration(type);
-          getCurrent()->setDeclarationName(&decExpr->name);
+          getCurrent()->addDeclaration(type, decExpr->name);
         }
         else
           parser.error("Value must not be void");

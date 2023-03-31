@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stack>
 #include "compiler.hpp"
 #include "resolver.hpp"
 #include "reifier.hpp"
@@ -88,7 +87,8 @@ ObjFunction *Compiler::compile(Parser &parser) {
   return parser.hadError ? NULL : function;
 }
 
-void Compiler::beginScope(ObjFunction *function) {
+Token token = buildToken(TOKEN_IDENTIFIER, "", 0, -1);
+Declaration *Compiler::beginScope(ObjFunction *function) {
   parser = current ? current->parser : parser;
   this->enclosing = current;
   current = this;
@@ -106,7 +106,8 @@ void Compiler::beginScope(ObjFunction *function) {
   }
   else
     prefix = "qni";
-  addDeclaration({VAL_OBJ, &function->obj});
+
+  return addDeclaration({VAL_OBJ, &function->obj}, token);
 }
 
 void Compiler::beginScope() {
@@ -124,11 +125,22 @@ void Compiler::endScope() {
   current = enclosing;
 }
 
-Declaration *Compiler::addDeclaration(ValueType type) {
-  return addDeclaration({type, NULL});
+void Compiler::pushType(ValueType type) {
+  pushType({type, NULL});
 }
 
-Declaration *Compiler::addDeclaration(Type type) {
+void Compiler::pushType(Type type) {
+  typeStack.push(type);
+}
+
+Type Compiler::popType() {
+  Type type = typeStack.top();
+
+  typeStack.pop();
+  return type;
+}
+
+Declaration *Compiler::addDeclaration(Type type, Token &name) {
   if (declarationCount == UINT8_COUNT) {
     parser->error("Too many declarations in function.");
     return NULL;
@@ -136,17 +148,8 @@ Declaration *Compiler::addDeclaration(Type type) {
 
   Declaration *dec = &declarations[declarationCount++];
 
-  dec->type = type;
-  dec->name.start = "";
-  dec->name.length = 0;
-  dec->isField = function->isClass();
-  return dec;
-}
-
-Declaration *Compiler::addDeclaration(Type type, Token &name) {
-  Declaration *dec = addDeclaration(type);
-
   if (dec) {
+    dec->type = type;
     dec->name = name;
     dec->isField = function->isClass();
   }
@@ -154,16 +157,8 @@ Declaration *Compiler::addDeclaration(Type type, Token &name) {
   return dec;
 }
 
-Type Compiler::removeDeclaration() {
-  return declarations[--declarationCount].type;
-}
-
-Declaration *Compiler::peekDeclaration(int index) {
-  return &declarations[declarationCount - 1 - index];
-}
-
-void Compiler::setDeclarationName(Token *name) {
-  declarations[declarationCount - 1].name = *name;
+Type &Compiler::peekDeclaration() {
+  return declarations[declarationCount - 1].type;
 }
 
 int Compiler::resolveReference(Token *name) {
@@ -321,22 +316,22 @@ void Compiler::resolveReferenceExpr(ReferenceExpr *expr) {
   switch (expr->index) {
   case -2:
     expr->index = -1;
-    addDeclaration(VAL_VOID);
+    pushType(VAL_VOID);
     break;
 
   case -1:
     if ((expr->index = current->resolveUpvalue(&expr->name)) != -1) {
       expr->upvalueFlag = true;
-      addDeclaration(function->upvalues[expr->index].type);
+      pushType(function->upvalues[expr->index].type);
     }
     else {
       parser->error("Variable '%.*s' must be defined", expr->name.length, expr->name.start);
-      addDeclaration(VAL_VOID);
+      pushType(VAL_VOID);
     }
     break;
 
   default:
-    addDeclaration(current->getDeclaration(expr->index).type);
+    pushType(current->getDeclaration(expr->index).type);
     break;
   }
 }
