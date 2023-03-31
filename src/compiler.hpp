@@ -30,7 +30,7 @@ struct Compiler {
 
   Declaration *addDeclaration(ValueType type);
   Declaration *addDeclaration(Type type);
-  void setDeclarationType(ObjFunction *function);
+  Declaration *addDeclaration(Type type, Token &name);
   Type removeDeclaration();
   Declaration *peekDeclaration(int index);
   void setDeclarationName(Token *name);

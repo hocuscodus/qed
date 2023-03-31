@@ -143,6 +143,17 @@ Declaration *Compiler::addDeclaration(Type type) {
   return dec;
 }
 
+Declaration *Compiler::addDeclaration(Type type, Token &name) {
+  Declaration *dec = addDeclaration(type);
+
+  if (dec) {
+    dec->name = name;
+    dec->isField = function->isClass();
+  }
+
+  return dec;
+}
+
 Type Compiler::removeDeclaration() {
   return declarations[--declarationCount].type;
 }
@@ -153,17 +164,6 @@ Declaration *Compiler::peekDeclaration(int index) {
 
 void Compiler::setDeclarationName(Token *name) {
   declarations[declarationCount - 1].name = *name;
-}
-
-void Compiler::setDeclarationType(ObjFunction *function) {
-  declarations[declarationCount - 1].type.objType = &function->obj;/*
-  Type parms[function->arity];
-
-  for (int index = 0; index < function->arity; index++)
-    parms[index] = function->fields[index].type;
-
-  declarations[declarationCount - 1].type.objType = &newFunctionPtr(function->type, function->arity, parms)->obj;
-*/
 }
 
 int Compiler::resolveReference(Token *name) {

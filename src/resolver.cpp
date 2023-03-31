@@ -667,14 +667,12 @@ void Resolver::visitDeclarationExpr(DeclarationExpr *expr) {
     Type type1 = removeDeclaration();
   }
 
-  getCurrent()->addDeclaration(expr->type);
-  getCurrent()->setDeclarationName(&expr->name);
+  getCurrent()->addDeclaration(expr->type, expr->name);
 }
 
 void Resolver::visitFunctionExpr(FunctionExpr *expr) {/*
   getCurrent()->checkDeclaration(&expr->name);
-  getCurrent()->addDeclaration(VAL_OBJ);
-  getCurrent()->setDeclarationName(&expr->name);
+  getCurrent()->addDeclaration(VAL_OBJ, &expr->name);
 
   Compiler &compiler = ((GroupingExpr *) expr->body)->_compiler;
 
@@ -695,7 +693,6 @@ void Resolver::visitFunctionExpr(FunctionExpr *expr) {/*
   }
 
   compiler.endScope();
-  getCurrent()->setDeclarationType(compiler.function);
   expr->function = compiler.function;*/
 }
 
@@ -768,7 +765,6 @@ void Resolver::visitArrayExpr(ArrayExpr *expr) {
 
   compiler.endScope();
   compiler.function->type = type;
-  getCurrent()->setDeclarationType(compiler.function);
   expr->function = compiler.function;
   getCurrent()->addDeclaration(type);
 }
@@ -820,8 +816,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
         }
       }
 
-      getCurrent()->addDeclaration(returnType);
-      getCurrent()->setDeclarationName(&assignExpr->varExp->name);
+      getCurrent()->addDeclaration(returnType, assignExpr->varExp->name);
       expr->_declaration = getCurrent()->peekDeclaration(0);
 
       if (expr->count > 2)
@@ -841,8 +836,6 @@ void Resolver::visitListExpr(ListExpr *expr) {
         ReferenceExpr *varExp = (ReferenceExpr *)callExpr->callee;
 
         getCurrent()->checkDeclaration(&varExp->name);
-        getCurrent()->addDeclaration(VAL_OBJ);
-        getCurrent()->setDeclarationName(&varExp->name);
 
         Expr *bodyExpr = expr->count > 2 ? expr->expressions[2] : NULL;
         GroupingExpr *body;
@@ -859,10 +852,12 @@ void Resolver::visitListExpr(ListExpr *expr) {
         }
 
         Compiler &compiler = body->_compiler;
+        ObjFunction *function = newFunction(returnType, copyString(varExp->name.start, varExp->name.length), callExpr->count);
 
-        compiler.beginScope(newFunction(returnType, copyString(varExp->name.start, varExp->name.length), callExpr->count));
+        getCurrent()->addDeclaration({VAL_OBJ, &function->obj}, varExp->name);
+        compiler.beginScope(function);
         expr->_declaration = getCurrent()->peekDeclaration(0);
-        bindFunction(compiler.prefix, compiler.function);
+        bindFunction(compiler.prefix, function);
 
         for (int index = 0; index < callExpr->count; index++)
           if (callExpr->arguments[index]->type == EXPR_LIST) {
@@ -879,8 +874,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
               if (paramExpr->type != EXPR_REFERENCE)
                 parser.error("Parameter name must be a string.");
               else {
-                getCurrent()->addDeclaration(convertType(type));
-                getCurrent()->setDeclarationName(&((ReferenceExpr *)paramExpr)->name);
+                getCurrent()->addDeclaration(convertType(type), ((ReferenceExpr *)paramExpr)->name);
 
                 if (param->count > 2)
                   parser.error("Syntax error");
@@ -910,7 +904,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
           accept<int>(handlerExpr, 0);
         }
 
-        compiler.function->bodyExpr = body;
+        function->bodyExpr = body;
 
         if (body)
           acceptGroupingExprUnits(body);
@@ -926,7 +920,6 @@ void Resolver::visitListExpr(ListExpr *expr) {
         }
 */
         compiler.endScope();
-        getCurrent()->setDeclarationType(compiler.function);
       }
       return;
     }
@@ -934,8 +927,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
       ReferenceExpr *varExpr = (ReferenceExpr *)subExpr;
 
       getCurrent()->checkDeclaration(&varExpr->name);
-      getCurrent()->addDeclaration(returnType);
-      getCurrent()->setDeclarationName(&varExpr->name);
+      getCurrent()->addDeclaration(returnType, varExpr->name);
 
       LiteralExpr *valueExpr = NULL;
 
