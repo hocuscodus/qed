@@ -39,7 +39,7 @@ static void freeObject(Obj *object) {
           FREE(OBJ_THREAD, coThread->frames[ndx].uiValuesInstance);
 
 //      delete[] coThread->fields;
-      FREE_ARRAY(Value, coThread->fields, 64);
+      FREE_ARRAY(Value, coThread->stack, 64);
       FREE(CoThread, object);
       break;
     }

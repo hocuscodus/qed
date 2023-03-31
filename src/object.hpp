@@ -77,11 +77,12 @@ typedef struct {
   int realIndex;
 } Declaration;
 
+struct Compiler;
+
 struct ObjCallable : ObjNamed {
   Type type;
   int arity;
-  int *declarationCount;
-  Declaration *declarations;
+  Compiler *compiler;
 
   bool isClass();
 };
@@ -181,6 +182,7 @@ struct CoThread {
   Obj obj;
   CoThread *caller;
   Value *fields;
+  Value *stack;
   int frameCount;
   CallFrame frames[FRAMES_MAX];
   ObjUpvalue *openUpvalues;
@@ -239,7 +241,7 @@ struct ObjInternal {
 
 Obj *allocateObject(size_t size, ObjType type);
 ObjInternal *newInternal();
-CoThread *newThread(CoThread *caller);
+CoThread *newThread(CoThread *caller, int size);
 ObjInstance *newInstance(ObjCallable *callable);
 ObjClosure *newClosure(ObjFunction *function, CoThread *parent);
 ObjFunction *newFunction(Type type, ObjString *name, int arity);

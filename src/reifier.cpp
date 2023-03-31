@@ -73,6 +73,23 @@ void Reifier::visitGroupingExpr(GroupingExpr *expr) {
     expr->expressions[index]->accept(this);
 
   reinferStack.pop();
+/*
+  if (!expr->_compiler.inBlock()) {
+    ObjFunction *function = expr->_compiler.function;
+
+    if (expr->_compiler.fieldCount) {
+      function->fields = ALLOCATE(Field, expr->_compiler.fieldCount);
+
+      for (int count = 0, index = 0; index < expr->_compiler.getDeclarationCount(); index++) {
+        Declaration *dec = &expr->_compiler.getDeclaration(index);
+
+        if (dec->isField) {
+          function->fields[count].type = dec->type;
+          function->fields[count++].name = copyString(dec->name.start, dec->name.length);
+        }
+      }
+    }
+  }*/
 }
 
 void Reifier::visitArrayExpr(ArrayExpr *expr) {

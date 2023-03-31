@@ -101,13 +101,13 @@ InterpretResult run(CoThread *current) {
     }
     case OP_GET_PROPERTY: {
       CoThread *coThread = AS_THREAD(POP);
-      PUSH(coThread->fields[READ_BYTE()]);
+      PUSH(coThread->stack[READ_BYTE()]);
       break;
     }
     case OP_SET_PROPERTY: {
       Value value = POP;
       CoThread *coThread = AS_THREAD(POP);
-      coThread->fields[READ_BYTE()] = value;
+      coThread->stack[READ_BYTE()] = value;
       PUSH(value);
       break;
     }
@@ -299,15 +299,16 @@ InterpretResult run(CoThread *current) {
     case OP_NEW: {
       int argCount = READ_BYTE();
       int handlerCount = 1;
-      CoThread *thread = newThread(current);
       int size = argCount + 1 + handlerCount;
+      int fieldCount = AS_CLOSURE(stackTop[-size])->function->compiler->fieldCount;
+      CoThread *thread = newThread(current, fieldCount);
 
-      memcpy(thread->fields, stackTop - size, size * sizeof(Value));
+      memcpy(thread->stack, stackTop - size, size * sizeof(Value));
       thread->savedStackTop += size;
       stackTop -= size;
       PUSH(OBJ_VAL(thread));
 
-      if (thread->callValue(*thread->fields, argCount + handlerCount)) {
+      if (thread->callValue(*thread->stack, argCount + handlerCount)) {
         current->savedStackTop = stackTop;
         current = thread;
         frame = &current->frames[current->frameCount - 1];
@@ -695,7 +696,7 @@ void CoThread::closeUpvalues(Value *last) {
 }
 
 void CoThread::resetStack() {
-  savedStackTop = fields;
+  savedStackTop = stack;
   frameCount = 0;
 }
 
@@ -799,7 +800,7 @@ void CoThread::initValues() {
     CallFrame &frame = frames[ndx];
     ObjClosure *outClosure = frame.uiClosure;
 
-    frame.uiValuesInstance = newThread(NULL);
+    frame.uiValuesInstance = newThread(NULL, 0);
 
     CoThread *instanceThread = frame.uiValuesInstance;
 
@@ -809,7 +810,7 @@ void CoThread::initValues() {
     instanceThread->savedStackTop = stackTop;
 
     for (int ndx2 = -1; (ndx2 = outClosure->function->instanceIndexes->getNext(ndx2)) != -1;)
-      ((CoThread *) AS_OBJ(instanceThread->fields[ndx2]))->initValues();
+      ((CoThread *) AS_OBJ(instanceThread->stack[ndx2]))->initValues();
   }
 }
 
@@ -820,7 +821,7 @@ void CoThread::uninitValues() {
       ObjClosure *outClosure = frame.closure;
 
       for (int ndx2 = -1; (ndx2 = outClosure->function->instanceIndexes->getNext(ndx2)) != -1;)
-        ((CoThread *) AS_OBJ(frame.uiValuesInstance->fields[ndx2]))->uninitValues();
+        ((CoThread *) AS_OBJ(frame.uiValuesInstance->stack[ndx2]))->uninitValues();
 
       if (frame.uiValuesInstance) {
         FREE(OBJ_THREAD, frame.uiValuesInstance);
@@ -835,10 +836,10 @@ Point CoThread::recalculateLayout() {
   for (int ndx = 0; ndx < frameCount; ndx++) {
     CoThread *valuesThread = frames[ndx].uiValuesInstance;
     CallFrame &valuesFrame = valuesThread->frames[0];
-    ObjClosure *valuesClosure = AS_CLOSURE(valuesThread->fields[0]);
-    ObjClosure *layoutClosure = AS_CLOSURE(valuesThread->fields[valuesClosure->function->declarationCount[0] - 1]);
+    ObjClosure *valuesClosure = AS_CLOSURE(valuesThread->stack[0]);
+    ObjClosure *layoutClosure = AS_CLOSURE(valuesThread->stack[valuesClosure->function->compiler->declarationCount - 1]);
 
-    frames[ndx].uiLayoutInstance = newThread(NULL);
+    frames[ndx].uiLayoutInstance = newThread(NULL, 0);
 
     CoThread *layoutThread = frames[ndx].uiLayoutInstance;
 
@@ -847,7 +848,7 @@ Point CoThread::recalculateLayout() {
     run(layoutThread);
     layoutThread->savedStackTop = stackTop;
 
-    long frameSize = AS_INT(layoutThread->fields[layoutClosure->function->declarationCount[0] - 3]);
+    long frameSize = AS_INT(layoutThread->stack[layoutClosure->function->compiler->declarationCount - 3]);
 
     for (int dir = 0; dir < NUM_DIRS; dir++)
       size[dir] = std::max(size[dir], (int) (dir ? frameSize & 0xFFFF : frameSize >> 16));
@@ -877,8 +878,8 @@ void CoThread::paint(Point pos, Point size) {
   for (int ndx = 0; ndx < frameCount; ndx++) {
     CoThread *layoutThread = frames[ndx].uiLayoutInstance;
     CallFrame &layoutFrame = layoutThread->frames[0];
-    ObjClosure *layoutClosure = AS_CLOSURE(layoutThread->fields[0]);
-    ObjClosure *paintClosure = AS_CLOSURE(layoutThread->fields[layoutClosure->function->declarationCount[0] - 2]);
+    ObjClosure *layoutClosure = AS_CLOSURE(layoutThread->stack[0]);
+    ObjClosure *paintClosure = AS_CLOSURE(layoutThread->stack[layoutClosure->function->compiler->declarationCount - 2]);
     Value value = {VOID_VAL};
 
     *layoutThread->savedStackTop++ = OBJ_VAL(paintClosure);
@@ -901,8 +902,8 @@ bool CoThread::onEvent(Event event, Point pos, Point size) {
   for (int ndx = frameCount - 1; !flag && ndx >= 0; ndx--) {
     CoThread *layoutThread = frames[ndx].uiLayoutInstance;
     CallFrame &layoutFrame = layoutThread->frames[0];
-    ObjClosure *layoutClosure = AS_CLOSURE(layoutThread->fields[0]);
-    ObjClosure *eventClosure = AS_CLOSURE(layoutThread->fields[layoutClosure->function->declarationCount[0] - 1]);
+    ObjClosure *layoutClosure = AS_CLOSURE(layoutThread->stack[0]);
+    ObjClosure *eventClosure = AS_CLOSURE(layoutThread->stack[layoutClosure->function->compiler->declarationCount - 1]);
     Value value = {VOID_VAL};
     int frameCount = layoutThread->frameCount;
 
@@ -995,11 +996,12 @@ ObjInternal *newInternal() {
   return internal;
 }
 
-CoThread *newThread(CoThread *caller) {
+CoThread *newThread(CoThread *caller, int size) {
   CoThread *coThread = ALLOCATE_OBJ(CoThread, OBJ_THREAD);
 
   coThread->caller = caller;
-  coThread->fields = ALLOCATE(Value, 64);
+  coThread->fields = ALLOCATE(Value, size);
+  coThread->stack = ALLOCATE(Value, 64);
   coThread->resetStack();
   coThread->frameCount = 0;
   coThread->openUpvalues = NULL;

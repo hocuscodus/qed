@@ -530,15 +530,15 @@ static Expr *generateUIFunction(const char *type, const char *name, char *args, 
 }
 
 void Resolver::visitCallExpr(CallExpr *expr) {
-  Declaration declarations[expr->count];
+  Compiler compiler;
   ObjCallable signature;
 
   signature.arity = expr->count;
-  signature.declarations = declarations;
+  signature.compiler = &compiler;
 
   for (int index = 0; index < expr->count; index++) {
     accept<int>(expr->arguments[index]);
-    declarations[index].type = removeDeclaration();
+    compiler.declarations[index].type = removeDeclaration();
   }
 
   pushSignature(&signature);
@@ -709,8 +709,8 @@ void Resolver::visitGetExpr(GetExpr *expr) {
   else {
     ObjFunction *type = AS_FUNCTION_TYPE(objectType);
 
-    for (int count = 0, i = 0; i < *type->declarationCount; i++) {
-      Declaration *dec = &type->declarations[i];
+    for (int count = 0, i = 0; i < type->compiler->declarationCount; i++) {
+      Declaration *dec = &type->compiler->declarations[i];
 
       if (dec->isField) {
         if (identifiersEqual(&expr->name, &dec->name)) {
@@ -1063,8 +1063,8 @@ void Resolver::visitSetExpr(SetExpr *expr) {
   else {
     ObjFunction *type = AS_FUNCTION_TYPE(objectType);
 
-    for (int count = 0, i = 0; i < *type->declarationCount; i++) {
-      Declaration *dec = &type->declarations[i];
+    for (int count = 0, i = 0; i < type->compiler->declarationCount; i++) {
+      Declaration *dec = &type->compiler->declarations[i];
 
       if (dec->isField) {
         if (identifiersEqual(&expr->name, &dec->name)) {

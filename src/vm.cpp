@@ -331,7 +331,7 @@ InterpretResult VM::run() {
 }
 
 InterpretResult VM::interpret(ObjClosure *closure) {
-  coThread->call(closure, coThread->savedStackTop - coThread->fields - 1);
+  coThread->call(closure, coThread->savedStackTop - coThread->stack - 1);
   return run();
 }
 /*

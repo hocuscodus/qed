@@ -74,7 +74,7 @@ static void repl() {
   if (!function)
     return;
 
-  CoThread *coThread = newThread(NULL);
+  CoThread *coThread = newThread(NULL, 0);
   VM vm(coThread, false);
   ObjClosure *closure = coThread->pushClosure(function);
 
@@ -82,7 +82,7 @@ static void repl() {
 //  scanner.reset(buffer);
 
   for (;;) {
-    if (function != NULL && coThread->call(closure, coThread->savedStackTop - coThread->fields - 1)) {
+    if (function != NULL && coThread->call(closure, coThread->savedStackTop - coThread->stack - 1)) {
       if (vm.run() == INTERPRET_OK)
         length += strlen(line);
       else {
@@ -165,7 +165,7 @@ void runSource(const char *source) {
   if (!function)
     return;
 
-  CoThread *coThread = newThread(NULL);
+  CoThread *coThread = newThread(NULL, 0);
   VM vm(coThread, true);
   ObjClosure *closure = coThread->pushClosure(function);
 

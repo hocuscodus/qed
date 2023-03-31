@@ -154,7 +154,7 @@ QNI_CLASS(CoList_yield) {
   ObjClosure *closure1 = NULL;//vm.getFrame(1)->closure;
   ObjClosure *closure = NULL;//vm.getFrame()->closure;
   CoThread *coThread = NULL;//closure->coThread;
-  ObjInternal *objInternal = (ObjInternal *) AS_OBJ(coThread->fields[1]);
+  ObjInternal *objInternal = (ObjInternal *) AS_OBJ(coThread->stack[1]);
   CoListThread *main = (CoListThread *) objInternal->object;
 
   if (coThread == main->coThread) {

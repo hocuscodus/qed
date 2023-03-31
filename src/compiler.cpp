@@ -92,8 +92,7 @@ void Compiler::beginScope(ObjFunction *function) {
   parser = current ? current->parser : parser;
   this->enclosing = current;
   current = this;
-  function->declarationCount = &declarationCount;
-  function->declarations = declarations;
+  function->compiler = this;
   fieldCount = 0;
   declarationStart = 0;
   declarationCount = 0;
@@ -188,7 +187,7 @@ int Compiler::resolveReference(Token *name) {
           bool isSignature = signature->arity == callable->arity;
 
           for (int index = 0; isSignature && index < signature->arity; index++)
-            isSignature = signature->declarations[index].type.equals(callable->declarations[index + 1].type);
+            isSignature = signature->compiler->declarations[index].type.equals(callable->compiler->declarations[index + 1].type);
 
           found = isSignature ? i : -2; // -2 = found name, no good signature yet
 
@@ -218,7 +217,7 @@ int Compiler::resolveReference(Token *name) {
           bool isSignature = signature->arity == callable->arity;
 
           for (int index = 0; isSignature && index < signature->arity; index++)
-            isSignature = signature->declarations[index].type.equals(callable->parms[index + 1]);
+            isSignature = signature->compiler->declarations[index].type.equals(callable->parms[index + 1]);
 
           found = isSignature ? i : -2; // -2 = found name, no good signature yet
 
@@ -259,7 +258,7 @@ int Compiler::resolveReference(Token *name) {
       if (index)
         strcat(parms, ", ");
 
-      strcat(parms, signature->declarations[index].type.toString());
+      strcat(parms, signature->compiler->declarations[index].type.toString());
     }
 
     parser->error("Call '%.*s(%s)' does not match %s.", name->length, name->start, parms, buffer);
