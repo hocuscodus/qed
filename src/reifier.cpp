@@ -67,12 +67,14 @@ void Reifier::visitGetExpr(GetExpr *expr) {
 }
 
 void Reifier::visitGroupingExpr(GroupingExpr *expr) {
-  reinferStack.push({&expr->_compiler, expr->_compiler.inBlock() ? top()->localStart : 0});
+  if (expr->_compiler.inBlock())
+    reinferStack.push({&expr->_compiler, top()->localStart});
 
   for (int index = 0; index < expr->count; index++)
     expr->expressions[index]->accept(this);
 
-  reinferStack.pop();
+  if (expr->_compiler.inBlock())
+    reinferStack.pop();
 /*
   if (!expr->_compiler.inBlock()) {
     ObjFunction *function = expr->_compiler.function;
@@ -100,12 +102,14 @@ void Reifier::visitArrayExpr(ArrayExpr *expr) {
 
 void Reifier::visitListExpr(ListExpr *expr) {
   Declaration *dec = expr->_declaration;
+  ReinferData *data = top();
+  ObjFunction *function = NULL;
 
   if (dec) {
-    dec->realIndex = dec->isField ? top()->compiler->fieldCount++ : top()->localStart++;
+    dec->realIndex = dec->isField ? data->compiler->fieldCount++ : data->localStart++;
 
     if (IS_FUNCTION(dec->type)) {
-      ObjFunction *function = AS_FUNCTION_TYPE(dec->type);
+      function = AS_FUNCTION_TYPE(dec->type);
 #ifdef NO_CLOSURE
       for (int i = 0; i < function->upvalueCount; i++) {
         Upvalue *upvalue = &function->upvalues[i];
@@ -117,12 +121,16 @@ void Reifier::visitListExpr(ListExpr *expr) {
         }
       }
 #endif
+      reinferStack.push({function->compiler, 0});
     }
   }
 
   for (int index = 0; index < expr->count; index++) {
     expr->expressions[index]->accept(this);
   }
+
+  if (function)
+    reinferStack.pop();
 }
 
 void Reifier::visitLiteralExpr(LiteralExpr *expr) {
@@ -180,6 +188,8 @@ void Reifier::visitSwapExpr(SwapExpr *expr) {
 }
 
 bool Reifier::reify() {
+  reinferStack.push({&parser.expr->_compiler, 0});
   accept(parser.expr, 0);
+  reinferStack.pop();
   return !parser.hadError;
 }

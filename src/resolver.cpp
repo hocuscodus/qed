@@ -876,7 +876,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
               if (paramExpr->type != EXPR_REFERENCE)
                 parser.error("Parameter name must be a string.");
               else {
-                getCurrent()->addDeclaration(convertType(type), ((ReferenceExpr *)paramExpr)->name);
+                param->_declaration = getCurrent()->addDeclaration(convertType(type), ((ReferenceExpr *)paramExpr)->name);
 
                 if (param->count > 2)
                   parser.error("Syntax error");
@@ -929,7 +929,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
       ReferenceExpr *varExpr = (ReferenceExpr *)subExpr;
 
       getCurrent()->checkDeclaration(&varExpr->name);
-      getCurrent()->addDeclaration(returnType, varExpr->name);
+      expr->_declaration = getCurrent()->addDeclaration(returnType, varExpr->name);
 
       LiteralExpr *valueExpr = NULL;
 
