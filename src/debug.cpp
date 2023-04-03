@@ -216,6 +216,9 @@ int disassembleInstruction(Chunk *chunk, int offset) {
     case OP_POP_JUMP_IF_FALSE:
       return jumpInstruction("OP_POP_JUMP_IF_FALSE", 1, chunk, offset);
 
+    case OP_INSTANTIATE:
+      return simpleInstruction("OP_INSTANTIATE", offset);
+
     case OP_NEW:
       return byteInstruction("OP_NEW", chunk, offset);
 

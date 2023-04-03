@@ -87,13 +87,14 @@ void ArrayExpr::accept(ExprVisitor *visitor) {
   return visitor->visitArrayExpr(this);
 }
 
-CallExpr::CallExpr(Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler) : Expr(EXPR_CALL) {
+CallExpr::CallExpr(Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler, bool objectFlag) : Expr(EXPR_CALL) {
   this->callee = callee;
   this->paren = paren;
   this->count = count;
   this->arguments = arguments;
   this->newFlag = newFlag;
   this->handler = handler;
+  this->objectFlag = objectFlag;
 }
 
 void CallExpr::accept(ExprVisitor *visitor) {

@@ -524,7 +524,7 @@ static Expr *generateUIFunction(const char *type, const char *name, char *args, 
         typeIndex = index;
 
     functionExprs[0] = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, type, strlen(type), -1), typeIndex, false);
-    functionExprs[1] = new CallExpr(nameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), nbParms, parms, false, NULL);
+    functionExprs[1] = new CallExpr(nameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), nbParms, parms, false, NULL, false);
     functionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), count + restLength, bodyExprs, 0, NULL);
 
     return new ListExpr(3, functionExprs, EXPR_LIST);
@@ -565,6 +565,7 @@ void Resolver::visitCallExpr(CallExpr *expr) {
           sprintf(buffer, "%s _ret", callable->type.toString());
 
         expr->handler = generateUIFunction("void", "ReturnHandler_", !IS_VOID(callable->type) ? buffer : NULL, expr->handler, 1, 0, NULL);
+        expr->objectFlag = callable->compiler->inBlock() ? callable->compiler->fieldCount : callable->compiler->fieldCount > 1 || callable->isClass();
         accept<int>(expr->handler);
         getCurrent()->declarationCount--;
       }

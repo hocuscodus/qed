@@ -297,7 +297,9 @@ InterpretResult run(CoThread *current) {
       break;
     }
     case OP_INSTANTIATE: {
-      PUSH(OBJ_VAL(&newObject(AS_CLOSURE(POP))->obj));
+      Value objClosure = POP;
+
+      PUSH(OBJ_VAL(&newObject(AS_CLOSURE(objClosure))->obj));
       break;
     }
     case OP_NEW: {
@@ -761,7 +763,7 @@ void CoThread::printStack() {
   CallFrame *frame = &frames[frameCount - 1];
 
   printf("          ");
-  for (Value *slot = fields; slot < stackTop; slot++) {
+  for (Value *slot = frame->slots; slot < stackTop; slot++) {
     printf("[ ");
     printValue(*slot);
     printf(" ]");
@@ -1155,12 +1157,9 @@ void printObject(Value value) {
     printf("<%.*s instance>", name->length, name->chars);
     break;
   }
-  case OBJ_OBJECT: {
-    ObjString *name = AS_OBJECT(value)->getClosure()->function->name;
-
-    printf("<%.*s instance>", name->length, name->chars);
+  case OBJ_OBJECT:
+    printFunction(AS_OBJECT(value)->getClosure()->function);
     break;
-  }
   case OBJ_CLOSURE:
     printFunction(AS_CLOSURE(value)->function);
     break;

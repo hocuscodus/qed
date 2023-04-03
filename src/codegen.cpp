@@ -78,6 +78,9 @@ void CodeGenerator::visitBinaryExpr(BinaryExpr *expr) {
 void CodeGenerator::visitCallExpr(CallExpr *expr) {
   accept<int>(expr->callee, 0);
 
+  if (expr->objectFlag)
+    emitByte(OP_INSTANTIATE);
+
   for (int index = 0; index < expr->count; index++)
     accept<int>(expr->arguments[index]);
 

@@ -201,8 +201,9 @@ struct CallExpr : public Expr {
   Expr** arguments;
   bool newFlag;
   Expr* handler;
+  bool objectFlag;
 
-  CallExpr(Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler);
+  CallExpr(Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler, bool objectFlag);
   void accept(ExprVisitor *visitor);
 };
 
