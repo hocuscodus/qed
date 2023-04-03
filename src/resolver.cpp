@@ -135,6 +135,7 @@ static Expr *convertToObj(Obj *srcObjType, Expr *expr, Type &type, Parser &parse
 //    expr = convertToArray(OP_BOOL_TO_STRING, expr);
     break;
 /*
+  OBJ_OBJECT
   OBJ_CLOSURE
   OBJ_FUNCTION
   OBJ_NATIVE

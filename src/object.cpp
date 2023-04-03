@@ -296,12 +296,15 @@ InterpretResult run(CoThread *current) {
       if (isFalsey(POP)) frame->ip += offset;
       break;
     }
+    case OP_INSTANTIATE: {
+      PUSH(OBJ_VAL(&newObject(AS_CLOSURE(POP))->obj));
+      break;
+    }
     case OP_NEW: {
       int argCount = READ_BYTE();
       int handlerCount = 1;
       int size = argCount + 1 + handlerCount;
-      int fieldCount = AS_CLOSURE(stackTop[-size])->function->compiler->fieldCount;
-      CoThread *thread = newThread(current, fieldCount);
+      CoThread *thread = newThread(current);
 
       memcpy(thread->stack, stackTop - size, size * sizeof(Value));
       thread->savedStackTop += size;
@@ -498,6 +501,7 @@ const char *Obj::toString() {
       return buf;
     }
     case OBJ_THREAD:
+    case OBJ_OBJECT:
     case OBJ_CLOSURE:
     case OBJ_NATIVE:
     case OBJ_NATIVE_CLASS:
@@ -640,6 +644,9 @@ extern void postMessage(void (*fn)(void *), void *);
 bool CoThread::callValue(Value callee, int argCount) {
   switch (OBJ_TYPE(callee)) {
 //    case OBJ_NATIVE_CLASS:
+    case OBJ_OBJECT:
+      return call(AS_OBJECT(callee)->getClosure(), argCount);
+
     case OBJ_CLOSURE:
       return call(AS_CLOSURE(callee), argCount);
 
@@ -800,7 +807,7 @@ void CoThread::initValues() {
     CallFrame &frame = frames[ndx];
     ObjClosure *outClosure = frame.uiClosure;
 
-    frame.uiValuesInstance = newThread(NULL, 0);
+    frame.uiValuesInstance = newThread(NULL);
 
     CoThread *instanceThread = frame.uiValuesInstance;
 
@@ -839,7 +846,7 @@ Point CoThread::recalculateLayout() {
     ObjClosure *valuesClosure = AS_CLOSURE(valuesThread->stack[0]);
     ObjClosure *layoutClosure = AS_CLOSURE(valuesThread->stack[valuesClosure->function->compiler->declarationCount - 1]);
 
-    frames[ndx].uiLayoutInstance = newThread(NULL, 0);
+    frames[ndx].uiLayoutInstance = newThread(NULL);
 
     CoThread *layoutThread = frames[ndx].uiLayoutInstance;
 
@@ -996,11 +1003,10 @@ ObjInternal *newInternal() {
   return internal;
 }
 
-CoThread *newThread(CoThread *caller, int size) {
+CoThread *newThread(CoThread *caller) {
   CoThread *coThread = ALLOCATE_OBJ(CoThread, OBJ_THREAD);
 
   coThread->caller = caller;
-  coThread->fields = ALLOCATE(Value, size);
   coThread->stack = ALLOCATE(Value, 64);
   coThread->resetStack();
   coThread->frameCount = 0;
@@ -1013,6 +1019,16 @@ ObjInstance *newInstance(ObjCallable *callable) {
 
   instance->callable = callable;
   return instance;
+}
+
+ObjObject *newObject(ObjClosure *closure) {
+  int fieldCount = closure->function->compiler->fieldCount;
+  ObjObject *object = ALLOCATE_OBJ(ObjObject, OBJ_OBJECT);
+
+  object->fields = ALLOCATE(Value, fieldCount);
+  *object->fields = OBJ_VAL(&closure->obj);
+  memset(&object->fields[1], 0, sizeof(Value) * (fieldCount - 1));
+  return object;
 }
 
 ObjClosure *newClosure(ObjFunction *function, CoThread *parent) {
@@ -1125,7 +1141,7 @@ void printObject(Value value) {
     break;
 
   case OBJ_THREAD: {
-    ObjString *name = AS_CLOSURE(AS_THREAD(value)->fields[0])->function->name;
+    ObjString *name = AS_THREAD(value)->frames[0].closure->function->name;
 
     if (name)
       printf("<%.*s instance>", name->length, name->chars);
@@ -1135,6 +1151,12 @@ void printObject(Value value) {
   }
   case OBJ_INSTANCE: {
     ObjString *name = AS_INSTANCE(value)->callable->name;
+
+    printf("<%.*s instance>", name->length, name->chars);
+    break;
+  }
+  case OBJ_OBJECT: {
+    ObjString *name = AS_OBJECT(value)->getClosure()->function->name;
 
     printf("<%.*s instance>", name->length, name->chars);
     break;

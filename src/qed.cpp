@@ -74,7 +74,7 @@ static void repl() {
   if (!function)
     return;
 
-  CoThread *coThread = newThread(NULL, 0);
+  CoThread *coThread = newThread(NULL);
   VM vm(coThread, false);
   ObjClosure *closure = coThread->pushClosure(function);
 
@@ -165,7 +165,7 @@ void runSource(const char *source) {
   if (!function)
     return;
 
-  CoThread *coThread = newThread(NULL, 0);
+  CoThread *coThread = newThread(NULL);
   VM vm(coThread, true);
   ObjClosure *closure = coThread->pushClosure(function);
 

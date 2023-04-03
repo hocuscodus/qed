@@ -16,6 +16,7 @@
 
 #define AS_THREAD(value)       ((CoThread*)AS_OBJ(value))
 #define AS_INSTANCE(value)     ((ObjInstance*)AS_OBJ(value))
+#define AS_OBJECT(value)       ((ObjObject*)AS_OBJ(value))
 #define AS_CLOSURE(value)      ((ObjClosure*)AS_OBJ(value))
 #define AS_CALLABLE(value)     ((ObjCallable*)AS_OBJ(value))
 #define AS_FUNCTION(value)     ((ObjFunction*)AS_OBJ(value))
@@ -30,6 +31,7 @@ typedef struct ObjString ObjString;
 
 typedef enum {
   OBJ_THREAD,
+  OBJ_OBJECT,
   OBJ_INSTANCE,
   OBJ_CLOSURE,
   OBJ_FUNCTION,
@@ -169,6 +171,13 @@ struct ObjClosure {
   int upvalueCount;
 };
 
+struct ObjObject {
+  Obj obj;
+  Value *fields;
+
+  ObjClosure *getClosure() {return AS_CLOSURE(fields[0]);}
+};
+
 struct CallFrame {
   ObjClosure *closure;
   uint8_t *ip;
@@ -181,7 +190,6 @@ struct CallFrame {
 struct CoThread {
   Obj obj;
   CoThread *caller;
-  Value *fields;
   Value *stack;
   int frameCount;
   CallFrame frames[FRAMES_MAX];
@@ -241,8 +249,9 @@ struct ObjInternal {
 
 Obj *allocateObject(size_t size, ObjType type);
 ObjInternal *newInternal();
-CoThread *newThread(CoThread *caller, int size);
+CoThread *newThread(CoThread *caller);
 ObjInstance *newInstance(ObjCallable *callable);
+ObjObject *newObject(ObjClosure *closure);
 ObjClosure *newClosure(ObjFunction *function, CoThread *parent);
 ObjFunction *newFunction(Type type, ObjString *name, int arity);
 ObjNative *newNative(NativeFn function);

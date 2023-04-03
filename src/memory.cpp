@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include "memory.h"
 #include "object.hpp"
+#include "compiler.hpp"
 
 void *reallocate(void *pointer, size_t oldSize, size_t newSize) {
   if (newSize == 0) {
@@ -41,6 +42,15 @@ static void freeObject(Obj *object) {
 //      delete[] coThread->fields;
       FREE_ARRAY(Value, coThread->stack, 64);
       FREE(CoThread, object);
+      break;
+    }
+
+    case OBJ_OBJECT: {
+      ObjObject *qedObject = (ObjObject *) object;
+      int count = qedObject->getClosure()->function->compiler->fieldCount;
+
+      FREE_ARRAY(Value*, qedObject->fields, count);
+      FREE(ObjObject, object);
       break;
     }
 
