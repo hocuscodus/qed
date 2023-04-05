@@ -115,6 +115,7 @@ public:
     fprintf(file, "#include \"chunk.hpp\"\n");
     fprintf(file, "#include \"compiler.hpp\"\n\n");
     fprintf(file, "struct ObjFunction;\n\n");
+    fprintf(file, "struct ObjCallable;\n\n");
 
     // The enum types for AST classes.
     fprintf(file, "typedef enum {\n");
@@ -280,7 +281,7 @@ int main(int argc, const char *argv[]) {
     "Binary      : Expr* left, Token op, Expr* right, OpCode opCode, bool notFlag",
     "Grouping    : Token name, int count, Expr** expressions, int popLevels, Expr* ui, Compiler _compiler",
     "Array       : int count, Expr** expressions, ObjFunction* function",
-    "Call        : Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler, bool objectFlag",
+    "Call        : Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler, ObjCallable* callable",
     "ArrayElement: Expr* callee, Token bracket, int count, Expr** indexes",
     "Declaration : Type type, Token name, Expr* initExpr",
     "Function    : Type type, Token name, int count, Expr** params, Expr* body, ObjFunction* function",

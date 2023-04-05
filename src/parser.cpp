@@ -340,7 +340,7 @@ Expr *Parser::call(Expr *left) {
       handler = statement(TOKEN_SEPARATOR);
   }
 
-  return new CallExpr(left, previous, argCount, expList, false, handler, false);
+  return new CallExpr(left, previous, argCount, expList, false, handler, NULL);
 }
 
 Expr *Parser::arrayElement(Expr *left) {

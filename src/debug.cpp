@@ -87,20 +87,17 @@ int disassembleInstruction(Chunk *chunk, int offset) {
     case OP_SET_PROPERTY:
       return byteInstruction("OP_SET_PROPERTY", chunk, offset);
 
-    case OP_GET_LOCAL_DIR:
-      return byte2Instruction("OP_GET_LOCAL_DIR", chunk, offset);
-
-    case OP_ADD_LOCAL:
-      return byte2Instruction("OP_ADD_LOCAL", chunk, offset);
-
-    case OP_MAX_LOCAL:
-      return byte2Instruction("OP_MAX_LOCAL", chunk, offset);
-
     case OP_GET_LOCAL:
       return byteInstruction("OP_GET_LOCAL", chunk, offset);
 
     case OP_SET_LOCAL:
       return byteInstruction("OP_SET_LOCAL", chunk, offset);
+
+    case OP_GET_FIELD:
+      return byte2Instruction("OP_GET_FIELD", chunk, offset);
+
+    case OP_SET_FIELD:
+      return byte2Instruction("OP_SET_FIELD", chunk, offset);
 
     case OP_INT_TO_FLOAT:
       return simpleInstruction("OP_INT_TO_FLOAT", offset);

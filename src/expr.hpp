@@ -10,6 +10,8 @@
 
 struct ObjFunction;
 
+struct ObjCallable;
+
 typedef enum {
   EXPR_REFERENCE,
   EXPR_UIATTRIBUTE,
@@ -201,9 +203,9 @@ struct CallExpr : public Expr {
   Expr** arguments;
   bool newFlag;
   Expr* handler;
-  bool objectFlag;
+  ObjCallable* callable;
 
-  CallExpr(Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler, bool objectFlag);
+  CallExpr(Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler, ObjCallable* callable);
   void accept(ExprVisitor *visitor);
 };
 

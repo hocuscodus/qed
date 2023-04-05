@@ -78,11 +78,24 @@ void CodeGenerator::visitBinaryExpr(BinaryExpr *expr) {
 void CodeGenerator::visitCallExpr(CallExpr *expr) {
   accept<int>(expr->callee, 0);
 
-  if (expr->objectFlag)
+  if (expr->callable->isObject())
     emitByte(OP_INSTANTIATE);
 
-  for (int index = 0; index < expr->count; index++)
+  for (int count = 2, index = 0; index < expr->count; index++) {
     accept<int>(expr->arguments[index]);
+
+    if (expr->callable->compiler->declarations[index].isField) {
+#ifdef NO_CLOSURE
+      emitBytes(OP_GET_LOCAL, -count);
+#else
+      emitBytes(OP_GET_LOCAL, -index - 2);
+#endif
+      emitBytes(OP_SET_FIELD, expr->callable->compiler->declarations[index + 1].realIndex);
+//      emitByte(OP_POP);
+    }
+    else
+      count++;
+  }
 
   if (expr->newFlag)
     if (expr->handler)

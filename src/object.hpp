@@ -87,6 +87,7 @@ struct ObjCallable : ObjNamed {
   Compiler *compiler;
 
   bool isClass();
+  bool isObject();
 };
 
 struct IndexList {

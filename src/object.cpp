@@ -111,36 +111,30 @@ InterpretResult run(CoThread *current) {
       PUSH(value);
       break;
     }
-    case OP_GET_LOCAL_DIR: {
-      int8_t dir = READ_BYTE();
-      int8_t slot = READ_BYTE();
-
-      PUSH(INT_VAL(AS_INT(frame->slots[slot])));
-      break;
-    }
-    case OP_ADD_LOCAL: {
-      int8_t a = READ_BYTE();
-      int8_t b = READ_BYTE();
-
-      PUSH(INT_VAL(AS_INT(frame->slots[a]) + AS_INT(frame->slots[b])));
-      break;
-    }
-    case OP_MAX_LOCAL: {
-      int8_t a = READ_BYTE();
-      int8_t b = READ_BYTE();
-
-      PUSH(INT_VAL(std::max(AS_INT(frame->slots[a]), AS_INT(frame->slots[b]))));
-      break;
-    }
     case OP_GET_LOCAL: {
       int8_t slot = READ_BYTE();
 
-      PUSH(frame->slots[slot]);
+      PUSH(slot < 0 ? stackTop[slot] : frame->slots[slot]);
       break;
     }
     case OP_SET_LOCAL: {
       int8_t slot = READ_BYTE();
-      frame->slots[slot] = PEEK(0);
+      if (slot < 0)
+        stackTop[slot] = PEEK(0);
+      else
+        frame->slots[slot] = PEEK(0);
+      break;
+    }
+    case OP_GET_FIELD: {
+      int8_t slot = READ_BYTE();
+      ObjObject *object = AS_OBJECT(POP);
+      PUSH(object->fields[slot]);
+      break;
+    }
+    case OP_SET_FIELD: {
+      int8_t slot = READ_BYTE();
+      ObjObject *object = AS_OBJECT(POP);
+      object->fields[slot] = PEEK(0);
       break;
     }
     case OP_INT_TO_FLOAT: {
@@ -517,6 +511,10 @@ const char *Obj::toString() {
 
 bool ObjCallable::isClass() {
   return name == NULL || (name->chars[0] >= 'A' && name->chars[0] <= 'Z');
+}
+
+bool ObjCallable::isObject() {
+  return compiler->inBlock() ? compiler->fieldCount : compiler->fieldCount > 1 || isClass();
 }
 
 int ObjFunction::addUpvalue(uint8_t index, bool isField, Type type, Parser &parser) {

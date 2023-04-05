@@ -524,7 +524,7 @@ static Expr *generateUIFunction(const char *type, const char *name, char *args, 
         typeIndex = index;
 
     functionExprs[0] = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, type, strlen(type), -1), typeIndex, false);
-    functionExprs[1] = new CallExpr(nameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), nbParms, parms, false, NULL, false);
+    functionExprs[1] = new CallExpr(nameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), nbParms, parms, false, NULL, NULL);
     functionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), count + restLength, bodyExprs, 0, NULL);
 
     return new ListExpr(3, functionExprs, EXPR_LIST);
@@ -555,25 +555,24 @@ void Resolver::visitCallExpr(CallExpr *expr) {
 
   switch (AS_OBJ_TYPE(type)) {
   case OBJ_FUNCTION: {
-    ObjCallable *callable = AS_FUNCTION_TYPE(type);
+    expr->callable = AS_FUNCTION_TYPE(type);
 
     if (expr->newFlag) {
       if (expr->handler != NULL) {
         char buffer[256] = "";
 
-        if (!IS_VOID(callable->type))
-          sprintf(buffer, "%s _ret", callable->type.toString());
+        if (!IS_VOID(expr->callable->type))
+          sprintf(buffer, "%s _ret", expr->callable->type.toString());
 
-        expr->handler = generateUIFunction("void", "ReturnHandler_", !IS_VOID(callable->type) ? buffer : NULL, expr->handler, 1, 0, NULL);
-        expr->objectFlag = callable->compiler->inBlock() ? callable->compiler->fieldCount : callable->compiler->fieldCount > 1 || callable->isClass();
+        expr->handler = generateUIFunction("void", "ReturnHandler_", !IS_VOID(expr->callable->type) ? buffer : NULL, expr->handler, 1, 0, NULL);
         accept<int>(expr->handler);
         getCurrent()->declarationCount--;
       }
 
-      getCurrent()->pushType((Type) {VAL_OBJ, &newInstance(callable)->obj});
+      getCurrent()->pushType((Type) {VAL_OBJ, &newInstance(expr->callable)->obj});
     }
     else
-      getCurrent()->pushType(callable->type);
+      getCurrent()->pushType(expr->callable->type);
     break;
   }
   case OBJ_FUNCTION_PTR: {
