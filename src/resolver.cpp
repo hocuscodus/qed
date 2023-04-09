@@ -274,7 +274,7 @@ void Resolver::visitAssignExpr(AssignExpr *expr) {
   else if (!type1.equals(type2)) {
     expr->value = convertToType(type2, expr->value, type1, parser);
 
-    if (expr->value == NULL) {
+    if (!expr->value) {
       parser.error("Value must match the variable type");
     }
   }
@@ -541,10 +541,15 @@ void Resolver::visitCallExpr(CallExpr *expr) {
   compiler.function->name = copyString("Capital", 7);
   compiler.declarationCount = 0;
 
+  getCurrent()->pushType({VAL_OBJ}); // Dummy callee for space purposes
+
   for (int index = 0; index < expr->count; index++) {
     accept<int>(expr->arguments[index]);
-    compiler.addDeclaration(popType(), tok);
+    compiler.addDeclaration(getCurrent()->typeStack.top(), tok);
   }
+
+  for (int index = -1; index < expr->count; index++)
+    popType();
 
   pushSignature(&signature);
   accept<int>(expr->callee);
@@ -632,9 +637,10 @@ void Resolver::visitArrayElementExpr(ArrayElementExpr *expr) {
 
         getCurrent()->pushType(array->elementType);
 
-        for (int index = 0; index < expr->count; index++) {
+        for (int index = 0; index < expr->count; index++)
           accept<int>(expr->indexes[index]);
 
+        for (int index = 0; index < expr->count; index++) {
           Type argType = popType();
 
           argType = argType;
@@ -760,9 +766,10 @@ void Resolver::visitArrayExpr(ArrayExpr *expr) {
 
   compiler.beginScope(newFunction({VAL_VOID}, NULL, 0));
 
-  for (int index = 0; index < expr->count; index++) {
+  for (int index = 0; index < expr->count; index++)
     acceptSubExpr(expr->expressions[index]);
 
+  for (int index = 0; index < expr->count; index++) {
     Type subType = popType();
 
     objArray->elementType = subType;
@@ -1164,8 +1171,10 @@ void Resolver::visitUnaryExpr(UnaryExpr *expr) {
 }
 
 void Resolver::visitReferenceExpr(ReferenceExpr *expr) {
-  if (expr->index != -1)
+  if (expr->index != -1) {
     getCurrent()->pushType({VAL_OBJ, primitives[expr->index]});
+    expr->index = -1;
+  }
   else
     getCurrent()->resolveReferenceExpr(expr);
 }

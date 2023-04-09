@@ -47,7 +47,7 @@ struct Compiler {
   }
 
   inline int getDeclarationCount() {
-    return declarationStart + declarationCount;
+    return declarationStart + declarationCount + typeStack.size();
   }
 
   inline Declaration &getDeclaration(int index) {

@@ -309,8 +309,11 @@ void Compiler::resolveReferenceExpr(ReferenceExpr *expr) {
 
     if (expr->index == -1 && current->inBlock())
       current = current->enclosing;
-    else
+    else {
+      if (expr->index >= 0)
+;//        expr->revIndex = expr->index - getDeclarationCount();
       break;
+    }
   }
 
   switch (expr->index) {
