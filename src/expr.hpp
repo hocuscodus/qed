@@ -203,6 +203,7 @@ struct CallExpr : public Expr {
   Expr** arguments;
   bool newFlag;
   Expr* handler;
+  ObjFunction* handlerFunction;
   ObjCallable* callable;
 
   CallExpr(Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler, ObjCallable* callable);

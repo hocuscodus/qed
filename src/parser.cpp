@@ -634,7 +634,7 @@ Expr *Parser::unary() {
     case TOKEN_MINUS_MINUS: {
       Expr *right = parsePrecedence(PREC_CALL);
 
-      return new AssignExpr((ReferenceExpr *) right, op, NULL, OP_FALSE, false);
+      return new AssignExpr(NULL, op, right, OP_FALSE, false);
     }
     default:
       return new UnaryExpr(op, parsePrecedence(PREC_UNARY));

@@ -258,14 +258,14 @@ static OpCode getOpCode(Type type, Token token) {
 }
 
 void Resolver::visitAssignExpr(AssignExpr *expr) {
-  //  accept<int>(expr->index, 0);
   if (expr->value)
     accept<int>(expr->value, 0);
 
-  accept<int>(expr->varExp, 0);
+  if (expr->varExp)
+    accept<int>(expr->varExp, 0);
 
   Type type1 = popType();
-  Type type2 = expr->value ? popType() : type1;
+  Type type2 = expr->varExp && expr->value ? popType() : type1;
 
   expr->opCode = getOpCode(type1, expr->op);
 
@@ -279,7 +279,7 @@ void Resolver::visitAssignExpr(AssignExpr *expr) {
     }
   }
 
-  getCurrent()->pushType(type2);
+  getCurrent()->pushType(type1);
 }
 
 void Resolver::visitUIAttributeExpr(UIAttributeExpr *expr) {
@@ -571,6 +571,8 @@ void Resolver::visitCallExpr(CallExpr *expr) {
 
         expr->handler = generateUIFunction("void", "ReturnHandler_", !IS_VOID(expr->callable->type) ? buffer : NULL, expr->handler, 1, 0, NULL);
         accept<int>(expr->handler);
+        Type type = getCurrent()->peekDeclaration();// = popType();
+        expr->handlerFunction = AS_FUNCTION_TYPE(type);
         getCurrent()->declarationCount--;
       }
 
@@ -806,11 +808,11 @@ void Resolver::visitListExpr(ListExpr *expr) {
     case EXPR_ASSIGN: {
       AssignExpr *assignExpr = (AssignExpr *)subExpr;
 
-      expr->listType = subExpr->type;
-      getCurrent()->checkDeclaration(&assignExpr->varExp->name);
-
-      if (assignExpr->value != NULL) {
+      if (assignExpr->varExp && assignExpr->value) {
+        expr->listType = subExpr->type;
+        getCurrent()->checkDeclaration(&assignExpr->varExp->name);
         accept<int>(assignExpr->value, 0);
+
         Type internalType = {VAL_OBJ, &objInternalType};
         Type type1 = popType();
 
@@ -826,12 +828,14 @@ void Resolver::visitListExpr(ListExpr *expr) {
             parser.error("Value must match the variable type");
           }
         }
+
+        expr->_declaration = getCurrent()->addDeclaration(returnType, assignExpr->varExp->name);
+
+        if (expr->count > 2)
+          parser.error("Expect ';' or newline after variable declaration.");
       }
-
-      expr->_declaration = getCurrent()->addDeclaration(returnType, assignExpr->varExp->name);
-
-      if (expr->count > 2)
-        parser.error("Expect ';' or newline after variable declaration.");
+      else
+        parser.error("Unrecognized declaration.");
       return;
     }
     case EXPR_CALL: {
@@ -1194,11 +1198,11 @@ bool Resolver::resolve(Compiler *compiler) {
   return !parser.hadError;
 }
 
-int aCount;
-std::stringstream s;
-std::stringstream *ss = &s;
+static int aCount;
+static std::stringstream s;
+static std::stringstream *ss = &s;
 
-int nTabs = 0;
+static int nTabs = 0;
 
 static void insertTabs() {
   for (int index = 0; index < nTabs; index++)

@@ -95,6 +95,7 @@ CallExpr::CallExpr(Expr* callee, Token paren, int count, Expr** arguments, bool 
   this->newFlag = newFlag;
   this->handler = handler;
   this->callable = callable;
+  handlerFunction = NULL;
 }
 
 void CallExpr::accept(ExprVisitor *visitor) {

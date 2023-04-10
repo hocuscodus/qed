@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <cstdarg>
+#include <iostream>
 
 #include "memory.h"
 #include "parser.hpp"
@@ -537,6 +538,22 @@ int ObjFunction::addUpvalue(uint8_t index, bool isField, Type type, Parser &pars
   return upvalueCount++;
 }
 
+void ObjFunction::add(ObjFunction *function) {
+  if (firstChild)
+    lastChild->next = function;
+  else
+    firstChild = function;
+
+  lastChild = function;
+}
+
+void ObjFunction::print() {
+  for (ObjFunction *function = firstChild; function; function = function->next)
+    function->print();
+
+  std::cout << s.str();
+}
+
 IndexList::IndexList() {
   size = -1;
   array = NULL;
@@ -1059,7 +1076,10 @@ ObjFunction *newFunction(Type type, ObjString *name, int arity) {
   function->instanceIndexes = new IndexList();
   function->eventFlags = 0L;
   function->uiFunction = NULL;
-//  function->uiFunctions = new std::unordered_map<std::string, ObjFunction*>();
+  function->firstChild = NULL;
+  function->lastChild = NULL;
+  function->next = NULL;
+  new(&function->s) std::stringstream();
   return function;
 }
 

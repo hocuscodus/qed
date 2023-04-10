@@ -7,6 +7,7 @@
 #ifndef qed_object_h
 #define qed_object_h
 
+#include <sstream>
 #include "common.h"
 #include "chunk.hpp"
 #include "value.h"
@@ -115,8 +116,14 @@ struct ObjFunction : ObjCallable {
   IndexList *instanceIndexes;
   long eventFlags;
   ObjFunction *uiFunction;
+  ObjFunction *firstChild;
+  ObjFunction *lastChild;
+  ObjFunction *next;
+  std::stringstream s;
 
   int addUpvalue(uint8_t index, bool isField, Type type, Parser &parser);
+  void add(ObjFunction *function);
+  void print();
 };
 
 typedef Value (*NativeFn)(int argCount, Value *args);

@@ -41,18 +41,10 @@ public:
   void visitReferenceExpr(ReferenceExpr *expr);
   void visitSwapExpr(SwapExpr *expr);
 
-  Chunk *currentChunk();
-  void emitCode(Expr *expr);
-
-  void emitByte(uint8_t byte);
-  void emitBytes(uint8_t byte1, uint8_t byte2);
-  void emitLoop(int loopStart);
-  int emitJump(uint8_t instruction);
-  void emitHalt();
-  uint8_t makeConstant(Value value);
-  void emitConstant(Value value);
-  void patchJump(int offset);
-  void endCompiler();
+  std::stringstream &str();
+  std::stringstream &line();
+  const char *startBlock();
+  const char *endBlock();
 };
 
 #endif

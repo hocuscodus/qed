@@ -164,7 +164,7 @@ void runSource(const char *source) {
 
   if (!function)
     return;
-
+/*
   CoThread *coThread = newThread(NULL);
   VM vm(coThread, true);
   ObjClosure *closure = coThread->pushClosure(function);
@@ -177,7 +177,8 @@ void runSource(const char *source) {
 //  freeObjects();
 
   if (result == INTERPRET_COMPILE_ERROR) exit(65);
-  if (result == INTERPRET_RUNTIME_ERROR) exit(70);
+  if (result == INTERPRET_RUNTIME_ERROR) exit(70);*/
+  function->print();
 }
 }
 

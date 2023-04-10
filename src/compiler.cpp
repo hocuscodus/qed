@@ -66,22 +66,11 @@ ObjFunction *Compiler::compile(Parser &parser) {
 #endif
   CodeGenerator generator(parser, function);
 
-  generator.emitCode(parser.expr);
-  generator.endCompiler();
+  generator.accept<int>(parser.expr);
 
   if (parser.hadError)
     function->chunk.reset();
-#ifdef DEBUG_PRINT_CODE
-  else {
-    disassembleChunk(&function->chunk, function->name != NULL ? function->name->chars : "<script>");
-    for (int index = 0; index < declarationCount; index++) {
-      const char *name = declarations[index].name.start;
 
-      printf("<%s %s> ", declarations[index].type.toString(), name ? name : "");
-    }
-    printf("\n");
-  }
-#endif
   current = enclosing;
 
   return parser.hadError ? NULL : function;
@@ -103,6 +92,7 @@ Declaration *Compiler::beginScope(ObjFunction *function) {
     std::string enclosingName = enclosingNameObj ? std::string("_") + enclosingNameObj->chars : "";
 
     prefix = enclosing->prefix + enclosingName;
+    enclosing->function->add(function);
   }
   else
     prefix = "qni";

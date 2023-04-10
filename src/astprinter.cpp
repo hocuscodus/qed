@@ -143,7 +143,7 @@ void ASTPrinter::visitWhileStmt(Expr *expr) {
 }
 */
 void ASTPrinter::visitAssignExpr(AssignExpr *expr) {
-  printf("(%.*s %d ", expr->op.length, expr->op.start, expr->varExp->index);
+  printf("(%.*s %d ", expr->op.length, expr->op.start, expr->varExp ? expr->varExp->index : -1);
 
   if (expr->value)
     expr->value->accept(this);
