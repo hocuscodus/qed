@@ -43,10 +43,12 @@ void CodeGenerator::visitAssignExpr(AssignExpr *expr) {
   if (expr->varExp)
     accept<int>(expr->varExp, 0);
 
-  str() << " " << expr->op.getString() << " ";
-
-  if (expr->value)
+  if (expr->value) {
+    str() << " " << expr->op.getString() << " ";
     accept<int>(expr->value, 0);
+  }
+  else
+    str() << expr->op.getString();
 }
 
 void CodeGenerator::visitUIAttributeExpr(UIAttributeExpr *expr) {
@@ -92,22 +94,18 @@ void CodeGenerator::visitCallExpr(CallExpr *expr) {
   if (expr->handler) {
     {
       CodeGenerator generator(parser, expr->handlerFunction);
-      Expr *bodyExpr = function->bodyExpr;
 
-      if (bodyExpr)
-        generator.accept<int>(bodyExpr);
+      if (expr->handler)
+        generator.accept<int>(expr->handler);
 
       if (parser.hadError)
         return;
-      endBlock();
     }
 
     if (expr->count)
       str() << ", ";
 
     str() << "ReturnHandler_";
-
-    accept<int>(expr->handler);
   }
 
   str() << ")";
@@ -170,9 +168,10 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
   }
   case EXPR_CALL: {
     ObjFunction *function = (ObjFunction *) expr->_declaration->type.objType;
-    line() << "function " << std::string(function->name->chars, function->name->length) << "() {\n" << startBlock();
     CodeGenerator generator(parser, function);
     Expr *bodyExpr = function->bodyExpr;
+
+    generator.line() << "function " << std::string(function->name->chars, function->name->length) << "() {\n" << generator.startBlock();
 
     if (bodyExpr)
       generator.accept<int>(bodyExpr);
@@ -186,8 +185,8 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
 //      emitByte(function->upvalues[i].isField ? 1 : 0);
 //      emitByte(function->upvalues[i].index);
     }
-    endBlock();
-    line() << "}\n\n";
+    generator.endBlock();
+    generator.line() << "}\n\n";
     break;
   }
   default:
