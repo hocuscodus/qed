@@ -119,7 +119,6 @@ struct ObjFunction : ObjCallable {
   ObjFunction *firstChild;
   ObjFunction *lastChild;
   ObjFunction *next;
-  std::stringstream s;
 
   int addUpvalue(uint8_t index, bool isField, Type type, Parser &parser);
   void add(ObjFunction *function);

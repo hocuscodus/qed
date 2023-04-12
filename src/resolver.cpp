@@ -1506,11 +1506,10 @@ void Resolver::processAttrs(UIDirectiveExpr *expr) {
               attExpr->handler = convertToString(attExpr->handler, type, parser);
               type = stringType;
             }
-          }
-
-          if (AS_OBJ_TYPE(type) == OBJ_INSTANCE) {
-            getCurrent()->function->instanceIndexes->set(getCurrent()->getDeclarationCount());
-            expr->_eventFlags |= ((ObjFunction *) AS_INSTANCE_TYPE(type)->callable)->uiFunction->eventFlags;
+            if (AS_OBJ_TYPE(type) == OBJ_INSTANCE) {
+              getCurrent()->function->instanceIndexes->set(getCurrent()->getDeclarationCount());
+              expr->_eventFlags |= ((ObjFunction *) AS_INSTANCE_TYPE(type)->callable)->uiFunction->eventFlags;
+            }
           }
 
           char *name = generateInternalVarName("v", getCurrent()->getDeclarationCount());

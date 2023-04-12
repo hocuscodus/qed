@@ -13,9 +13,10 @@
 #include "debug.hpp"
 
 static int nTabs = 0;
+std::stringstream s;
 
 std::stringstream &CodeGenerator::str() {
-  return function->s;
+  return s;
 }
 
 std::stringstream &CodeGenerator::line() {
@@ -64,7 +65,7 @@ void CodeGenerator::visitBinaryExpr(BinaryExpr *expr) {
     line() << "while(" << expr->left << ") {\n" << startBlock();
     accept<int>(expr->right, 0);
     endBlock();
-    line() << "}\n";
+    line() << "}";
   } else {
     str() << "(";
     accept<int>(expr->left, 0);
@@ -162,7 +163,7 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
   case EXPR_ASSIGN: {
     AssignExpr *subExpr = (AssignExpr *) expr->expressions[expr->count - 1];
 
-    str() << "var " << subExpr->varExp->name.getString() << " = ";
+    str() << "let " << subExpr->varExp->name.getString() << " = ";
     accept<int>(subExpr->value, 0);
     break;
   }
@@ -170,8 +171,24 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
     ObjFunction *function = (ObjFunction *) expr->_declaration->type.objType;
     CodeGenerator generator(parser, function);
     Expr *bodyExpr = function->bodyExpr;
+    CallExpr *callExpr = (CallExpr *) expr->expressions[1];
 
-    generator.line() << "function " << std::string(function->name->chars, function->name->length) << "() {\n" << generator.startBlock();
+    generator.line() << "function " << std::string(function->name->chars, function->name->length) << "(";
+
+    for (int index = 0; index < callExpr->count; index++) {
+      ListExpr *param = (ListExpr *)callExpr->arguments[index];
+      Expr *paramExpr = param->expressions[1];
+
+      if (index)
+        generator.str() << ", ";
+
+      generator.str() << ((ReferenceExpr *)paramExpr)->name.getString();
+    }
+
+    generator.str() << ") {\n" << generator.startBlock();
+
+//    for (ObjFunction *child = function->firstChild; function; child = child->next)
+//      generator.accept<int>(child->bodyExpr);
 
     if (bodyExpr)
       generator.accept<int>(bodyExpr);
@@ -186,7 +203,7 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
 //      emitByte(function->upvalues[i].index);
     }
     generator.endBlock();
-    generator.line() << "}\n\n";
+    generator.line() << "}";
     break;
   }
   default:
@@ -255,7 +272,7 @@ void CodeGenerator::visitTernaryExpr(TernaryExpr *expr) {
     str() << ") {\n" << startBlock();
     expr->middle->accept(this);
     endBlock();
-    line() << "}\n";
+    line() << "}";
   }
 }
 
@@ -266,9 +283,19 @@ void CodeGenerator::visitTypeExpr(TypeExpr *expr) {
 }
 
 void CodeGenerator::visitUnaryExpr(UnaryExpr *expr) {
-  str() << expr->op.getString() << "(";
-  accept<int>(expr->right, 0);
-  str() << ")";
+  switch (expr->op.type) {
+    case TOKEN_PERCENT:
+      str() << "((";
+      accept<int>(expr->right, 0);
+      str() << ") / 100)";
+      break;
+
+    default:
+      str() << expr->op.getString() << "(";
+      accept<int>(expr->right, 0);
+      str() << ")";
+      break;
+  }
 }
 
 void CodeGenerator::visitReferenceExpr(ReferenceExpr *expr) {

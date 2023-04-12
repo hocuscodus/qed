@@ -43,13 +43,13 @@ ObjFunction *Compiler::compile(Parser &parser) {
   ASTPrinter().print(parser.expr);
 #endif
   Resolver resolver(parser, parser.expr);
-  Reifier reifier(parser);
+//  Reifier reifier(parser);
 
   if (!resolver.resolve(this))
     return NULL;
 
-  if (!reifier.reify())
-    return NULL;
+//  if (!reifier.reify())
+//    return NULL;
 #ifdef DEBUG_PRINT_CODE
   printf("Adapted parse: ");
   ASTPrinter().print(parser.expr);

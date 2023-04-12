@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "codegen.hpp"
 #include "parser.hpp"
 #include "vm.hpp"
 #include "qni.hpp"
@@ -179,6 +180,7 @@ void runSource(const char *source) {
   if (result == INTERPRET_COMPILE_ERROR) exit(65);
   if (result == INTERPRET_RUNTIME_ERROR) exit(70);*/
   function->print();
+  std::cout << CodeGenerator(parser, NULL).str().str();
 }
 }
 

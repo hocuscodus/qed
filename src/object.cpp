@@ -548,10 +548,7 @@ void ObjFunction::add(ObjFunction *function) {
 }
 
 void ObjFunction::print() {
-  for (ObjFunction *function = firstChild; function; function = function->next)
-    function->print();
-
-  std::cout << s.str();
+//  std::cout << s.str();
 }
 
 IndexList::IndexList() {
@@ -1079,7 +1076,7 @@ ObjFunction *newFunction(Type type, ObjString *name, int arity) {
   function->firstChild = NULL;
   function->lastChild = NULL;
   function->next = NULL;
-  new(&function->s) std::stringstream();
+//  new(&function->s) std::stringstream();
   return function;
 }
 
