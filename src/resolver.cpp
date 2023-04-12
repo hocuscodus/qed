@@ -1526,17 +1526,18 @@ void Resolver::processAttrs(UIDirectiveExpr *expr) {
         Type type = removeDeclaration();
 
         if (!IS_VOID(type)) {
-          if (attExpr->_uiIndex == ATTRIBUTE_OUT) {
+          if (attExpr->_uiIndex == ATTRIBUTE_OUT)
             if (AS_OBJ_TYPE(type) != OBJ_INSTANCE && AS_OBJ_TYPE(type) != OBJ_FUNCTION) {
               attExpr->handler = convertToString(attExpr->handler, type, parser);
               type = stringType;
+            } else if (AS_OBJ_TYPE(type) == OBJ_INSTANCE) {
+              getCurrent()->function->instanceIndexes->set(getCurrent()->getDeclarationCount());
+              expr->_eventFlags |= ((ObjFunction *) AS_INSTANCE_TYPE(type)->callable)->uiFunction->eventFlags;
             }
-          }
-
-          if (AS_OBJ_TYPE(type) == OBJ_INSTANCE) {
-            getCurrent()->function->instanceIndexes->set(getCurrent()->getDeclarationCount());
-            expr->_eventFlags |= ((ObjFunction *) AS_INSTANCE_TYPE(type)->callable)->uiFunction->eventFlags;
-          }
+            else {
+              attExpr->_uiIndex++;
+              attExpr->_uiIndex--;
+            }
 
           char *name = generateInternalVarName("v", getCurrent()->getDeclarationCount());
           DeclarationExpr *decExpr = new DeclarationExpr(type, buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1), attExpr->handler);
