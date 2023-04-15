@@ -22,6 +22,7 @@ struct Compiler {
   int fieldCount;
   int declarationStart;
   int declarationCount;
+  int vCount;
   std::stack<Type> typeStack;
   Declaration declarations[UINT8_COUNT];
   ObjFunction *compile(Parser &parser);

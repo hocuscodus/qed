@@ -85,6 +85,7 @@ Declaration *Compiler::beginScope(ObjFunction *function) {
   fieldCount = 1;
   declarationStart = 0;
   declarationCount = 0;
+  vCount = 1;
   this->function = function;
 
   if (enclosing) {

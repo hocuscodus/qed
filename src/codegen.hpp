@@ -43,8 +43,8 @@ public:
 
   std::stringstream &str();
   std::stringstream &line();
-  const char *startBlock();
-  const char *endBlock();
+  void startBlock();
+  void endBlock();
 };
 
 #endif

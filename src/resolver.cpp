@@ -489,7 +489,7 @@ void Resolver::visitBinaryExpr(BinaryExpr *expr) {
   }
 }
 
-static Expr *generateUIFunction(const char *type, const char *name, char *args, Expr *uiExpr, int count, int restLength, Expr **rest) {
+static Expr *generateFunction(const char *type, const char *name, char *args, Expr *copyExpr, int count, int restLength, Expr **rest) {
     ReferenceExpr *nameExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1), -1, false);
     Expr **bodyExprs = new Expr *[count + restLength];
     Expr **functionExprs = new Expr *[3];
@@ -512,7 +512,7 @@ static Expr *generateUIFunction(const char *type, const char *name, char *args, 
     }
 
     for (int index = 0; index < count; index++)
-      bodyExprs[index] = uiExpr;
+      bodyExprs[index] = copyExpr;
 
     for (int index = 0; index < restLength; index++)
       bodyExprs[count + index] = rest[index];
@@ -528,6 +528,10 @@ static Expr *generateUIFunction(const char *type, const char *name, char *args, 
     functionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), count + restLength, bodyExprs, 0, NULL);
 
     return new ListExpr(3, functionExprs, EXPR_LIST);
+}
+
+static Expr *generateUIFunction(const char *type, const char *name, char *args, Expr *uiExpr, int count, int restLength, Expr **rest) {
+  return new StatementExpr(generateFunction(type, name, args, uiExpr, count, restLength, rest));
 }
 
 static Token tok = buildToken(TOKEN_IDENTIFIER, "Capital", 7, -1);
@@ -569,7 +573,7 @@ void Resolver::visitCallExpr(CallExpr *expr) {
         if (!IS_VOID(expr->callable->type))
           sprintf(buffer, "%s _ret", expr->callable->type.toString());
 
-        expr->handler = generateUIFunction("void", "ReturnHandler_", !IS_VOID(expr->callable->type) ? buffer : NULL, expr->handler, 1, 0, NULL);
+        expr->handler = generateFunction("void", "ReturnHandler_", !IS_VOID(expr->callable->type) ? buffer : NULL, expr->handler, 1, 0, NULL);
         accept<int>(expr->handler);
         Type type = getCurrent()->peekDeclaration();// = popType();
         expr->handlerFunction = AS_FUNCTION_TYPE(type);
@@ -592,7 +596,7 @@ void Resolver::visitCallExpr(CallExpr *expr) {
         if (!IS_VOID(callable->type))
           sprintf(buffer, "%s _ret", callable->type.toString());
 
-        expr->handler = generateUIFunction("void", "ReturnHandler_", !IS_VOID(callable->type) ? buffer : NULL, expr->handler, 1, 0, NULL);
+        expr->handler = generateFunction("void", "ReturnHandler_", !IS_VOID(callable->type) ? buffer : NULL, expr->handler, 1, 0, NULL);
         accept<int>(expr->handler);
         popType();
       }
@@ -1029,6 +1033,7 @@ void Resolver::visitOpcodeExpr(OpcodeExpr *expr) {
 }
 
 static std::list<Expr *> uiExprs;
+static std::list<Type> uiTypes;
 
 void Resolver::visitReturnExpr(ReturnExpr *expr) {
   if (getCurrent()->function->isClass()) {
@@ -1037,6 +1042,7 @@ void Resolver::visitReturnExpr(ReturnExpr *expr) {
 
     if (expr->value) {
       uiExprs.push_back(expr->value);
+      uiTypes.push_back({VAL_VOID});
       strcpy(buf, "{void Ret_() {ReturnHandler_($EXPR)}; post(Ret_)}");
     }
 
@@ -1184,9 +1190,12 @@ void Resolver::visitReferenceExpr(ReferenceExpr *expr) {
 }
 
 void Resolver::visitSwapExpr(SwapExpr *expr) {
+  Type type = uiTypes.front();
+
   expr->_expr = uiExprs.front();
   uiExprs.pop_front();
-  accept<int>(expr->_expr);
+  uiTypes.pop_front();
+  getCurrent()->pushType(type);
 }
 
 Type Resolver::popType() {
@@ -1219,7 +1228,7 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
     Expr *subExpr = expr->expressions[index];
 
     if (subExpr->type == EXPR_UIDIRECTIVE) {
-      if (++uiParseCount >= 1)
+      if (++uiParseCount >= 0)
         ss->str("");
 
       if (getParseStep() == PARSE_EVENTS) {
@@ -1233,7 +1242,10 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
     if (subExpr->type == EXPR_UIDIRECTIVE) {
       UIDirectiveExpr *exprUI = (UIDirectiveExpr *) subExpr;
 
-      if (uiParseCount) {
+      if (uiParseCount >= 0) {
+        if (uiParseCount == 0)
+          getCurrent()->function->eventFlags = exprUI->_eventFlags;
+
         if (uiParseCount == 3) {
           nTabs++;
           insertTabs();
@@ -1244,7 +1256,7 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
         printf("CODE %d\n%s", uiParseCount, ss->str().c_str());
 #endif
         expr = (GroupingExpr *) parse(ss->str().c_str(), index, 1, expr);
-      }
+      }/*
       else {
         getCurrent()->function->eventFlags = exprUI->_eventFlags;
         expr->expressions = RESIZE_ARRAY(Expr *, expr->expressions, expr->count, expr->count + uiExprs.size() - 1);
@@ -1256,7 +1268,7 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
         expr->count += uiExprs.size();
         uiExprs.clear();
       }
-
+*/
       index--;
     }
     else
@@ -1501,24 +1513,36 @@ void Resolver::processAttrs(UIDirectiveExpr *expr) {
         Type type = popType();
 
         if (!IS_VOID(type)) {
-          if (attExpr->_uiIndex == ATTRIBUTE_OUT) {
-            if (AS_OBJ_TYPE(type) != OBJ_INSTANCE && AS_OBJ_TYPE(type) != OBJ_FUNCTION) {
-              attExpr->handler = convertToString(attExpr->handler, type, parser);
-              type = stringType;
-            }
-            if (AS_OBJ_TYPE(type) == OBJ_INSTANCE) {
-              getCurrent()->function->instanceIndexes->set(getCurrent()->getDeclarationCount());
-              expr->_eventFlags |= ((ObjFunction *) AS_INSTANCE_TYPE(type)->callable)->uiFunction->eventFlags;
-            }
-          }
+          if (attExpr->_uiIndex == ATTRIBUTE_OUT)
+            switch (AS_OBJ_TYPE(type)) {
+              case OBJ_FUNCTION:
+                break;
 
+              case OBJ_INSTANCE:
+                getCurrent()->function->instanceIndexes->set(getCurrent()->getDeclarationCount());
+                expr->_eventFlags |= ((ObjFunction *) AS_INSTANCE_TYPE(type)->callable)->uiFunction->eventFlags;
+                break;
+
+              default:
+                attExpr->handler = convertToString(attExpr->handler, type, parser);
+                type = stringType;
+                break;
+            }
+
+            insertTabs();
+            (*ss) << "var v" << getCurrent()->vCount << " = $EXPR;\n";
+            uiExprs.push_back(attExpr->handler);
+            uiTypes.push_back(type);
+            attExpr->_index = getCurrent()->vCount++;
+            attExpr->handler = NULL;
+/*
           char *name = generateInternalVarName("v", getCurrent()->getDeclarationCount());
           DeclarationExpr *decExpr = new DeclarationExpr(type, buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1), attExpr->handler);
 
           attExpr->handler = NULL;
           attExpr->_index = getCurrent()->getDeclarationCount();
           uiExprs.push_back(decExpr);
-          getCurrent()->addDeclaration(type, decExpr->name);
+          getCurrent()->addDeclaration(type, decExpr->name);*/
         }
         else
           parser.error("Value must not be void");
@@ -1961,6 +1985,7 @@ void Resolver::onEvent(UIDirectiveExpr *expr) {
                 insertTabs();
                 (*ss) << "{void Ret_() {$EXPR}; post(Ret_)}\n";
                 uiExprs.push_back(attExpr->handler);
+                uiTypes.push_back({VAL_VOID});
                 attExpr->handler = NULL;
 
                 --nTabs;

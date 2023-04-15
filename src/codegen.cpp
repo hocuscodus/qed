@@ -12,7 +12,7 @@
 #include "attrset.hpp"
 #include "debug.hpp"
 
-static int nTabs = 0;
+static int nTabs = -1;
 std::stringstream s;
 
 std::stringstream &CodeGenerator::str() {
@@ -26,14 +26,14 @@ std::stringstream &CodeGenerator::line() {
   return str();
 }
 
-const char *CodeGenerator::startBlock() {
-  nTabs++;
-  return "";
+void CodeGenerator::startBlock() {
+  if (nTabs++ >= 0)
+    str() << "{\n";
 }
 
-const char *CodeGenerator::endBlock() {
-  nTabs--;
-  return "";
+void CodeGenerator::endBlock() {
+  if (--nTabs >= 0)
+    line() << "}\n";
 }
 
 CodeGenerator::CodeGenerator(Parser &parser, ObjFunction *function) : ExprVisitor(), parser(parser) {
@@ -62,10 +62,10 @@ void CodeGenerator::visitUIDirectiveExpr(UIDirectiveExpr *expr) {
 
 void CodeGenerator::visitBinaryExpr(BinaryExpr *expr) {
   if (expr->op.type == TOKEN_WHILE) {
-    line() << "while(" << expr->left << ") {\n" << startBlock();
+    str() << "while(" << expr->left << ") ";
+    startBlock();
     accept<int>(expr->right, 0);
     endBlock();
-    line() << "}";
   } else {
     str() << "(";
     accept<int>(expr->left, 0);
@@ -133,14 +133,18 @@ void CodeGenerator::visitGetExpr(GetExpr *expr) {
 }
 
 void CodeGenerator::visitGroupingExpr(GroupingExpr *expr) {
+  startBlock();
+
   for (int index = 0; index < expr->count; index++) {
-    line();
-    accept<int>(expr->expressions[index], 0);
-    str() << "\n";
+    Expr *subExpr = expr->expressions[index];
+
+    accept<int>(subExpr, 0);
   }
 
   if (expr->ui)
     accept<int>(expr->ui, 0);
+
+  endBlock();
 }
 
 void CodeGenerator::visitArrayExpr(ArrayExpr *expr) {
@@ -173,7 +177,7 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
     Expr *bodyExpr = function->bodyExpr;
     CallExpr *callExpr = (CallExpr *) expr->expressions[1];
 
-    generator.line() << "function " << std::string(function->name->chars, function->name->length) << "(";
+    generator.str() << "function " << std::string(function->name->chars, function->name->length) << "(";
 
     for (int index = 0; index < callExpr->count; index++) {
       ListExpr *param = (ListExpr *)callExpr->arguments[index];
@@ -185,7 +189,7 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
       generator.str() << ((ReferenceExpr *)paramExpr)->name.getString();
     }
 
-    generator.str() << ") {\n" << generator.startBlock();
+    str() << ") ";
 
 //    for (ObjFunction *child = function->firstChild; function; child = child->next)
 //      generator.accept<int>(child->bodyExpr);
@@ -202,8 +206,6 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
 //      emitByte(function->upvalues[i].isField ? 1 : 0);
 //      emitByte(function->upvalues[i].index);
     }
-    generator.endBlock();
-    generator.line() << "}";
     break;
   }
   default:
@@ -235,12 +237,15 @@ void CodeGenerator::visitOpcodeExpr(OpcodeExpr *expr) {
 }
 
 void CodeGenerator::visitReturnExpr(ReturnExpr *expr) {
-  str() << "return (";
+  line() << "return";
 
-  if (expr->value)
+  if (expr->value) {
+    str() << " (";
     accept<int>(expr->value, 0);
+    str() << ")";
+  }
 
-  str() << ")";
+  str() << ";\n";
 }
 
 void CodeGenerator::visitSetExpr(SetExpr *expr) {
@@ -253,6 +258,11 @@ void CodeGenerator::visitSetExpr(SetExpr *expr) {
 void CodeGenerator::visitStatementExpr(StatementExpr *expr) {
   line();
   expr->expr->accept(this);
+
+  if (expr->expr->type != EXPR_LIST || ((ListExpr *) expr->expr)->listType != EXPR_CALL)
+    str() << ";";
+
+  str() << "\n";
 }
 
 void CodeGenerator::visitSuperExpr(SuperExpr *expr) {
@@ -267,12 +277,12 @@ void CodeGenerator::visitTernaryExpr(TernaryExpr *expr) {
     expr->right->accept(this);
   }
   else {
-    str() << "if (";
+    line() << "if (";
     expr->left->accept(this);
-    str() << ") {\n" << startBlock();
+    str() << ") ";
+    startBlock();
     expr->middle->accept(this);
     endBlock();
-    line() << "}";
   }
 }
 

@@ -350,7 +350,7 @@ void ASTPrinter::visitUnaryExpr(UnaryExpr *expr) {
 }
 
 void ASTPrinter::visitReferenceExpr(ReferenceExpr *expr) {
-  printf("(var %d)", expr->index);
+  printf("(var %s %d)", expr->name.getString().c_str(), expr->index);
 }
 
 void ASTPrinter::visitSwapExpr(SwapExpr *expr) {
