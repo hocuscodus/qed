@@ -198,7 +198,7 @@ QNI_CLASS(CoList_yield) {
     			}
     		});
 
-    		put("CoList.yield", new Executer() {
+				put("CoList.Yield", new Executer() {
     			@SuppressWarnings("unchecked")
     			public void run(VM &vm, Obj obj) {
     				Object[] objs = (Object[]) obj.parent.data[0];

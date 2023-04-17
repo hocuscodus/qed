@@ -57,7 +57,7 @@ const char *qedLib =
 ""
 "  void end();"
 "  bool remove(int index);"
-"  bool yield();"
+"  bool Yield();"
 "  bool process();"
 "}\n"
 ;

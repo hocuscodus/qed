@@ -15,6 +15,10 @@
 static int nTabs = -1;
 std::stringstream s;
 
+bool needsSemicolon(Expr *expr) {
+  return expr->type != EXPR_GROUPING && (expr->type != EXPR_LIST || ((ListExpr *) expr)->listType != EXPR_CALL) && (expr->type != EXPR_SWAP || needsSemicolon(((SwapExpr *) expr)->_expr));
+}
+
 std::stringstream &CodeGenerator::str() {
   return s;
 }
@@ -259,10 +263,8 @@ void CodeGenerator::visitStatementExpr(StatementExpr *expr) {
   line();
   expr->expr->accept(this);
 
-  if (expr->expr->type != EXPR_LIST || ((ListExpr *) expr->expr)->listType != EXPR_CALL)
-    str() << ";";
-
-  str() << "\n";
+  if (needsSemicolon(expr->expr))
+    str() << ";\n";
 }
 
 void CodeGenerator::visitSuperExpr(SuperExpr *expr) {
@@ -270,11 +272,13 @@ void CodeGenerator::visitSuperExpr(SuperExpr *expr) {
 
 void CodeGenerator::visitTernaryExpr(TernaryExpr *expr) {
   if (expr->right) {
+    str() << "(";
     expr->left->accept(this);
     str() << " ? ";
     expr->middle->accept(this);
     str() << " : ";
     expr->right->accept(this);
+    str() << ")";
   }
   else {
     line() << "if (";
