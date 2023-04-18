@@ -123,6 +123,7 @@ struct ReferenceExpr : public Expr {
   Token name;
   int8_t index;
   bool upvalueFlag;
+  Declaration* _declaration;
 
   ReferenceExpr(Token name, int8_t index, bool upvalueFlag);
   void accept(ExprVisitor *visitor);

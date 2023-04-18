@@ -53,12 +53,6 @@ struct Obj {
   const char *toString();
 };
 
-typedef struct {
-  uint8_t index;
-  bool isField;
-  Type type;
-} Upvalue;
-
 class Parser;
 
 struct ObjFunctionPtr {
@@ -79,6 +73,12 @@ typedef struct {
   bool isField;
   int realIndex;
 } Declaration;
+
+typedef struct {
+  uint8_t index;
+  bool isField;
+  Declaration *declaration;
+} Upvalue;
 
 struct Compiler;
 
@@ -120,7 +120,7 @@ struct ObjFunction : ObjCallable {
   ObjFunction *lastChild;
   ObjFunction *next;
 
-  int addUpvalue(uint8_t index, bool isField, Type type, Parser &parser);
+  int addUpvalue(uint8_t index, bool isField, Declaration *declaration, Parser &parser);
   void add(ObjFunction *function);
   void print();
 };

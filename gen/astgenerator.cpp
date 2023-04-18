@@ -274,7 +274,7 @@ int main(int argc, const char *argv[]) {
   const char *outputDir = argv[1];
 
   const char *array1[] = {
-    "Reference   : Token name, int8_t index, bool upvalueFlag",
+    "Reference   : Token name, int8_t index, bool upvalueFlag, Declaration* _declaration",
     "UIAttribute : Token name, Expr* handler, int _uiIndex, int _index",
     "UIDirective : int childDir, int attCount, UIAttributeExpr** attributes, UIDirectiveExpr* previous, UIDirectiveExpr* lastChild, int viewIndex, bool childrenViewFlag, int _layoutIndexes[NUM_DIRS], long _eventFlags",
     "Assign      : ReferenceExpr* varExp, Token op, Expr* value, OpCode opCode",

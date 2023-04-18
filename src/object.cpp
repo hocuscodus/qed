@@ -518,7 +518,7 @@ bool ObjCallable::isObject() {
   return compiler->inBlock() ? compiler->fieldCount : compiler->fieldCount > 1 || isClass();
 }
 
-int ObjFunction::addUpvalue(uint8_t index, bool isField, Type type, Parser &parser) {
+int ObjFunction::addUpvalue(uint8_t index, bool isField, Declaration *declaration, Parser &parser) {
   for (int i = 0; i < upvalueCount; i++) {
     Upvalue *upvalue = &upvalues[i];
 
@@ -533,7 +533,7 @@ int ObjFunction::addUpvalue(uint8_t index, bool isField, Type type, Parser &pars
 
   upvalues[upvalueCount].isField = isField;
   upvalues[upvalueCount].index = index;
-  upvalues[upvalueCount].type = type;
+  upvalues[upvalueCount].declaration = declaration;
 
   return upvalueCount++;
 }

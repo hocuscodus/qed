@@ -276,20 +276,20 @@ int Compiler::resolveUpvalue(Token *name) {
       int upvalue = current->resolveUpvalue(name);
 
       if (upvalue != -1)
-        return addUpvalue((uint8_t) upvalue, enclosing->function->upvalues[upvalue].type, false);
+        return addUpvalue((uint8_t) upvalue, enclosing->function->upvalues[upvalue].declaration, false);
       break;
     }
     default:
       current->getDeclaration(decIndex).isField = true;
-      return addUpvalue((uint8_t) decIndex, current->getDeclaration(decIndex).type, true);
+      return addUpvalue((uint8_t) decIndex, &current->getDeclaration(decIndex), true);
     }
   }
 
   return -1;
 }
 
-int Compiler::addUpvalue(uint8_t index, Type type, bool isDeclaration) {
-  return function->addUpvalue(index, isDeclaration, type, *parser);
+int Compiler::addUpvalue(uint8_t index, Declaration *declaration, bool isDeclaration) {
+  return function->addUpvalue(index, isDeclaration, declaration, *parser);
 }
 
 void Compiler::resolveReferenceExpr(ReferenceExpr *expr) {
@@ -310,24 +310,26 @@ void Compiler::resolveReferenceExpr(ReferenceExpr *expr) {
   switch (expr->index) {
   case -2:
     expr->index = -1;
-    pushType(VAL_VOID);
+    expr->_declaration = NULL;
     break;
 
   case -1:
     if ((expr->index = current->resolveUpvalue(&expr->name)) != -1) {
       expr->upvalueFlag = true;
-      pushType(function->upvalues[expr->index].type);
+      expr->_declaration = function->upvalues[expr->index].declaration;
     }
     else {
       parser->error("Variable '%.*s' must be defined", expr->name.length, expr->name.start);
-      pushType(VAL_VOID);
+      expr->_declaration = NULL;
     }
     break;
 
   default:
-    pushType(current->getDeclaration(expr->index).type);
+    expr->_declaration = &current->getDeclaration(expr->index);
     break;
   }
+
+  pushType(expr->_declaration ? expr->_declaration->type : (Type) {VAL_VOID});
 }
 
 void Compiler::checkDeclaration(Token *name) {

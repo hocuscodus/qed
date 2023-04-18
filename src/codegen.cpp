@@ -171,7 +171,7 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
   case EXPR_ASSIGN: {
     AssignExpr *subExpr = (AssignExpr *) expr->expressions[expr->count - 1];
 
-    str() << "let " << subExpr->varExp->name.getString() << " = ";
+    str() << (expr->_declaration->isField ? "this." : "const ") << subExpr->varExp->name.getString() << " = ";
     accept<int>(subExpr->value, 0);
     break;
   }
@@ -197,9 +197,35 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
 
 //    for (ObjFunction *child = function->firstChild; function; child = child->next)
 //      generator.accept<int>(child->bodyExpr);
+    bool arityFlag = false;
+
+    for (int index = 0; !arityFlag && index < function->arity; index++)
+      arityFlag = function->compiler->declarations[index].isField;
+
+    if (arityFlag) {
+      startBlock();
+
+      for (int index = 0; index < function->arity; index++) {
+        Declaration &declaration = function->compiler->declarations[index];
+
+        if (declaration.isField) {
+          ListExpr *param = (ListExpr *)callExpr->arguments[index];
+          Expr *paramExpr = param->expressions[1];
+          Declaration &declaration = function->compiler->declarations[index];
+          std::string name = ((ReferenceExpr *)paramExpr)->name.getString();
+
+          line() << "this." << name << " = " << name << ";\n";
+        }
+      }
+
+      line();
+    }
 
     if (bodyExpr)
       generator.accept<int>(bodyExpr);
+
+    if (arityFlag)
+      endBlock();
 
     if (parser.hadError)
       return;
@@ -313,7 +339,7 @@ void CodeGenerator::visitUnaryExpr(UnaryExpr *expr) {
 }
 
 void CodeGenerator::visitReferenceExpr(ReferenceExpr *expr) {
-  str() << expr->name.getString();
+  str() << (expr->_declaration ? expr->_declaration->name : expr->name).getString();
 }
 
 void CodeGenerator::visitSwapExpr(SwapExpr *expr) {

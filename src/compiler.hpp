@@ -38,7 +38,7 @@ struct Compiler {
   Type &peekDeclaration();
   int resolveReference(Token *name);
   int resolveUpvalue(Token *name);
-  int addUpvalue(uint8_t index, Type type, bool isDeclaration);
+  int addUpvalue(uint8_t index, Declaration *declaration, bool isDeclaration);
   void resolveReferenceExpr(ReferenceExpr *expr);
   void checkDeclaration(Token *name);
   bool inBlock();

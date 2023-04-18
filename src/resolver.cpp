@@ -814,6 +814,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
 
       if (assignExpr->varExp && assignExpr->value) {
         expr->listType = subExpr->type;
+        assignExpr->varExp->_declaration = NULL;
         getCurrent()->checkDeclaration(&assignExpr->varExp->name);
         accept<int>(assignExpr->value, 0);
 
@@ -995,7 +996,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
     }
   }
   else // parse array expression
-    for (int index = 0; index < expr->count; index++) {
+    for (int index = 1; index < expr->count; index++) {
       Expr *subExpr = expr->expressions[index];
 
       accept<int>(subExpr, 0);
@@ -1184,6 +1185,7 @@ void Resolver::visitReferenceExpr(ReferenceExpr *expr) {
   if (expr->index != -1) {
     getCurrent()->pushType({VAL_OBJ, primitives[expr->index]});
     expr->index = -1;
+    expr->_declaration = NULL;
   }
   else
     getCurrent()->resolveReferenceExpr(expr);
