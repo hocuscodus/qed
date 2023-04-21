@@ -143,6 +143,7 @@ Declaration *Compiler::addDeclaration(Type type, Token &name) {
     dec->type = type;
     dec->name = name;
     dec->isField = function->isClass();
+    dec->function = function;
   }
 
   return dec;

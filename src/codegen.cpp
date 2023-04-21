@@ -73,7 +73,21 @@ void CodeGenerator::visitBinaryExpr(BinaryExpr *expr) {
   } else {
     str() << "(";
     accept<int>(expr->left, 0);
-    str() << " " << expr->op.getString() << " ";
+    str() << " ";
+
+    switch (expr->op.type) {
+      case TOKEN_EQUAL_EQUAL:
+        str() << "===";
+        break;
+      case TOKEN_BANG_EQUAL:
+        str() << "!==";
+        break;
+      default:
+        str() << expr->op.getString();
+        break;
+    }
+
+    str() << " ";
     accept<int>(expr->right, 0);
     str() << ")";
   }
@@ -91,12 +105,12 @@ void CodeGenerator::visitCallExpr(CallExpr *expr) {
       str() << ", ";
 
     accept<int>(expr->arguments[index]);
-
-    if (expr->callable->compiler->declarations[index].isField) {
-    }
   }
 
   if (expr->handler) {
+    if (expr->count)
+      str() << ", ";
+
     {
       CodeGenerator generator(parser, expr->handlerFunction);
 
@@ -106,11 +120,6 @@ void CodeGenerator::visitCallExpr(CallExpr *expr) {
       if (parser.hadError)
         return;
     }
-
-    if (expr->count)
-      str() << ", ";
-
-    str() << "ReturnHandler_";
   }
 
   str() << ")";
@@ -138,6 +147,33 @@ void CodeGenerator::visitGetExpr(GetExpr *expr) {
 
 void CodeGenerator::visitGroupingExpr(GroupingExpr *expr) {
   startBlock();
+
+  if (function->name ? function->bodyExpr == expr : expr == parser.expr) {
+    bool classFlag = function->isClass();
+    bool arityFlag = false;
+
+    for (int index = 0; !arityFlag && index < function->arity; index++)
+      arityFlag = function->compiler->declarations[index + 1].isField;
+
+//    for (int index = 0; !classFlag && index < function->upvalueCount; index++)
+//      classFlag = function->upvalues[index].isField;
+
+    for (int index = 0; index < function->arity; index++) {
+      Declaration &declaration = function->compiler->declarations[index + 1];
+
+      if (declaration.isField) {
+        std::string name = declaration.name.getString();
+
+        line() << "this." << name << " = " << name << ";\n";
+      }
+    }
+
+    if (function->isUserClass())
+        line() << "this.ReturnHandler_ = ReturnHandler_;\n";
+
+    if (classFlag)
+      line() << "const " << function->getThisVariableName() << " = this;\n";
+  }
 
   for (int index = 0; index < expr->count; index++) {
     Expr *subExpr = expr->expressions[index];
@@ -171,7 +207,7 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
   case EXPR_ASSIGN: {
     AssignExpr *subExpr = (AssignExpr *) expr->expressions[expr->count - 1];
 
-    str() << (expr->_declaration->isField ? "this." : "const ") << subExpr->varExp->name.getString() << " = ";
+    str() << (expr->_declaration->isField ? "this." : expr->_declaration->function->isClass() ? "const." : "let ") << subExpr->varExp->name.getString() << " = ";
     accept<int>(subExpr->value, 0);
     break;
   }
@@ -180,8 +216,9 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
     CodeGenerator generator(parser, function);
     Expr *bodyExpr = function->bodyExpr;
     CallExpr *callExpr = (CallExpr *) expr->expressions[1];
+    std::string functionName = std::string(function->name->chars, function->name->length);
 
-    generator.str() << "function " << std::string(function->name->chars, function->name->length) << "(";
+    generator.str() << "function " << functionName << "(";
 
     for (int index = 0; index < callExpr->count; index++) {
       ListExpr *param = (ListExpr *)callExpr->arguments[index];
@@ -193,39 +230,19 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
       generator.str() << ((ReferenceExpr *)paramExpr)->name.getString();
     }
 
+    if (function->isUserClass()) {
+      if (callExpr->count)
+        generator.str() << ", ";
+
+      generator.str() << "ReturnHandler_";
+    }
+
     str() << ") ";
 
 //    for (ObjFunction *child = function->firstChild; function; child = child->next)
 //      generator.accept<int>(child->bodyExpr);
-    bool arityFlag = false;
-
-    for (int index = 0; !arityFlag && index < function->arity; index++)
-      arityFlag = function->compiler->declarations[index].isField;
-
-    if (arityFlag) {
-      startBlock();
-
-      for (int index = 0; index < function->arity; index++) {
-        Declaration &declaration = function->compiler->declarations[index];
-
-        if (declaration.isField) {
-          ListExpr *param = (ListExpr *)callExpr->arguments[index];
-          Expr *paramExpr = param->expressions[1];
-          Declaration &declaration = function->compiler->declarations[index];
-          std::string name = ((ReferenceExpr *)paramExpr)->name.getString();
-
-          line() << "this." << name << " = " << name << ";\n";
-        }
-      }
-
-      line();
-    }
-
     if (bodyExpr)
       generator.accept<int>(bodyExpr);
-
-    if (arityFlag)
-      endBlock();
 
     if (parser.hadError)
       return;
@@ -267,15 +284,21 @@ void CodeGenerator::visitOpcodeExpr(OpcodeExpr *expr) {
 }
 
 void CodeGenerator::visitReturnExpr(ReturnExpr *expr) {
-  line() << "return";
-
-  if (expr->value) {
-    str() << " (";
+  if (function->isClass()) {
     accept<int>(expr->value, 0);
-    str() << ")";
+    line() << "return;";
   }
+  else {
+    line() << "return";
 
-  str() << ";\n";
+    if (expr->value) {
+      str() << " (";
+      accept<int>(expr->value, 0);
+      str() << ")";
+    }
+
+    str() << ";\n";
+  }
 }
 
 void CodeGenerator::visitSetExpr(SetExpr *expr) {
@@ -339,7 +362,13 @@ void CodeGenerator::visitUnaryExpr(UnaryExpr *expr) {
 }
 
 void CodeGenerator::visitReferenceExpr(ReferenceExpr *expr) {
-  str() << (expr->_declaration ? expr->_declaration->name : expr->name).getString();
+  if (expr->_declaration && expr->_declaration->function->isClass())
+    if (expr->_declaration->function == function)
+      str() << "this." << expr->_declaration->name.getString();
+    else
+      str() << expr->_declaration->function->getThisVariableName() << "." << expr->_declaration->name.getString();
+  else
+    str() << expr->name.getString();
 }
 
 void CodeGenerator::visitSwapExpr(SwapExpr *expr) {

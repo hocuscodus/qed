@@ -1038,12 +1038,11 @@ static std::list<Type> uiTypes;
 
 void Resolver::visitReturnExpr(ReturnExpr *expr) {
   if (getCurrent()->function->isClass()) {
-//    char buf[128] = "{void Ret_() {ReturnHandler_()}; post(Ret_)}";
     char buf[128] = "{post(ReturnHandler_)}";
 
     if (expr->value) {
       uiExprs.push_back(expr->value);
-      uiTypes.push_back({VAL_VOID});
+      uiTypes.push_back({(ValueType)-1});
       strcpy(buf, "{void Ret_() {ReturnHandler_($EXPR)}; post(Ret_)}");
     }
 
@@ -1197,7 +1196,11 @@ void Resolver::visitSwapExpr(SwapExpr *expr) {
   expr->_expr = uiExprs.front();
   uiExprs.pop_front();
   uiTypes.pop_front();
-  getCurrent()->pushType(type);
+
+  if (type.valueType < VAL_VOID)
+    accept<int>(expr->_expr);
+  else
+    getCurrent()->pushType(type);
 }
 
 Type Resolver::popType() {
@@ -1987,7 +1990,7 @@ void Resolver::onEvent(UIDirectiveExpr *expr) {
                 insertTabs();
                 (*ss) << "{void Ret_() {$EXPR}; post(Ret_)}\n";
                 uiExprs.push_back(attExpr->handler);
-                uiTypes.push_back({VAL_VOID});
+                uiTypes.push_back({(ValueType)-1});
                 attExpr->handler = NULL;
 
                 --nTabs;

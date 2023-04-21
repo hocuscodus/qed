@@ -67,11 +67,14 @@ struct ObjNamed {
   ObjString *name;
 };
 
+struct ObjFunction;
+
 typedef struct {
   Type type;
   Token name;
   bool isField;
   int realIndex;
+  ObjFunction *function;
 } Declaration;
 
 typedef struct {
@@ -88,6 +91,8 @@ struct ObjCallable : ObjNamed {
   Compiler *compiler;
 
   bool isClass();
+  bool isUserClass();
+  std::string getThisVariableName();
   bool isObject();
 };
 

@@ -514,6 +514,22 @@ bool ObjCallable::isClass() {
   return name == NULL || (name->chars[0] >= 'A' && name->chars[0] <= 'Z');
 }
 
+bool endsWith(std::string const &str, std::string const &suffix) {
+    if (str.length() < suffix.length()) {
+        return false;
+    }
+    return str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0;
+}
+
+bool ObjCallable::isUserClass() {
+  return isClass() && name && !endsWith(std::string(name->chars, name->length), "_");
+//  return isClass() && (!name || !endsWith(std::string(name->chars, name->length), "_"));
+}
+
+std::string ObjCallable::getThisVariableName() {
+  return name ? std::string(name->chars, name->length) + "$this" : "globalThis$";
+}
+
 bool ObjCallable::isObject() {
   return compiler->inBlock() ? compiler->fieldCount : compiler->fieldCount > 1 || isClass();
 }
