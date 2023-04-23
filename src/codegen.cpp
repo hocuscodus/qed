@@ -184,6 +184,9 @@ void CodeGenerator::visitGroupingExpr(GroupingExpr *expr) {
   if (expr->ui)
     accept<int>(expr->ui, 0);
 
+  if (expr == parser.expr)
+    line() << "const ui_ = new UI_;\n";
+
   endBlock();
 }
 
@@ -218,7 +221,7 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
     CallExpr *callExpr = (CallExpr *) expr->expressions[1];
     std::string functionName = std::string(function->name->chars, function->name->length);
 
-    generator.str() << "function " << functionName << "(";
+    generator.str() << "this." << functionName << " = function(";
 
     for (int index = 0; index < callExpr->count; index++) {
       ListExpr *param = (ListExpr *)callExpr->arguments[index];
@@ -253,6 +256,12 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
 //      emitByte(function->upvalues[i].isField ? 1 : 0);
 //      emitByte(function->upvalues[i].index);
     }
+    break;
+  }
+  case EXPR_REFERENCE: {
+    ReferenceExpr *varExp = (ReferenceExpr *) expr->expressions[expr->count - 1];
+
+    str() << (expr->_declaration->isField ? "this." : "let ") << varExp->name.getString() << " = null";
     break;
   }
   default:

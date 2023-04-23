@@ -714,17 +714,19 @@ void Resolver::visitFunctionExpr(FunctionExpr *expr) {/*
 }
 
 void Resolver::visitGetExpr(GetExpr *expr) {
+  pushSignature(NULL);
   accept<int>(expr->object);
+  popSignature();
 
   Type objectType = popType();
 
   if (AS_OBJ_TYPE(objectType) != OBJ_INSTANCE)
     parser.errorAt(&expr->name, "Only instances have properties.");
   else {
-    ObjFunction *type = AS_FUNCTION_TYPE(objectType);
+    ObjInstance *type = AS_INSTANCE_TYPE(objectType);
 
-    for (int count = 0, i = 0; i < type->compiler->declarationCount; i++) {
-      Declaration *dec = &type->compiler->declarations[i];
+    for (int count = 0, i = 0; i < type->callable->compiler->declarationCount; i++) {
+      Declaration *dec = &type->callable->compiler->declarations[i];
 
       if (dec->isField) {
         if (identifiersEqual(&expr->name, &dec->name)) {
@@ -945,6 +947,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
     case EXPR_REFERENCE: {
       ReferenceExpr *varExpr = (ReferenceExpr *)subExpr;
 
+      expr->listType = subExpr->type;
       getCurrent()->checkDeclaration(&varExpr->name);
       expr->_declaration = getCurrent()->addDeclaration(returnType, varExpr->name);
 
@@ -1073,10 +1076,10 @@ void Resolver::visitSetExpr(SetExpr *expr) {
   if (AS_OBJ_TYPE(objectType) != OBJ_INSTANCE)
     parser.errorAt(&expr->name, "Only instances have properties.");
   else {
-    ObjFunction *type = AS_FUNCTION_TYPE(objectType);
+    ObjInstance *type = AS_INSTANCE_TYPE(objectType);
 
-    for (int count = 0, i = 0; i < type->compiler->declarationCount; i++) {
-      Declaration *dec = &type->compiler->declarations[i];
+    for (int count = 0, i = 0; i < type->callable->compiler->declarationCount; i++) {
+      Declaration *dec = &type->callable->compiler->declarations[i];
 
       if (dec->isField) {
         if (identifiersEqual(&expr->name, &dec->name)) {
@@ -1248,8 +1251,12 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
       UIDirectiveExpr *exprUI = (UIDirectiveExpr *) subExpr;
 
       if (uiParseCount >= 0) {
-        if (uiParseCount == 0)
+        if (uiParseCount == 0) {
           getCurrent()->function->eventFlags = exprUI->_eventFlags;
+
+          for (int ndx2 = -1; (ndx2 = getCurrent()->function->instanceIndexes->getNext(ndx2)) != -1;)
+            (*ss) << "v" << ndx2 << ".ui_ = new v" << ndx2 << ".UI_();\n";
+        }
 
         if (uiParseCount == 3) {
           nTabs++;
@@ -1304,10 +1311,12 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
       accept<int>(valueFunction, 0);
       Type type = getCurrent()->peekDeclaration();// = popType();
       getCurrent()->function->uiFunction = AS_FUNCTION_TYPE(type);
-      getCurrent()->declarationCount--;
+//      getCurrent()->declarationCount--;
       delete expr->ui;
       expr->ui = valueFunction;
       uiParseCount = -1;
+      GroupingExpr *uiExpr = (GroupingExpr *) parse("UI_ ui_;\n", 0, 0, NULL);
+      accept<int>(uiExpr->expressions[0], 0);
     }
     else {
       delete expr->ui;
@@ -1524,7 +1533,7 @@ void Resolver::processAttrs(UIDirectiveExpr *expr) {
                 break;
 
               case OBJ_INSTANCE:
-                getCurrent()->function->instanceIndexes->set(getCurrent()->getDeclarationCount());
+                getCurrent()->function->instanceIndexes->set(getCurrent()->vCount);
                 expr->_eventFlags |= ((ObjFunction *) AS_INSTANCE_TYPE(type)->callable)->uiFunction->eventFlags;
                 break;
 
