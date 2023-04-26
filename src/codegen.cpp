@@ -184,8 +184,11 @@ void CodeGenerator::visitGroupingExpr(GroupingExpr *expr) {
   if (expr->ui)
     accept<int>(expr->ui, 0);
 
-  if (expr == parser.expr)
-    line() << "const ui_ = new UI_;\n";
+  if (expr == parser.expr) {
+    line() << "this.ui_ = new UI_;\n";
+    line() << "const layout_ = new this.ui_.Layout_;\n";
+    line() << "layout_.paint(0, 0, 80, 80);\n";
+  }
 
   endBlock();
 }

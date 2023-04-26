@@ -125,6 +125,9 @@ void Compiler::pushType(Type type) {
 }
 
 Type Compiler::popType() {
+  if (typeStack.empty())
+    printf("toto");
+
   Type type = typeStack.top();
 
   typeStack.pop();

@@ -57,7 +57,7 @@ static bool isType(Type &type) {
 static Type convertType(Type &type) {
   ObjPrimitive *primitiveType = AS_PRIMITIVE_TYPE(type);
 
-  return primitiveType ? primitiveType->type : type;
+  return primitiveType ? primitiveType->type : IS_FUNCTION(type) ? (Type) {VAL_OBJ, &newInstance(AS_FUNCTION_TYPE(type))->obj} : type;
 }
 
 static Expr *convertToString(Expr *expr, Type &type, Parser &parser) {
@@ -1313,9 +1313,12 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
       getCurrent()->function->uiFunction = AS_FUNCTION_TYPE(type);
 //      getCurrent()->declarationCount--;
       delete expr->ui;
-      expr->ui = valueFunction;
+      expr->ui = NULL;
+      expr->expressions = RESIZE_ARRAY(Expr *, expr->expressions, expr->count, expr->count + 2);
+      expr->expressions[expr->count++] = valueFunction;
       uiParseCount = -1;
       GroupingExpr *uiExpr = (GroupingExpr *) parse("UI_ ui_;\n", 0, 0, NULL);
+      expr->expressions[expr->count++] = uiExpr->expressions[0];
       accept<int>(uiExpr->expressions[0], 0);
     }
     else {
@@ -1655,7 +1658,8 @@ void Resolver::pushAreas(UIDirectiveExpr *expr) {
 
       switch (AS_OBJ_TYPE(outType)) {
         case OBJ_INSTANCE:
-          callee = "getInstanceSize";
+          expr->viewIndex = aCount;
+          (*ss) << "  var a" << aCount++ << " = new " << name << ".ui_.Layout_()\n";
           break;
 
         case OBJ_STRING:
