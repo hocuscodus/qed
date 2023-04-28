@@ -547,6 +547,8 @@ void Resolver::visitCallExpr(CallExpr *expr) {
 
   getCurrent()->pushType({VAL_OBJ}); // Dummy callee for space purposes
 
+  compiler.addDeclaration({VAL_VOID}, tok);
+
   for (int index = 0; index < expr->count; index++) {
     accept<int>(expr->arguments[index]);
     compiler.addDeclaration(getCurrent()->typeStack.top(), tok);
@@ -677,7 +679,7 @@ void Resolver::visitArrayElementExpr(ArrayElementExpr *expr) {
 }
 
 void Resolver::visitDeclarationExpr(DeclarationExpr *expr) {
-  getCurrent()->checkDeclaration(&expr->name);
+//  getCurrent()->checkDeclaration(&expr->name);
 
   if (expr->initExpr != NULL) {
     accept<int>(expr->initExpr, 0);
@@ -817,7 +819,9 @@ void Resolver::visitListExpr(ListExpr *expr) {
       if (assignExpr->varExp && assignExpr->value) {
         expr->listType = subExpr->type;
         assignExpr->varExp->_declaration = NULL;
-        getCurrent()->checkDeclaration(&assignExpr->varExp->name);
+        pushSignature(NULL);
+        getCurrent()->checkDeclaration(assignExpr->varExp);
+        popSignature();
         accept<int>(assignExpr->value, 0);
 
         Type internalType = {VAL_OBJ, &objInternalType};
@@ -856,9 +860,6 @@ void Resolver::visitListExpr(ListExpr *expr) {
         parser.error("Function name must be a string.");
       else {
         ReferenceExpr *varExp = (ReferenceExpr *)callExpr->callee;
-
-        getCurrent()->checkDeclaration(&varExp->name);
-
         Expr *bodyExpr = expr->count > 2 ? expr->expressions[2] : NULL;
         GroupingExpr *body;
 
@@ -876,7 +877,6 @@ void Resolver::visitListExpr(ListExpr *expr) {
         Compiler &compiler = body->_compiler;
         ObjFunction *function = newFunction(returnType, copyString(varExp->name.start, varExp->name.length), callExpr->count);
 
-        getCurrent()->addDeclaration({VAL_OBJ, &function->obj}, varExp->name);
         expr->_declaration = compiler.beginScope(function);
         bindFunction(compiler.prefix, function);
 
@@ -941,6 +941,11 @@ void Resolver::visitListExpr(ListExpr *expr) {
         }
 */
         compiler.endScope();
+
+        pushSignature(function);
+        getCurrent()->checkDeclaration(varExp);
+        popSignature();
+        getCurrent()->addDeclaration({VAL_OBJ, &function->obj}, varExp->name);
       }
       return;
     }
@@ -948,7 +953,9 @@ void Resolver::visitListExpr(ListExpr *expr) {
       ReferenceExpr *varExpr = (ReferenceExpr *)subExpr;
 
       expr->listType = subExpr->type;
-      getCurrent()->checkDeclaration(&varExpr->name);
+      pushSignature(NULL);
+      getCurrent()->checkDeclaration(varExpr);
+      popSignature();
       expr->_declaration = getCurrent()->addDeclaration(returnType, varExpr->name);
 
       LiteralExpr *valueExpr = NULL;

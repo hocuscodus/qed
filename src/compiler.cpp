@@ -177,7 +177,7 @@ int Compiler::resolveReference(Token *name) {
           bool isSignature = signature->arity == callable->arity;
 
           for (int index = 0; isSignature && index < signature->arity; index++)
-            isSignature = signature->compiler->declarations[index].type.equals(callable->compiler->declarations[index + 1].type);
+            isSignature = signature->compiler->declarations[index + 1].type.equals(callable->compiler->declarations[index + 1].type);
 
           found = isSignature ? i : -2; // -2 = found name, no good signature yet
 
@@ -336,12 +336,20 @@ void Compiler::resolveReferenceExpr(ReferenceExpr *expr) {
   pushType(expr->_declaration ? expr->_declaration->type : (Type) {VAL_VOID});
 }
 
-void Compiler::checkDeclaration(Token *name) {
-  for (int i = declarationCount - 1; i >= 0; i--) {
-    Declaration *dec = &declarations[i];
+Compiler *Compiler::peekReferenceExpr(ReferenceExpr *expr) {
+  return resolveReference(&expr->name) != -1 ? this : enclosing ? enclosing->peekReferenceExpr(expr) : NULL;
+}
 
-    if (identifiersEqual(name, &dec->name))
-;//      parser->error("Already a variable '%.*s' with this name in this scope.", name->length, name->start);
+void Compiler::checkDeclaration(ReferenceExpr *expr) {
+  Compiler *compiler = peekReferenceExpr(expr);
+
+  if (compiler) {
+    int index = compiler->resolveReference(&expr->name);
+
+    if (compiler == this && index >= 0)
+      parser->error("Identical identifier '%.*s' with this name in this scope.", expr->name.length, expr->name.start);
+    else
+      ;// rename expr
   }
 }
 

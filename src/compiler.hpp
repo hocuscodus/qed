@@ -40,7 +40,8 @@ struct Compiler {
   int resolveUpvalue(Token *name);
   int addUpvalue(uint8_t index, Declaration *declaration, bool isDeclaration);
   void resolveReferenceExpr(ReferenceExpr *expr);
-  void checkDeclaration(Token *name);
+  Compiler *peekReferenceExpr(ReferenceExpr *expr);
+  void checkDeclaration(ReferenceExpr *expr);
   bool inBlock();
 
   static inline Compiler *getCurrent() {
