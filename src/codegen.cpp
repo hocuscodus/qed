@@ -185,8 +185,8 @@ void CodeGenerator::visitGroupingExpr(GroupingExpr *expr) {
     accept<int>(expr->ui, 0);
 
   if (expr == parser.expr) {
-    line() << "this.ui_ = new UI_;\n";
-    line() << "const layout_ = new this.ui_.Layout_;\n";
+    line() << "this.ui_ = new this.UI_();\n";
+    line() << "const layout_ = new this.ui_.Layout_();\n";
     line() << "layout_.paint(0, 0, 80, 80);\n";
   }
 
@@ -219,11 +219,15 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
   }
   case EXPR_CALL: {
     ObjFunction *function = (ObjFunction *) expr->_declaration->type.objType;
-    CodeGenerator generator(parser, function);
-    Expr *bodyExpr = function->bodyExpr;
     CallExpr *callExpr = (CallExpr *) expr->expressions[1];
     ReferenceExpr *varExp = (ReferenceExpr *)callExpr->callee;
-    std::string functionName = std::string(function->name->chars, function->name->length);
+    ObjFunction *function2 = (ObjFunction *) varExp->_declaration->type.objType;
+
+    if (function != function2)
+      function2 = function;
+
+    CodeGenerator generator(parser, function);
+    Expr *bodyExpr = function->bodyExpr;
 
     generator.str() << "this." << varExp->_declaration->getRealName() << " = function(";
 
@@ -375,11 +379,14 @@ void CodeGenerator::visitUnaryExpr(UnaryExpr *expr) {
 }
 
 void CodeGenerator::visitReferenceExpr(ReferenceExpr *expr) {
-  if (expr->_declaration && expr->_declaration->function->isClass())
-    if (expr->_declaration->function == function)
-      str() << "this." << expr->_declaration->name.getString();
+  if (expr->_declaration)
+    if (expr->_declaration->function->isClass())
+      if (expr->_declaration->function == function)
+        str() << "this." << expr->_declaration->getRealName();
+      else
+        str() << expr->_declaration->function->getThisVariableName() << "." << expr->_declaration->getRealName();
     else
-      str() << expr->_declaration->function->getThisVariableName() << "." << expr->_declaration->name.getString();
+      str() << expr->_declaration->getRealName();
   else
     str() << expr->name.getString();
 }

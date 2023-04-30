@@ -892,7 +892,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
               if (paramExpr->type != EXPR_REFERENCE)
                 parser.error("Parameter name must be a string.");
               else {
-                param->_declaration = getCurrent()->addDeclaration(convertType(type), ((ReferenceExpr *)paramExpr)->name, NULL, false);
+                getCurrent()->addDeclaration(convertType(type), ((ReferenceExpr *)paramExpr)->name, NULL, false);
 
                 if (param->count > 2)
                   parser.error("Syntax error");
