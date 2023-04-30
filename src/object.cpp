@@ -510,6 +510,10 @@ const char *Obj::toString() {
   }
 }
 
+std::string Declaration::getRealName() {
+  return previous ? previous->getRealName() + (parentFlag ? "$" : "$_") : std::string(name.start, name.length);
+}
+
 bool ObjCallable::isClass() {
   return name == NULL || (name->chars[0] >= 'A' && name->chars[0] <= 'Z');
 }

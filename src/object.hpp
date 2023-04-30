@@ -69,13 +69,17 @@ struct ObjNamed {
 
 struct ObjFunction;
 
-typedef struct {
+struct Declaration {
   Type type;
   Token name;
   bool isField;
   int realIndex;
   ObjFunction *function;
-} Declaration;
+  Declaration *previous;
+  int parentFlag;
+
+  std::string getRealName();
+};
 
 typedef struct {
   uint8_t index;

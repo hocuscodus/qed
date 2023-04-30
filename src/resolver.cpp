@@ -547,11 +547,11 @@ void Resolver::visitCallExpr(CallExpr *expr) {
 
   getCurrent()->pushType({VAL_OBJ}); // Dummy callee for space purposes
 
-  compiler.addDeclaration({VAL_VOID}, tok);
+  compiler.addDeclaration({VAL_VOID}, tok, NULL, false);
 
   for (int index = 0; index < expr->count; index++) {
     accept<int>(expr->arguments[index]);
-    compiler.addDeclaration(getCurrent()->typeStack.top(), tok);
+    compiler.addDeclaration(getCurrent()->typeStack.top(), tok, NULL, false);
   }
 
   for (int index = -1; index < expr->count; index++)
@@ -686,7 +686,7 @@ void Resolver::visitDeclarationExpr(DeclarationExpr *expr) {
     Type type1 = popType();
   }
 
-  getCurrent()->addDeclaration(expr->type, expr->name);
+  getCurrent()->addDeclaration(expr->type, expr->name, NULL, false);
 }
 
 void Resolver::visitFunctionExpr(FunctionExpr *expr) {/*
@@ -819,9 +819,6 @@ void Resolver::visitListExpr(ListExpr *expr) {
       if (assignExpr->varExp && assignExpr->value) {
         expr->listType = subExpr->type;
         assignExpr->varExp->_declaration = NULL;
-        pushSignature(NULL);
-        getCurrent()->checkDeclaration(assignExpr->varExp);
-        popSignature();
         accept<int>(assignExpr->value, 0);
 
         Type internalType = {VAL_OBJ, &objInternalType};
@@ -840,7 +837,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
           }
         }
 
-        expr->_declaration = getCurrent()->addDeclaration(returnType, assignExpr->varExp->name);
+        getCurrent()->checkDeclaration(returnType, assignExpr->varExp, NULL);
 
         if (expr->count > 2)
           parser.error("Expect ';' or newline after variable declaration.");
@@ -895,7 +892,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
               if (paramExpr->type != EXPR_REFERENCE)
                 parser.error("Parameter name must be a string.");
               else {
-                param->_declaration = getCurrent()->addDeclaration(convertType(type), ((ReferenceExpr *)paramExpr)->name);
+                param->_declaration = getCurrent()->addDeclaration(convertType(type), ((ReferenceExpr *)paramExpr)->name, NULL, false);
 
                 if (param->count > 2)
                   parser.error("Syntax error");
@@ -925,27 +922,13 @@ void Resolver::visitListExpr(ListExpr *expr) {
           accept<int>(handlerExpr, 0);
         }
 
+        getCurrent()->enclosing->checkDeclaration({VAL_OBJ, &function->obj}, varExp, function);
         function->bodyExpr = body;
 
         if (body)
           acceptGroupingExprUnits(body);
-/*
-        compiler.function->fieldCount = compiler.getDeclarationCount();
-        compiler.function->fields = ALLOCATE(Field, compiler.getDeclarationCount());
 
-        for (int index = 0; index < compiler.getDeclarationCount(); index++) {
-          Declaration *dec = &compiler.getDeclaration(index);
-
-          compiler.function->fields[index].type = dec->type;
-          compiler.function->fields[index].name = copyString(dec->name.start, dec->name.length);
-        }
-*/
         compiler.endScope();
-
-        pushSignature(function);
-        getCurrent()->checkDeclaration(varExp);
-        popSignature();
-        getCurrent()->addDeclaration({VAL_OBJ, &function->obj}, varExp->name);
       }
       return;
     }
@@ -953,10 +936,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
       ReferenceExpr *varExpr = (ReferenceExpr *)subExpr;
 
       expr->listType = subExpr->type;
-      pushSignature(NULL);
-      getCurrent()->checkDeclaration(varExpr);
-      popSignature();
-      expr->_declaration = getCurrent()->addDeclaration(returnType, varExpr->name);
+      getCurrent()->checkDeclaration(returnType, varExpr, NULL);
 
       LiteralExpr *valueExpr = NULL;
 
@@ -1271,10 +1251,11 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
           (*ss) << "var size = (" << getGroupName(exprUI, 0) << " << 16) | " << getGroupName(exprUI, 1) << "\n";
           nTabs--;
         }
+        std::string *str = new std::string(ss->str().c_str());
 #ifdef DEBUG_PRINT_CODE
-        printf("CODE %d\n%s", uiParseCount, ss->str().c_str());
+        printf("CODE %d\n%s", uiParseCount, str->c_str());
 #endif
-        expr = (GroupingExpr *) parse(ss->str().c_str(), index, 1, expr);
+        expr = (GroupingExpr *) parse(str->c_str(), index, 1, expr);
       }/*
       else {
         getCurrent()->function->eventFlags = exprUI->_eventFlags;
@@ -1660,7 +1641,7 @@ void Resolver::pushAreas(UIDirectiveExpr *expr) {
 
     if (name != NULL) {
       Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
-      Type outType = getCurrent()->enclosing->getDeclaration(getCurrent()->enclosing->resolveReference(&token)).type;
+      Type outType = getCurrent()->enclosing->getDeclaration(getCurrent()->enclosing->resolveReference2(&token)).type;
       char *callee = NULL;
 
       switch (AS_OBJ_TYPE(outType)) {
@@ -1868,7 +1849,7 @@ void Resolver::paint(UIDirectiveExpr *expr) {
 
   if (name) {
     Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
-    Type outType = getCurrent()->enclosing->enclosing->getDeclaration(getCurrent()->enclosing->enclosing->resolveReference(&token)).type;
+    Type outType = getCurrent()->enclosing->enclosing->getDeclaration(getCurrent()->enclosing->enclosing->resolveReference2(&token)).type;
 
     switch (AS_OBJ_TYPE(outType)) {
       case OBJ_INSTANCE:
@@ -1983,7 +1964,7 @@ void Resolver::onEvent(UIDirectiveExpr *expr) {
     else {
       const char *name = getValueVariableName(expr, ATTRIBUTE_OUT);
       Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
-      int index = getCurrent()->enclosing->enclosing->resolveReference(&token);
+      int index = getCurrent()->enclosing->enclosing->resolveReference2(&token);
       Type outType = getCurrent()->enclosing->enclosing->getDeclaration(index).type;
 
       switch (AS_OBJ_TYPE(outType)) {

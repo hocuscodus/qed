@@ -34,14 +34,14 @@ struct Compiler {
   void pushType(ValueType type);
   void pushType(Type type);
   Type popType();
-  Declaration *addDeclaration(Type type, Token &name);
+  Declaration *addDeclaration(Type type, Token &name, Declaration *previous, bool parentFlag);
   Type &peekDeclaration();
   int resolveReference(Token *name);
+  int resolveReference2(Token *name);
   int resolveUpvalue(Token *name);
   int addUpvalue(uint8_t index, Declaration *declaration, bool isDeclaration);
   void resolveReferenceExpr(ReferenceExpr *expr);
-  Compiler *peekReferenceExpr(ReferenceExpr *expr);
-  void checkDeclaration(ReferenceExpr *expr);
+  void checkDeclaration(Type returnType, ReferenceExpr *expr, ObjCallable *signature);
   bool inBlock();
 
   static inline Compiler *getCurrent() {

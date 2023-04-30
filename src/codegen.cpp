@@ -213,7 +213,7 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
   case EXPR_ASSIGN: {
     AssignExpr *subExpr = (AssignExpr *) expr->expressions[expr->count - 1];
 
-    str() << (expr->_declaration->isField ? "this." : expr->_declaration->function->isClass() ? "const." : "let ") << subExpr->varExp->name.getString() << " = ";
+    str() << (subExpr->varExp->_declaration->isField ? "this." : subExpr->varExp->_declaration->function->isClass() ? "const." : "let ") << subExpr->varExp->_declaration->getRealName() << " = ";
     accept<int>(subExpr->value, 0);
     break;
   }
@@ -222,9 +222,10 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
     CodeGenerator generator(parser, function);
     Expr *bodyExpr = function->bodyExpr;
     CallExpr *callExpr = (CallExpr *) expr->expressions[1];
+    ReferenceExpr *varExp = (ReferenceExpr *)callExpr->callee;
     std::string functionName = std::string(function->name->chars, function->name->length);
 
-    generator.str() << "this." << functionName << " = function(";
+    generator.str() << "this." << varExp->_declaration->getRealName() << " = function(";
 
     for (int index = 0; index < callExpr->count; index++) {
       ListExpr *param = (ListExpr *)callExpr->arguments[index];
@@ -264,7 +265,7 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
   case EXPR_REFERENCE: {
     ReferenceExpr *varExp = (ReferenceExpr *) expr->expressions[expr->count - 1];
 
-    str() << (expr->_declaration->isField ? "this." : "let ") << varExp->name.getString() << " = null";
+    str() << (varExp->_declaration->isField ? "this." : "let ") << varExp->name.getString() << " = null";
     break;
   }
   default:

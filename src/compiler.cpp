@@ -98,7 +98,7 @@ Declaration *Compiler::beginScope(ObjFunction *function) {
   else
     prefix = "qni";
 
-  return addDeclaration({VAL_OBJ, &function->obj}, token);
+  return addDeclaration({VAL_OBJ, &function->obj}, token, NULL, false);
 }
 
 void Compiler::beginScope() {
@@ -134,7 +134,7 @@ Type Compiler::popType() {
   return type;
 }
 
-Declaration *Compiler::addDeclaration(Type type, Token &name) {
+Declaration *Compiler::addDeclaration(Type type, Token &name, Declaration *previous, bool parentFlag) {
   if (declarationCount == UINT8_COUNT) {
     parser->error("Too many declarations in function.");
     return NULL;
@@ -147,6 +147,8 @@ Declaration *Compiler::addDeclaration(Type type, Token &name) {
     dec->name = name;
     dec->isField = function->isClass();
     dec->function = function;
+    dec->previous = previous;
+    dec->parentFlag = parentFlag;
   }
 
   return dec;
@@ -158,7 +160,6 @@ Type &Compiler::peekDeclaration() {
 
 int Compiler::resolveReference(Token *name) {
   int found = -1;
-  char buffer[2048] = "";
   ObjCallable *signature = getSignature();
 
   for (int i = declarationCount - 1; found < 0 && i >= 0; i--) {
@@ -179,27 +180,7 @@ int Compiler::resolveReference(Token *name) {
           for (int index = 0; isSignature && index < signature->arity; index++)
             isSignature = signature->compiler->declarations[index + 1].type.equals(callable->compiler->declarations[index + 1].type);
 
-          found = isSignature ? i : -2; // -2 = found name, no good signature yet
-
-          if (found == -2) {
-            char buf[512];
-
-            sprintf(buf, "'%.*s(", name->length, name->start);
-
-            for (int index = 0; index < callable->arity; index++) {
-              if (index)
-                strcat(buf, ", ");
-
-              strcat(buf, declarations[index + 1].type.toString());
-            }
-
-            strcat(buf, ")'");
-
-            if (buffer[0])
-              strcat(buffer, ", ");
-
-            strcat(buffer, buf);
-          }
+          found = isSignature ? i : -2 - i - declarationStart; // -2 = found name, no good signature yet
           break;
         }
         case OBJ_FUNCTION_PTR: {
@@ -209,40 +190,42 @@ int Compiler::resolveReference(Token *name) {
           for (int index = 0; isSignature && index < signature->arity; index++)
             isSignature = signature->compiler->declarations[index].type.equals(callable->parms[index + 1]);
 
-          found = isSignature ? i : -2; // -2 = found name, no good signature yet
-
-          if (found == -2) {
-            char buf[512];
-
-            sprintf(buf, "'%.*s(", name->length, name->start);
-
-            for (int index = 0; index < callable->arity; index++) {
-              if (index)
-                strcat(buf, ", ");
-
-              strcat(buf, callable->parms[index + 1].toString());
-            }
-
-            strcat(buf, ")'");
-
-            if (buffer[0])
-              strcat(buffer, ", ");
-
-            strcat(buffer, buf);
-          }
+          found = isSignature ? i : -2 - i - declarationStart; // -2 = found name, no good signature yet
           break;
         }
         default:
           parser->error("Variable '%.*s' is not a call.", name->length, name->start);
-          return -2;
+          return -2 - i - declarationStart;
         }
       else
         found = declarationStart + i;
     }
   }
 
-  if (found == -2) {
+  return found;
+}
+
+int Compiler::resolveReference2(Token *name) {
+  int found = resolveReference(name);
+
+  if (found <= -2) {
+    ObjCallable *signature = getSignature();
     char parms[512] = "";
+    char buf[2048];
+    Declaration *dec = &declarations[-2 - found - declarationStart];
+    Type type = dec->type;
+    ObjCallable *callable = AS_FUNCTION_TYPE(type);
+
+    sprintf(buf, "'%.*s(", name->length, name->start);
+
+    for (int index = 0; index < callable->arity; index++) {
+      if (index)
+        strcat(buf, ", ");
+
+      strcat(buf, declarations[index + 1].type.toString());
+    }
+
+    strcat(buf, ")'");
 
     for (int index = 0; index < signature->arity; index++) {
       if (index)
@@ -251,7 +234,7 @@ int Compiler::resolveReference(Token *name) {
       strcat(parms, signature->compiler->declarations[index].type.toString());
     }
 
-    parser->error("Call '%.*s(%s)' does not match %s.", name->length, name->start, parms, buffer);
+    parser->error("Call '%.*s(%s)' does not match %s.", name->length, name->start, parms, buf);
   }
 
   return found;
@@ -264,7 +247,7 @@ int Compiler::resolveUpvalue(Token *name) {
     Compiler *current = enclosing;
 
     while (true) {
-      decIndex = current->resolveReference(name);
+      decIndex = current->resolveReference2(name);
 
       if (decIndex == -1 && current->inBlock())
         current = current->enclosing;
@@ -272,21 +255,17 @@ int Compiler::resolveUpvalue(Token *name) {
         break;
     }
 
-    switch (decIndex) {
-    case -2:
-      break;
-
-    case -1: {
+    if (decIndex == -1) {
       int upvalue = current->resolveUpvalue(name);
 
       if (upvalue != -1)
         return addUpvalue((uint8_t) upvalue, enclosing->function->upvalues[upvalue].declaration, false);
-      break;
     }
-    default:
-      current->getDeclaration(decIndex).isField = true;
-      return addUpvalue((uint8_t) decIndex, &current->getDeclaration(decIndex), true);
-    }
+    else
+      if (decIndex >= 0) {
+        current->getDeclaration(decIndex).isField = true;
+        return addUpvalue((uint8_t) decIndex, &current->getDeclaration(decIndex), true);
+      }
   }
 
   return -1;
@@ -300,7 +279,7 @@ void Compiler::resolveReferenceExpr(ReferenceExpr *expr) {
   Compiler *current = this;
 
   while (true) {
-    expr->index = current->resolveReference(&expr->name);
+    expr->index = current->resolveReference2(&expr->name);
 
     if (expr->index == -1 && current->inBlock())
       current = current->enclosing;
@@ -311,13 +290,7 @@ void Compiler::resolveReferenceExpr(ReferenceExpr *expr) {
     }
   }
 
-  switch (expr->index) {
-  case -2:
-    expr->index = -1;
-    expr->_declaration = NULL;
-    break;
-
-  case -1:
+  if (expr->index == -1)
     if ((expr->index = current->resolveUpvalue(&expr->name)) != -1) {
       expr->upvalueFlag = true;
       expr->_declaration = function->upvalues[expr->index].declaration;
@@ -326,31 +299,40 @@ void Compiler::resolveReferenceExpr(ReferenceExpr *expr) {
       parser->error("Variable '%.*s' must be defined", expr->name.length, expr->name.start);
       expr->_declaration = NULL;
     }
-    break;
-
-  default:
-    expr->_declaration = &current->getDeclaration(expr->index);
-    break;
-  }
+  else
+    if (expr->index >= 0)
+      expr->_declaration = &current->getDeclaration(expr->index);
+    else {
+      expr->index = -1;
+      expr->_declaration = NULL;
+    }
 
   pushType(expr->_declaration ? expr->_declaration->type : (Type) {VAL_VOID});
 }
 
-Compiler *Compiler::peekReferenceExpr(ReferenceExpr *expr) {
-  return resolveReference(&expr->name) != -1 ? this : enclosing ? enclosing->peekReferenceExpr(expr) : NULL;
-}
+void Compiler::checkDeclaration(Type returnType, ReferenceExpr *expr, ObjCallable *signature) {
+  Declaration *peerDeclaration = NULL;
+  bool parentFlag = false;
 
-void Compiler::checkDeclaration(ReferenceExpr *expr) {
-  Compiler *compiler = peekReferenceExpr(expr);
+  pushSignature(signature);
 
-  if (compiler) {
-    int index = compiler->resolveReference(&expr->name);
+  if (resolveReference(&expr->name) >= 0)
+    parser->error("Identical identifier '%.*s' with this name in this scope.", expr->name.length, expr->name.start);
+  else {
+    pushSignature(NULL);
 
-    if (compiler == this && index >= 0)
-      parser->error("Identical identifier '%.*s' with this name in this scope.", expr->name.length, expr->name.start);
-    else
-      ;// rename expr
+    for (Compiler *compiler = this; !peerDeclaration && compiler; compiler = compiler->enclosing) {
+      int index = compiler->resolveReference(&expr->name);
+
+      peerDeclaration = index >= 0 ? &compiler->getDeclaration(index) : NULL;
+      parentFlag = peerDeclaration && compiler != this;
+    }
+
+    popSignature();
   }
+
+  popSignature();
+  expr->_declaration = addDeclaration(returnType, expr->name, peerDeclaration, parentFlag);
 }
 
 bool Compiler::inBlock() {
