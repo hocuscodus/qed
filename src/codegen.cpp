@@ -229,7 +229,8 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
     CodeGenerator generator(parser, function);
     Expr *bodyExpr = function->bodyExpr;
 
-    generator.str() << "this." << varExp->_declaration->getRealName() << " = function(";
+    generator.str() << (varExp->_declaration->isField ? "this." : "let ");// << varExp->name.getString() << " = null";
+    generator.str() << varExp->_declaration->getRealName() << " = function(";
 
     for (int index = 0; index < callExpr->count; index++) {
       ListExpr *param = (ListExpr *)callExpr->arguments[index];

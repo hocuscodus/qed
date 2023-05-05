@@ -1281,7 +1281,7 @@ void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
 
     if (exprUI->previous || exprUI->lastChild) {
       // Perform the UI AST magic
-      Expr *clickFunction = generateUIFunction("void", "onEvent", "int event, int pos0, int pos1, int size0, int size1", expr->ui, 1, 0, NULL);
+      Expr *clickFunction = generateUIFunction("bool", "onEvent", "int event, int pos0, int pos1, int size0, int size1", expr->ui, 1, 0, NULL);
       Expr *paintFunction = generateUIFunction("void", "paint", "int pos0, int pos1, int size0, int size1", expr->ui, 1, 0, NULL);
       Expr **uiFunctions = new Expr *[2];
 
@@ -1646,7 +1646,7 @@ void Resolver::pushAreas(UIDirectiveExpr *expr) {
 
       switch (AS_OBJ_TYPE(outType)) {
         case OBJ_INSTANCE:
-          expr->viewIndex = aCount;
+          expr->viewIndex = -aCount;
           (*ss) << "  var a" << aCount++ << " = new " << name << ".ui_.Layout_()\n";
           break;
 
@@ -1723,8 +1723,14 @@ void Resolver::recalcLayout(UIDirectiveExpr *expr) {
     if (expr->viewIndex || previous)
       expr->_layoutIndexes[dir] = aCount++;
 
-    if (expr->viewIndex)
-      (*ss) << "  var " << getUnitName(expr, dir) << " = a" << expr->viewIndex << (dir ? " & 0xFFFF" : " >> 16") << "\n";
+    if (expr->viewIndex) {
+      (*ss) << "  var " << getUnitName(expr, dir) << " = a" << abs(expr->viewIndex);
+
+      if (expr->viewIndex < 0)
+        (*ss) << ".size";
+
+      (*ss) << (dir ? " & 0xFFFF" : " >> 16") << "\n";
+    }
 
     if (previous) {
       (*ss) << "  var " << getGroupName(expr, dir) << " = ";
@@ -1848,12 +1854,17 @@ void Resolver::paint(UIDirectiveExpr *expr) {
   char *callee = NULL;
 
   if (name) {
+    if (expr->lastChild) {
+      insertTabs();
+      (*ss) << "saveContext()\n";
+    }
+
     Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
     Type outType = getCurrent()->enclosing->enclosing->getDeclaration(getCurrent()->enclosing->enclosing->resolveReference2(&token)).type;
-
     switch (AS_OBJ_TYPE(outType)) {
       case OBJ_INSTANCE:
-        callee = "displayInstance";
+        insertTabs();
+        (*ss) << "a" << abs(expr->viewIndex) << ".paint(pos0, pos1, size0, size1)\n";
         break;
 
       case OBJ_STRING:
@@ -1872,11 +1883,6 @@ void Resolver::paint(UIDirectiveExpr *expr) {
     }
 
     if (callee) {
-      if (expr->lastChild) {
-        insertTabs();
-        (*ss) << "saveContext()\n";
-      }
-
       insertTabs();
       (*ss) << callee << "(" << name << (name[0] ? ", " : "");
       insertPoint("pos");
@@ -1970,11 +1976,7 @@ void Resolver::onEvent(UIDirectiveExpr *expr) {
       switch (AS_OBJ_TYPE(outType)) {
         case OBJ_INSTANCE:
           insertTabs();
-          (*ss) << "flag = onInstanceEvent(" << name << ", event, ";
-          insertPoint("pos");
-          (*ss) << ", ";
-          insertPoint("size");
-          (*ss) << ")\n";
+          (*ss) << "return a" << abs(expr->viewIndex) << ".onEvent(event, pos0, pos1, size0, size1)\n";
           break;
 
         case OBJ_STRING:
