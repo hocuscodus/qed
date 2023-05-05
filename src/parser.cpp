@@ -202,7 +202,7 @@ Expr *Parser::assignment(Expr *left) {
 
   switch (left->type) {
   case EXPR_REFERENCE:
-    return new AssignExpr((ReferenceExpr *) left, op, right, OP_FALSE, false);
+    return new AssignExpr((ReferenceExpr *) left, op, right, OP_FALSE);
 
   case EXPR_GET: {
     GetExpr *getExpr = (GetExpr *) left;
@@ -227,7 +227,7 @@ Expr *Parser::binary(Expr *left) {
   if (right == NULL)
     error("Expect expression.");
 
-  return new BinaryExpr(left, op, right, OP_FALSE, false); /*
+  return new BinaryExpr(left, op, right, OP_FALSE); /*
    switch (op.type) {
      case TOKEN_BANG_EQUAL:    emitBytes(OP_EQUAL, OP_NOT); break;
      case TOKEN_EQUAL_EQUAL:   return new BinaryExpr(left, op, right);
@@ -252,7 +252,7 @@ Expr *Parser::binaryOrPostfix(Expr *left) {
 
   Expr *right = parsePrecedence((Precedence)(rule->precedence + 1));
 
-  return new BinaryExpr(left, op, right, OP_FALSE, false); /*
+  return new BinaryExpr(left, op, right, OP_FALSE); /*
    switch (op.type) {
      case TOKEN_BANG_EQUAL:    emitBytes(OP_EQUAL, OP_NOT); break;
      case TOKEN_EQUAL_EQUAL:   return new BinaryExpr(left, op, right);
@@ -275,7 +275,7 @@ Expr *Parser::suffix(Expr *left) {
   switch (op.type) {
     case TOKEN_PLUS_PLUS:
     case TOKEN_MINUS_MINUS:
-      return new AssignExpr((ReferenceExpr *) left, op, NULL, OP_FALSE, true);
+      return new AssignExpr((ReferenceExpr *) left, op, NULL, OP_FALSE);
 
     default:
       return new UnaryExpr(op, left);
@@ -340,7 +340,7 @@ Expr *Parser::call(Expr *left) {
       handler = statement(TOKEN_SEPARATOR);
   }
 
-  return new CallExpr(left, previous, argCount, expList, false, handler, NULL);
+  return new CallExpr(left, previous, argCount, expList, false, handler, NULL, NULL);
 }
 
 Expr *Parser::arrayElement(Expr *left) {
@@ -392,6 +392,9 @@ Expr *Parser::literal() {
     break;
   case TOKEN_TRUE:
     exp = createBooleanExpr(true);
+    break;
+  case TOKEN_NATIVE_CODE:
+    exp = new NativeExpr(previous);
     break;
   default:
     return NULL; // Unreachable.
@@ -634,7 +637,7 @@ Expr *Parser::unary() {
     case TOKEN_MINUS_MINUS: {
       Expr *right = parsePrecedence(PREC_CALL);
 
-      return new AssignExpr(NULL, op, right, OP_FALSE, false);
+      return new AssignExpr(NULL, op, right, OP_FALSE);
     }
     default:
       return new UnaryExpr(op, parsePrecedence(PREC_UNARY));
@@ -807,7 +810,7 @@ Expr *Parser::forStatement(TokenType endGroupType) {
     body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 2, expList, 0, NULL);
   }
 
-  body = new BinaryExpr(condition, buildToken(TOKEN_WHILE, "while", 5, -1), body, OP_FALSE, false);
+  body = new BinaryExpr(condition, buildToken(TOKEN_WHILE, "while", 5, -1), body, OP_FALSE);
 
   if (initializer != NULL) {
     Expr **expList = RESIZE_ARRAY(Expr *, NULL, 0, 2);
@@ -846,7 +849,7 @@ Expr *Parser::whileStatement(TokenType endGroupType) {
 
   consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
 
-  return new BinaryExpr(exp, name, statement(endGroupType), OP_FALSE, false);
+  return new BinaryExpr(exp, name, statement(endGroupType), OP_FALSE);
 }
 
 Expr *Parser::declaration(TokenType endGroupType) {

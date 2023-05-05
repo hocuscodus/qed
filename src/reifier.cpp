@@ -187,6 +187,9 @@ void Reifier::visitReferenceExpr(ReferenceExpr *expr) {
 void Reifier::visitSwapExpr(SwapExpr *expr) {
 }
 
+void Reifier::visitNativeExpr(NativeExpr *expr) {
+}
+
 bool Reifier::reify() {
   reinferStack.push({&parser.expr->_compiler, 0});
   accept(parser.expr, 0);

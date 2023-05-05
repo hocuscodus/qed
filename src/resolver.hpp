@@ -84,6 +84,7 @@ public:
   void visitUnaryExpr(UnaryExpr *expr);
   void visitReferenceExpr(ReferenceExpr *expr);
   void visitSwapExpr(SwapExpr *expr);
+  void visitNativeExpr(NativeExpr *expr);
 
   Type popType();
   bool resolve(Compiler *compiler);

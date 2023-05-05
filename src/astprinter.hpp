@@ -41,6 +41,7 @@ public:
   void visitUnaryExpr(UnaryExpr *expr);
   void visitReferenceExpr(ReferenceExpr *expr);
   void visitSwapExpr(SwapExpr *expr);
+  void visitNativeExpr(NativeExpr *expr);
 
   void print(Expr *expr);
   void printType(Type *expr);

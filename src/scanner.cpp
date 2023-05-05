@@ -70,7 +70,15 @@ void Scanner::reset(const char *source) {
 }
 
 Token Scanner::scanToken() {
-  if (!skipWhitespace()) return errorToken("Unclosed comment");
+  Token token = skipWhitespace();
+
+  switch (token.type) {
+    case TOKEN_EOF:
+      return errorToken("Unclosed comment");
+
+    case TOKEN_NATIVE_CODE:
+      return token;
+  }
 
   start = current;
 
@@ -187,9 +195,17 @@ Token Scanner::scanToken() {
       // no break; or return(...); here, fully intended...
 
     case ';':
-      do
-        if (!skipWhitespace()) return errorToken("Unclosed comment");
-      while (match('\n') || match(';'));
+      do {
+        Token token = skipWhitespace();
+
+        switch (token.type) {
+          case TOKEN_EOF:
+            return errorToken("Unclosed comment");
+
+          case TOKEN_NATIVE_CODE:
+            return token;
+        }
+      } while (match('\n') || match(';'));
       return makeToken(TOKEN_SEPARATOR);
   }
 
@@ -237,7 +253,7 @@ Token Scanner::errorToken(const char *message) {
   return token;
 }
 
-bool Scanner::skipWhitespace() {
+Token Scanner::skipWhitespace() {
   for (;;) {
     switch (peek()) {
       case ' ':
@@ -256,54 +272,68 @@ bool Scanner::skipWhitespace() {
           case '*':
             current += 2; // Skip header '/*'
             // A recursive comment goes until same level '*/'
-            if (!skipRecursiveComment())
-              return false;
+            if (!skipRecursiveComment('*'))
+              return makeToken(TOKEN_EOF);
             break;
 
+          case '$': {
+            current += 2; // Skip header '/$'
+            start = current;
+            // A recursive comment goes until same level '*/'
+            if (!skipRecursiveComment('$'))
+              return makeToken(TOKEN_EOF);
+
+            current -= 2; // Skip footer '$/'
+            Token token = makeToken(TOKEN_NATIVE_CODE);
+            current += 2; // Skip footer '$/'
+            return token;
+          }
           default:
-            return true;
+            return makeToken(TOKEN_SEPARATOR);
         }
         break;
 
       default:
-        return true;
+        return makeToken(TOKEN_SEPARATOR);
     }
   }
 }
 
-bool Scanner::skipRecursiveComment() {
+bool Scanner::skipRecursiveComment(char chr) {
   for (;;) {
-    switch (peek()) {
-      case 0: // end of file, unclosed comment error
-        return false;
+    if (peek() == chr) {
+      advance();
 
-      case '/':
+      if (peek() == '/') {
         advance();
-
-        if (peek() == '*') {
-          advance();
-
-          if (!skipRecursiveComment())
-            return false;
-        }
-        break;
-
-      case '*':
-        advance();
-
-        if (peek() == '/') {
-          advance();
-          return true;
-        }
-        break;
-
-      case '\n':
-        line++;
-        // no break; or return; here, fully intended...
-
-      default:
-        advance();
+        return true;
+      }
     }
+    else
+      switch (peek()) {
+        case 0: // end of file, unclosed comment error
+          return false;
+
+        case '/': {
+          advance();
+
+          char chr = peek();
+
+          if (chr == '*' || chr == '$') {
+            advance();
+
+            if (!skipRecursiveComment(chr))
+              return false;
+          }
+          break;
+        }
+        case '\n':
+          line++;
+          // no break; or return; here, fully intended...
+
+        default:
+          advance();
+      }
   }
 }
 

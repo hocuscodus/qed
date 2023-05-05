@@ -86,6 +86,7 @@
     KEY_DEF( TOKEN_TRUE, &Parser::literal, NULL, PREC_NONE ),  \
     KEY_DEF( TOKEN_WHILE, NULL, NULL, PREC_NONE ),  \
     KEY_DEF( TOKEN_SEPARATOR, NULL, NULL, PREC_NONE ),  \
+    KEY_DEF( TOKEN_NATIVE_CODE, &Parser::literal, NULL, PREC_NONE ),  \
     KEY_DEF( TOKEN_ERROR, NULL, NULL, PREC_NONE ),  \
     KEY_DEF( TOKEN_EOF, NULL, NULL, PREC_NONE ),  \
     KEY_DEF( TOKEN_INSERT, &Parser::swap, NULL, PREC_NONE ),
@@ -126,8 +127,8 @@ private:
   bool match(char expected);
   Token makeToken(TokenType type);
   Token errorToken(const char *message);
-  bool skipWhitespace();
-  bool skipRecursiveComment();
+  Token skipWhitespace();
+  bool skipRecursiveComment(char chr);
   TokenType checkKeyword(int start, int length, const char *rest, TokenType type);
   TokenType identifierType();
   Token identifier();

@@ -357,6 +357,10 @@ void ASTPrinter::visitSwapExpr(SwapExpr *expr) {
   printf("(swap)");
 }
 
+void ASTPrinter::visitNativeExpr(NativeExpr *expr) {
+  printf("<native>");
+}
+
 void ASTPrinter::printType(Type *type) {
   switch(type->valueType) {
     case VAL_VOID:

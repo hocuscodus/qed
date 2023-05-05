@@ -40,6 +40,7 @@ public:
   void visitUnaryExpr(UnaryExpr *expr);
   void visitReferenceExpr(ReferenceExpr *expr);
   void visitSwapExpr(SwapExpr *expr);
+  void visitNativeExpr(NativeExpr *expr);
 
   std::stringstream &str();
   std::stringstream &line();

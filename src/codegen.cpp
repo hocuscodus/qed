@@ -148,6 +148,17 @@ void CodeGenerator::visitGetExpr(GetExpr *expr) {
 void CodeGenerator::visitGroupingExpr(GroupingExpr *expr) {
   startBlock();
 
+  if (expr == parser.expr) {
+    line() << "const canvas = document.getElementById(\"canvas\");\n";
+    line() << "let postCount = 1;\n";
+    line() << "let attributeStacks = [];\n";
+    line() << "const ctx = canvas.getContext(\"2d\");\n";
+    line() << "function toColor(color) {return \"#\" + color.toString(16).padStart(6, '0');}\n";
+    line() << "let getAttribute = function(index) {\n";
+    line() << "  return attributeStacks[index][attributeStacks[index].length - 1];\n";
+    line() << "}\n";
+  }
+
   if (function->name ? function->bodyExpr == expr : expr == parser.expr) {
     bool classFlag = function->isClass();
     bool arityFlag = false;
@@ -185,9 +196,32 @@ void CodeGenerator::visitGroupingExpr(GroupingExpr *expr) {
     accept<int>(expr->ui, 0);
 
   if (expr == parser.expr) {
-    line() << "this.ui_ = new this.UI_();\n";
-    line() << "const layout_ = new this.ui_.Layout_();\n";
-    line() << "layout_.paint(0, 0, 80, 80);\n";
+    line() << "this.pushAttribute(4, 20);\n";
+    line() << "this.pushAttribute(10, 0);\n";
+    line() << "this.pushAttribute(11, 1.0);\n";
+    line() << "function _refresh() {\n";
+    line() << "  if (--postCount == 0) {\n";
+    line() << "    globalThis$.ui_ = new globalThis$.UI_();\n";
+    line() << "    globalThis$.layout_ = new globalThis$.ui_.Layout_();\n";
+    line() << "    ctx.globalAlpha = 1.0;\n";
+    line() << "    ctx.clearRect(0, 0, canvas.width, canvas.height);\n";
+    line() << "    globalThis$.layout_.paint(0, 0, globalThis$.layout_.size >> 16, globalThis$.layout_.size & 65535);\n";
+    line() << "  }\n";
+    line() << "}\n";
+    line() << "_refresh();\n";
+    line() << "canvas.addEventListener(\"mousedown\", function(ev) {\n";
+    line() << "  postCount++;\n";
+    line() << "  var rect = canvas.getBoundingClientRect();\n";
+    line() << "  globalThis$.layout_.onEvent(0, ev.clientX - rect.left, ev.clientY - rect.top, globalThis$.layout_.size >> 16, globalThis$.layout_.size & 65535);\n";
+    line() << "  globalThis$._refresh();\n";
+    line() << "  });\n";
+    line() << "canvas.addEventListener(\"mouseup\", function(ev) {\n";
+    line() << "  postCount++;\n";
+    line() << "  var rect = canvas.getBoundingClientRect();\n";
+    line() << "  globalThis$.layout_.onEvent(1, ev.clientX - rect.left, ev.clientY - rect.top, globalThis$.layout_.size >> 16, globalThis$.layout_.size & 65535);\n";
+    line() << "  globalThis$._refresh();\n";
+    line() << "});\n";
+    line() << "canvas.onselectstart = function () { return false; }\n";
   }
 
   endBlock();
@@ -285,7 +319,35 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
 }
 
 void CodeGenerator::visitLiteralExpr(LiteralExpr *expr) {
-  str() << VALUE(expr->type, expr->as).integer;
+  switch (expr->type) {
+    case VAL_BOOL:
+      str() << (expr->as.boolean ? "true" : "false");
+      break;
+
+    case VAL_FLOAT:
+      str() << expr->as.floating;
+      break;
+
+    case VAL_INT:
+      str() << expr->as.integer;
+      break;
+
+    case VAL_OBJ:
+      switch (expr->as.obj->type) {
+        case OBJ_STRING:
+          str() << "\"" << std::string(((ObjString *) expr->as.obj)->chars, ((ObjString *) expr->as.obj)->length) << "\"";
+          break;
+
+        default:
+          str() << "null";
+          break;
+      }
+      break;
+
+    default:
+      str() << "null";
+      break;
+  }
 }
 
 void CodeGenerator::visitLogicalExpr(LogicalExpr *expr) {
@@ -394,4 +456,8 @@ void CodeGenerator::visitReferenceExpr(ReferenceExpr *expr) {
 
 void CodeGenerator::visitSwapExpr(SwapExpr *expr) {
   accept<int>(expr->_expr);
+}
+
+void CodeGenerator::visitNativeExpr(NativeExpr *expr) {
+  str() << std::string(expr->nativeCode.start, expr->nativeCode.length);
 }

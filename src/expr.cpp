@@ -41,24 +41,22 @@ void UIDirectiveExpr::accept(ExprVisitor *visitor) {
   return visitor->visitUIDirectiveExpr(this);
 }
 
-AssignExpr::AssignExpr(ReferenceExpr* varExp, Token op, Expr* value, OpCode opCode, bool suffixFlag) : Expr(EXPR_ASSIGN) {
+AssignExpr::AssignExpr(ReferenceExpr* varExp, Token op, Expr* value, OpCode opCode) : Expr(EXPR_ASSIGN) {
   this->varExp = varExp;
   this->op = op;
   this->value = value;
   this->opCode = opCode;
-  this->suffixFlag = suffixFlag;
 }
 
 void AssignExpr::accept(ExprVisitor *visitor) {
   return visitor->visitAssignExpr(this);
 }
 
-BinaryExpr::BinaryExpr(Expr* left, Token op, Expr* right, OpCode opCode, bool notFlag) : Expr(EXPR_BINARY) {
+BinaryExpr::BinaryExpr(Expr* left, Token op, Expr* right, OpCode opCode) : Expr(EXPR_BINARY) {
   this->left = left;
   this->op = op;
   this->right = right;
   this->opCode = opCode;
-  this->notFlag = notFlag;
 }
 
 void BinaryExpr::accept(ExprVisitor *visitor) {
@@ -87,7 +85,7 @@ void ArrayExpr::accept(ExprVisitor *visitor) {
   return visitor->visitArrayExpr(this);
 }
 
-CallExpr::CallExpr(Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler, ObjCallable* callable) : Expr(EXPR_CALL) {
+CallExpr::CallExpr(Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler, ObjCallable* callable, ObjFunction* handlerFunction) : Expr(EXPR_CALL) {
   this->callee = callee;
   this->paren = paren;
   this->count = count;
@@ -95,7 +93,7 @@ CallExpr::CallExpr(Expr* callee, Token paren, int count, Expr** arguments, bool 
   this->newFlag = newFlag;
   this->handler = handler;
   this->callable = callable;
-  handlerFunction = NULL;
+  this->handlerFunction = handlerFunction;
 }
 
 void CallExpr::accept(ExprVisitor *visitor) {
@@ -263,4 +261,12 @@ SwapExpr::SwapExpr() : Expr(EXPR_SWAP) {
 
 void SwapExpr::accept(ExprVisitor *visitor) {
   return visitor->visitSwapExpr(this);
+}
+
+NativeExpr::NativeExpr(Token nativeCode) : Expr(EXPR_NATIVE) {
+  this->nativeCode = nativeCode;
+}
+
+void NativeExpr::accept(ExprVisitor *visitor) {
+  return visitor->visitNativeExpr(this);
 }

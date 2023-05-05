@@ -393,7 +393,6 @@ void Resolver::visitBinaryExpr(BinaryExpr *expr) {
   case TOKEN_BANG_EQUAL:
   case TOKEN_GREATER_EQUAL:
   case TOKEN_LESS_EQUAL:
-    expr->notFlag = true;
     break;
   }
 
@@ -524,7 +523,7 @@ static Expr *generateFunction(const char *type, const char *name, char *args, Ex
         typeIndex = index;
 
     functionExprs[0] = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, type, strlen(type), -1), typeIndex, false);
-    functionExprs[1] = new CallExpr(nameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), nbParms, parms, false, NULL, NULL);
+    functionExprs[1] = new CallExpr(nameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), nbParms, parms, false, NULL, NULL, NULL);
     functionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), count + restLength, bodyExprs, 0, NULL);
 
     return new ListExpr(3, functionExprs, EXPR_LIST);
@@ -973,7 +972,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
       if (valueExpr) {
         expr->expressions[1] = new AssignExpr(
             varExpr, buildToken(TOKEN_EQUAL, "=", 1, varExpr->name.line),
-            valueExpr, OP_FALSE, false);
+            valueExpr, OP_FALSE);
         expr->listType = EXPR_ASSIGN;
       }
 
@@ -1191,6 +1190,10 @@ void Resolver::visitSwapExpr(SwapExpr *expr) {
     accept<int>(expr->_expr);
   else
     getCurrent()->pushType(type);
+}
+
+void Resolver::visitNativeExpr(NativeExpr *expr) {
+  getCurrent()->pushType(VAL_VOID);
 }
 
 Type Resolver::popType() {

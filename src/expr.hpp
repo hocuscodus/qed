@@ -37,7 +37,8 @@ typedef enum {
   EXPR_THIS,
   EXPR_TYPE,
   EXPR_UNARY,
-  EXPR_SWAP
+  EXPR_SWAP,
+  EXPR_NATIVE
 } ExprType;
 
 struct ExprVisitor;
@@ -75,6 +76,7 @@ struct ThisExpr;
 struct TypeExpr;
 struct UnaryExpr;
 struct SwapExpr;
+struct NativeExpr;
 
 struct ExprVisitor {
   template <typename T> T accept(Expr *expr, T buf = T()) {
@@ -117,6 +119,7 @@ struct ExprVisitor {
   virtual void visitTypeExpr(TypeExpr *expr) = 0;
   virtual void visitUnaryExpr(UnaryExpr *expr) = 0;
   virtual void visitSwapExpr(SwapExpr *expr) = 0;
+  virtual void visitNativeExpr(NativeExpr *expr) = 0;
 };
 
 struct ReferenceExpr : public Expr {
@@ -159,9 +162,8 @@ struct AssignExpr : public Expr {
   Token op;
   Expr* value;
   OpCode opCode;
-  bool suffixFlag;
 
-  AssignExpr(ReferenceExpr* varExp, Token op, Expr* value, OpCode opCode, bool suffixFlag);
+  AssignExpr(ReferenceExpr* varExp, Token op, Expr* value, OpCode opCode);
   void accept(ExprVisitor *visitor);
 };
 
@@ -170,9 +172,8 @@ struct BinaryExpr : public Expr {
   Token op;
   Expr* right;
   OpCode opCode;
-  bool notFlag;
 
-  BinaryExpr(Expr* left, Token op, Expr* right, OpCode opCode, bool notFlag);
+  BinaryExpr(Expr* left, Token op, Expr* right, OpCode opCode);
   void accept(ExprVisitor *visitor);
 };
 
@@ -204,10 +205,10 @@ struct CallExpr : public Expr {
   Expr** arguments;
   bool newFlag;
   Expr* handler;
-  ObjFunction* handlerFunction;
   ObjCallable* callable;
+  ObjFunction* handlerFunction;
 
-  CallExpr(Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler, ObjCallable* callable);
+  CallExpr(Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler, ObjCallable* callable, ObjFunction* handlerFunction);
   void accept(ExprVisitor *visitor);
 };
 
@@ -356,6 +357,13 @@ struct SwapExpr : public Expr {
   Expr* _expr;
 
   SwapExpr();
+  void accept(ExprVisitor *visitor);
+};
+
+struct NativeExpr : public Expr {
+  Token nativeCode;
+
+  NativeExpr(Token nativeCode);
   void accept(ExprVisitor *visitor);
 };
 
