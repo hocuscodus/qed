@@ -93,7 +93,6 @@
 
 #define KEY_DEF( identifier, unary, binary, prec )  identifier
 typedef enum { KEYS_DEF } TokenType;
-
 #undef KEY_DEF
 
 struct Token {

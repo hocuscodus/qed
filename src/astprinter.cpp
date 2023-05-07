@@ -6,8 +6,7 @@
  */
 #include <cstdarg>
 #include <stdio.h>
-#include "astprinter.hpp"
-#include "object.hpp"
+#include "expr.hpp"
 
 /*
 void ASTPrinter::parenthesize(char *name, int numArgs, ...) {
@@ -19,7 +18,7 @@ void ASTPrinter::parenthesize(char *name, int numArgs, ...) {
   while(numArgs--) {
     Expr *expr = va_arg(ap, Expr *);
     printf(" ");
-    expr->accept(this);
+    astPrint();
   }
 
   printf(")");
@@ -42,7 +41,7 @@ void ASTPrinter::transform(int numArgs, ...) {
     Expr *part = va_arg(ap, Expr *);
     printf(" ");
     if (part instanceof Expr) {
-      builder.append(((Expr)part).accept(this));
+      builder.append(((Expr)part).astPrint());
     } else if (part instanceof Token) {
       builder.append(((Token) part).lexeme);
     } else if (part instanceof List) {
@@ -52,21 +51,18 @@ void ASTPrinter::transform(int numArgs, ...) {
     }
   }
 }
-*/
-ASTPrinter::ASTPrinter() : ExprVisitor() {
-}
 
-void ASTPrinter::print(Expr *expr) {
-  expr->accept(this);
+static void print(Expr *expr) {
+  astPrint();
   printf("\n");
 }
-/*
+
 void ASTPrinter::visitBlockStmt(Expr *expr) {
   StringBuilder builder = new StringBuilder();
   builder.append("(block ");
 
   for (Stmt statement : stmt.statements) {
-    builder.append(statement.accept(this));
+    builder.append(statement.astPrint());
   }
 
   builder.append(")");
@@ -105,7 +101,7 @@ void ASTPrinter::visitFunctionStmt(Expr *expr) {
   builder.append(") ");
 
   for (Stmt body : stmt.body) {
-    builder.append(body.accept(this));
+    builder.append(body.astPrint());
   }
 
   builder.append(")");
@@ -142,226 +138,25 @@ void ASTPrinter::visitWhileStmt(Expr *expr) {
   return parenthesize2("while", stmt.condition, stmt.body);
 }
 */
-void ASTPrinter::visitAssignExpr(AssignExpr *expr) {
-  printf("(%.*s %d ", expr->op.length, expr->op.start, expr->varExp ? expr->varExp->index : -1);
+static void printObjType(Obj *obj) {
+  switch(obj->type) {
+    case OBJ_STRING: printf("String"); return;
+    case OBJ_FUNCTION: {
+      ObjString *name = ((ObjCallable *) obj)->name;
 
-  if (expr->value)
-    expr->value->accept(this);
+      printf("%.s", name->length, name->chars);
+      return;
+    }
+    case OBJ_INSTANCE: {
+      ObjString *name = ((ObjInstance *) obj)->callable->name;
 
-  printf(")");
-}
-
-void ASTPrinter::visitUIAttributeExpr(UIAttributeExpr *expr) {
-  printf("%.*s=(", expr->name.length, expr->name.start);
-  if (expr->handler)
-    accept<int>(expr->handler, 0);
-  printf(")");
-}
-
-void ASTPrinter::visitUIDirectiveExpr(UIDirectiveExpr *expr) {
-  printf("(Directive(");
-  for (int index = 0; index < expr->attCount; index++)
-    accept<int>(expr->attributes[index], 0);
-
-  printf(")(");
-
-  if (expr->previous)
-    accept<int>(expr->previous, 0);
-
-  if (expr->lastChild)
-    accept<int>(expr->lastChild, 0);
-
-  printf("))");
-}
-
-void ASTPrinter::visitBinaryExpr(BinaryExpr *expr) {
-  printf("(%.*s ", expr->op.length, expr->op.start);
-  expr->left->accept(this);
-  printf(" ");
-  expr->right->accept(this);
-  printf(")");
-}
-
-void ASTPrinter::visitCallExpr(CallExpr *expr) {
-//  parenthesize2("call", 2, expr->callee, expr->arguments);
-  printf("(call ");
-  expr->callee->accept(this);
-  for (int index = 0; index < expr->count; index++) {
-    printf(" ");
-    expr->arguments[index]->accept(this);
-  }
-  printf(")");
-}
-
-void ASTPrinter::visitArrayElementExpr(ArrayElementExpr *expr) {
-  printf("[index ");
-  expr->callee->accept(this);
-  for (int index = 0; index < expr->count; index++) {
-    printf(" ");
-    expr->indexes[index]->accept(this);
-  }
-  printf("]");
-}
-
-void ASTPrinter::visitDeclarationExpr(DeclarationExpr *expr) {
-  printf("(var %.*s", expr->name.length, expr->name.start);
-  accept<int>(expr->initExpr, 0);
-  printf(")");
-}
-
-void ASTPrinter::visitFunctionExpr(FunctionExpr *expr) {
-  printf("(fun %.*s", expr->name.length, expr->name.start);
-  accept<int>(expr->body, 0);
-  printf(")");
-}
-
-void ASTPrinter::visitGetExpr(GetExpr *expr) {
-//  return parenthesize2(".", expr.object, expr.name.lexeme);
-  printf("(. ");
-  expr->object->accept(this);
-  printf(" %.*s)", expr->name.length, expr->name.start);
-}
-
-void ASTPrinter::visitGroupingExpr(GroupingExpr *expr) {
-  printf("(group'%.*s' ", expr->name.length, expr->name.start);
-  for (int index = 0; index < expr->count; index++) {
-    printf(", ");
-    expr->expressions[index]->accept(this);
-  }
-  if (expr->ui)
-    accept<int>(expr->ui, 0);
-  printf(")");
-}
-
-void ASTPrinter::visitArrayExpr(ArrayExpr *expr) {
-  printf("[");
-  for (int index = 0; index < expr->count; index++) {
-    if (index) printf(", ");
-    expr->expressions[index]->accept(this);
-  }
-  printf("]");
-}
-
-void ASTPrinter::visitListExpr(ListExpr *expr) {
-  printf("(list ");
-  for (int index = 0; index < expr->count; index++) {
-    printf(", ");
-    expr->expressions[index]->accept(this);
-  }
-  printf(")");
-}
-
-void ASTPrinter::visitLiteralExpr(LiteralExpr *expr) {
-  switch (expr->type) {
-    case VAL_BOOL:
-      printf("%s", expr->as.boolean ? "true" : "false");
-      break;
-
-    case VAL_FLOAT:
-      printf("%f", expr->as.floating);
-      break;
-
-    case VAL_INT:
-      printf("%ld", expr->as.integer);
-      break;
-
-    case VAL_OBJ:
-      switch (expr->as.obj->type) {
-        case OBJ_STRING:
-          printf("%.*s", ((ObjString *) expr->as.obj)->length, ((ObjString *) expr->as.obj)->chars);
-          break;
-
-        default:
-          printf("NULL");
-          break;
-      }
-      break;
-
-    default:
-      printf("NULL");
-      break;
+      printf("%.s instance", name->length, name->chars);
+      return;
+    }
   }
 }
 
-void ASTPrinter::visitLogicalExpr(LogicalExpr *expr) {
-  printf("(%.*s ", expr->op.length, expr->op.start);
-  expr->left->accept(this);
-  printf(" ");
-  expr->right->accept(this);
-  printf(")");
-}
-
-void ASTPrinter::visitOpcodeExpr(OpcodeExpr *expr) {
-  printf("(Op %d ", expr->op);
-  if (expr->right)
-    expr->right->accept(this);
-  printf(")");
-}
-
-void ASTPrinter::visitReturnExpr(ReturnExpr *expr) {
-  printf("return ");
-  if (expr->value != NULL)
-    accept<int>(expr->value, 0);
-  printf(";");
-}
-
-void ASTPrinter::visitSetExpr(SetExpr *expr) {
-  printf("(%.*s (. ", expr->op.length, expr->op.start);
-  expr->object->accept(this);
-  printf(" %.*s) ", expr->name.length, expr->name.start);
-  expr->value->accept(this);
-  printf(")");
-}
-
-void ASTPrinter::visitStatementExpr(StatementExpr *expr) {
-  expr->expr->accept(this);
-  printf(";");
-}
-
-void ASTPrinter::visitSuperExpr(SuperExpr *expr) {
-//  parenthesize2("super", 1, expr->method);
-}
-
-void ASTPrinter::visitTernaryExpr(TernaryExpr *expr) {
-  printf("(%.*s ", expr->op.length, expr->op.start);
-  expr->left->accept(this);
-  printf(" ");
-  expr->middle->accept(this);
-  printf(" ");
-  if (expr->right)
-    expr->right->accept(this);
-  else
-    printf("NULL");
-  printf(")");
-}
-
-void ASTPrinter::visitThisExpr(ThisExpr *expr) {
-  printf("this");
-}
-
-void ASTPrinter::visitTypeExpr(TypeExpr *expr) {
-  printType(&expr->type);
-}
-
-void ASTPrinter::visitUnaryExpr(UnaryExpr *expr) {
-  printf("(%.*s ", expr->op.length, expr->op.start);
-  expr->right->accept(this);
-  printf(")");
-}
-
-void ASTPrinter::visitReferenceExpr(ReferenceExpr *expr) {
-  printf("(var %s %d)", expr->name.getString().c_str(), expr->index);
-}
-
-void ASTPrinter::visitSwapExpr(SwapExpr *expr) {
-  printf("(swap)");
-}
-
-void ASTPrinter::visitNativeExpr(NativeExpr *expr) {
-  printf("<native>");
-}
-
-void ASTPrinter::printType(Type *type) {
+static void printType(Type *type) {
   switch(type->valueType) {
     case VAL_VOID:
       if (type->objType != NULL) {
@@ -379,33 +174,234 @@ void ASTPrinter::printType(Type *type) {
   }
 }
 
-void ASTPrinter::printObjType(Obj *obj) {
-  switch(obj->type) {
-    case OBJ_STRING: printf("String"); return;
-    case OBJ_FUNCTION: {
-      ObjString *name = ((ObjCallable *) obj)->name;
+void AssignExpr::astPrint() {
+  printf("(%.*s %d ", op.length, op.start, varExp ? varExp->index : -1);
 
-      printf("%.s", name->length, name->chars);
-      return;
-    }
-    case OBJ_INSTANCE: {
-      ObjString *name = ((ObjInstance *) obj)->callable->name;
+  if (value)
+    value->astPrint();
 
-      printf("%.s instance", name->length, name->chars);
-      return;
-    }
+  printf(")");
+}
+
+void UIAttributeExpr::astPrint() {
+  printf("%.*s=(", name.length, name.start);
+  if (handler)
+    handler->astPrint();
+  printf(")");
+}
+
+void UIDirectiveExpr::astPrint() {
+  printf("(Directive(");
+  for (int index = 0; index < attCount; index++)
+    attributes[index]->astPrint();
+
+  printf(")(");
+
+  if (previous)
+    previous->astPrint();
+
+  if (lastChild)
+    lastChild->astPrint();
+
+  printf("))");
+}
+
+void BinaryExpr::astPrint() {
+  printf("(%.*s ", op.length, op.start);
+  left->astPrint();
+  printf(" ");
+  right->astPrint();
+  printf(")");
+}
+
+void CallExpr::astPrint() {
+//  parenthesize2("call", 2, callee, arguments);
+  printf("(call ");
+  callee->astPrint();
+  for (int index = 0; index < count; index++) {
+    printf(" ");
+    arguments[index]->astPrint();
   }
+  printf(")");
+}
+
+void ArrayElementExpr::astPrint() {
+  printf("[index ");
+  callee->astPrint();
+  for (int index = 0; index < count; index++) {
+    printf(" ");
+    indexes[index]->astPrint();
+  }
+  printf("]");
+}
+
+void DeclarationExpr::astPrint() {
+  printf("(var %.*s", name.length, name.start);
+  initExpr->astPrint();
+  printf(")");
+}
+
+void FunctionExpr::astPrint() {
+  printf("(fun %.*s", name.length, name.start);
+  body->astPrint();
+  printf(")");
+}
+
+void GetExpr::astPrint() {
+//  return parenthesize2(".", expr.object, expr.name.lexeme);
+  printf("(. ");
+  object->astPrint();
+  printf(" %.*s)", name.length, name.start);
+}
+
+void GroupingExpr::astPrint() {
+  printf("(group'%.*s' ", name.length, name.start);
+  for (int index = 0; index < count; index++) {
+    printf(", ");
+    expressions[index]->astPrint();
+  }
+  if (ui)
+    ui->astPrint();
+  printf(")");
+}
+
+void ArrayExpr::astPrint() {
+  printf("[");
+  for (int index = 0; index < count; index++) {
+    if (index) printf(", ");
+    expressions[index]->astPrint();
+  }
+  printf("]");
+}
+
+void ListExpr::astPrint() {
+  printf("(list ");
+  for (int index = 0; index < count; index++) {
+    printf(", ");
+    expressions[index]->astPrint();
+  }
+  printf(")");
+}
+
+void LiteralExpr::astPrint() {
+  switch (type) {
+    case VAL_BOOL:
+      printf("%s", as.boolean ? "true" : "false");
+      break;
+
+    case VAL_FLOAT:
+      printf("%f", as.floating);
+      break;
+
+    case VAL_INT:
+      printf("%ld", as.integer);
+      break;
+
+    case VAL_OBJ:
+      switch (as.obj->type) {
+        case OBJ_STRING:
+          printf("%.*s", ((ObjString *) as.obj)->length, ((ObjString *) as.obj)->chars);
+          break;
+
+        default:
+          printf("NULL");
+          break;
+      }
+      break;
+
+    default:
+      printf("NULL");
+      break;
+  }
+}
+
+void LogicalExpr::astPrint() {
+  printf("(%.*s ", op.length, op.start);
+  left->astPrint();
+  printf(" ");
+  right->astPrint();
+  printf(")");
+}
+
+void OpcodeExpr::astPrint() {
+  printf("(Op %d ", op);
+  if (right)
+    right->astPrint();
+  printf(")");
+}
+
+void ReturnExpr::astPrint() {
+  printf("return ");
+  if (value != NULL)
+    value->astPrint();
+  printf(";");
+}
+
+void SetExpr::astPrint() {
+  printf("(%.*s (. ", op.length, op.start);
+  object->astPrint();
+  printf(" %.*s) ", name.length, name.start);
+  value->astPrint();
+  printf(")");
+}
+
+void StatementExpr::astPrint() {
+  expr->astPrint();
+  printf(";");
+}
+
+void SuperExpr::astPrint() {
+//  parenthesize2("super", 1, method);
+}
+
+void TernaryExpr::astPrint() {
+  printf("(%.*s ", op.length, op.start);
+  left->astPrint();
+  printf(" ");
+  middle->astPrint();
+  printf(" ");
+  if (right)
+    right->astPrint();
+  else
+    printf("NULL");
+  printf(")");
+}
+
+void ThisExpr::astPrint() {
+  printf("this");
+}
+
+void TypeExpr::astPrint() {
+  printType(&type);
+}
+
+void UnaryExpr::astPrint() {
+  printf("(%.*s ", op.length, op.start);
+  right->astPrint();
+  printf(")");
+}
+
+void ReferenceExpr::astPrint() {
+  printf("(var %s %d)", name.getString().c_str(), index);
+}
+
+void SwapExpr::astPrint() {
+  printf("(swap)");
+}
+
+void NativeExpr::astPrint() {
+  printf("<native>");
 }
 //< omit
 /* Representing Code printer-main < Representing Code omit
 public static void main(String[] args) {
-  Expr expression = new expr->Binary(
-      new expr->Unary(
+  Expr expression = new Binary(
+      new Unary(
           new Token(TokenType.MINUS, "-", null, 1),
-          new expr->Literal(123)),
+          new Literal(123)),
       new Token(TokenType.STAR, "*", null, 1),
-      new expr->Grouping(
-          new expr->Literal(45.67)));
+      new Grouping(
+          new Literal(45.67)));
 
   System.out.println(new AstPrinter().print(expression));
 }

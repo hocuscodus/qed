@@ -10,14 +10,12 @@
 #include <string.h>
 #include "vm.hpp"
 #include "resolver.hpp"
-#include "codegen.hpp"
 #include "debug.hpp"
 #include "memory.h"
 #include "attrset.hpp"
 
 #ifdef DEBUG_PRINT_CODE
 #include "debug.hpp"
-#include "astprinter.hpp"
 #endif
 
 /*

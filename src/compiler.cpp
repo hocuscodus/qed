@@ -10,8 +10,6 @@
 #include "compiler.hpp"
 #include "resolver.hpp"
 #include "reifier.hpp"
-#include "codegen.hpp"
-#include "astprinter.hpp"
 #include "object.hpp"
 
 #ifdef DEBUG_PRINT_CODE
@@ -40,7 +38,7 @@ ObjFunction *Compiler::compile(Parser &parser) {
 
 #ifdef DEBUG_PRINT_CODE
   printf("Original parse: ");
-  ASTPrinter().print(parser.expr);
+  parser.expr->astPrint();
 #endif
   Resolver resolver(parser, parser.expr);
 //  Reifier reifier(parser);
@@ -52,7 +50,7 @@ ObjFunction *Compiler::compile(Parser &parser) {
 //    return NULL;
 #ifdef DEBUG_PRINT_CODE
   printf("Adapted parse: ");
-  ASTPrinter().print(parser.expr);
+  parser.expr->astPrint();
   printf("          ");
   for (int i = 0; i < declarationCount; i++) {
     Token *token = &declarations[i].name;
@@ -64,9 +62,7 @@ ObjFunction *Compiler::compile(Parser &parser) {
   }
   printf("\n");
 #endif
-  CodeGenerator generator(parser, function);
-
-  generator.accept<int>(parser.expr);
+  parser.expr->toCode(parser, function);
 
   if (parser.hadError)
     function->chunk.reset();

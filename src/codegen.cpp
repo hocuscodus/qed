@@ -8,7 +8,7 @@
 #include <string.h>
 #include <array>
 #include <set>
-#include "codegen.hpp"
+#include "parser.hpp"
 #include "attrset.hpp"
 #include "debug.hpp"
 
@@ -19,63 +19,59 @@ bool needsSemicolon(Expr *expr) {
   return expr->type != EXPR_GROUPING && (expr->type != EXPR_LIST || ((ListExpr *) expr)->listType != EXPR_CALL) && (expr->type != EXPR_SWAP || needsSemicolon(((SwapExpr *) expr)->_expr));
 }
 
-std::stringstream &CodeGenerator::str() {
+static std::stringstream &str() {
   return s;
 }
 
-std::stringstream &CodeGenerator::line() {
+static std::stringstream &line() {
   for (int index = 0; index < nTabs; index++)
     str() << "  ";
 
   return str();
 }
 
-void CodeGenerator::startBlock() {
+static void startBlock() {
   if (nTabs++ >= 0)
     str() << "{\n";
 }
 
-void CodeGenerator::endBlock() {
+static void endBlock() {
   if (--nTabs >= 0)
     line() << "}\n";
 }
 
-CodeGenerator::CodeGenerator(Parser &parser, ObjFunction *function) : ExprVisitor(), parser(parser) {
-  this->function = function;
-}
+void AssignExpr::toCode(Parser &parser, ObjFunction *function) {
+  if (varExp)
+    varExp->toCode(parser, function);
 
-void CodeGenerator::visitAssignExpr(AssignExpr *expr) {
-  if (expr->varExp)
-    accept<int>(expr->varExp, 0);
-
-  if (expr->value) {
-    str() << " " << expr->op.getString() << " ";
-    accept<int>(expr->value, 0);
+  if (value) {
+    str() << " " << op.getString() << " ";
+    value->toCode(parser, function);
   }
   else
-    str() << expr->op.getString();
+    str() << op.getString();
 }
 
-void CodeGenerator::visitUIAttributeExpr(UIAttributeExpr *expr) {
+void UIAttributeExpr::toCode(Parser &parser, ObjFunction *function) {
   parser.error("Cannot generate UI code from UI expression.");
 }
 
-void CodeGenerator::visitUIDirectiveExpr(UIDirectiveExpr *expr) {
+void UIDirectiveExpr::toCode(Parser &parser, ObjFunction *function) {
   parser.error("Cannot generate UI code from UI expression.");
 }
 
-void CodeGenerator::visitBinaryExpr(BinaryExpr *expr) {
-  if (expr->op.type == TOKEN_WHILE) {
-    str() << "while(" << expr->left << ") ";
+void BinaryExpr::toCode(Parser &parser, ObjFunction *function) {
+  if (op.type == TOKEN_WHILE) {
+    str() << "while(" << left << ") ";
     startBlock();
-    accept<int>(expr->right, 0);
+    right->toCode(parser, function);
     endBlock();
   } else {
     str() << "(";
-    accept<int>(expr->left, 0);
+    left->toCode(parser, function);
     str() << " ";
 
-    switch (expr->op.type) {
+    switch (op.type) {
       case TOKEN_EQUAL_EQUAL:
         str() << "===";
         break;
@@ -83,72 +79,68 @@ void CodeGenerator::visitBinaryExpr(BinaryExpr *expr) {
         str() << "!==";
         break;
       default:
-        str() << expr->op.getString();
+        str() << op.getString();
         break;
     }
 
     str() << " ";
-    accept<int>(expr->right, 0);
+    right->toCode(parser, function);
     str() << ")";
   }
 }
 
-void CodeGenerator::visitCallExpr(CallExpr *expr) {
-  if (expr->newFlag)
+void CallExpr::toCode(Parser &parser, ObjFunction *function) {
+  if (newFlag)
     str() << "new ";
 
-  accept<int>(expr->callee, 0);
+  callee->toCode(parser, function);
   str() << "(";
 
-  for (int index = 0; index < expr->count; index++) {
+  for (int index = 0; index < count; index++) {
     if (index)
       str() << ", ";
 
-    accept<int>(expr->arguments[index]);
+    arguments[index]->toCode(parser, function);
   }
 
-  if (expr->handler) {
-    if (expr->count)
+  if (handler) {
+    if (count)
       str() << ", ";
 
-    {
-      CodeGenerator generator(parser, expr->handlerFunction);
+    if (handler)
+      handler->toCode(parser, handlerFunction);
 
-      if (expr->handler)
-        generator.accept<int>(expr->handler);
-
-      if (parser.hadError)
-        return;
-    }
+    if (parser.hadError)
+      return;
   }
 
   str() << ")";
 }
 
-void CodeGenerator::visitArrayElementExpr(ArrayElementExpr *expr) {
-  accept<int>(expr->callee, 0);
+void ArrayElementExpr::toCode(Parser &parser, ObjFunction *function) {
+  callee->toCode(parser, function);
 
-  for (int index = 0; index < expr->count; index++)
-    accept<int>(expr->indexes[index]);
+  for (int index = 0; index < count; index++)
+    indexes[index]->toCode(parser, function);
 }
 
-void CodeGenerator::visitDeclarationExpr(DeclarationExpr *expr) {
-  accept<int>(expr->initExpr, 0);
+void DeclarationExpr::toCode(Parser &parser, ObjFunction *function) {
+  initExpr->toCode(parser, function);
 }
 
-void CodeGenerator::visitFunctionExpr(FunctionExpr *expr) {
+void FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
-void CodeGenerator::visitGetExpr(GetExpr *expr) {
+void GetExpr::toCode(Parser &parser, ObjFunction *function) {
   str() << "(";
-  accept<int>(expr->object, 0);
-  str() << "). " << expr->name.getString();
+  object->toCode(parser, function);
+  str() << "). " << name.getString();
 }
 
-void CodeGenerator::visitGroupingExpr(GroupingExpr *expr) {
+void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
   startBlock();
 
-  if (expr == parser.expr) {
+  if (this == parser.expr) {
     line() << "const canvas = document.getElementById(\"canvas\");\n";
     line() << "let postCount = 1;\n";
     line() << "let attributeStacks = [];\n";
@@ -159,7 +151,7 @@ void CodeGenerator::visitGroupingExpr(GroupingExpr *expr) {
     line() << "}\n";
   }
 
-  if (function->name ? function->bodyExpr == expr : expr == parser.expr) {
+  if (function->name ? function->bodyExpr == this : this == parser.expr) {
     bool classFlag = function->isClass();
     bool arityFlag = false;
 
@@ -186,16 +178,16 @@ void CodeGenerator::visitGroupingExpr(GroupingExpr *expr) {
       line() << "const " << function->getThisVariableName() << " = this;\n";
   }
 
-  for (int index = 0; index < expr->count; index++) {
-    Expr *subExpr = expr->expressions[index];
+  for (int index = 0; index < count; index++) {
+    Expr *subExpr = expressions[index];
 
-    accept<int>(subExpr, 0);
+    subExpr->toCode(parser, function);
   }
 
-  if (expr->ui)
-    accept<int>(expr->ui, 0);
+  if (ui)
+    ui->toCode(parser, function);
 
-  if (expr == parser.expr) {
+  if (this == parser.expr) {
     line() << "this.pushAttribute(4, 20);\n";
     line() << "this.pushAttribute(10, 0);\n";
     line() << "this.pushAttribute(11, 1.0);\n";
@@ -227,60 +219,57 @@ void CodeGenerator::visitGroupingExpr(GroupingExpr *expr) {
   endBlock();
 }
 
-void CodeGenerator::visitArrayExpr(ArrayExpr *expr) {
-  CodeGenerator generator(parser, expr->function);
-
+void ArrayExpr::toCode(Parser &parser, ObjFunction *function) {
   str() << "[";
 
-  for (int index = 0; index < expr->count; index++) {
+  for (int index = 0; index < count; index++) {
     if (index)
       str() << ", ";
 
-    accept<int>(expr->expressions[index]);
+    expressions[index]->toCode(parser, function);
   }
 
   str() << "]";
 }
 
-void CodeGenerator::visitListExpr(ListExpr *expr) {
-  switch(expr->listType) {
+void ListExpr::toCode(Parser &parser, ObjFunction *function) {
+  switch(listType) {
   case EXPR_ASSIGN: {
-    AssignExpr *subExpr = (AssignExpr *) expr->expressions[expr->count - 1];
+    AssignExpr *subExpr = (AssignExpr *) expressions[count - 1];
 
     str() << (subExpr->varExp->_declaration->isField ? "this." : subExpr->varExp->_declaration->function->isClass() ? "const." : "let ") << subExpr->varExp->_declaration->getRealName() << " = ";
-    accept<int>(subExpr->value, 0);
+    subExpr->value->toCode(parser, function);
     break;
   }
   case EXPR_CALL: {
-    ObjFunction *function = (ObjFunction *) expr->_declaration->type.objType;
-    CallExpr *callExpr = (CallExpr *) expr->expressions[1];
+    ObjFunction *function = (ObjFunction *) _declaration->type.objType;
+    CallExpr *callExpr = (CallExpr *) expressions[1];
     ReferenceExpr *varExp = (ReferenceExpr *)callExpr->callee;
     ObjFunction *function2 = (ObjFunction *) varExp->_declaration->type.objType;
 
     if (function != function2)
       function2 = function;
 
-    CodeGenerator generator(parser, function);
     Expr *bodyExpr = function->bodyExpr;
 
-    generator.str() << (varExp->_declaration->isField ? "this." : "let ");// << varExp->name.getString() << " = null";
-    generator.str() << varExp->_declaration->getRealName() << " = function(";
+    str() << (varExp->_declaration->isField ? "this." : "let ");// << varExp->name.getString() << " = null";
+    str() << varExp->_declaration->getRealName() << " = function(";
 
     for (int index = 0; index < callExpr->count; index++) {
       ListExpr *param = (ListExpr *)callExpr->arguments[index];
       Expr *paramExpr = param->expressions[1];
 
       if (index)
-        generator.str() << ", ";
+        str() << ", ";
 
-      generator.str() << ((ReferenceExpr *)paramExpr)->name.getString();
+      str() << ((ReferenceExpr *)paramExpr)->name.getString();
     }
 
     if (function->isUserClass()) {
       if (callExpr->count)
-        generator.str() << ", ";
+        str() << ", ";
 
-      generator.str() << "ReturnHandler_";
+      str() << "ReturnHandler_";
     }
 
     str() << ") ";
@@ -288,7 +277,7 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
 //    for (ObjFunction *child = function->firstChild; function; child = child->next)
 //      generator.accept<int>(child->bodyExpr);
     if (bodyExpr)
-      generator.accept<int>(bodyExpr);
+      bodyExpr->toCode(parser, function);
 
     if (parser.hadError)
       return;
@@ -302,40 +291,40 @@ void CodeGenerator::visitListExpr(ListExpr *expr) {
     break;
   }
   case EXPR_REFERENCE: {
-    ReferenceExpr *varExp = (ReferenceExpr *) expr->expressions[expr->count - 1];
+    ReferenceExpr *varExp = (ReferenceExpr *) expressions[count - 1];
 
     str() << (varExp->_declaration->isField ? "this." : "let ") << varExp->name.getString() << " = null";
     break;
   }
   default:
-    for (int index = 0; index < expr->count; index++) {
+    for (int index = 0; index < count; index++) {
       if (index)
         str() << " ";
 
-      accept<int>(expr->expressions[index], 0);
+      expressions[index]->toCode(parser, function);
     }
     break;
   }
 }
 
-void CodeGenerator::visitLiteralExpr(LiteralExpr *expr) {
-  switch (expr->type) {
+void LiteralExpr::toCode(Parser &parser, ObjFunction *function) {
+  switch (type) {
     case VAL_BOOL:
-      str() << (expr->as.boolean ? "true" : "false");
+      str() << (as.boolean ? "true" : "false");
       break;
 
     case VAL_FLOAT:
-      str() << expr->as.floating;
+      str() << as.floating;
       break;
 
     case VAL_INT:
-      str() << expr->as.integer;
+      str() << as.integer;
       break;
 
     case VAL_OBJ:
-      switch (expr->as.obj->type) {
+      switch (as.obj->type) {
         case OBJ_STRING:
-          str() << "\"" << std::string(((ObjString *) expr->as.obj)->chars, ((ObjString *) expr->as.obj)->length) << "\"";
+          str() << "\"" << std::string(((ObjString *) as.obj)->chars, ((ObjString *) as.obj)->length) << "\"";
           break;
 
         default:
@@ -350,30 +339,30 @@ void CodeGenerator::visitLiteralExpr(LiteralExpr *expr) {
   }
 }
 
-void CodeGenerator::visitLogicalExpr(LogicalExpr *expr) {
+void LogicalExpr::toCode(Parser &parser, ObjFunction *function) {
   str() << "(";
-  accept<int>(expr->left, 0);
-  str() << " " << expr->op.getString() << " ";
-  accept<int>(expr->right, 0);
+  left->toCode(parser, function);
+  str() << " " << op.getString() << " ";
+  right->toCode(parser, function);
   str() << ")";
 }
 
-void CodeGenerator::visitOpcodeExpr(OpcodeExpr *expr) {
-  if (expr->right)
-    expr->right->accept(this);
+void OpcodeExpr::toCode(Parser &parser, ObjFunction *function) {
+  if (right)
+    right->toCode(parser, function);
 }
 
-void CodeGenerator::visitReturnExpr(ReturnExpr *expr) {
+void ReturnExpr::toCode(Parser &parser, ObjFunction *function) {
   if (function->isClass()) {
-    accept<int>(expr->value, 0);
+    value->toCode(parser, function);
     line() << "return;";
   }
   else {
     line() << "return";
 
-    if (expr->value) {
+    if (value) {
       str() << " (";
-      accept<int>(expr->value, 0);
+      value->toCode(parser, function);
       str() << ")";
     }
 
@@ -381,83 +370,83 @@ void CodeGenerator::visitReturnExpr(ReturnExpr *expr) {
   }
 }
 
-void CodeGenerator::visitSetExpr(SetExpr *expr) {
+void SetExpr::toCode(Parser &parser, ObjFunction *function) {
   str() << "(";
-  accept<int>(expr->object, 0);
-  str() << "). " << expr->name.getString() << " = ";
-  accept<int>(expr->value, 0);
+  object->toCode(parser, function);
+  str() << "). " << name.getString() << " = ";
+  value->toCode(parser, function);
 }
 
-void CodeGenerator::visitStatementExpr(StatementExpr *expr) {
+void StatementExpr::toCode(Parser &parser, ObjFunction *function) {
   line();
-  expr->expr->accept(this);
+  expr->toCode(parser, function);
 
-  if (needsSemicolon(expr->expr))
+  if (needsSemicolon(expr))
     str() << ";\n";
 }
 
-void CodeGenerator::visitSuperExpr(SuperExpr *expr) {
+void SuperExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
-void CodeGenerator::visitTernaryExpr(TernaryExpr *expr) {
-  if (expr->right) {
+void TernaryExpr::toCode(Parser &parser, ObjFunction *function) {
+  if (right) {
     str() << "(";
-    expr->left->accept(this);
+    left->toCode(parser, function);
     str() << " ? ";
-    expr->middle->accept(this);
+    middle->toCode(parser, function);
     str() << " : ";
-    expr->right->accept(this);
+    right->toCode(parser, function);
     str() << ")";
   }
   else {
     line() << "if (";
-    expr->left->accept(this);
+    left->toCode(parser, function);
     str() << ") ";
     startBlock();
-    expr->middle->accept(this);
+    middle->toCode(parser, function);
     endBlock();
   }
 }
 
-void CodeGenerator::visitThisExpr(ThisExpr *expr) {
+void ThisExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
-void CodeGenerator::visitTypeExpr(TypeExpr *expr) {
+void TypeExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
-void CodeGenerator::visitUnaryExpr(UnaryExpr *expr) {
-  switch (expr->op.type) {
+void UnaryExpr::toCode(Parser &parser, ObjFunction *function) {
+  switch (op.type) {
     case TOKEN_PERCENT:
       str() << "((";
-      accept<int>(expr->right, 0);
+      right->toCode(parser, function);
       str() << ") / 100)";
       break;
 
     default:
-      str() << expr->op.getString() << "(";
-      accept<int>(expr->right, 0);
+      str() << op.getString() << "(";
+      right->toCode(parser, function);
       str() << ")";
       break;
   }
 }
 
-void CodeGenerator::visitReferenceExpr(ReferenceExpr *expr) {
-  if (expr->_declaration)
-    if (expr->_declaration->function->isClass())
-      if (expr->_declaration->function == function)
-        str() << "this." << expr->_declaration->getRealName();
+void ReferenceExpr::toCode(Parser &parser, ObjFunction *function) {
+  if (_declaration)
+    if (_declaration->function->isClass())
+      if (_declaration->function == function)
+        str() << "this." << _declaration->getRealName();
       else
-        str() << expr->_declaration->function->getThisVariableName() << "." << expr->_declaration->getRealName();
+        str() << _declaration->function->getThisVariableName() << "." << _declaration->getRealName();
     else
-      str() << expr->_declaration->getRealName();
+      str() << _declaration->getRealName();
   else
-    str() << expr->name.getString();
+    str() << name.getString();
 }
 
-void CodeGenerator::visitSwapExpr(SwapExpr *expr) {
-  accept<int>(expr->_expr);
+void SwapExpr::toCode(Parser &parser, ObjFunction *function) {
+  _expr->toCode(parser, function);
 }
 
-void CodeGenerator::visitNativeExpr(NativeExpr *expr) {
-  str() << std::string(expr->nativeCode.start, expr->nativeCode.length);
+void NativeExpr::toCode(Parser &parser, ObjFunction *function) {
+  str() << std::string(nativeCode.start, nativeCode.length);
 }
