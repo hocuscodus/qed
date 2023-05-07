@@ -9,7 +9,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "vm.hpp"
-#include "resolver.hpp"
 #include "debug.hpp"
 #include "memory.h"
 #include "attrset.hpp"

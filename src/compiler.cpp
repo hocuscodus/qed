@@ -8,8 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "compiler.hpp"
-#include "resolver.hpp"
-#include "reifier.hpp"
+#include "parser.hpp"
 #include "object.hpp"
 
 #ifdef DEBUG_PRINT_CODE
@@ -40,10 +39,11 @@ ObjFunction *Compiler::compile(Parser &parser) {
   printf("Original parse: ");
   parser.expr->astPrint();
 #endif
-  Resolver resolver(parser, parser.expr);
 //  Reifier reifier(parser);
 
-  if (!resolver.resolve(this))
+  parser.expr->resolve(parser);
+
+  if (parser.hadError)
     return NULL;
 
 //  if (!reifier.reify())

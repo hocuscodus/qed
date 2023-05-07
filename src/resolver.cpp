@@ -9,11 +9,70 @@
 #include <list>
 #include <set>
 #include <sstream>
-#include "resolver.hpp"
+#include "parser.hpp"
 #include "memory.h"
 #include "qni.hpp"
+#include <stack>
 
-typedef void (Resolver::*DirectiveFn)(UIDirectiveExpr *expr);
+#define UI_PARSES_DEF \
+    UI_PARSE_DEF( PARSE_VALUES, &processAttrs ), \
+    UI_PARSE_DEF( PARSE_AREAS, &pushAreas ), \
+    UI_PARSE_DEF( PARSE_LAYOUT, &recalcLayout ), \
+    UI_PARSE_DEF( PARSE_REFRESH, &paint ), \
+    UI_PARSE_DEF( PARSE_EVENTS, &onEvent ), \
+
+#define UI_PARSE_DEF( identifier, directiveFn )  identifier
+typedef enum { UI_PARSES_DEF } ParseStep;
+#undef UI_PARSE_DEF
+
+struct ValueStack3 {
+  int max;
+	std::stack<int> *map;
+
+  ValueStack3(int max) {
+    this->max = max;
+    map = new std::stack<int>[max];
+
+    for (int index = 0; index < max; index++)
+      map[index].push(-1);
+  }
+
+  ~ValueStack3() {
+    delete[] map;
+  }
+
+	void push(int key, int value) {
+    if (key >= 0 && key < max)
+      map[key].push(value);
+  }
+
+	void pop(int key) {
+    if (key >= 0 && key < max)
+      map[key].pop();
+  }
+
+	int get(int key) {
+    return key >= 0 && key < max ? map[key].top() : -1;
+  }
+};
+
+Type popType();
+bool resolve(Compiler *compiler);
+void acceptGroupingExprUnits(GroupingExpr *expr);
+void acceptSubExpr(Expr *expr);
+Expr *parse(const char *source, int index, int replace, Expr *body);
+
+ParseStep getParseStep();
+int getParseDir();
+
+void processAttrs(UIDirectiveExpr *expr, Parser &parser);
+void pushAreas(UIDirectiveExpr *expr, Parser &parser);
+void recalcLayout(UIDirectiveExpr *expr, Parser &parser);
+int adjustLayout(UIDirectiveExpr *expr, Parser &parser);
+void paint(UIDirectiveExpr *expr, Parser &parser);
+void onEvent(UIDirectiveExpr *expr, Parser &parser);
+
+typedef void (*DirectiveFn)(UIDirectiveExpr *expr, Parser &parser);
 
 #define UI_PARSE_DEF( identifier, directiveFn )  { directiveFn }
 DirectiveFn directiveFns[] = { UI_PARSES_DEF };
@@ -26,6 +85,7 @@ extern ParseExpRule expRules[];
 #include "debug.hpp"
 #endif
 */
+int uiParseCount = -1;
 
 static Obj objInternalType = {OBJ_INTERNAL};
 static Obj *primitives[] = {
@@ -184,11 +244,6 @@ static Expr *convertToType(Type srcType, Expr *expr, Type &type, Parser &parser)
   return expr;
 }
 
-Resolver::Resolver(Parser &parser, Expr *exp) : ExprVisitor(), parser(parser) {
-  this->exp = exp;
-  uiParseCount = -1;
-}
-
 static OpCode getOpCode(Type type, Token token) {
   OpCode opCode = OP_FALSE;
 
@@ -257,236 +312,18 @@ static OpCode getOpCode(Type type, Token token) {
   return opCode;
 }
 
-void Resolver::visitAssignExpr(AssignExpr *expr) {
-  if (expr->value)
-    accept<int>(expr->value, 0);
+static int aCount;
+static std::stringstream s;
+static std::stringstream *ss = &s;
 
-  if (expr->varExp)
-    accept<int>(expr->varExp, 0);
+static int nTabs = 0;
 
-  Type type1 = popType();
-  Type type2 = expr->varExp && expr->value ? popType() : type1;
-
-  expr->opCode = getOpCode(type1, expr->op);
-
-  if (IS_VOID(type1))
-    parser.error("Variable not found");
-  else if (!type1.equals(type2)) {
-    expr->value = convertToType(type2, expr->value, type1, parser);
-
-    if (!expr->value) {
-      parser.error("Value must match the variable type");
-    }
-  }
-
-  getCurrent()->pushType(type1);
+static void insertTabs() {
+  for (int index = 0; index < nTabs; index++)
+    (*ss) << "  ";
 }
 
-void Resolver::visitUIAttributeExpr(UIAttributeExpr *expr) {
-  parser.error("Internal error, cannot be invoked..");
-}
-
-void Resolver::visitUIDirectiveExpr(UIDirectiveExpr *expr) {
-  (this->*directiveFns[getParseStep()])(expr);
-}
-#if 0
-void Resolver::visitDirectiveExpr(UIDirectiveExpr *expr) {
-  ParseStep step = getParseStep();
-
-  if (resolverUIRules[step].attrListFn)
-    (this->*resolverUIRules[step].attrListFn)(expr);
-////////////////////
-/*  if (outFlag)
-    for (int index = 0; index < expr->attCount; index++)
-      accept<int>(expr->attributes[index], 0);
-  else
-    for (int index = 0; index < expr->attCount; index++)
-      if (expr->attributes[index]->_index != -1)
-        valueStack.push(expr->attributes[index]->name.getString(), expr->attributes[index]->_index);
-
-  int numAttrSets = expr->childrenCount;
-
-  if (!numAttrSets) {
-    if (!outFlag) {
-      int index = valueStack.get("out");
-
-      if (index != -1) {
-        Type &type = getCurrent()->enclosing->declarations[index].type;
-
-        if (type.valueType == VAL_OBJ)
-          switch (type.objType->type) {
-          case OBJ_INSTANCE:
-            expr->viewIndex = getCurrent()->declarationCount;
-            getCurrent()->addDeclaration({VAL_INT});
-            break;
-
-          case OBJ_STRING:
-            expr->viewIndex = getCurrent()->declarationCount;
-            getCurrent()->addDeclaration({VAL_OBJ, &newInternal()->obj});
-            break;
-          }
-      }
-    }
-  }
-  else
-  / *
-   Point numZones;
-   int offset = 0;
-   std::array<long, NUM_DIRS> arrayDirFlags = {2L, 1L};
-   ValueStack valueStack;* /
-    for (int index = 0; index < numAttrSets; index++)
-      accept<int>(expr->children[index], 0);
-
-  //  expr->attrSets = numAttrSets != 0 ? new ChildAttrSets(&offset, numZones, 0, arrayDirFlags, valueStack, expr, 0) : NULL;
-  //  function->attrSets = expr->attrSets;
-
-  //  if (expr->attrSets != NULL) {
-  //    Sizer *topSizers[NUM_DIRS];
-  / *
-      for (int dir = 0; dir < NUM_DIRS; dir++) {
-        int *zone = NULL;
-
-        topSizers[dir] = new Maxer(-1);
-  / *
-        if (parent is ImplicitArrayDeclaration) {
-  //					int zFlags = attrSets.zFlags[dir];
-
-          zone = {0};//{zFlags > 0 ? zFlags != 1 ? 1 : 0 : ctz({-zFlags - 1})};
-          topSizers[dir]->put(SizerType.maxer, -1, 0, 0, 0, false, {Path()});
-          topSizers[dir]->children.add(new Adder(-1));
-        }
-  * /
-        expr->attrSets->parseCreateSizers(topSizers, dir, zone, Path(), Path());
-        expr->attrSets->parseAdjustPaths(topSizers, dir);
-        numZones[dir] = zone != NULL ? zone[0] + 1 : 1;
-      }
-  * /
-  //    subAttrsets = parent is ImplicitArrayDeclaration ? parseCreateSubSets(topSizers, new Path(), numZones) : createIntersection(-1, topSizers);
-  //    subAttrsets = createIntersection(-1, topSizers);
-  //  }
-
-  if (!outFlag)
-    for (int index = 0; index < expr->attCount; index++)
-      if (expr->attributes[index]->_index != -1)
-        valueStack.pop(expr->attributes[index]->name.getString());*/
-}
-#endif
-void Resolver::visitBinaryExpr(BinaryExpr *expr) {
-  //  if (expr->left) {
-  accept<int>(expr->left, 0);
-  //    expr->type = expr->left->type;
-  //  } else
-  //    expr->type = {VAL_VOID};
-
-  //  if (expr->right)
-  accept<int>(expr->right, 0);
-
-  Type type2 = popType();
-  Type type1 = popType();
-
-  Type type = type1;
-  bool boolVal = false;
-
-  expr->opCode = getOpCode(type, expr->op);
-
-  switch (expr->op.type) {
-  case TOKEN_BANG_EQUAL:
-  case TOKEN_GREATER_EQUAL:
-  case TOKEN_LESS_EQUAL:
-    break;
-  }
-
-  switch (expr->op.type) {
-  case TOKEN_PLUS:
-    if (IS_OBJ(type1)) {
-      expr->right = convertToString(expr->right, type2, parser);
-      getCurrent()->pushType(stringType);
-      return;
-    }
-    // no break statement, fall through
-
-  case TOKEN_BANG_EQUAL:
-  case TOKEN_EQUAL_EQUAL:
-  case TOKEN_GREATER:
-  case TOKEN_GREATER_EQUAL:
-  case TOKEN_LESS:
-  case TOKEN_LESS_EQUAL:
-    boolVal = expr->op.type != TOKEN_PLUS;
-    if (IS_OBJ(type1)) {
-      if (!IS_OBJ(type2))
-        parser.error("Second operand must be a string");
-
-      getCurrent()->pushType(VAL_BOOL);
-      return;
-    }
-    // no break statement, fall through
-
-  case TOKEN_MINUS:
-  case TOKEN_STAR:
-  case TOKEN_SLASH: {
-    switch (type1.valueType) {
-    case VAL_INT:
-      if (!type1.equals(type2)) {
-        if (!IS_FLOAT(type2)) {
-          getCurrent()->pushType(VAL_VOID);
-          parser.error("Second operand must be numeric");
-          return;
-        }
-
-        expr->left = convertToFloat(expr->left, type1, parser);
-        expr->opCode =
-            (OpCode)((int)expr->opCode + (int)OP_ADD_FLOAT - (int)OP_ADD_INT);
-        getCurrent()->pushType(boolVal ? VAL_BOOL : VAL_FLOAT);
-      }
-      else
-        getCurrent()->pushType(boolVal ? VAL_BOOL : VAL_INT);
-      break;
-
-    case VAL_FLOAT:
-      if (!type1.equals(type2)) {
-        if (!IS_INT(type2)) {
-          getCurrent()->pushType(VAL_VOID);
-          parser.error("Second operand must be numeric");
-          return;
-        }
-
-        expr->right = convertToFloat(expr->right, type2, parser);
-      }
-
-      getCurrent()->pushType(boolVal ? VAL_BOOL : VAL_FLOAT);
-      break;
-
-    default:
-      parser.error("First operand must be numeric");
-      getCurrent()->pushType(type1);
-      break;
-    }
-  }
-  break;
-
-  case TOKEN_XOR:
-    getCurrent()->pushType(IS_BOOL(type1) ? VAL_BOOL : VAL_FLOAT);
-    break;
-
-  case TOKEN_OR:
-  case TOKEN_AND:
-  case TOKEN_GREATER_GREATER_GREATER:
-  case TOKEN_GREATER_GREATER:
-  case TOKEN_LESS_LESS:
-    getCurrent()->pushType(VAL_INT);
-    break;
-
-  case TOKEN_OR_OR:
-  case TOKEN_AND_AND:
-    getCurrent()->pushType(VAL_BOOL);
-    break;
-
-    break;
-
-  default:
-    return; // Unreachable.
-  }
-}
+static const char *getGroupName(UIDirectiveExpr *expr, int dir);
 
 static Expr *generateFunction(const char *type, const char *name, char *args, Expr *copyExpr, int count, int restLength, Expr **rest) {
     ReferenceExpr *nameExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1), -1, false);
@@ -533,12 +370,344 @@ static Expr *generateUIFunction(const char *type, const char *name, char *args, 
   return new StatementExpr(generateFunction(type, name, args, uiExpr, count, restLength, rest));
 }
 
+void acceptGroupingExprUnits(GroupingExpr *expr, Parser &parser) {
+  TokenType type = expr->name.type;
+  bool parenFlag = type == TOKEN_RIGHT_PAREN;
+
+  for (int index = 0; index < expr->count; index++) {
+    Expr *subExpr = expr->expressions[index];
+
+    if (subExpr->type == EXPR_UIDIRECTIVE) {
+      if (++uiParseCount >= 0)
+        ss->str("");
+
+      if (getParseStep() == PARSE_EVENTS) {
+        insertTabs();
+        (*ss) << "bool flag = false\n";
+      }
+    }
+
+    subExpr->resolve(parser);
+
+    if (subExpr->type == EXPR_UIDIRECTIVE) {
+      UIDirectiveExpr *exprUI = (UIDirectiveExpr *) subExpr;
+
+      if (uiParseCount >= 0) {
+        if (uiParseCount == 0) {
+          getCurrent()->function->eventFlags = exprUI->_eventFlags;
+
+          for (int ndx2 = -1; (ndx2 = getCurrent()->function->instanceIndexes->getNext(ndx2)) != -1;)
+            (*ss) << "v" << ndx2 << ".ui_ = new v" << ndx2 << ".UI_();\n";
+        }
+
+        if (uiParseCount == 3) {
+          nTabs++;
+          insertTabs();
+          (*ss) << "var size = (" << getGroupName(exprUI, 0) << " << 16) | " << getGroupName(exprUI, 1) << "\n";
+          nTabs--;
+        }
+        std::string *str = new std::string(ss->str().c_str());
+#ifdef DEBUG_PRINT_CODE
+        printf("CODE %d\n%s", uiParseCount, str->c_str());
+#endif
+        expr = (GroupingExpr *) parse(str->c_str(), index, 1, expr);
+      }/*
+      else {
+        getCurrent()->function->eventFlags = exprUI->_eventFlags;
+        expressions = RESIZE_ARRAY(Expr *, expressions, count, count + uiExprs.size() - 1);
+        memmove(&expressions[index + uiExprs.size()], &expressions[index + 1], (--count - index) * sizeof(Expr *));
+
+        for (Expr *uiExpr : uiExprs)
+          expressions[index++] = uiExpr;
+
+        count += uiExprs.size();
+        uiExprs.clear();
+      }
+*/
+      index--;
+    }
+    else
+      if (IS_VOID(getCurrent()->peekDeclaration()) && (!parenFlag || index < expr->count - 1))
+        popType();
+  }
+
+  if (expr->ui != NULL) {
+    UIDirectiveExpr *exprUI = (UIDirectiveExpr *) expr->ui;
+
+    if (exprUI->previous || exprUI->lastChild) {
+      // Perform the UI AST magic
+      Expr *clickFunction = generateUIFunction("bool", "onEvent", "int event, int pos0, int pos1, int size0, int size1", exprUI, 1, 0, NULL);
+      Expr *paintFunction = generateUIFunction("void", "paint", "int pos0, int pos1, int size0, int size1", exprUI, 1, 0, NULL);
+      Expr **uiFunctions = new Expr *[2];
+
+      uiFunctions[0] = paintFunction;
+      uiFunctions[1] = clickFunction;
+
+      Expr *layoutFunction = generateUIFunction("void", "Layout_", NULL, exprUI, 3, 2, uiFunctions);
+      Expr **layoutExprs = new Expr *[1];
+
+      layoutExprs[0] = layoutFunction;
+
+      Expr *valueFunction = generateUIFunction("void", "UI_", NULL, exprUI, 1, 1, layoutExprs);
+
+      aCount = 1;
+      valueFunction->resolve(parser);
+      Type type = getCurrent()->peekDeclaration();// = popType();
+      getCurrent()->function->uiFunction = AS_FUNCTION_TYPE(type);
+//      getCurrent()->declarationCount--;
+      delete exprUI;
+      expr->ui = NULL;
+      expr->expressions = RESIZE_ARRAY(Expr *, expr->expressions, expr->count, expr->count + 2);
+      expr->expressions[expr->count++] = valueFunction;
+      uiParseCount = -1;
+      GroupingExpr *uiExpr = (GroupingExpr *) parse("UI_ ui_;\n", 0, 0, NULL);
+      expr->expressions[expr->count++] = uiExpr->expressions[0];
+      uiExpr->expressions[0]->resolve(parser);
+    }
+    else {
+      delete exprUI;
+      expr->ui = NULL;
+    }
+  }
+}
+
+void AssignExpr::resolve(Parser &parser) {
+  if (value)
+    value->resolve(parser);
+
+  if (varExp)
+    varExp->resolve(parser);
+
+  Type type1 = popType();
+  Type type2 = varExp && value ? popType() : type1;
+
+  opCode = getOpCode(type1, op);
+
+  if (IS_VOID(type1))
+    parser.error("Variable not found");
+  else if (!type1.equals(type2)) {
+    value = convertToType(type2, value, type1, parser);
+
+    if (!value) {
+      parser.error("Value must match the variable type");
+    }
+  }
+
+  getCurrent()->pushType(type1);
+}
+
+void UIAttributeExpr::resolve(Parser &parser) {
+  parser.error("Internal error, cannot be invoked..");
+}
+
+void UIDirectiveExpr::resolve(Parser &parser) {
+  (*directiveFns[getParseStep()])(this, parser);
+}
+#if 0
+void UIDirectiveExpr::resolve(Parser &parser) {
+  ParseStep step = getParseStep();
+
+  if (resolverUIRules[step].attrListFn)
+    (this->*resolverUIRules[step].attrListFn)(expr);
+////////////////////
+/*  if (outFlag)
+    for (int index = 0; index < attCount; index++)
+      attributes[index]->resolve(parser);
+  else
+    for (int index = 0; index < attCount; index++)
+      if (attributes[index]->_index != -1)
+        valueStack.push(attributes[index]->name.getString(), attributes[index]->_index);
+
+  int numAttrSets = childrenCount;
+
+  if (!numAttrSets) {
+    if (!outFlag) {
+      int index = valueStack.get("out");
+
+      if (index != -1) {
+        Type &type = getCurrent()->enclosing->declarations[index].type;
+
+        if (type.valueType == VAL_OBJ)
+          switch (type.objType->type) {
+          case OBJ_INSTANCE:
+            viewIndex = getCurrent()->declarationCount;
+            getCurrent()->addDeclaration({VAL_INT});
+            break;
+
+          case OBJ_STRING:
+            viewIndex = getCurrent()->declarationCount;
+            getCurrent()->addDeclaration({VAL_OBJ, &newInternal()->obj});
+            break;
+          }
+      }
+    }
+  }
+  else
+  / *
+   Point numZones;
+   int offset = 0;
+   std::array<long, NUM_DIRS> arrayDirFlags = {2L, 1L};
+   ValueStack valueStack;* /
+    for (int index = 0; index < numAttrSets; index++)
+      children[index]->resolve(parser);
+
+  //  attrSets = numAttrSets != 0 ? new ChildAttrSets(&offset, numZones, 0, arrayDirFlags, valueStack, expr, 0) : NULL;
+  //  function->attrSets = attrSets;
+
+  //  if (attrSets != NULL) {
+  //    Sizer *topSizers[NUM_DIRS];
+  / *
+      for (int dir = 0; dir < NUM_DIRS; dir++) {
+        int *zone = NULL;
+
+        topSizers[dir] = new Maxer(-1);
+  / *
+        if (parent is ImplicitArrayDeclaration) {
+  //					int zFlags = attrSets.zFlags[dir];
+
+          zone = {0};//{zFlags > 0 ? zFlags != 1 ? 1 : 0 : ctz({-zFlags - 1})};
+          topSizers[dir]->put(SizerType.maxer, -1, 0, 0, 0, false, {Path()});
+          topSizers[dir]->children.add(new Adder(-1));
+        }
+  * /
+        attrSets->parseCreateSizers(topSizers, dir, zone, Path(), Path());
+        attrSets->parseAdjustPaths(topSizers, dir);
+        numZones[dir] = zone != NULL ? zone[0] + 1 : 1;
+      }
+  * /
+  //    subAttrsets = parent is ImplicitArrayDeclaration ? parseCreateSubSets(topSizers, new Path(), numZones) : createIntersection(-1, topSizers);
+  //    subAttrsets = createIntersection(-1, topSizers);
+  //  }
+
+  if (!outFlag)
+    for (int index = 0; index < attCount; index++)
+      if (attributes[index]->_index != -1)
+        valueStack.pop(attributes[index]->name.getString());*/
+}
+#endif
+void BinaryExpr::resolve(Parser &parser) {
+  //  if (left) {
+  left->resolve(parser);
+  //    type = left->type;
+  //  } else
+  //    type = {VAL_VOID};
+
+  //  if (right)
+  right->resolve(parser);
+
+  Type type2 = popType();
+  Type type1 = popType();
+
+  Type type = type1;
+  bool boolVal = false;
+
+  opCode = getOpCode(type, op);
+
+  switch (op.type) {
+  case TOKEN_BANG_EQUAL:
+  case TOKEN_GREATER_EQUAL:
+  case TOKEN_LESS_EQUAL:
+    break;
+  }
+
+  switch (op.type) {
+  case TOKEN_PLUS:
+    if (IS_OBJ(type1)) {
+      right = convertToString(right, type2, parser);
+      getCurrent()->pushType(stringType);
+      return;
+    }
+    // no break statement, fall through
+
+  case TOKEN_BANG_EQUAL:
+  case TOKEN_EQUAL_EQUAL:
+  case TOKEN_GREATER:
+  case TOKEN_GREATER_EQUAL:
+  case TOKEN_LESS:
+  case TOKEN_LESS_EQUAL:
+    boolVal = op.type != TOKEN_PLUS;
+    if (IS_OBJ(type1)) {
+      if (!IS_OBJ(type2))
+        parser.error("Second operand must be a string");
+
+      getCurrent()->pushType(VAL_BOOL);
+      return;
+    }
+    // no break statement, fall through
+
+  case TOKEN_MINUS:
+  case TOKEN_STAR:
+  case TOKEN_SLASH: {
+    switch (type1.valueType) {
+    case VAL_INT:
+      if (!type1.equals(type2)) {
+        if (!IS_FLOAT(type2)) {
+          getCurrent()->pushType(VAL_VOID);
+          parser.error("Second operand must be numeric");
+          return;
+        }
+
+        left = convertToFloat(left, type1, parser);
+        opCode =
+            (OpCode)((int)opCode + (int)OP_ADD_FLOAT - (int)OP_ADD_INT);
+        getCurrent()->pushType(boolVal ? VAL_BOOL : VAL_FLOAT);
+      }
+      else
+        getCurrent()->pushType(boolVal ? VAL_BOOL : VAL_INT);
+      break;
+
+    case VAL_FLOAT:
+      if (!type1.equals(type2)) {
+        if (!IS_INT(type2)) {
+          getCurrent()->pushType(VAL_VOID);
+          parser.error("Second operand must be numeric");
+          return;
+        }
+
+        right = convertToFloat(right, type2, parser);
+      }
+
+      getCurrent()->pushType(boolVal ? VAL_BOOL : VAL_FLOAT);
+      break;
+
+    default:
+      parser.error("First operand must be numeric");
+      getCurrent()->pushType(type1);
+      break;
+    }
+  }
+  break;
+
+  case TOKEN_XOR:
+    getCurrent()->pushType(IS_BOOL(type1) ? VAL_BOOL : VAL_FLOAT);
+    break;
+
+  case TOKEN_OR:
+  case TOKEN_AND:
+  case TOKEN_GREATER_GREATER_GREATER:
+  case TOKEN_GREATER_GREATER:
+  case TOKEN_LESS_LESS:
+    getCurrent()->pushType(VAL_INT);
+    break;
+
+  case TOKEN_OR_OR:
+  case TOKEN_AND_AND:
+    getCurrent()->pushType(VAL_BOOL);
+    break;
+
+    break;
+
+  default:
+    return; // Unreachable.
+  }
+}
+
 static Token tok = buildToken(TOKEN_IDENTIFIER, "Capital", 7, -1);
-void Resolver::visitCallExpr(CallExpr *expr) {
+void CallExpr::resolve(Parser &parser) {
   Compiler compiler;
   ObjFunction signature;
 
-  signature.arity = expr->count;
+  signature.arity = count;
   signature.compiler = &compiler;
   compiler.function = &signature;
   compiler.function->name = copyString("Capital", 7);
@@ -548,57 +717,57 @@ void Resolver::visitCallExpr(CallExpr *expr) {
 
   compiler.addDeclaration({VAL_VOID}, tok, NULL, false);
 
-  for (int index = 0; index < expr->count; index++) {
-    accept<int>(expr->arguments[index]);
+  for (int index = 0; index < count; index++) {
+    arguments[index]->resolve(parser);
     compiler.addDeclaration(getCurrent()->typeStack.top(), tok, NULL, false);
   }
 
-  for (int index = -1; index < expr->count; index++)
+  for (int index = -1; index < count; index++)
     popType();
 
   pushSignature(&signature);
-  accept<int>(expr->callee);
+  callee->resolve(parser);
   popSignature();
 
   Type type = popType();
-  //  Declaration *callerLocal = getCurrent()->peekDeclaration(expr->argCount);
+  //  Declaration *callerLocal = getCurrent()->peekDeclaration(argCount);
 
   switch (AS_OBJ_TYPE(type)) {
   case OBJ_FUNCTION: {
-    expr->callable = AS_FUNCTION_TYPE(type);
+    callable = AS_FUNCTION_TYPE(type);
 
-    if (expr->newFlag) {
-      if (expr->handler != NULL) {
-        char buffer[256] = "";
-
-        if (!IS_VOID(expr->callable->type))
-          sprintf(buffer, "%s _ret", expr->callable->type.toString());
-
-        expr->handler = generateFunction("void", "ReturnHandler_", !IS_VOID(expr->callable->type) ? buffer : NULL, expr->handler, 1, 0, NULL);
-        accept<int>(expr->handler);
-        Type type = getCurrent()->peekDeclaration();// = popType();
-        expr->handlerFunction = AS_FUNCTION_TYPE(type);
-        getCurrent()->declarationCount--;
-      }
-
-      getCurrent()->pushType((Type) {VAL_OBJ, &newInstance(expr->callable)->obj});
-    }
-    else
-      getCurrent()->pushType(expr->callable->type);
-    break;
-  }
-  case OBJ_FUNCTION_PTR: {
-    ObjFunctionPtr *callable = (ObjFunctionPtr *)type.objType;
-
-    if (expr->newFlag) {
-      if (expr->handler != NULL) {
+    if (newFlag) {
+      if (handler != NULL) {
         char buffer[256] = "";
 
         if (!IS_VOID(callable->type))
           sprintf(buffer, "%s _ret", callable->type.toString());
 
-        expr->handler = generateFunction("void", "ReturnHandler_", !IS_VOID(callable->type) ? buffer : NULL, expr->handler, 1, 0, NULL);
-        accept<int>(expr->handler);
+        handler = generateFunction("void", "ReturnHandler_", !IS_VOID(callable->type) ? buffer : NULL, handler, 1, 0, NULL);
+        handler->resolve(parser);
+        Type type = getCurrent()->peekDeclaration();// = popType();
+        handlerFunction = AS_FUNCTION_TYPE(type);
+        getCurrent()->declarationCount--;
+      }
+
+      getCurrent()->pushType((Type) {VAL_OBJ, &newInstance(callable)->obj});
+    }
+    else
+      getCurrent()->pushType(callable->type);
+    break;
+  }
+  case OBJ_FUNCTION_PTR: {
+    ObjFunctionPtr *callable = (ObjFunctionPtr *)type.objType;
+
+    if (newFlag) {
+      if (handler != NULL) {
+        char buffer[256] = "";
+
+        if (!IS_VOID(callable->type))
+          sprintf(buffer, "%s _ret", callable->type.toString());
+
+        handler = generateFunction("void", "ReturnHandler_", !IS_VOID(callable->type) ? buffer : NULL, handler, 1, 0, NULL);
+        handler->resolve(parser);
         popType();
       }
 
@@ -615,12 +784,12 @@ void Resolver::visitCallExpr(CallExpr *expr) {
   }
 }
 
-void Resolver::visitArrayElementExpr(ArrayElementExpr *expr) {
-  accept<int>(expr->callee);
+void ArrayElementExpr::resolve(Parser &parser) {
+  callee->resolve(parser);
 
   Type type = popType();
 
-  if (!expr->count)
+  if (!count)
     if (isType(type)) {
       Type returnType = convertType(type);
       ObjArray *array = newArray();
@@ -644,10 +813,10 @@ void Resolver::visitArrayElementExpr(ArrayElementExpr *expr) {
 
         getCurrent()->pushType(array->elementType);
 
-        for (int index = 0; index < expr->count; index++)
-          accept<int>(expr->indexes[index]);
+        for (int index = 0; index < count; index++)
+          indexes[index]->resolve(parser);
 
-        for (int index = 0; index < expr->count; index++) {
+        for (int index = 0; index < count; index++) {
           Type argType = popType();
 
           argType = argType;
@@ -657,13 +826,13 @@ void Resolver::visitArrayElementExpr(ArrayElementExpr *expr) {
       case OBJ_STRING: {/*
         ObjString *string = (ObjString *)type.objType;
 
-        if (expr->count != string->arity)
-          parser.error("Expected %d arguments but got %d.", string->arity, expr->count);
+        if (count != string->arity)
+          parser.error("Expected %d arguments but got %d.", string->arity, count);
 
         getCurrent()->addDeclaration(string->type.valueType);
 
-        for (int index = 0; index < expr->count; index++) {
-          accept<int>(expr->indexes[index]);
+        for (int index = 0; index < count; index++) {
+          indexes[index]->resolve(parser);
           Type argType = removeDeclaration();
 
           argType = argType;
@@ -677,29 +846,29 @@ void Resolver::visitArrayElementExpr(ArrayElementExpr *expr) {
       }
 }
 
-void Resolver::visitDeclarationExpr(DeclarationExpr *expr) {
-//  getCurrent()->checkDeclaration(&expr->name);
+void DeclarationExpr::resolve(Parser &parser) {
+//  getCurrent()->checkDeclaration(&name);
 
-  if (expr->initExpr != NULL) {
-    accept<int>(expr->initExpr, 0);
+  if (initExpr != NULL) {
+    initExpr->resolve(parser);
     Type type1 = popType();
   }
 
-  getCurrent()->addDeclaration(expr->type, expr->name, NULL, false);
+  getCurrent()->addDeclaration(type, name, NULL, false);
 }
 
-void Resolver::visitFunctionExpr(FunctionExpr *expr) {/*
-  getCurrent()->checkDeclaration(&expr->name);
-  getCurrent()->addDeclaration(VAL_OBJ, &expr->name);
+void FunctionExpr::resolve(Parser &parser) {/*
+  getCurrent()->checkDeclaration(&name);
+  getCurrent()->addDeclaration(VAL_OBJ, &name);
 
-  Compiler &compiler = ((GroupingExpr *) expr->body)->_compiler;
+  Compiler &compiler = ((GroupingExpr *) body)->_compiler;
 
-  compiler.beginScope(newFunction(expr->type, copyString(expr->name.start, expr->name.length), expr->count));
+  compiler.beginScope(newFunction(type, copyString(name.start, name.length), count));
 
-  for (int index = 0; index < expr->count; index++)
-    accept<int>(expr->params[index]);
+  for (int index = 0; index < count; index++)
+    params[index]->resolve(parser);
 
-  accept<int>(expr->body, 0);
+  body->resolve(parser);
   compiler.function->fieldCount = compiler.getDeclarationCount();
   compiler.function->fields = ALLOCATE(Field, compiler.getDeclarationCount());
 
@@ -711,18 +880,18 @@ void Resolver::visitFunctionExpr(FunctionExpr *expr) {/*
   }
 
   compiler.endScope();
-  expr->function = compiler.function;*/
+  function = compiler.function;*/
 }
 
-void Resolver::visitGetExpr(GetExpr *expr) {
+void GetExpr::resolve(Parser &parser) {
   pushSignature(NULL);
-  accept<int>(expr->object);
+  object->resolve(parser);
   popSignature();
 
   Type objectType = popType();
 
   if (AS_OBJ_TYPE(objectType) != OBJ_INSTANCE)
-    parser.errorAt(&expr->name, "Only instances have properties.");
+    parser.errorAt(&name, "Only instances have properties.");
   else {
     ObjInstance *type = AS_INSTANCE_TYPE(objectType);
 
@@ -730,8 +899,8 @@ void Resolver::visitGetExpr(GetExpr *expr) {
       Declaration *dec = &type->callable->compiler->declarations[i];
 
       if (dec->isField) {
-        if (identifiersEqual(&expr->name, &dec->name)) {
-          expr->index = count;
+        if (identifiersEqual(&name, &dec->name)) {
+          index = count;
           getCurrent()->pushType(dec->type);
           return;
         }
@@ -740,27 +909,27 @@ void Resolver::visitGetExpr(GetExpr *expr) {
       }
     }
 
-    parser.errorAt(&expr->name, "Field '%.*s' not found.", expr->name.length, expr->name.start);
+    parser.errorAt(&name, "Field '%.*s' not found.", name.length, name.start);
   }
 
   getCurrent()->pushType({VAL_VOID});
 }
 
-void Resolver::visitGroupingExpr(GroupingExpr *expr) {
-  TokenType type = expr->name.type;
+void GroupingExpr::resolve(Parser &parser) {
+  TokenType type = name.type;
   bool parenFlag = type == TOKEN_RIGHT_PAREN;
   bool groupFlag = type == TOKEN_RIGHT_BRACE || parenFlag;
   Type parenType;
 
   if (groupFlag) {
-    expr->_compiler.beginScope();
-    acceptGroupingExprUnits(expr);
+    _compiler.beginScope();
+    acceptGroupingExprUnits(this, parser);
     parenType = parenFlag ? popType() : (Type){VAL_VOID};
-    expr->popLevels = expr->_compiler.declarationCount;
-    expr->_compiler.endScope();
+    popLevels = _compiler.declarationCount;
+    _compiler.endScope();
   }
   else {
-    acceptGroupingExprUnits(expr);
+    acceptGroupingExprUnits(this, parser);
     parenType = parenFlag ? popType() : (Type){VAL_VOID};
   }
 
@@ -768,17 +937,17 @@ void Resolver::visitGroupingExpr(GroupingExpr *expr) {
     getCurrent()->pushType(parenType);
 }
 
-void Resolver::visitArrayExpr(ArrayExpr *expr) {
+void ArrayExpr::resolve(Parser &parser) {
   ObjArray *objArray = newArray();
   Type type = {VAL_OBJ, &objArray->obj};
   Compiler compiler;
 
   compiler.beginScope(newFunction({VAL_VOID}, NULL, 0));
 
-  for (int index = 0; index < expr->count; index++)
-    acceptSubExpr(expr->expressions[index]);
+  for (int index = 0; index < count; index++)
+    expressions[index]->resolve(parser);
 
-  for (int index = 0; index < expr->count; index++) {
+  for (int index = 0; index < count; index++) {
     Type subType = popType();
 
     objArray->elementType = subType;
@@ -786,7 +955,7 @@ void Resolver::visitArrayExpr(ArrayExpr *expr) {
 
   compiler.endScope();
   compiler.function->type = type;
-  expr->function = compiler.function;
+  function = compiler.function;
   getCurrent()->pushType(type);
 }
 
@@ -801,24 +970,24 @@ void Resolver::visitArrayExpr(ArrayExpr *expr) {
 // (group','
 //   (var 2) (= -1 (+ 2 3))
 // );
-void Resolver::visitListExpr(ListExpr *expr) {
-  accept<int>(expr->expressions[0], 0);
-  expr->_declaration = NULL;
+void ListExpr::resolve(Parser &parser) {
+  expressions[0]->resolve(parser);
+  _declaration = NULL;
 
   Type type = popType();
 
   if (isType(type)) {
     Type returnType = convertType(type);
-    Expr *subExpr = expr->expressions[1];
+    Expr *subExpr = expressions[1];
 
     switch (subExpr->type) {
     case EXPR_ASSIGN: {
       AssignExpr *assignExpr = (AssignExpr *)subExpr;
 
       if (assignExpr->varExp && assignExpr->value) {
-        expr->listType = subExpr->type;
+        listType = subExpr->type;
         assignExpr->varExp->_declaration = NULL;
-        accept<int>(assignExpr->value, 0);
+        assignExpr->value->resolve(parser);
 
         Type internalType = {VAL_OBJ, &objInternalType};
         Type type1 = popType();
@@ -838,7 +1007,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
 
         getCurrent()->checkDeclaration(returnType, assignExpr->varExp, NULL);
 
-        if (expr->count > 2)
+        if (count > 2)
           parser.error("Expect ';' or newline after variable declaration.");
       }
       else
@@ -846,7 +1015,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
       return;
     }
     case EXPR_CALL: {
-      expr->listType = subExpr->type;
+      listType = subExpr->type;
 
       CallExpr *callExpr = (CallExpr *)subExpr;
 
@@ -856,7 +1025,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
         parser.error("Function name must be a string.");
       else {
         ReferenceExpr *varExp = (ReferenceExpr *)callExpr->callee;
-        Expr *bodyExpr = expr->count > 2 ? expr->expressions[2] : NULL;
+        Expr *bodyExpr = count > 2 ? expressions[2] : NULL;
         GroupingExpr *body;
 
         if (bodyExpr && bodyExpr->type == EXPR_GROUPING && ((GroupingExpr *) bodyExpr)->name.type == TOKEN_RIGHT_BRACE)
@@ -873,7 +1042,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
         Compiler &compiler = body->_compiler;
         ObjFunction *function = newFunction(returnType, copyString(varExp->name.start, varExp->name.length), callExpr->count);
 
-        expr->_declaration = compiler.beginScope(function);
+        _declaration = compiler.beginScope(function);
         bindFunction(compiler.prefix, function);
 
         for (int index = 0; index < callExpr->count; index++)
@@ -881,7 +1050,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
             ListExpr *param = (ListExpr *)callExpr->arguments[index];
             Expr *paramExpr = param->expressions[0];
 
-            accept<int>(paramExpr, 0);
+            paramExpr->resolve(parser);
 
             Type type = popType();
 
@@ -918,14 +1087,14 @@ void Resolver::visitListExpr(ListExpr *expr) {
 
           Expr *handlerExpr = parse(buf, 0, 0, NULL);
 
-          accept<int>(handlerExpr, 0);
+          handlerExpr->resolve(parser);
         }
 
         getCurrent()->enclosing->checkDeclaration({VAL_OBJ, &function->obj}, varExp, function);
         function->bodyExpr = body;
 
         if (body)
-          acceptGroupingExprUnits(body);
+          acceptGroupingExprUnits(body, parser);
 
         compiler.endScope();
       }
@@ -934,7 +1103,7 @@ void Resolver::visitListExpr(ListExpr *expr) {
     case EXPR_REFERENCE: {
       ReferenceExpr *varExpr = (ReferenceExpr *)subExpr;
 
-      expr->listType = subExpr->type;
+      listType = subExpr->type;
       getCurrent()->checkDeclaration(returnType, varExpr, NULL);
 
       LiteralExpr *valueExpr = NULL;
@@ -970,13 +1139,13 @@ void Resolver::visitListExpr(ListExpr *expr) {
       }
 
       if (valueExpr) {
-        expr->expressions[1] = new AssignExpr(
+        expressions[1] = new AssignExpr(
             varExpr, buildToken(TOKEN_EQUAL, "=", 1, varExpr->name.line),
             valueExpr, OP_FALSE);
-        expr->listType = EXPR_ASSIGN;
+        listType = EXPR_ASSIGN;
       }
 
-      if (expr->count > 2)
+      if (count > 2)
         parser.error("Expect ';' or newline after variable declaration.");
       return;
     }
@@ -985,10 +1154,10 @@ void Resolver::visitListExpr(ListExpr *expr) {
     }
   }
   else // parse array expression
-    for (int index = 1; index < expr->count; index++) {
-      Expr *subExpr = expr->expressions[index];
+    for (int index = 1; index < count; index++) {
+      Expr *subExpr = expressions[index];
 
-      accept<int>(subExpr, 0);
+      subExpr->resolve(parser);
 
       if (IS_VOID(getCurrent()->peekDeclaration()))
         popType();
@@ -997,16 +1166,16 @@ void Resolver::visitListExpr(ListExpr *expr) {
   getCurrent()->pushType({VAL_VOID});
 }
 
-void Resolver::visitLiteralExpr(LiteralExpr *expr) {
-  if (expr->type == VAL_OBJ)
+void LiteralExpr::resolve(Parser &parser) {
+  if (type == VAL_OBJ)
     getCurrent()->pushType(stringType);
   else
-    getCurrent()->pushType(expr->type);
+    getCurrent()->pushType(type);
 }
 
-void Resolver::visitLogicalExpr(LogicalExpr *expr) {
-  accept(expr->left, 0);
-  accept(expr->right, 0);
+void LogicalExpr::resolve(Parser &parser) {
+  left->resolve(parser);
+  right->resolve(parser);
 
   Type type2 = popType();
   Type type1 = popType();
@@ -1017,31 +1186,31 @@ void Resolver::visitLogicalExpr(LogicalExpr *expr) {
   getCurrent()->pushType(VAL_BOOL);
 }
 
-void Resolver::visitOpcodeExpr(OpcodeExpr *expr) {
+void OpcodeExpr::resolve(Parser &parser) {
   parser.compilerError("In OpcodeExpr!");
-  expr->right->accept(this);
+  right->resolve(parser);
 }
 
 static std::list<Expr *> uiExprs;
 static std::list<Type> uiTypes;
 
-void Resolver::visitReturnExpr(ReturnExpr *expr) {
+void ReturnExpr::resolve(Parser &parser) {
   if (getCurrent()->function->isClass()) {
     char buf[128] = "{post(ReturnHandler_)}";
 
-    if (expr->value) {
-      uiExprs.push_back(expr->value);
+    if (value) {
+      uiExprs.push_back(value);
       uiTypes.push_back({(ValueType)-1});
       strcpy(buf, "{void Ret_() {ReturnHandler_($EXPR)}; post(Ret_)}");
     }
 
-    expr->value = parse(buf, 0, 0, NULL);
+    value = parse(buf, 0, 0, NULL);
   }
 
   // sync processing below
 
-  if (expr->value) {
-    accept<int>(expr->value, 0);
+  if (value) {
+    value->resolve(parser);
 
 //  if (!getCurrent()->isClass())
 //    Type type = removeDeclaration();
@@ -1052,15 +1221,15 @@ void Resolver::visitReturnExpr(ReturnExpr *expr) {
   getCurrent()->pushType(VAL_VOID);
 }
 
-void Resolver::visitSetExpr(SetExpr *expr) {
-  accept<int>(expr->object);
-  accept<int>(expr->value);
+void SetExpr::resolve(Parser &parser) {
+  object->resolve(parser);
+  value->resolve(parser);
 
   Type valueType = popType();
   Type objectType = popType();
 
   if (AS_OBJ_TYPE(objectType) != OBJ_INSTANCE)
-    parser.errorAt(&expr->name, "Only instances have properties.");
+    parser.errorAt(&name, "Only instances have properties.");
   else {
     ObjInstance *type = AS_INSTANCE_TYPE(objectType);
 
@@ -1068,8 +1237,8 @@ void Resolver::visitSetExpr(SetExpr *expr) {
       Declaration *dec = &type->callable->compiler->declarations[i];
 
       if (dec->isField) {
-        if (identifiersEqual(&expr->name, &dec->name)) {
-          expr->index = count;
+        if (identifiersEqual(&name, &dec->name)) {
+          index = count;
           getCurrent()->pushType(dec->type);
           return;
         }
@@ -1078,18 +1247,18 @@ void Resolver::visitSetExpr(SetExpr *expr) {
       }
     }
 
-    parser.errorAt(&expr->name, "Field '%.*s' not found.", expr->name.length, expr->name.start);
+    parser.errorAt(&name, "Field '%.*s' not found.", name.length, name.start);
   }
 
   getCurrent()->pushType({VAL_VOID});
 }
 
-void Resolver::visitStatementExpr(StatementExpr *expr) {
+void StatementExpr::resolve(Parser &parser) {
   int oldStackSize = getCurrent()->typeStack.size();
 
-  acceptSubExpr(expr->expr);
+  expr->resolve(parser);
 
-  if (expr->expr->type != EXPR_LIST || ((ListExpr *)expr->expr)->listType == EXPR_LIST) {
+  if (expr->type != EXPR_LIST || ((ListExpr *)expr)->listType == EXPR_LIST) {
     Type type = popType();
 
     if (oldStackSize != getCurrent()->typeStack.size())
@@ -1097,48 +1266,48 @@ void Resolver::visitStatementExpr(StatementExpr *expr) {
                            oldStackSize, getCurrent()->typeStack.size());
 
     if (!IS_VOID(type))
-      expr->expr = new OpcodeExpr(OP_POP, expr->expr);
+      expr = new OpcodeExpr(OP_POP, expr);
 
     getCurrent()->pushType(VAL_VOID);
   }
 }
 
-void Resolver::visitSuperExpr(SuperExpr *expr) {}
+void SuperExpr::resolve(Parser &parser) {}
 
-void Resolver::visitTernaryExpr(TernaryExpr *expr) {
-  expr->left->accept(this);
+void TernaryExpr::resolve(Parser &parser) {
+  left->resolve(parser);
 
   Type type = popType();
 
   if (IS_VOID(type))
     parser.error("Value must not be void");
 
-  expr->middle->accept(this);
+  middle->resolve(parser);
 
-  if (expr->right) {
-    expr->right->accept(this);
+  if (right) {
+    right->resolve(parser);
     popType();
   }
 }
 
-void Resolver::visitThisExpr(ThisExpr *expr) {}
+void ThisExpr::resolve(Parser &parser) {}
 
-void Resolver::visitTypeExpr(TypeExpr *expr) {
+void TypeExpr::resolve(Parser &parser) {
   //  getCurrent()->addDeclaration({VAL_OBJ, (ObjPrimitiveType) {{OBJ_PRIMITIVE_TYPE},
-  //  expr->type}});
+  //  type}});
 }
 
-void Resolver::visitUnaryExpr(UnaryExpr *expr) {
-  accept<int>(expr->right, 0);
+void UnaryExpr::resolve(Parser &parser) {
+  right->resolve(parser);
 
   Type type = popType();
 
   if (IS_VOID(type))
     parser.error("Value must not be void");
 
-  switch (expr->op.type) {
+  switch (op.type) {
   case TOKEN_PRINT:
-    expr->right = convertToString(expr->right, type, parser);
+    right = convertToString(right, type, parser);
     getCurrent()->pushType(VAL_VOID);
     break;
 
@@ -1159,7 +1328,7 @@ void Resolver::visitUnaryExpr(UnaryExpr *expr) {
   }
 
   case TOKEN_PERCENT:
-    expr->right = convertToFloat(expr->right, type, parser);
+    right = convertToFloat(right, type, parser);
     getCurrent()->pushType({VAL_FLOAT});
     break;
 
@@ -1169,154 +1338,35 @@ void Resolver::visitUnaryExpr(UnaryExpr *expr) {
   }
 }
 
-void Resolver::visitReferenceExpr(ReferenceExpr *expr) {
-  if (expr->index != -1) {
-    getCurrent()->pushType({VAL_OBJ, primitives[expr->index]});
-    expr->index = -1;
-    expr->_declaration = NULL;
+void ReferenceExpr::resolve(Parser &parser) {
+  if (index != -1) {
+    getCurrent()->pushType({VAL_OBJ, primitives[index]});
+    index = -1;
+    _declaration = NULL;
   }
   else
-    getCurrent()->resolveReferenceExpr(expr);
+    getCurrent()->resolveReferenceExpr(this);
 }
 
-void Resolver::visitSwapExpr(SwapExpr *expr) {
+void SwapExpr::resolve(Parser &parser) {
   Type type = uiTypes.front();
 
-  expr->_expr = uiExprs.front();
+  _expr = uiExprs.front();
   uiExprs.pop_front();
   uiTypes.pop_front();
 
   if (type.valueType < VAL_VOID)
-    accept<int>(expr->_expr);
+    _expr->resolve(parser);
   else
     getCurrent()->pushType(type);
 }
 
-void Resolver::visitNativeExpr(NativeExpr *expr) {
+void NativeExpr::resolve(Parser &parser) {
   getCurrent()->pushType(VAL_VOID);
 }
 
-Type Resolver::popType() {
+Type popType() {
   return getCurrent()->popType();
-}
-
-bool Resolver::resolve(Compiler *compiler) {
-  accept(exp, 0);
-  return !parser.hadError;
-}
-
-static int aCount;
-static std::stringstream s;
-static std::stringstream *ss = &s;
-
-static int nTabs = 0;
-
-static void insertTabs() {
-  for (int index = 0; index < nTabs; index++)
-    (*ss) << "  ";
-}
-
-static const char *getGroupName(UIDirectiveExpr *expr, int dir);
-
-void Resolver::acceptGroupingExprUnits(GroupingExpr *expr) {
-  TokenType type = expr->name.type;
-  bool parenFlag = type == TOKEN_RIGHT_PAREN;
-
-  for (int index = 0; index < expr->count; index++) {
-    Expr *subExpr = expr->expressions[index];
-
-    if (subExpr->type == EXPR_UIDIRECTIVE) {
-      if (++uiParseCount >= 0)
-        ss->str("");
-
-      if (getParseStep() == PARSE_EVENTS) {
-        insertTabs();
-        (*ss) << "bool flag = false\n";
-      }
-    }
-
-    acceptSubExpr(subExpr);
-
-    if (subExpr->type == EXPR_UIDIRECTIVE) {
-      UIDirectiveExpr *exprUI = (UIDirectiveExpr *) subExpr;
-
-      if (uiParseCount >= 0) {
-        if (uiParseCount == 0) {
-          getCurrent()->function->eventFlags = exprUI->_eventFlags;
-
-          for (int ndx2 = -1; (ndx2 = getCurrent()->function->instanceIndexes->getNext(ndx2)) != -1;)
-            (*ss) << "v" << ndx2 << ".ui_ = new v" << ndx2 << ".UI_();\n";
-        }
-
-        if (uiParseCount == 3) {
-          nTabs++;
-          insertTabs();
-          (*ss) << "var size = (" << getGroupName(exprUI, 0) << " << 16) | " << getGroupName(exprUI, 1) << "\n";
-          nTabs--;
-        }
-        std::string *str = new std::string(ss->str().c_str());
-#ifdef DEBUG_PRINT_CODE
-        printf("CODE %d\n%s", uiParseCount, str->c_str());
-#endif
-        expr = (GroupingExpr *) parse(str->c_str(), index, 1, expr);
-      }/*
-      else {
-        getCurrent()->function->eventFlags = exprUI->_eventFlags;
-        expr->expressions = RESIZE_ARRAY(Expr *, expr->expressions, expr->count, expr->count + uiExprs.size() - 1);
-        memmove(&expr->expressions[index + uiExprs.size()], &expr->expressions[index + 1], (--expr->count - index) * sizeof(Expr *));
-
-        for (Expr *uiExpr : uiExprs)
-          expr->expressions[index++] = uiExpr;
-
-        expr->count += uiExprs.size();
-        uiExprs.clear();
-      }
-*/
-      index--;
-    }
-    else
-      if (IS_VOID(getCurrent()->peekDeclaration()) && (!parenFlag || index < expr->count - 1))
-        popType();
-  }
-
-  if (expr->ui != NULL) {
-    UIDirectiveExpr *exprUI = (UIDirectiveExpr *) expr->ui;
-
-    if (exprUI->previous || exprUI->lastChild) {
-      // Perform the UI AST magic
-      Expr *clickFunction = generateUIFunction("bool", "onEvent", "int event, int pos0, int pos1, int size0, int size1", expr->ui, 1, 0, NULL);
-      Expr *paintFunction = generateUIFunction("void", "paint", "int pos0, int pos1, int size0, int size1", expr->ui, 1, 0, NULL);
-      Expr **uiFunctions = new Expr *[2];
-
-      uiFunctions[0] = paintFunction;
-      uiFunctions[1] = clickFunction;
-
-      Expr *layoutFunction = generateUIFunction("void", "Layout_", NULL, expr->ui, 3, 2, uiFunctions);
-      Expr **layoutExprs = new Expr *[1];
-
-      layoutExprs[0] = layoutFunction;
-
-      Expr *valueFunction = generateUIFunction("void", "UI_", NULL, expr->ui, 1, 1, layoutExprs);
-
-      aCount = 1;
-      accept<int>(valueFunction, 0);
-      Type type = getCurrent()->peekDeclaration();// = popType();
-      getCurrent()->function->uiFunction = AS_FUNCTION_TYPE(type);
-//      getCurrent()->declarationCount--;
-      delete expr->ui;
-      expr->ui = NULL;
-      expr->expressions = RESIZE_ARRAY(Expr *, expr->expressions, expr->count, expr->count + 2);
-      expr->expressions[expr->count++] = valueFunction;
-      uiParseCount = -1;
-      GroupingExpr *uiExpr = (GroupingExpr *) parse("UI_ ui_;\n", 0, 0, NULL);
-      expr->expressions[expr->count++] = uiExpr->expressions[0];
-      accept<int>(uiExpr->expressions[0], 0);
-    }
-    else {
-      delete expr->ui;
-      expr->ui = NULL;
-    }
-  }
 }
 /*
 void AttrSet::parseCreateAreasTree(VM &vm, ValueStack<Value *> &valueStack, int dimFlags, const Path &path, Value *values, IndexList *instanceIndexes, LocationUnit **areaUnits) {
@@ -1390,11 +1440,11 @@ LayoutUnitArea *ObjFunction::parseCreateAreasTree(VM &vm, ValueStack<Value *> &v
 IntTreeUnit *ObjFunction::parseResize(int dir, const Point &limits, LocationUnit *areas, int offset) {
   return topSizers[dir]->parseResize(&areas, Path(limits.size()), dir, limits);
 }
-*/
-void Resolver::acceptSubExpr(Expr *expr) {
-  accept<int>(expr, 0);
-/*
-  if (expr->type == EXPR_VARIABLE) {
+
+void acceptSubExpr(Expr *expr) {
+  expr->resolve(parser);
+
+  if (type == EXPR_VARIABLE) {
     Type type = removeDeclaration();
 
     if (type.valueType == VAL_OBJ && type.objType->type == OBJ_FUNCTION) {
@@ -1408,10 +1458,10 @@ void Resolver::acceptSubExpr(Expr *expr) {
     }
 
     getCurrent()->addDeclaration(type);
-  }*/
-}
+  }
+}*/
 
-Expr *Resolver::parse(const char *source, int index, int replace, Expr *body) {
+Expr *parse(const char *source, int index, int replace, Expr *body) {
   Scanner scanner((new std::string(source))->c_str());
   Parser parser(scanner);
   GroupingExpr *group = (GroupingExpr *) parser.parse() ? (GroupingExpr *) parser.expr : NULL;
@@ -1449,11 +1499,11 @@ Expr *Resolver::parse(const char *source, int index, int replace, Expr *body) {
   return body;
 }
 
-ParseStep Resolver::getParseStep() {
+ParseStep getParseStep() {
   return uiParseCount <= PARSE_AREAS ? (ParseStep) uiParseCount : uiParseCount <= PARSE_AREAS + NUM_DIRS ? PARSE_LAYOUT : (ParseStep) (uiParseCount - NUM_DIRS + 1);
 }
 
-int Resolver::getParseDir() {
+int getParseDir() {
   return uiParseCount - PARSE_LAYOUT;
 }
 
@@ -1490,15 +1540,15 @@ static bool isEventHandler(UIAttributeExpr *attExpr) {
 
 UIDirectiveExpr *parent = NULL;
 
-void Resolver::processAttrs(UIDirectiveExpr *expr) {
+void processAttrs(UIDirectiveExpr *expr, Parser &parser) {
   if (expr->previous)
-    accept<int>(expr->previous);
+    expr->previous->resolve(parser);
 
   if (expr->lastChild) {
     UIDirectiveExpr *oldParent = parent;
 
     parent = expr;
-    accept<int>(expr->lastChild);
+    expr->lastChild->resolve(parser);
     parent = oldParent;
   }
 
@@ -1516,7 +1566,7 @@ void Resolver::processAttrs(UIDirectiveExpr *expr) {
       attExpr->_uiIndex = findAttribute(uiAttributes, attrName);
 
       if (attExpr->_uiIndex != -1 && attExpr->handler) {
-        accept<int>(attExpr->handler, 0);
+        attExpr->handler->resolve(parser);
 
         Type type = popType();
 
@@ -1609,9 +1659,9 @@ static bool isHeritable(int uiIndex) {
 // viewIndex = -1 -> non-sized unit or group
 // viewIndex = 0  -> sized group
 // viewIndex > 0  -> sized unit, has an associated variable
-void Resolver::pushAreas(UIDirectiveExpr *expr) {
+void pushAreas(UIDirectiveExpr *expr, Parser &parser) {
   if (expr->previous)
-    accept<int>(expr->previous);
+    expr->previous->resolve(parser);
 
   for (int index = 0; index < expr->attCount; index++)
     if (!isEventHandler(expr->attributes[index]))
@@ -1627,7 +1677,7 @@ void Resolver::pushAreas(UIDirectiveExpr *expr) {
     }
 
   if (expr->lastChild) {
-    accept<int>(expr->lastChild);
+    expr->lastChild->resolve(parser);
 
     for (UIDirectiveExpr *child = expr->lastChild; !expr->childrenViewFlag && child; child = child->previous)
       expr->childrenViewFlag = hasAreas(child);
@@ -1706,17 +1756,17 @@ static const char *getGroupName(UIDirectiveExpr *expr, int dir) {
     return getUnitName(expr, dir);
 }
 
-void Resolver::recalcLayout(UIDirectiveExpr *expr) {
+void recalcLayout(UIDirectiveExpr *expr, Parser &parser) {
   int dir = getParseDir();
 
   if (expr->previous)
-    accept<int>(expr->previous);
+    expr->previous->resolve(parser);
 
   if (expr->lastChild) {
     UIDirectiveExpr *oldParent = parent;
 
     parent = expr;
-    accept<int>(expr->lastChild);
+    expr->lastChild->resolve(parser);
     parent = oldParent;
   }
 
@@ -1756,7 +1806,7 @@ static void insertPoint(const char *prefix) {/*
   (*ss) << "((" << prefix << "0 << 16) | " << prefix << "1)";
 }
 
-int Resolver::adjustLayout(UIDirectiveExpr *expr) {
+int adjustLayout(UIDirectiveExpr *expr, Parser &parser) {
   int posDiffDirs = 0;
 
   for (int dir = 0; dir < NUM_DIRS; dir++)
@@ -1819,9 +1869,9 @@ int Resolver::adjustLayout(UIDirectiveExpr *expr) {
   return posDiffDirs;
 }
 
-void Resolver::paint(UIDirectiveExpr *expr) {
+void paint(UIDirectiveExpr *expr, Parser &parser) {
   if (expr->previous)
-    accept<int>(expr->previous);
+    expr->previous->resolve(parser);
 
   if (nTabs) {
     insertTabs();
@@ -1844,7 +1894,7 @@ void Resolver::paint(UIDirectiveExpr *expr) {
     }
 
   if (nTabs > 1) {
-    int posDiffDirs = adjustLayout(expr);
+    int posDiffDirs = adjustLayout(expr, parser);
 
     for (int dir = 0; dir < NUM_DIRS; dir++)
       if (posDiffDirs & (1 << dir)) {
@@ -1899,7 +1949,7 @@ void Resolver::paint(UIDirectiveExpr *expr) {
     UIDirectiveExpr *oldParent = parent;
 
     parent = expr;
-    accept<int>(expr->lastChild);
+    expr->lastChild->resolve(parser);
     parent = oldParent;
   }
 
@@ -1926,13 +1976,13 @@ void Resolver::paint(UIDirectiveExpr *expr) {
   }
 }
 
-void Resolver::onEvent(UIDirectiveExpr *expr) {
+void onEvent(UIDirectiveExpr *expr, Parser &parser) {
   if (expr->_eventFlags) {
     insertTabs();
     (*ss) << "if ((" << expr->_eventFlags << " & (1 << event)) != 0) {\n";
     nTabs++;
 
-    int posDiffDirs = adjustLayout(expr);
+    int posDiffDirs = adjustLayout(expr, parser);
     int count = 0;
 
     insertTabs();
@@ -1967,7 +2017,7 @@ void Resolver::onEvent(UIDirectiveExpr *expr) {
       UIDirectiveExpr *oldParent = parent;
 
       parent = expr;
-      accept<int>(expr->lastChild);
+      expr->lastChild->resolve(parser);
       parent = oldParent;
     }
     else {
@@ -2033,7 +2083,7 @@ void Resolver::onEvent(UIDirectiveExpr *expr) {
       nTabs++;
     }
 
-    accept<int>(expr->previous);
+    expr->previous->resolve(parser);
 
     if (expr->_eventFlags) {
       --nTabs;

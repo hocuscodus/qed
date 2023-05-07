@@ -41,87 +41,14 @@ typedef enum {
   EXPR_NATIVE
 } ExprType;
 
-struct ExprVisitor;
-
 struct Expr {
   ExprType type;
 
   Expr(ExprType type);
 
   virtual void astPrint() = 0;
+  virtual void resolve(Parser &parser) = 0;
   virtual void toCode(Parser &parser, ObjFunction *function) = 0;
-  virtual void accept(ExprVisitor *visitor) = 0;
-};
-
-struct ReferenceExpr;
-struct UIAttributeExpr;
-struct UIDirectiveExpr;
-struct AssignExpr;
-struct BinaryExpr;
-struct GroupingExpr;
-struct ArrayExpr;
-struct CallExpr;
-struct ArrayElementExpr;
-struct DeclarationExpr;
-struct FunctionExpr;
-struct GetExpr;
-struct ListExpr;
-struct LiteralExpr;
-struct LogicalExpr;
-struct OpcodeExpr;
-struct ReturnExpr;
-struct SetExpr;
-struct StatementExpr;
-struct SuperExpr;
-struct TernaryExpr;
-struct ThisExpr;
-struct TypeExpr;
-struct UnaryExpr;
-struct SwapExpr;
-struct NativeExpr;
-
-struct ExprVisitor {
-  template <typename T> T accept(Expr *expr, T buf = T()) {
-    static T _buf;
-
-    _buf = buf;
-
-    if (expr != NULL)
-      expr->accept(this);
-
-    return _buf;
-  }
-
-  template <typename T> void set(T buf) {
-    accept(NULL, buf);
-  }
-
-  virtual void visitReferenceExpr(ReferenceExpr *expr) = 0;
-  virtual void visitUIAttributeExpr(UIAttributeExpr *expr) = 0;
-  virtual void visitUIDirectiveExpr(UIDirectiveExpr *expr) = 0;
-  virtual void visitAssignExpr(AssignExpr *expr) = 0;
-  virtual void visitBinaryExpr(BinaryExpr *expr) = 0;
-  virtual void visitGroupingExpr(GroupingExpr *expr) = 0;
-  virtual void visitArrayExpr(ArrayExpr *expr) = 0;
-  virtual void visitCallExpr(CallExpr *expr) = 0;
-  virtual void visitArrayElementExpr(ArrayElementExpr *expr) = 0;
-  virtual void visitDeclarationExpr(DeclarationExpr *expr) = 0;
-  virtual void visitFunctionExpr(FunctionExpr *expr) = 0;
-  virtual void visitGetExpr(GetExpr *expr) = 0;
-  virtual void visitListExpr(ListExpr *expr) = 0;
-  virtual void visitLiteralExpr(LiteralExpr *expr) = 0;
-  virtual void visitLogicalExpr(LogicalExpr *expr) = 0;
-  virtual void visitOpcodeExpr(OpcodeExpr *expr) = 0;
-  virtual void visitReturnExpr(ReturnExpr *expr) = 0;
-  virtual void visitSetExpr(SetExpr *expr) = 0;
-  virtual void visitStatementExpr(StatementExpr *expr) = 0;
-  virtual void visitSuperExpr(SuperExpr *expr) = 0;
-  virtual void visitTernaryExpr(TernaryExpr *expr) = 0;
-  virtual void visitThisExpr(ThisExpr *expr) = 0;
-  virtual void visitTypeExpr(TypeExpr *expr) = 0;
-  virtual void visitUnaryExpr(UnaryExpr *expr) = 0;
-  virtual void visitSwapExpr(SwapExpr *expr) = 0;
-  virtual void visitNativeExpr(NativeExpr *expr) = 0;
 };
 
 struct ReferenceExpr : public Expr {
@@ -132,8 +59,8 @@ struct ReferenceExpr : public Expr {
 
   ReferenceExpr(Token name, int8_t index, bool upvalueFlag);
   void astPrint();
+  void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
-  void accept(ExprVisitor *visitor);
 };
 
 struct UIAttributeExpr : public Expr {
@@ -144,8 +71,8 @@ struct UIAttributeExpr : public Expr {
 
   UIAttributeExpr(Token name, Expr* handler);
   void astPrint();
+  void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
-  void accept(ExprVisitor *visitor);
 };
 
 struct UIDirectiveExpr : public Expr {
@@ -161,8 +88,8 @@ struct UIDirectiveExpr : public Expr {
 
   UIDirectiveExpr(int childDir, int attCount, UIAttributeExpr** attributes, UIDirectiveExpr* previous, UIDirectiveExpr* lastChild, int viewIndex, bool childrenViewFlag);
   void astPrint();
+  void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
-  void accept(ExprVisitor *visitor);
 };
 
 struct AssignExpr : public Expr {
@@ -173,8 +100,8 @@ struct AssignExpr : public Expr {
 
   AssignExpr(ReferenceExpr* varExp, Token op, Expr* value, OpCode opCode);
   void astPrint();
+  void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
-  void accept(ExprVisitor *visitor);
 };
 
 struct BinaryExpr : public Expr {
@@ -185,8 +112,8 @@ struct BinaryExpr : public Expr {
 
   BinaryExpr(Expr* left, Token op, Expr* right, OpCode opCode);
   void astPrint();
+  void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
-  void accept(ExprVisitor *visitor);
 };
 
 struct GroupingExpr : public Expr {
@@ -199,8 +126,8 @@ struct GroupingExpr : public Expr {
 
   GroupingExpr(Token name, int count, Expr** expressions, int popLevels, Expr* ui);
   void astPrint();
+  void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
-  void accept(ExprVisitor *visitor);
 };
 
 struct ArrayExpr : public Expr {
@@ -210,8 +137,8 @@ struct ArrayExpr : public Expr {
 
   ArrayExpr(int count, Expr** expressions, ObjFunction* function);
   void astPrint();
+  void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
-  void accept(ExprVisitor *visitor);
 };
 
 struct CallExpr : public Expr {
@@ -226,8 +153,8 @@ struct CallExpr : public Expr {
 
   CallExpr(Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler, ObjCallable* callable, ObjFunction* handlerFunction);
   void astPrint();
+  void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
-  void accept(ExprVisitor *visitor);
 };
 
 struct ArrayElementExpr : public Expr {
@@ -238,8 +165,8 @@ struct ArrayElementExpr : public Expr {
 
   ArrayElementExpr(Expr* callee, Token bracket, int count, Expr** indexes);
   void astPrint();
+  void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
-  void accept(ExprVisitor *visitor);
 };
 
 struct DeclarationExpr : public Expr {
@@ -249,8 +176,8 @@ struct DeclarationExpr : public Expr {
 
   DeclarationExpr(Type type, Token name, Expr* initExpr);
   void astPrint();
+  void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
-  void accept(ExprVisitor *visitor);
 };
 
 struct FunctionExpr : public Expr {
@@ -263,8 +190,8 @@ struct FunctionExpr : public Expr {
 
   FunctionExpr(Type type, Token name, int count, Expr** params, Expr* body, ObjFunction* function);
   void astPrint();
+  void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
-  void accept(ExprVisitor *visitor);
 };
 
 struct GetExpr : public Expr {
@@ -274,8 +201,8 @@ struct GetExpr : public Expr {
 
   GetExpr(Expr* object, Token name, int index);
   void astPrint();
+  void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
-  void accept(ExprVisitor *visitor);
 };
 
 struct ListExpr : public Expr {
@@ -286,8 +213,8 @@ struct ListExpr : public Expr {
 
   ListExpr(int count, Expr** expressions, ExprType listType);
   void astPrint();
+  void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
-  void accept(ExprVisitor *visitor);
 };
 
 struct LiteralExpr : public Expr {
@@ -296,8 +223,8 @@ struct LiteralExpr : public Expr {
 
   LiteralExpr(ValueType type, As as);
   void astPrint();
+  void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
-  void accept(ExprVisitor *visitor);
 };
 
 struct LogicalExpr : public Expr {
@@ -307,8 +234,8 @@ struct LogicalExpr : public Expr {
 
   LogicalExpr(Expr* left, Token op, Expr* right);
   void astPrint();
+  void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
-  void accept(ExprVisitor *visitor);
 };
 
 struct OpcodeExpr : public Expr {
@@ -317,8 +244,8 @@ struct OpcodeExpr : public Expr {
 
   OpcodeExpr(OpCode op, Expr* right);
   void astPrint();
+  void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
-  void accept(ExprVisitor *visitor);
 };
 
 struct ReturnExpr : public Expr {
@@ -327,8 +254,8 @@ struct ReturnExpr : public Expr {
 
   ReturnExpr(Token keyword, Expr* value);
   void astPrint();
+  void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
-  void accept(ExprVisitor *visitor);
 };
 
 struct SetExpr : public Expr {
@@ -340,8 +267,8 @@ struct SetExpr : public Expr {
 
   SetExpr(Expr* object, Token name, Token op, Expr* value, int index);
   void astPrint();
+  void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
-  void accept(ExprVisitor *visitor);
 };
 
 struct StatementExpr : public Expr {
@@ -349,8 +276,8 @@ struct StatementExpr : public Expr {
 
   StatementExpr(Expr* expr);
   void astPrint();
+  void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
-  void accept(ExprVisitor *visitor);
 };
 
 struct SuperExpr : public Expr {
@@ -359,8 +286,8 @@ struct SuperExpr : public Expr {
 
   SuperExpr(Token keyword, Token method);
   void astPrint();
+  void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
-  void accept(ExprVisitor *visitor);
 };
 
 struct TernaryExpr : public Expr {
@@ -371,8 +298,8 @@ struct TernaryExpr : public Expr {
 
   TernaryExpr(Token op, Expr* left, Expr* middle, Expr* right);
   void astPrint();
+  void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
-  void accept(ExprVisitor *visitor);
 };
 
 struct ThisExpr : public Expr {
@@ -380,8 +307,8 @@ struct ThisExpr : public Expr {
 
   ThisExpr(Token keyword);
   void astPrint();
+  void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
-  void accept(ExprVisitor *visitor);
 };
 
 struct TypeExpr : public Expr {
@@ -389,8 +316,8 @@ struct TypeExpr : public Expr {
 
   TypeExpr(Type type);
   void astPrint();
+  void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
-  void accept(ExprVisitor *visitor);
 };
 
 struct UnaryExpr : public Expr {
@@ -399,8 +326,8 @@ struct UnaryExpr : public Expr {
 
   UnaryExpr(Token op, Expr* right);
   void astPrint();
+  void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
-  void accept(ExprVisitor *visitor);
 };
 
 struct SwapExpr : public Expr {
@@ -408,8 +335,8 @@ struct SwapExpr : public Expr {
 
   SwapExpr();
   void astPrint();
+  void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
-  void accept(ExprVisitor *visitor);
 };
 
 struct NativeExpr : public Expr {
@@ -417,8 +344,8 @@ struct NativeExpr : public Expr {
 
   NativeExpr(Token nativeCode);
   void astPrint();
+  void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
-  void accept(ExprVisitor *visitor);
 };
 
 #endif

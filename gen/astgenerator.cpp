@@ -10,6 +10,11 @@
 #include <string.h>
 #include <ctype.h>
 
+#define PASSES_DEF \
+    PASS_DEF( void astPrint() )  \
+    PASS_DEF( void resolve(Parser &parser) )  \
+    PASS_DEF( void toCode(Parser &parser, ObjFunction *function) )
+
 void writeHeader(FILE *file) {
   fprintf(file, "/*\n");
   fprintf(file, " * The QED Programming Language\n");
@@ -126,13 +131,15 @@ public:
     }
     fprintf(file, "} %sType;\n\n", baseName);
 
-    fprintf(file, "struct %sVisitor;\n\n", baseName);
     fprintf(file, "struct %s {\n", baseName);
     fprintf(file, "  %sType type;\n\n", baseName);
     fprintf(file, "  %s(%sType type);\n\n", baseName, baseName);
-    fprintf(file, "  virtual void accept(%sVisitor *visitor) = 0;\n", baseName);
+
+#define PASS_DEF( pass ) fprintf(file, "  virtual " #pass " = 0;\n");
+PASSES_DEF
+#undef PASS_DEF
+
     fprintf(file, "};\n\n", baseName);
-    defineVisitor(file, baseName, types);
 
     // The AST classes.
     for (int index = 0; types[index] != NULL; index++) {
@@ -172,35 +179,6 @@ public:
     fclose(file);
   }
 
-  void defineVisitor(FILE *file, char *baseName, const char *types[]) {
-    for (int index = 0; types[index] != NULL; index++) {
-      char *type = (char *) types[index];
-      char *typeName = trim(strtok2(type, ":"));
-
-      fprintf(file, "struct %s%s;\n", typeName, baseName);
-    }
-
-    fprintf(file, "\nstruct %sVisitor {\n", baseName);
-    fprintf(file, "  template <typename T> T accept(%s *%s, T buf = T()) {\n", baseName, toLowerCase(baseName));
-    fprintf(file, "    static T _buf;\n\n");
-    fprintf(file, "    _buf = buf;\n\n");
-    fprintf(file, "    if (%s != NULL)\n", toLowerCase(baseName));
-    fprintf(file, "      %s->accept(this);\n\n", toLowerCase(baseName));
-    fprintf(file, "    return _buf;\n", toLowerCase(baseName));
-    fprintf(file, "  }\n\n");
-    fprintf(file, "  template <typename T> void set(T buf) {\n");
-    fprintf(file, "    accept(NULL, buf);\n");
-    fprintf(file, "  }\n\n");
-
-    for (int index = 0; types[index] != NULL; index++) {
-      char *type = (char *) types[index];
-      char *typeName = trim(strtok2(type, ":"));
-      fprintf(file, "  virtual void visit%s%s(%s%s *%s) = 0;\n", typeName, baseName, typeName, baseName, toLowerCase(baseName));
-    }
-
-    fprintf(file, "};\n\n");
-  }
-
   void declareType(FILE *file, char *baseName, char *className, char *fieldList) {
     fprintf(file, "struct %s%s : public %s {\n", className, baseName, baseName);
 
@@ -225,8 +203,10 @@ public:
     }
     fprintf(file, ");\n");
 
-    // Visitor pattern.
-    fprintf(file, "  void accept(%sVisitor *visitor);\n", baseName);
+#define PASS_DEF( pass ) fprintf(file, "  " #pass ";\n");
+PASSES_DEF
+#undef PASS_DEF
+
     fprintf(file, "};\n\n");
   }
 
@@ -256,11 +236,6 @@ public:
         fprintf(file, "  this->%s = %s;\n", name, name);
     }
 
-    fprintf(file, "}\n");
-
-    // Visitor pattern.
-    fprintf(file, "\nvoid %s%s::accept(%sVisitor *visitor) {\n", className, baseName, baseName);
-    fprintf(file, "  return visitor->visit%s%s(this);\n", className, baseName);
     fprintf(file, "}\n");
   }
 };
