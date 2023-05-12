@@ -97,12 +97,10 @@ public:
   Expr *variable();
   Expr *unary();
   Expr *parsePrecedence(Precedence precedence);
-  Expr *declareVariable(Type &type, TokenType endGroupType);
-  Expr *parseVariable(TokenType endGroupType, const char *errorMessage);
+  DeclarationExpr *declareVariable(Expr *typeExpr, TokenType *endGroupTypes);
+  DeclarationExpr *parseVariable(TokenType *endGroupTypes, const char *errorMessage);
   Expr *expression(TokenType *endGroupType);
-  Expr *function(Type *type, TokenType endGroupType);
   Type readType();
-  Expr *funDeclaration(TokenType endGroupType);
   Expr *varDeclaration(TokenType endGroupType);
   Expr *expressionStatement(TokenType endGroupType);
   Expr *forStatement(TokenType endGroupType);

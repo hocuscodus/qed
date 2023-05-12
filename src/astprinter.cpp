@@ -156,14 +156,22 @@ void ArrayElementExpr::astPrint() {
 
 void DeclarationExpr::astPrint() {
   printf("(var %.*s", name.length, name.start);
-  initExpr->astPrint();
+
+  if (initExpr)
+    initExpr->astPrint();
+
   printf(")");
 }
 
 void FunctionExpr::astPrint() {
-  printf("(fun %.*s", name.length, name.start);
+  printf("(fun %.*s(", name.length, name.start);
+  for (int index = 0; index < count; index++) {
+    printf(", ");
+    params[index]->astPrint();
+  }
+  printf(") {");
   body->astPrint();
-  printf(")");
+  printf(") }");
 }
 
 void GetExpr::astPrint() {
@@ -291,7 +299,7 @@ void ThisExpr::astPrint() {
 }
 
 void TypeExpr::astPrint() {
-  printType(&type);
+  typeExpr->astPrint();
 }
 
 void UnaryExpr::astPrint() {

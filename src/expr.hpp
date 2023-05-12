@@ -192,11 +192,11 @@ struct ArrayElementExpr : public Expr {
 };
 
 struct DeclarationExpr : public Expr {
-  Type type;
+  Expr* typeExpr;
   Token name;
   Expr* initExpr;
 
-  DeclarationExpr(Type type, Token name, Expr* initExpr);
+  DeclarationExpr(Expr* typeExpr, Token name, Expr* initExpr);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);
@@ -205,14 +205,15 @@ struct DeclarationExpr : public Expr {
 };
 
 struct FunctionExpr : public Expr {
-  Type type;
+  Expr* typeExpr;
   Token name;
   int count;
-  Expr** params;
-  Expr* body;
+  DeclarationExpr** params;
+  GroupingExpr* body;
   ObjFunction* function;
+  Declaration* _declaration;
 
-  FunctionExpr(Type type, Token name, int count, Expr** params, Expr* body, ObjFunction* function);
+  FunctionExpr(Expr* typeExpr, Token name, int count, DeclarationExpr** params, GroupingExpr* body, ObjFunction* function);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);
@@ -360,9 +361,9 @@ struct ThisExpr : public Expr {
 };
 
 struct TypeExpr : public Expr {
-  Type type;
+  Expr* typeExpr;
 
-  TypeExpr(Type type);
+  TypeExpr(Expr* typeExpr);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);

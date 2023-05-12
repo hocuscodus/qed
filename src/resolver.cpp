@@ -326,44 +326,45 @@ static void insertTabs() {
 static const char *getGroupName(UIDirectiveExpr *expr, int dir);
 
 static Expr *generateFunction(const char *type, const char *name, char *args, Expr *copyExpr, int count, int restLength, Expr **rest) {
-    ReferenceExpr *nameExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1), -1, false);
-    Expr **bodyExprs = new Expr *[count + restLength];
-    Expr **functionExprs = new Expr *[3];
-    int nbParms = 0;
-    Expr **parms = NULL;
+  Expr **bodyExprs = NULL;
+  Expr **functionExprs = new Expr *[3];
+  int nbParms = 0;
+  DeclarationExpr **parms = NULL;
 
-    if (args != NULL) {
-      Scanner scanner(args);
-      Parser parser(scanner);
-      TokenType tokens[] = {TOKEN_COMMA, TOKEN_EOF};
+  if (args != NULL) {
+    Scanner scanner(args);
+    Parser parser(scanner);
+    TokenType tokens[] = {TOKEN_COMMA, TOKEN_EOF};
 
-      do {
-        Expr *expr = parser.expression(tokens);
+    do {
+      DeclarationExpr *expr = parser.parseVariable(NULL, "Expect parameter name.");
 
-        parms = RESIZE_ARRAY(Expr *, parms, nbParms, nbParms + 1);
-        parms[nbParms++] = expr;
-      } while (parser.match(TOKEN_COMMA));
+      parms = RESIZE_ARRAY(DeclarationExpr *, parms, nbParms, nbParms + 1);
+      parms[nbParms++] = expr;
+    } while (parser.match(TOKEN_COMMA));
 
-      parser.consume(TOKEN_EOF, "Expect EOF after arguments.");
-    }
+    parser.consume(TOKEN_EOF, "Expect EOF after arguments.");
+  }
 
-    for (int index = 0; index < count; index++)
-      bodyExprs[index] = copyExpr;
+  bodyExprs = RESIZE_ARRAY(Expr *, bodyExprs, 0, count + restLength);
 
-    for (int index = 0; index < restLength; index++)
-      bodyExprs[count + index] = rest[index];
+  for (int index = 0; index < count; index++)
+    bodyExprs[index] = copyExpr;
 
-    int typeIndex = -1;
+  for (int index = 0; index < restLength; index++)
+    bodyExprs[count + index] = rest[index];
 
-    for (int index = 0; typeIndex == -1 && index < sizeof(primitives) / sizeof(Obj *); index++)
-      if (!strcmp(((ObjPrimitive *) primitives[index])->name->chars, type))
-        typeIndex = index;
+  int typeIndex = -1;
 
-    functionExprs[0] = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, type, strlen(type), -1), typeIndex, false);
-    functionExprs[1] = new CallExpr(nameExpr, buildToken(TOKEN_RIGHT_PAREN, ")", 1, -1), nbParms, parms, false, NULL, NULL, NULL);
-    functionExprs[2] = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), count + restLength, bodyExprs, 0, NULL);
+  for (int index = 0; typeIndex == -1 && index < sizeof(primitives) / sizeof(Obj *); index++)
+    if (!strcmp(((ObjPrimitive *) primitives[index])->name->chars, type))
+      typeIndex = index;
 
-    return new ListExpr(3, functionExprs, EXPR_LIST);
+  Expr *typeExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, type, strlen(type), -1), typeIndex, false);
+  Token nameToken = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
+  GroupingExpr *body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), count + restLength, bodyExprs, 0, NULL);
+
+  return new FunctionExpr(typeExpr, nameToken, nbParms, parms, body, NULL);
 }
 
 static Expr *generateUIFunction(const char *type, const char *name, char *args, Expr *uiExpr, int count, int restLength, Expr **rest) {
@@ -847,17 +848,63 @@ void ArrayElementExpr::resolve(Parser &parser) {
 }
 
 void DeclarationExpr::resolve(Parser &parser) {
-//  getCurrent()->checkDeclaration(&name);
+  typeExpr->resolve(parser);
 
-  if (initExpr != NULL) {
+  Type type = popType();
+
+  if (initExpr) {
     initExpr->resolve(parser);
     Type type1 = popType();
   }
 
-  getCurrent()->addDeclaration(type, name, NULL, false);
+  getCurrent()->addDeclaration(convertType(type), name, NULL, false);
+  getCurrent()->pushType({VAL_VOID});
 }
 
-void FunctionExpr::resolve(Parser &parser) {/*
+void FunctionExpr::resolve(Parser &parser) {
+  typeExpr->resolve(parser);
+
+  Type type = popType();
+  Type returnType = convertType(type);
+  Compiler &compiler = body->_compiler;
+
+  function = newFunction(returnType, copyString(name.start, name.length), count);
+
+  compiler.beginScope(function);
+  bindFunction(compiler.prefix, function);
+
+  for (int index = 0; index < count; index++) {
+    params[index]->resolve(parser);
+    popType();
+  }
+
+  const char *str = name.getString().c_str();
+  char firstChar = str[0];
+  bool handlerFlag = str[strlen(str) - 1] == '_';
+
+  if (!handlerFlag && firstChar >= 'A' && firstChar <= 'Z') {
+    char buffer[256] = "";
+    char buf[256];
+
+    if (!IS_VOID(returnType))
+      sprintf(buffer, "%s _ret", returnType.toString());
+
+    sprintf(buf, "void ReturnHandler_(%s) {};", buffer);
+
+    Expr *handlerExpr = parse(buf, 0, 0, NULL);
+
+    handlerExpr->resolve(parser);
+  }
+
+  _declaration = getCurrent()->enclosing->checkDeclaration({VAL_OBJ, &function->obj}, name, function);
+  function->bodyExpr = body;
+
+  if (body)
+    acceptGroupingExprUnits(body, parser);
+
+  compiler.endScope();
+  getCurrent()->pushType({VAL_VOID});
+/*
   getCurrent()->checkDeclaration(&name);
   getCurrent()->addDeclaration(VAL_OBJ, &name);
 
@@ -1042,7 +1089,7 @@ void ListExpr::resolve(Parser &parser) {
         Compiler &compiler = body->_compiler;
         ObjFunction *function = newFunction(returnType, copyString(varExp->name.start, varExp->name.length), callExpr->count);
 
-        _declaration = compiler.beginScope(function);
+        compiler.beginScope(function);
         bindFunction(compiler.prefix, function);
 
         for (int index = 0; index < callExpr->count; index++)

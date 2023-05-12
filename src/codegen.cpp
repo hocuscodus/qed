@@ -16,7 +16,7 @@ static int nTabs = -1;
 std::stringstream s;
 
 bool needsSemicolon(Expr *expr) {
-  return expr->type != EXPR_GROUPING && (expr->type != EXPR_LIST || ((ListExpr *) expr)->listType != EXPR_CALL) && (expr->type != EXPR_SWAP || needsSemicolon(((SwapExpr *) expr)->_expr));
+  return expr->type != EXPR_GROUPING && expr->type != EXPR_FUNCTION && !((expr->type == EXPR_LIST && ((ListExpr *) expr)->listType == EXPR_CALL) || (expr->type == EXPR_SWAP && !needsSemicolon(((SwapExpr *) expr)->_expr)));
 }
 
 static std::stringstream &str() {
@@ -125,10 +125,49 @@ void ArrayElementExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 void DeclarationExpr::toCode(Parser &parser, ObjFunction *function) {
-  initExpr->toCode(parser, function);
+  if (initExpr)
+    initExpr->toCode(parser, function);
 }
 
 void FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
+  ObjFunction *function2 = (ObjFunction *) _declaration->type.objType;
+
+  if (this->function != function2)
+    function2 = this->function;
+
+  str() << (_declaration->isField ? "this." : "let ");// << varExp->name.getString() << " = null";
+  str() << _declaration->getRealName() << " = function(";
+
+  for (int index = 0; index < count; index++) {
+    if (index)
+      str() << ", ";
+
+    str() << params[index]->name.getString();
+  }
+
+  if (this->function->isUserClass()) {
+    if (count)
+      str() << ", ";
+
+    str() << "ReturnHandler_";
+  }
+
+  str() << ") ";
+
+//    for (ObjFunction *child = this->function->firstChild; this->function; child = child->next)
+//      generator.accept<int>(child->bodyExpr);
+  if (body)
+    body->toCode(parser, this->function);
+
+  if (parser.hadError)
+    return;
+
+//    emitBytes(OP_CLOSURE, makeConstant(OBJ_VAL(this->function)));
+
+  for (int i = 0; i < this->function->upvalueCount; i++) {
+//      emitByte(this->function->upvalues[i].isField ? 1 : 0);
+//      emitByte(this->function->upvalues[i].index);
+  }
 }
 
 void GetExpr::toCode(Parser &parser, ObjFunction *function) {

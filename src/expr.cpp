@@ -80,14 +80,14 @@ ArrayElementExpr::ArrayElementExpr(Expr* callee, Token bracket, int count, Expr*
   this->indexes = indexes;
 }
 
-DeclarationExpr::DeclarationExpr(Type type, Token name, Expr* initExpr) : Expr(EXPR_DECLARATION) {
-  this->type = type;
+DeclarationExpr::DeclarationExpr(Expr* typeExpr, Token name, Expr* initExpr) : Expr(EXPR_DECLARATION) {
+  this->typeExpr = typeExpr;
   this->name = name;
   this->initExpr = initExpr;
 }
 
-FunctionExpr::FunctionExpr(Type type, Token name, int count, Expr** params, Expr* body, ObjFunction* function) : Expr(EXPR_FUNCTION) {
-  this->type = type;
+FunctionExpr::FunctionExpr(Expr* typeExpr, Token name, int count, DeclarationExpr** params, GroupingExpr* body, ObjFunction* function) : Expr(EXPR_FUNCTION) {
+  this->typeExpr = typeExpr;
   this->name = name;
   this->count = count;
   this->params = params;
@@ -156,8 +156,8 @@ ThisExpr::ThisExpr(Token keyword) : Expr(EXPR_THIS) {
   this->keyword = keyword;
 }
 
-TypeExpr::TypeExpr(Type type) : Expr(EXPR_TYPE) {
-  this->type = type;
+TypeExpr::TypeExpr(Expr* typeExpr) : Expr(EXPR_TYPE) {
+  this->typeExpr = typeExpr;
 }
 
 UnaryExpr::UnaryExpr(Token op, Expr* right) : Expr(EXPR_UNARY) {

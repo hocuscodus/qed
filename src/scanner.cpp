@@ -34,7 +34,7 @@ Token buildToken(TokenType type, const char *start, int length, int line = -1) {
 }
 
 std::string Token::getString() {
-  std::string str(start, start + length);
+  std::string str(start, length);
 
   return str;
 }

@@ -310,18 +310,22 @@ void Compiler::resolveReferenceExpr(ReferenceExpr *expr) {
 }
 
 void Compiler::checkDeclaration(Type returnType, ReferenceExpr *expr, ObjCallable *signature) {
+  expr->_declaration = checkDeclaration(returnType, expr->name, signature);
+}
+
+Declaration *Compiler::checkDeclaration(Type returnType, Token &name, ObjCallable *signature) {
   Declaration *peerDeclaration = NULL;
   bool parentFlag = false;
 
   pushSignature(signature);
 
-  if (resolveReference(&expr->name) >= 0)
-    parser->error("Identical identifier '%.*s' with this name in this scope.", expr->name.length, expr->name.start);
+  if (resolveReference(&name) >= 0)
+    parser->error("Identical identifier '%.*s' with this name in this scope.", name.length, name.start);
   else {
     pushSignature(NULL);
 
     for (Compiler *compiler = this; !peerDeclaration && compiler; compiler = compiler->enclosing) {
-      int index = compiler->resolveReference(&expr->name);
+      int index = compiler->resolveReference(&name);
 
       peerDeclaration = index >= 0 ? &compiler->getDeclaration(index) : NULL;
       parentFlag = peerDeclaration && compiler != this;
@@ -331,7 +335,7 @@ void Compiler::checkDeclaration(Type returnType, ReferenceExpr *expr, ObjCallabl
   }
 
   popSignature();
-  expr->_declaration = addDeclaration(returnType, expr->name, peerDeclaration, parentFlag);
+  return addDeclaration(returnType, name, peerDeclaration, parentFlag);
 }
 
 bool Compiler::inBlock() {

@@ -43,6 +43,7 @@ struct Compiler {
   int addUpvalue(uint8_t index, Declaration *declaration, bool isDeclaration);
   void resolveReferenceExpr(ReferenceExpr *expr);
   void checkDeclaration(Type returnType, ReferenceExpr *expr, ObjCallable *signature);
+  Declaration *checkDeclaration(Type returnType, Token &name, ObjCallable *signature);
   bool inBlock();
 
   static inline Compiler *getCurrent() {

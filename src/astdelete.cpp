@@ -61,6 +61,8 @@ void SetExpr::cleanExprs() {
 }
 
 void StatementExpr::cleanExprs() {
+  if (expr)
+    expr->destroy();
 }
 
 void SuperExpr::cleanExprs() {
