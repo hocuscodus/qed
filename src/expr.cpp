@@ -8,6 +8,11 @@ Expr::Expr(ExprType type) {
   this->type = type;
 }
 
+void Expr::destroy() {
+  cleanExprs();
+  delete this;
+}
+
 ReferenceExpr::ReferenceExpr(Token name, int8_t index, bool upvalueFlag) : Expr(EXPR_REFERENCE) {
   this->name = name;
   this->index = index;

@@ -40,6 +40,9 @@ ObjFunction *Compiler::compile(Parser &parser) {
   parser.expr->astPrint();
 #endif
 //  Reifier reifier(parser);
+  Expr *cpsExpr = parser.expr->toCps([](Expr *expr) {
+    return expr;
+  });
 
   parser.expr->resolve(parser);
 

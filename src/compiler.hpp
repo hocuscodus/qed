@@ -9,6 +9,7 @@
 
 #include <iostream>
 #include <stack>
+#include <functional>
 #include "object.hpp"
 
 class Parser;
@@ -69,6 +70,10 @@ void popSignature();
 static inline Compiler *getCurrent() {
   return Compiler::getCurrent();
 }
+
+struct Expr;
+
+typedef std::function<Expr *(Expr *)> K;
 
 #endif
 

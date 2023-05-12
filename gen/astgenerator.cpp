@@ -11,7 +11,9 @@
 #include <ctype.h>
 
 #define PASSES_DEF \
+    PASS_DEF( void cleanExprs() )  \
     PASS_DEF( void astPrint() )  \
+    PASS_DEF( Expr *toCps(K k) )  \
     PASS_DEF( void resolve(Parser &parser) )  \
     PASS_DEF( void toCode(Parser &parser, ObjFunction *function) )
 
@@ -135,11 +137,13 @@ public:
     fprintf(file, "  %sType type;\n\n", baseName);
     fprintf(file, "  %s(%sType type);\n\n", baseName, baseName);
 
+    fprintf(file, "  void destroy();\n\n");
+
 #define PASS_DEF( pass ) fprintf(file, "  virtual " #pass " = 0;\n");
 PASSES_DEF
 #undef PASS_DEF
 
-    fprintf(file, "};\n\n", baseName);
+    fprintf(file, "};\n\n");
 
     // The AST classes.
     for (int index = 0; types[index] != NULL; index++) {
@@ -164,6 +168,11 @@ PASSES_DEF
     // Base class constructor
     fprintf(file, "\n%s::%s(%sType type) {\n", baseName, baseName, baseName);
     fprintf(file, "  this->type = type;\n");
+    fprintf(file, "}\n\n");
+
+    fprintf(file, "void %s::destroy() {\n", baseName);
+    fprintf(file, "  cleanExprs();\n");
+    fprintf(file, "  delete this;\n");
     fprintf(file, "}\n");
 
     // The AST classes.

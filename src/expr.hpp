@@ -46,7 +46,11 @@ struct Expr {
 
   Expr(ExprType type);
 
+  void destroy();
+
+  virtual void cleanExprs() = 0;
   virtual void astPrint() = 0;
+  virtual Expr *toCps(K k) = 0;
   virtual void resolve(Parser &parser) = 0;
   virtual void toCode(Parser &parser, ObjFunction *function) = 0;
 };
@@ -58,7 +62,9 @@ struct ReferenceExpr : public Expr {
   Declaration* _declaration;
 
   ReferenceExpr(Token name, int8_t index, bool upvalueFlag);
+  void cleanExprs();
   void astPrint();
+  Expr *toCps(K k);
   void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
 };
@@ -70,7 +76,9 @@ struct UIAttributeExpr : public Expr {
   int _index;
 
   UIAttributeExpr(Token name, Expr* handler);
+  void cleanExprs();
   void astPrint();
+  Expr *toCps(K k);
   void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
 };
@@ -87,7 +95,9 @@ struct UIDirectiveExpr : public Expr {
   long _eventFlags;
 
   UIDirectiveExpr(int childDir, int attCount, UIAttributeExpr** attributes, UIDirectiveExpr* previous, UIDirectiveExpr* lastChild, int viewIndex, bool childrenViewFlag);
+  void cleanExprs();
   void astPrint();
+  Expr *toCps(K k);
   void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
 };
@@ -99,7 +109,9 @@ struct AssignExpr : public Expr {
   OpCode opCode;
 
   AssignExpr(ReferenceExpr* varExp, Token op, Expr* value, OpCode opCode);
+  void cleanExprs();
   void astPrint();
+  Expr *toCps(K k);
   void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
 };
@@ -111,7 +123,9 @@ struct BinaryExpr : public Expr {
   OpCode opCode;
 
   BinaryExpr(Expr* left, Token op, Expr* right, OpCode opCode);
+  void cleanExprs();
   void astPrint();
+  Expr *toCps(K k);
   void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
 };
@@ -125,7 +139,9 @@ struct GroupingExpr : public Expr {
   Compiler _compiler;
 
   GroupingExpr(Token name, int count, Expr** expressions, int popLevels, Expr* ui);
+  void cleanExprs();
   void astPrint();
+  Expr *toCps(K k);
   void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
 };
@@ -136,7 +152,9 @@ struct ArrayExpr : public Expr {
   ObjFunction* function;
 
   ArrayExpr(int count, Expr** expressions, ObjFunction* function);
+  void cleanExprs();
   void astPrint();
+  Expr *toCps(K k);
   void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
 };
@@ -152,7 +170,9 @@ struct CallExpr : public Expr {
   ObjFunction* handlerFunction;
 
   CallExpr(Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler, ObjCallable* callable, ObjFunction* handlerFunction);
+  void cleanExprs();
   void astPrint();
+  Expr *toCps(K k);
   void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
 };
@@ -164,7 +184,9 @@ struct ArrayElementExpr : public Expr {
   Expr** indexes;
 
   ArrayElementExpr(Expr* callee, Token bracket, int count, Expr** indexes);
+  void cleanExprs();
   void astPrint();
+  Expr *toCps(K k);
   void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
 };
@@ -175,7 +197,9 @@ struct DeclarationExpr : public Expr {
   Expr* initExpr;
 
   DeclarationExpr(Type type, Token name, Expr* initExpr);
+  void cleanExprs();
   void astPrint();
+  Expr *toCps(K k);
   void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
 };
@@ -189,7 +213,9 @@ struct FunctionExpr : public Expr {
   ObjFunction* function;
 
   FunctionExpr(Type type, Token name, int count, Expr** params, Expr* body, ObjFunction* function);
+  void cleanExprs();
   void astPrint();
+  Expr *toCps(K k);
   void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
 };
@@ -200,7 +226,9 @@ struct GetExpr : public Expr {
   int index;
 
   GetExpr(Expr* object, Token name, int index);
+  void cleanExprs();
   void astPrint();
+  Expr *toCps(K k);
   void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
 };
@@ -212,7 +240,9 @@ struct ListExpr : public Expr {
   Declaration* _declaration;
 
   ListExpr(int count, Expr** expressions, ExprType listType);
+  void cleanExprs();
   void astPrint();
+  Expr *toCps(K k);
   void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
 };
@@ -222,7 +252,9 @@ struct LiteralExpr : public Expr {
   As as;
 
   LiteralExpr(ValueType type, As as);
+  void cleanExprs();
   void astPrint();
+  Expr *toCps(K k);
   void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
 };
@@ -233,7 +265,9 @@ struct LogicalExpr : public Expr {
   Expr* right;
 
   LogicalExpr(Expr* left, Token op, Expr* right);
+  void cleanExprs();
   void astPrint();
+  Expr *toCps(K k);
   void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
 };
@@ -243,7 +277,9 @@ struct OpcodeExpr : public Expr {
   Expr* right;
 
   OpcodeExpr(OpCode op, Expr* right);
+  void cleanExprs();
   void astPrint();
+  Expr *toCps(K k);
   void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
 };
@@ -253,7 +289,9 @@ struct ReturnExpr : public Expr {
   Expr* value;
 
   ReturnExpr(Token keyword, Expr* value);
+  void cleanExprs();
   void astPrint();
+  Expr *toCps(K k);
   void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
 };
@@ -266,7 +304,9 @@ struct SetExpr : public Expr {
   int index;
 
   SetExpr(Expr* object, Token name, Token op, Expr* value, int index);
+  void cleanExprs();
   void astPrint();
+  Expr *toCps(K k);
   void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
 };
@@ -275,7 +315,9 @@ struct StatementExpr : public Expr {
   Expr* expr;
 
   StatementExpr(Expr* expr);
+  void cleanExprs();
   void astPrint();
+  Expr *toCps(K k);
   void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
 };
@@ -285,7 +327,9 @@ struct SuperExpr : public Expr {
   Token method;
 
   SuperExpr(Token keyword, Token method);
+  void cleanExprs();
   void astPrint();
+  Expr *toCps(K k);
   void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
 };
@@ -297,7 +341,9 @@ struct TernaryExpr : public Expr {
   Expr* right;
 
   TernaryExpr(Token op, Expr* left, Expr* middle, Expr* right);
+  void cleanExprs();
   void astPrint();
+  Expr *toCps(K k);
   void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
 };
@@ -306,7 +352,9 @@ struct ThisExpr : public Expr {
   Token keyword;
 
   ThisExpr(Token keyword);
+  void cleanExprs();
   void astPrint();
+  Expr *toCps(K k);
   void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
 };
@@ -315,7 +363,9 @@ struct TypeExpr : public Expr {
   Type type;
 
   TypeExpr(Type type);
+  void cleanExprs();
   void astPrint();
+  Expr *toCps(K k);
   void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
 };
@@ -325,7 +375,9 @@ struct UnaryExpr : public Expr {
   Expr* right;
 
   UnaryExpr(Token op, Expr* right);
+  void cleanExprs();
   void astPrint();
+  Expr *toCps(K k);
   void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
 };
@@ -334,7 +386,9 @@ struct SwapExpr : public Expr {
   Expr* _expr;
 
   SwapExpr();
+  void cleanExprs();
   void astPrint();
+  Expr *toCps(K k);
   void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
 };
@@ -343,7 +397,9 @@ struct NativeExpr : public Expr {
   Token nativeCode;
 
   NativeExpr(Token nativeCode);
+  void cleanExprs();
   void astPrint();
+  Expr *toCps(K k);
   void resolve(Parser &parser);
   void toCode(Parser &parser, ObjFunction *function);
 };
