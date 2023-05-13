@@ -114,7 +114,7 @@ void Compiler::beginScope() {
 void Compiler::endScope() {
   current = enclosing;
 }
-
+/*
 void Compiler::pushType(ValueType type) {
   pushType({type, NULL});
 }
@@ -132,7 +132,7 @@ Type Compiler::popType() {
   typeStack.pop();
   return type;
 }
-
+*/
 Declaration *Compiler::addDeclaration(Type type, Token &name, Declaration *previous, bool parentFlag) {
   if (declarationCount == UINT8_COUNT) {
     parser->error("Too many declarations in function.");
@@ -274,7 +274,7 @@ int Compiler::addUpvalue(uint8_t index, Declaration *declaration, bool isDeclara
   return function->addUpvalue(index, isDeclaration, declaration, *parser);
 }
 
-void Compiler::resolveReferenceExpr(ReferenceExpr *expr) {
+Type Compiler::resolveReferenceExpr(ReferenceExpr *expr) {
   Compiler *current = this;
 
   while (true) {
@@ -306,7 +306,7 @@ void Compiler::resolveReferenceExpr(ReferenceExpr *expr) {
       expr->_declaration = NULL;
     }
 
-  pushType(expr->_declaration ? expr->_declaration->type : (Type) {VAL_VOID});
+  return expr->_declaration ? expr->_declaration->type : (Type) {VAL_VOID};
 }
 
 void Compiler::checkDeclaration(Type returnType, ReferenceExpr *expr, ObjCallable *signature) {

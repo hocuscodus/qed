@@ -22,7 +22,7 @@ const char *Type::toString() {
     case VAL_FLOAT: return "float";
     case VAL_VAR: return "!var!";
     case VAL_POINT: return "!point!";
-    case VAL_OBJ: return objType->toString();
+    case VAL_OBJ: return objType ? objType->toString() : "int";
     default: return "!unknown!";
   }
 }

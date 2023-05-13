@@ -275,30 +275,13 @@ void ArrayExpr::toCode(Parser &parser, ObjFunction *function) {
   str() << "]";
 }
 
-void ListExpr::toCode(Parser &parser, ObjFunction *function) {/*
-  switch(listType) {
-  case EXPR_ASSIGN: {
-    AssignExpr *subExpr = (AssignExpr *) expressions[count - 1];
+void ListExpr::toCode(Parser &parser, ObjFunction *function) {
+  for (int index = 0; index < count; index++) {
+    if (index)
+      str() << " ";
 
-    str() << (subExpr->varExp->_declaration->isField ? "this." : subExpr->varExp->_declaration->function->isClass() ? "const." : "let ") << subExpr->varExp->_declaration->getRealName() << " = ";
-    subExpr->value->toCode(parser, function);
-    break;
+    expressions[index]->toCode(parser, function);
   }
-  case EXPR_REFERENCE: {
-    ReferenceExpr *varExp = (ReferenceExpr *) expressions[count - 1];
-
-    str() << (varExp->_declaration->isField ? "this." : "let ") << varExp->name.getString() << " = null";
-    break;
-  }
-  default:*/
-    for (int index = 0; index < count; index++) {
-      if (index)
-        str() << " ";
-
-      expressions[index]->toCode(parser, function);
-    }
-//    break;
-//  }
 }
 
 void LiteralExpr::toCode(Parser &parser, ObjFunction *function) {

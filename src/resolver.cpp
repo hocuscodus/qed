@@ -56,7 +56,7 @@ struct ValueStack3 {
   }
 };
 
-Type popType();
+Type popType1();
 bool resolve(Compiler *compiler);
 void acceptGroupingExprUnits(GroupingExpr *expr);
 void acceptSubExpr(Expr *expr);
@@ -371,7 +371,8 @@ static Expr *generateUIFunction(const char *type, const char *name, char *args, 
   return new StatementExpr(generateFunction(type, name, args, uiExpr, count, restLength, rest));
 }
 
-void acceptGroupingExprUnits(GroupingExpr *expr, Parser &parser) {
+Type acceptGroupingExprUnits(GroupingExpr *expr, Parser &parser) {
+  Type returnType = {VAL_VOID};
   TokenType type = expr->name.type;
   bool parenFlag = type == TOKEN_RIGHT_PAREN;
 
@@ -388,7 +389,10 @@ void acceptGroupingExprUnits(GroupingExpr *expr, Parser &parser) {
       }
     }
 
-    subExpr->resolve(parser);
+    Type subType = subExpr->resolve(parser);
+
+    if (parenFlag)
+      returnType = subType;
 
     if (subExpr->type == EXPR_UIDIRECTIVE) {
       UIDirectiveExpr *exprUI = (UIDirectiveExpr *) subExpr;
@@ -427,9 +431,6 @@ void acceptGroupingExprUnits(GroupingExpr *expr, Parser &parser) {
 */
       index--;
     }
-    else
-      if (IS_VOID(getCurrent()->peekDeclaration()) && (!parenFlag || index < expr->count - 1))
-        popType();
   }
 
   if (expr->ui != NULL) {
@@ -470,17 +471,13 @@ void acceptGroupingExprUnits(GroupingExpr *expr, Parser &parser) {
       expr->ui = NULL;
     }
   }
+
+  return returnType;
 }
 
-void AssignExpr::resolve(Parser &parser) {
-  if (value)
-    value->resolve(parser);
-
-  if (varExp)
-    varExp->resolve(parser);
-
-  Type type1 = popType();
-  Type type2 = varExp && value ? popType() : type1;
+Type AssignExpr::resolve(Parser &parser) {
+  Type type1 = varExp->resolve(parser);
+  Type type2 = value ? value->resolve(parser) : type1;
 
   opCode = getOpCode(type1, op);
 
@@ -494,129 +491,32 @@ void AssignExpr::resolve(Parser &parser) {
     }
   }
 
-  getCurrent()->pushType(type1);
+  return type1;
 }
 
-void UIAttributeExpr::resolve(Parser &parser) {
+Type UIAttributeExpr::resolve(Parser &parser) {
   parser.error("Internal error, cannot be invoked..");
+  return {VAL_VOID};
 }
 
-void UIDirectiveExpr::resolve(Parser &parser) {
+Type UIDirectiveExpr::resolve(Parser &parser) {
   (*directiveFns[getParseStep()])(this, parser);
+  return {VAL_VOID};
 }
-#if 0
-void UIDirectiveExpr::resolve(Parser &parser) {
-  ParseStep step = getParseStep();
 
-  if (resolverUIRules[step].attrListFn)
-    (this->*resolverUIRules[step].attrListFn)(expr);
-////////////////////
-/*  if (outFlag)
-    for (int index = 0; index < attCount; index++)
-      attributes[index]->resolve(parser);
-  else
-    for (int index = 0; index < attCount; index++)
-      if (attributes[index]->_index != -1)
-        valueStack.push(attributes[index]->name.getString(), attributes[index]->_index);
-
-  int numAttrSets = childrenCount;
-
-  if (!numAttrSets) {
-    if (!outFlag) {
-      int index = valueStack.get("out");
-
-      if (index != -1) {
-        Type &type = getCurrent()->enclosing->declarations[index].type;
-
-        if (type.valueType == VAL_OBJ)
-          switch (type.objType->type) {
-          case OBJ_INSTANCE:
-            viewIndex = getCurrent()->declarationCount;
-            getCurrent()->addDeclaration({VAL_INT});
-            break;
-
-          case OBJ_STRING:
-            viewIndex = getCurrent()->declarationCount;
-            getCurrent()->addDeclaration({VAL_OBJ, &newInternal()->obj});
-            break;
-          }
-      }
-    }
-  }
-  else
-  / *
-   Point numZones;
-   int offset = 0;
-   std::array<long, NUM_DIRS> arrayDirFlags = {2L, 1L};
-   ValueStack valueStack;* /
-    for (int index = 0; index < numAttrSets; index++)
-      children[index]->resolve(parser);
-
-  //  attrSets = numAttrSets != 0 ? new ChildAttrSets(&offset, numZones, 0, arrayDirFlags, valueStack, expr, 0) : NULL;
-  //  function->attrSets = attrSets;
-
-  //  if (attrSets != NULL) {
-  //    Sizer *topSizers[NUM_DIRS];
-  / *
-      for (int dir = 0; dir < NUM_DIRS; dir++) {
-        int *zone = NULL;
-
-        topSizers[dir] = new Maxer(-1);
-  / *
-        if (parent is ImplicitArrayDeclaration) {
-  //					int zFlags = attrSets.zFlags[dir];
-
-          zone = {0};//{zFlags > 0 ? zFlags != 1 ? 1 : 0 : ctz({-zFlags - 1})};
-          topSizers[dir]->put(SizerType.maxer, -1, 0, 0, 0, false, {Path()});
-          topSizers[dir]->children.add(new Adder(-1));
-        }
-  * /
-        attrSets->parseCreateSizers(topSizers, dir, zone, Path(), Path());
-        attrSets->parseAdjustPaths(topSizers, dir);
-        numZones[dir] = zone != NULL ? zone[0] + 1 : 1;
-      }
-  * /
-  //    subAttrsets = parent is ImplicitArrayDeclaration ? parseCreateSubSets(topSizers, new Path(), numZones) : createIntersection(-1, topSizers);
-  //    subAttrsets = createIntersection(-1, topSizers);
-  //  }
-
-  if (!outFlag)
-    for (int index = 0; index < attCount; index++)
-      if (attributes[index]->_index != -1)
-        valueStack.pop(attributes[index]->name.getString());*/
-}
-#endif
-void BinaryExpr::resolve(Parser &parser) {
-  //  if (left) {
-  left->resolve(parser);
-  //    type = left->type;
-  //  } else
-  //    type = {VAL_VOID};
-
-  //  if (right)
-  right->resolve(parser);
-
-  Type type2 = popType();
-  Type type1 = popType();
-
+Type BinaryExpr::resolve(Parser &parser) {
+  Type type1 = left->resolve(parser);
+  Type type2 = right->resolve(parser);
   Type type = type1;
   bool boolVal = false;
 
   opCode = getOpCode(type, op);
 
   switch (op.type) {
-  case TOKEN_BANG_EQUAL:
-  case TOKEN_GREATER_EQUAL:
-  case TOKEN_LESS_EQUAL:
-    break;
-  }
-
-  switch (op.type) {
   case TOKEN_PLUS:
     if (IS_OBJ(type1)) {
       right = convertToString(right, type2, parser);
-      getCurrent()->pushType(stringType);
-      return;
+      return stringType;
     }
     // no break statement, fall through
 
@@ -631,8 +531,7 @@ void BinaryExpr::resolve(Parser &parser) {
       if (!IS_OBJ(type2))
         parser.error("Second operand must be a string");
 
-      getCurrent()->pushType(VAL_BOOL);
-      return;
+      return {VAL_BOOL};
     }
     // no break statement, fall through
 
@@ -643,68 +542,57 @@ void BinaryExpr::resolve(Parser &parser) {
     case VAL_INT:
       if (!type1.equals(type2)) {
         if (!IS_FLOAT(type2)) {
-          getCurrent()->pushType(VAL_VOID);
           parser.error("Second operand must be numeric");
-          return;
+          return {VAL_VOID};
         }
 
         left = convertToFloat(left, type1, parser);
-        opCode =
-            (OpCode)((int)opCode + (int)OP_ADD_FLOAT - (int)OP_ADD_INT);
-        getCurrent()->pushType(boolVal ? VAL_BOOL : VAL_FLOAT);
+        opCode = (OpCode)((int)opCode + (int)OP_ADD_FLOAT - (int)OP_ADD_INT);
+        return {boolVal ? VAL_BOOL : VAL_FLOAT};
       }
       else
-        getCurrent()->pushType(boolVal ? VAL_BOOL : VAL_INT);
-      break;
+        return {boolVal ? VAL_BOOL : VAL_INT};
 
     case VAL_FLOAT:
       if (!type1.equals(type2)) {
         if (!IS_INT(type2)) {
-          getCurrent()->pushType(VAL_VOID);
           parser.error("Second operand must be numeric");
-          return;
+          return {VAL_VOID};
         }
 
         right = convertToFloat(right, type2, parser);
       }
 
-      getCurrent()->pushType(boolVal ? VAL_BOOL : VAL_FLOAT);
-      break;
+      return {boolVal ? VAL_BOOL : VAL_FLOAT};
 
     default:
       parser.error("First operand must be numeric");
-      getCurrent()->pushType(type1);
-      break;
+      return type1;
     }
   }
   break;
 
   case TOKEN_XOR:
-    getCurrent()->pushType(IS_BOOL(type1) ? VAL_BOOL : VAL_FLOAT);
-    break;
+    return {IS_BOOL(type1) ? VAL_BOOL : VAL_FLOAT};
 
   case TOKEN_OR:
   case TOKEN_AND:
   case TOKEN_GREATER_GREATER_GREATER:
   case TOKEN_GREATER_GREATER:
   case TOKEN_LESS_LESS:
-    getCurrent()->pushType(VAL_INT);
-    break;
+    return {VAL_INT};
 
   case TOKEN_OR_OR:
   case TOKEN_AND_AND:
-    getCurrent()->pushType(VAL_BOOL);
-    break;
-
-    break;
+    return {VAL_BOOL};
 
   default:
-    return; // Unreachable.
+    return {VAL_VOID}; // Unreachable.
   }
 }
 
 static Token tok = buildToken(TOKEN_IDENTIFIER, "Capital", 7, -1);
-void CallExpr::resolve(Parser &parser) {
+Type CallExpr::resolve(Parser &parser) {
   Compiler compiler;
   ObjFunction signature;
 
@@ -714,24 +602,19 @@ void CallExpr::resolve(Parser &parser) {
   compiler.function->name = copyString("Capital", 7);
   compiler.declarationCount = 0;
 
-  getCurrent()->pushType({VAL_OBJ}); // Dummy callee for space purposes
+//  return {VAL_OBJ}; // Dummy callee for space purposes
 
   compiler.addDeclaration({VAL_VOID}, tok, NULL, false);
 
   for (int index = 0; index < count; index++) {
-    arguments[index]->resolve(parser);
-    compiler.addDeclaration(getCurrent()->typeStack.top(), tok, NULL, false);
+    Type type = arguments[index]->resolve(parser);
+
+    compiler.addDeclaration(type, tok, NULL, false);
   }
 
-  for (int index = -1; index < count; index++)
-    popType();
-
   pushSignature(&signature);
-  callee->resolve(parser);
+  Type type = callee->resolve(parser);
   popSignature();
-
-  Type type = popType();
-  //  Declaration *callerLocal = getCurrent()->peekDeclaration(argCount);
 
   switch (AS_OBJ_TYPE(type)) {
   case OBJ_FUNCTION: {
@@ -751,10 +634,10 @@ void CallExpr::resolve(Parser &parser) {
         getCurrent()->declarationCount--;
       }
 
-      getCurrent()->pushType((Type) {VAL_OBJ, &newInstance(callable)->obj});
+      return (Type) {VAL_OBJ, &newInstance(callable)->obj};
     }
     else
-      getCurrent()->pushType(callable->type);
+      return callable->type;
     break;
   }
   case OBJ_FUNCTION_PTR: {
@@ -769,26 +652,24 @@ void CallExpr::resolve(Parser &parser) {
 
         handler = generateFunction("void", "ReturnHandler_", !IS_VOID(callable->type) ? buffer : NULL, handler, 1, 0, NULL);
         handler->resolve(parser);
-        popType();
       }
 
 ;//        getCurrent()->addDeclaration((Type) {VAL_OBJ, &newInstance(callable)->obj});
+      return {VAL_VOID};
     }
     else
-      getCurrent()->pushType(callable->type.valueType);
+      return callable->type;
     break;
   }
   default:
     parser.error("Non-callable object type");
-    getCurrent()->pushType(VAL_VOID);
+    return {VAL_VOID};
     break; // Non-callable object type.
   }
 }
 
-void ArrayElementExpr::resolve(Parser &parser) {
-  callee->resolve(parser);
-
-  Type type = popType();
+Type ArrayElementExpr::resolve(Parser &parser) {
+  Type type = callee->resolve(parser);
 
   if (!count)
     if (isType(type)) {
@@ -796,33 +677,26 @@ void ArrayElementExpr::resolve(Parser &parser) {
       ObjArray *array = newArray();
 
       array->elementType = returnType;
-      getCurrent()->pushType({VAL_OBJ, &array->obj});
+      return {VAL_OBJ, &array->obj};
     }
     else {
       parser.error("No index defined.");
-      getCurrent()->pushType(VAL_VOID);
+      return {VAL_VOID};
     }
   else
     if (isType(type)) {
       parser.error("A type cannot have an index.");
-      getCurrent()->pushType(VAL_VOID);
+      return {VAL_VOID};
     }
     else
       switch (AS_OBJ_TYPE(type)) {
       case OBJ_ARRAY: {
         ObjArray *array = AS_ARRAY_TYPE(type);
 
-        getCurrent()->pushType(array->elementType);
-
         for (int index = 0; index < count; index++)
           indexes[index]->resolve(parser);
 
-        for (int index = 0; index < count; index++) {
-          Type argType = popType();
-
-          argType = argType;
-        }
-        break;
+        return array->elementType;
       }
       case OBJ_STRING: {/*
         ObjString *string = (ObjString *)type.objType;
@@ -838,28 +712,23 @@ void ArrayElementExpr::resolve(Parser &parser) {
 
           argType = argType;
         }*/
-        break;
+        return {VAL_VOID};
       }
       default:
         parser.error("Non-indexable object type");
-        getCurrent()->pushType(VAL_VOID);
-        break; // Non-indexable object type.
+        return {VAL_VOID};
       }
 }
 
-void DeclarationExpr::resolve(Parser &parser) {
-  typeExpr->resolve(parser);
-
-  Type type = popType();
+Type DeclarationExpr::resolve(Parser &parser) {
+  Type type = typeExpr->resolve(parser);
   Type returnType = convertType(type);
 
   if (initExpr) {
-    initExpr->resolve(parser);
-
+    Type type1 = initExpr->resolve(parser);
     Type internalType = {VAL_OBJ, &objInternalType};
-    Type type1 = popType();
 
-    if (returnType.equals(internalType))
+    if (returnType.equals(internalType) || (type.valueType == VAL_OBJ && !type.objType))
       returnType = type1;
     else if (!type1.equals(returnType)) {
       initExpr = convertToType(returnType, initExpr, type1, parser);
@@ -901,13 +770,11 @@ void DeclarationExpr::resolve(Parser &parser) {
     }
 
   _declaration = getCurrent()->checkDeclaration(returnType, name, NULL);
-  getCurrent()->pushType({VAL_VOID});
+  return {VAL_VOID};
 }
 
-void FunctionExpr::resolve(Parser &parser) {
-  typeExpr->resolve(parser);
-
-  Type type = popType();
+Type FunctionExpr::resolve(Parser &parser) {
+  Type type = typeExpr->resolve(parser);
   Type returnType = convertType(type);
   Compiler &compiler = body->_compiler;
 
@@ -916,10 +783,8 @@ void FunctionExpr::resolve(Parser &parser) {
   compiler.beginScope(function);
   bindFunction(compiler.prefix, function);
 
-  for (int index = 0; index < count; index++) {
+  for (int index = 0; index < count; index++)
     params[index]->resolve(parser);
-    popType();
-  }
 
   const char *str = name.getString().c_str();
   char firstChar = str[0];
@@ -946,39 +811,13 @@ void FunctionExpr::resolve(Parser &parser) {
     acceptGroupingExprUnits(body, parser);
 
   compiler.endScope();
-  getCurrent()->pushType({VAL_VOID});
-/*
-  getCurrent()->checkDeclaration(&name);
-  getCurrent()->addDeclaration(VAL_OBJ, &name);
-
-  Compiler &compiler = ((GroupingExpr *) body)->_compiler;
-
-  compiler.beginScope(newFunction(type, copyString(name.start, name.length), count));
-
-  for (int index = 0; index < count; index++)
-    params[index]->resolve(parser);
-
-  body->resolve(parser);
-  compiler.function->fieldCount = compiler.getDeclarationCount();
-  compiler.function->fields = ALLOCATE(Field, compiler.getDeclarationCount());
-
-  for (int index = 0; index < compiler.getDeclarationCount(); index++) {
-    Declaration *dec = &compiler.getDeclaration(index);
-
-    compiler.function->fields[index].type = dec->type;
-    compiler.function->fields[index].name = copyString(dec->name.start, dec->name.length);
-  }
-
-  compiler.endScope();
-  function = compiler.function;*/
+  return {VAL_VOID};
 }
 
-void GetExpr::resolve(Parser &parser) {
+Type GetExpr::resolve(Parser &parser) {
   pushSignature(NULL);
-  object->resolve(parser);
+  Type objectType = object->resolve(parser);
   popSignature();
-
-  Type objectType = popType();
 
   if (AS_OBJ_TYPE(objectType) != OBJ_INSTANCE)
     parser.errorAt(&name, "Only instances have properties.");
@@ -991,8 +830,7 @@ void GetExpr::resolve(Parser &parser) {
       if (dec->isField) {
         if (identifiersEqual(&name, &dec->name)) {
           index = count;
-          getCurrent()->pushType(dec->type);
-          return;
+          return dec->type;
         }
 
         count++;
@@ -1002,10 +840,10 @@ void GetExpr::resolve(Parser &parser) {
     parser.errorAt(&name, "Field '%.*s' not found.", name.length, name.start);
   }
 
-  getCurrent()->pushType({VAL_VOID});
+  return {VAL_VOID};
 }
 
-void GroupingExpr::resolve(Parser &parser) {
+Type GroupingExpr::resolve(Parser &parser) {
   TokenType type = name.type;
   bool parenFlag = type == TOKEN_RIGHT_PAREN;
   bool groupFlag = type == TOKEN_RIGHT_BRACE || parenFlag;
@@ -1013,21 +851,17 @@ void GroupingExpr::resolve(Parser &parser) {
 
   if (groupFlag) {
     _compiler.beginScope();
-    acceptGroupingExprUnits(this, parser);
-    parenType = parenFlag ? popType() : (Type){VAL_VOID};
+    parenType = acceptGroupingExprUnits(this, parser);
     popLevels = _compiler.declarationCount;
     _compiler.endScope();
   }
-  else {
-    acceptGroupingExprUnits(this, parser);
-    parenType = parenFlag ? popType() : (Type){VAL_VOID};
-  }
+  else
+    parenType = acceptGroupingExprUnits(this, parser);
 
-  if (type != TOKEN_EOF)
-    getCurrent()->pushType(parenType);
+  return parenType;
 }
 
-void ArrayExpr::resolve(Parser &parser) {
+Type ArrayExpr::resolve(Parser &parser) {
   ObjArray *objArray = newArray();
   Type type = {VAL_OBJ, &objArray->obj};
   Compiler compiler;
@@ -1035,18 +869,12 @@ void ArrayExpr::resolve(Parser &parser) {
   compiler.beginScope(newFunction({VAL_VOID}, NULL, 0));
 
   for (int index = 0; index < count; index++)
-    expressions[index]->resolve(parser);
-
-  for (int index = 0; index < count; index++) {
-    Type subType = popType();
-
-    objArray->elementType = subType;
-  }
+    objArray->elementType = expressions[index]->resolve(parser);
 
   compiler.endScope();
   compiler.function->type = type;
   function = compiler.function;
-  getCurrent()->pushType(type);
+  return type;
 }
 
 // DECLARATIONS:
@@ -1060,145 +888,46 @@ void ArrayExpr::resolve(Parser &parser) {
 // (group','
 //   (var 2) (= -1 (+ 2 3))
 // );
-void ListExpr::resolve(Parser &parser) {
-  expressions[0]->resolve(parser);
-//  _declaration = NULL;
+Type ListExpr::resolve(Parser &parser) {
+  Type type = expressions[0]->resolve(parser);
 
-  Type type = popType();
-/*
-  if (isType(type)) {
-    Type returnType = convertType(type);
-    Expr *subExpr = expressions[1];
+  for (int index = 1; index < count; index++) {
+    Expr *subExpr = expressions[index];
+    Type type = subExpr->resolve(parser);
 
-    switch (subExpr->type) {
-    case EXPR_ASSIGN: {
-      AssignExpr *assignExpr = (AssignExpr *)subExpr;
-
-      if (assignExpr->varExp && assignExpr->value) {
-        listType = subExpr->type;
-        assignExpr->varExp->_declaration = NULL;
-        assignExpr->value->resolve(parser);
-
-        Type internalType = {VAL_OBJ, &objInternalType};
-        Type type1 = popType();
-
-        //          if (type1.valueType == VAL_VOID)
-        //            parser.error("Variable not found");
-        //          else
-        if (returnType.equals(internalType))
-          returnType = type1;
-        else if (!type1.equals(returnType)) {
-          assignExpr->value = convertToType(returnType, assignExpr->value, type1, parser);
-
-          if (assignExpr->value == NULL) {
-            parser.error("Value must match the variable type");
-          }
-        }
-
-        getCurrent()->checkDeclaration(returnType, assignExpr->varExp, NULL);
-
-        if (count > 2)
-          parser.error("Expect ';' or newline after variable declaration.");
-      }
-      else
-        parser.error("Unrecognized declaration.");
-      return;
-    }
-    case EXPR_REFERENCE: {
-      ReferenceExpr *varExpr = (ReferenceExpr *)subExpr;
-
-      listType = subExpr->type;
-      getCurrent()->checkDeclaration(returnType, varExpr, NULL);
-
-      LiteralExpr *valueExpr = NULL;
-
-      switch (returnType.valueType) {
-      case VAL_VOID:
-        parser.error("Cannot declare a void variable.");
-        break;
-
-      case VAL_INT:
-        valueExpr = new LiteralExpr(VAL_INT, {.integer = 0});
-        break;
-
-      case VAL_BOOL:
-        valueExpr = new LiteralExpr(VAL_BOOL, {.boolean = false});
-        break;
-
-      case VAL_FLOAT:
-        valueExpr = new LiteralExpr(VAL_FLOAT, {.floating = 0.0});
-        break;
-
-      case VAL_OBJ:
-        switch (AS_OBJ_TYPE(returnType)) {
-        case OBJ_STRING:
-          valueExpr = new LiteralExpr(VAL_OBJ, {.obj = &copyString("", 0)->obj});
-          break;
-
-        case OBJ_INTERNAL:
-          valueExpr = new LiteralExpr(VAL_OBJ, {.obj = &newInternal()->obj});
-          break;
-        }
-        break;
-      }
-
-      if (valueExpr) {
-        expressions[1] = new AssignExpr(
-            varExpr, buildToken(TOKEN_EQUAL, "=", 1, varExpr->name.line),
-            valueExpr, OP_FALSE);
-        listType = EXPR_ASSIGN;
-      }
-
-      if (count > 2)
-        parser.error("Expect ';' or newline after variable declaration.");
-      return;
-    }
-    default:
-      break;
-    }
+    if (IS_VOID(getCurrent()->peekDeclaration()))
+      return type;
   }
-  else*/ // parse array expression
-    for (int index = 1; index < count; index++) {
-      Expr *subExpr = expressions[index];
 
-      subExpr->resolve(parser);
-
-      if (IS_VOID(getCurrent()->peekDeclaration()))
-        popType();
-    }
-
-  getCurrent()->pushType({VAL_VOID});
+  return {VAL_VOID};
 }
 
-void LiteralExpr::resolve(Parser &parser) {
+Type LiteralExpr::resolve(Parser &parser) {
   if (type == VAL_OBJ)
-    getCurrent()->pushType(stringType);
+    return stringType;
   else
-    getCurrent()->pushType(type);
+    return {type};
 }
 
-void LogicalExpr::resolve(Parser &parser) {
-  left->resolve(parser);
-  right->resolve(parser);
-
-  Type type2 = popType();
-  Type type1 = popType();
+Type LogicalExpr::resolve(Parser &parser) {
+  Type type1 = left->resolve(parser);
+  Type type2 = right->resolve(parser);
 
   if (!IS_BOOL(type1) || !IS_BOOL(type2))
     parser.error("Value must be boolean");
 
-  getCurrent()->pushType(VAL_BOOL);
+  return {VAL_BOOL};
 }
 
-void OpcodeExpr::resolve(Parser &parser) {
+Type OpcodeExpr::resolve(Parser &parser) {
   parser.compilerError("In OpcodeExpr!");
-  right->resolve(parser);
+  return right->resolve(parser);
 }
 
 static std::list<Expr *> uiExprs;
 static std::list<Type> uiTypes;
 
-void ReturnExpr::resolve(Parser &parser) {
+Type ReturnExpr::resolve(Parser &parser) {
   if (getCurrent()->function->isClass()) {
     char buf[128] = "{post(ReturnHandler_)}";
 
@@ -1222,15 +951,12 @@ void ReturnExpr::resolve(Parser &parser) {
     // else return void
   }
 
-  getCurrent()->pushType(VAL_VOID);
+  return {VAL_VOID};
 }
 
-void SetExpr::resolve(Parser &parser) {
-  object->resolve(parser);
-  value->resolve(parser);
-
-  Type valueType = popType();
-  Type objectType = popType();
+Type SetExpr::resolve(Parser &parser) {
+  Type objectType = object->resolve(parser);
+  Type valueType = value->resolve(parser);
 
   if (AS_OBJ_TYPE(objectType) != OBJ_INSTANCE)
     parser.errorAt(&name, "Only instances have properties.");
@@ -1243,8 +969,7 @@ void SetExpr::resolve(Parser &parser) {
       if (dec->isField) {
         if (identifiersEqual(&name, &dec->name)) {
           index = count;
-          getCurrent()->pushType(dec->type);
-          return;
+          return dec->type;
         }
 
         count++;
@@ -1254,57 +979,54 @@ void SetExpr::resolve(Parser &parser) {
     parser.errorAt(&name, "Field '%.*s' not found.", name.length, name.start);
   }
 
-  getCurrent()->pushType({VAL_VOID});
+  return {VAL_VOID};
 }
 
-void StatementExpr::resolve(Parser &parser) {
-  int oldStackSize = getCurrent()->typeStack.size();
+Type StatementExpr::resolve(Parser &parser) {
+//  int oldStackSize = getCurrent()->typeStack.size();
 
-  expr->resolve(parser);
-
+  Type type = expr->resolve(parser);
+/*
   if (expr->type != EXPR_FUNCTION && expr->type != EXPR_DECLARATION) {
-    Type type = popType();
-
     if (oldStackSize != getCurrent()->typeStack.size())
       parser.compilerError("COMPILER ERROR: oldStackSize: %d stackSize: %d",
                            oldStackSize, getCurrent()->typeStack.size());
 
     if (!IS_VOID(type))
       expr = new OpcodeExpr(OP_POP, expr);
-
-    getCurrent()->pushType(VAL_VOID);
   }
+*/
+  return {VAL_VOID};
 }
 
-void SuperExpr::resolve(Parser &parser) {}
+Type SuperExpr::resolve(Parser &parser) {
+  return {VAL_VOID};
+}
 
-void TernaryExpr::resolve(Parser &parser) {
-  left->resolve(parser);
-
-  Type type = popType();
-
-  if (IS_VOID(type))
+Type TernaryExpr::resolve(Parser &parser) {
+  if (IS_VOID(left->resolve(parser)))
     parser.error("Value must not be void");
 
-  middle->resolve(parser);
+  Type type = middle->resolve(parser);
 
-  if (right) {
+  if (right)
     right->resolve(parser);
-    popType();
-  }
+
+  return type;
 }
 
-void ThisExpr::resolve(Parser &parser) {}
+Type ThisExpr::resolve(Parser &parser) {
+  return {VAL_VOID};
+}
 
-void TypeExpr::resolve(Parser &parser) {
+Type TypeExpr::resolve(Parser &parser) {
   //  getCurrent()->addDeclaration({VAL_OBJ, (ObjPrimitiveType) {{OBJ_PRIMITIVE_TYPE},
   //  type}});
+  return {VAL_VOID};
 }
 
-void UnaryExpr::resolve(Parser &parser) {
-  right->resolve(parser);
-
-  Type type = popType();
+Type UnaryExpr::resolve(Parser &parser) {
+  Type type = right->resolve(parser);
 
   if (IS_VOID(type))
     parser.error("Value must not be void");
@@ -1312,8 +1034,7 @@ void UnaryExpr::resolve(Parser &parser) {
   switch (op.type) {
   case TOKEN_PRINT:
     right = convertToString(right, type, parser);
-    getCurrent()->pushType(VAL_VOID);
-    break;
+    return {VAL_VOID};
 
   case TOKEN_NEW: {
     bool errorFlag = true;
@@ -1327,32 +1048,31 @@ void UnaryExpr::resolve(Parser &parser) {
     if (errorFlag)
       parser.error("Operator new must target a callable function");
 
-    getCurrent()->pushType(type);
-    break;
+    return type;
   }
 
   case TOKEN_PERCENT:
     right = convertToFloat(right, type, parser);
-    getCurrent()->pushType({VAL_FLOAT});
-    break;
+    return {VAL_FLOAT};
 
   default:
-    getCurrent()->pushType(type);
-    break;
+    return type;
   }
 }
 
-void ReferenceExpr::resolve(Parser &parser) {
+Type ReferenceExpr::resolve(Parser &parser) {
   if (index != -1) {
-    getCurrent()->pushType({VAL_OBJ, primitives[index]});
+    Obj *obj = primitives[index];
+
     index = -1;
     _declaration = NULL;
+    return {VAL_OBJ, obj};
   }
-  else
-    getCurrent()->resolveReferenceExpr(this);
+
+  return getCurrent()->resolveReferenceExpr(this);
 }
 
-void SwapExpr::resolve(Parser &parser) {
+Type SwapExpr::resolve(Parser &parser) {
   Type type = uiTypes.front();
 
   _expr = uiExprs.front();
@@ -1360,17 +1080,13 @@ void SwapExpr::resolve(Parser &parser) {
   uiTypes.pop_front();
 
   if (type.valueType < VAL_VOID)
-    _expr->resolve(parser);
-  else
-    getCurrent()->pushType(type);
+    return _expr->resolve(parser);
+
+  return type;
 }
 
-void NativeExpr::resolve(Parser &parser) {
-  getCurrent()->pushType(VAL_VOID);
-}
-
-Type popType() {
-  return getCurrent()->popType();
+Type NativeExpr::resolve(Parser &parser) {
+  return {VAL_VOID};
 }
 /*
 void AttrSet::parseCreateAreasTree(VM &vm, ValueStack<Value *> &valueStack, int dimFlags, const Path &path, Value *values, IndexList *instanceIndexes, LocationUnit **areaUnits) {
@@ -1570,9 +1286,7 @@ void processAttrs(UIDirectiveExpr *expr, Parser &parser) {
       attExpr->_uiIndex = findAttribute(uiAttributes, attrName);
 
       if (attExpr->_uiIndex != -1 && attExpr->handler) {
-        attExpr->handler->resolve(parser);
-
-        Type type = popType();
+        Type type = attExpr->handler->resolve(parser);
 
         if (!IS_VOID(type)) {
           if (attExpr->_uiIndex == ATTRIBUTE_OUT)

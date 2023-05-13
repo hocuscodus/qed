@@ -24,24 +24,24 @@ struct Compiler {
   int declarationStart;
   int declarationCount;
   int vCount;
-  std::stack<Type> typeStack;
+//  std::stack<Type> typeStack;
   Declaration declarations[UINT8_COUNT];
   ObjFunction *compile(Parser &parser);
 
   Declaration *beginScope(ObjFunction *function);
   void beginScope();
   void endScope();
-
-  void pushType(ValueType type);
-  void pushType(Type type);
-  Type popType();
+/*
+  void pushType1(ValueType type);
+  void pushType1(Type type);
+  Type popType1();*/
   Declaration *addDeclaration(Type type, Token &name, Declaration *previous, bool parentFlag);
   Type &peekDeclaration();
   int resolveReference(Token *name);
   int resolveReference2(Token *name);
   int resolveUpvalue(Token *name);
   int addUpvalue(uint8_t index, Declaration *declaration, bool isDeclaration);
-  void resolveReferenceExpr(ReferenceExpr *expr);
+  Type resolveReferenceExpr(ReferenceExpr *expr);
   void checkDeclaration(Type returnType, ReferenceExpr *expr, ObjCallable *signature);
   Declaration *checkDeclaration(Type returnType, Token &name, ObjCallable *signature);
   bool inBlock();
@@ -51,7 +51,7 @@ struct Compiler {
   }
 
   inline int getDeclarationCount() {
-    return declarationStart + declarationCount + typeStack.size();
+    return declarationStart + declarationCount;// + typeStack.size();
   }
 
   inline Declaration &getDeclaration(int index) {
