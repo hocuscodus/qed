@@ -16,7 +16,7 @@ static int nTabs = -1;
 std::stringstream s;
 
 bool needsSemicolon(Expr *expr) {
-  return expr->type != EXPR_GROUPING && expr->type != EXPR_FUNCTION && !((expr->type == EXPR_LIST && ((ListExpr *) expr)->listType == EXPR_CALL) || (expr->type == EXPR_SWAP && !needsSemicolon(((SwapExpr *) expr)->_expr)));
+  return expr->type != EXPR_GROUPING && expr->type != EXPR_FUNCTION && !(expr->type == EXPR_SWAP && !needsSemicolon(((SwapExpr *) expr)->_expr));
 }
 
 static std::stringstream &str() {
@@ -125,8 +125,12 @@ void ArrayElementExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 void DeclarationExpr::toCode(Parser &parser, ObjFunction *function) {
+  str() << (_declaration->isField ? "this." : _declaration->function->isClass() ? "const." : "let ") << _declaration->getRealName() << " = ";
+
   if (initExpr)
     initExpr->toCode(parser, function);
+  else
+    str() << "null";
 }
 
 void FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
@@ -271,7 +275,7 @@ void ArrayExpr::toCode(Parser &parser, ObjFunction *function) {
   str() << "]";
 }
 
-void ListExpr::toCode(Parser &parser, ObjFunction *function) {
+void ListExpr::toCode(Parser &parser, ObjFunction *function) {/*
   switch(listType) {
   case EXPR_ASSIGN: {
     AssignExpr *subExpr = (AssignExpr *) expressions[count - 1];
@@ -280,70 +284,21 @@ void ListExpr::toCode(Parser &parser, ObjFunction *function) {
     subExpr->value->toCode(parser, function);
     break;
   }
-  case EXPR_CALL: {
-    ObjFunction *function = (ObjFunction *) _declaration->type.objType;
-    CallExpr *callExpr = (CallExpr *) expressions[1];
-    ReferenceExpr *varExp = (ReferenceExpr *)callExpr->callee;
-    ObjFunction *function2 = (ObjFunction *) varExp->_declaration->type.objType;
-
-    if (function != function2)
-      function2 = function;
-
-    Expr *bodyExpr = function->bodyExpr;
-
-    str() << (varExp->_declaration->isField ? "this." : "let ");// << varExp->name.getString() << " = null";
-    str() << varExp->_declaration->getRealName() << " = function(";
-
-    for (int index = 0; index < callExpr->count; index++) {
-      ListExpr *param = (ListExpr *)callExpr->arguments[index];
-      Expr *paramExpr = param->expressions[1];
-
-      if (index)
-        str() << ", ";
-
-      str() << ((ReferenceExpr *)paramExpr)->name.getString();
-    }
-
-    if (function->isUserClass()) {
-      if (callExpr->count)
-        str() << ", ";
-
-      str() << "ReturnHandler_";
-    }
-
-    str() << ") ";
-
-//    for (ObjFunction *child = function->firstChild; function; child = child->next)
-//      generator.accept<int>(child->bodyExpr);
-    if (bodyExpr)
-      bodyExpr->toCode(parser, function);
-
-    if (parser.hadError)
-      return;
-
-//    emitBytes(OP_CLOSURE, makeConstant(OBJ_VAL(function)));
-
-    for (int i = 0; i < function->upvalueCount; i++) {
-//      emitByte(function->upvalues[i].isField ? 1 : 0);
-//      emitByte(function->upvalues[i].index);
-    }
-    break;
-  }
   case EXPR_REFERENCE: {
     ReferenceExpr *varExp = (ReferenceExpr *) expressions[count - 1];
 
     str() << (varExp->_declaration->isField ? "this." : "let ") << varExp->name.getString() << " = null";
     break;
   }
-  default:
+  default:*/
     for (int index = 0; index < count; index++) {
       if (index)
         str() << " ";
 
       expressions[index]->toCode(parser, function);
     }
-    break;
-  }
+//    break;
+//  }
 }
 
 void LiteralExpr::toCode(Parser &parser, ObjFunction *function) {

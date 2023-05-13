@@ -851,13 +851,56 @@ void DeclarationExpr::resolve(Parser &parser) {
   typeExpr->resolve(parser);
 
   Type type = popType();
+  Type returnType = convertType(type);
 
   if (initExpr) {
     initExpr->resolve(parser);
-    Type type1 = popType();
-  }
 
-  getCurrent()->addDeclaration(convertType(type), name, NULL, false);
+    Type internalType = {VAL_OBJ, &objInternalType};
+    Type type1 = popType();
+
+    if (returnType.equals(internalType))
+      returnType = type1;
+    else if (!type1.equals(returnType)) {
+      initExpr = convertToType(returnType, initExpr, type1, parser);
+
+      if (!initExpr) {
+        parser.error("Value must match the variable type");
+      }
+    }
+  }
+  else
+    switch (type.valueType) {
+    case VAL_VOID:
+      parser.error("Cannot declare a void variable.");
+      break;
+
+    case VAL_INT:
+      initExpr = new LiteralExpr(VAL_INT, {.integer = 0});
+      break;
+
+    case VAL_BOOL:
+      initExpr = new LiteralExpr(VAL_BOOL, {.boolean = false});
+      break;
+
+    case VAL_FLOAT:
+      initExpr = new LiteralExpr(VAL_FLOAT, {.floating = 0.0});
+      break;
+
+    case VAL_OBJ:
+      switch (AS_OBJ_TYPE(returnType)) {
+      case OBJ_STRING:
+        initExpr = new LiteralExpr(VAL_OBJ, {.obj = &copyString("", 0)->obj});
+        break;
+
+      case OBJ_INTERNAL:
+        initExpr = new LiteralExpr(VAL_OBJ, {.obj = &newInternal()->obj});
+        break;
+      }
+      break;
+    }
+
+  _declaration = getCurrent()->checkDeclaration(returnType, name, NULL);
   getCurrent()->pushType({VAL_VOID});
 }
 
@@ -1019,10 +1062,10 @@ void ArrayExpr::resolve(Parser &parser) {
 // );
 void ListExpr::resolve(Parser &parser) {
   expressions[0]->resolve(parser);
-  _declaration = NULL;
+//  _declaration = NULL;
 
   Type type = popType();
-
+/*
   if (isType(type)) {
     Type returnType = convertType(type);
     Expr *subExpr = expressions[1];
@@ -1059,92 +1102,6 @@ void ListExpr::resolve(Parser &parser) {
       }
       else
         parser.error("Unrecognized declaration.");
-      return;
-    }
-    case EXPR_CALL: {
-      listType = subExpr->type;
-
-      CallExpr *callExpr = (CallExpr *)subExpr;
-
-      if (callExpr->newFlag)
-        parser.error("Syntax error: new.");
-      else if (callExpr->callee->type != EXPR_REFERENCE)
-        parser.error("Function name must be a string.");
-      else {
-        ReferenceExpr *varExp = (ReferenceExpr *)callExpr->callee;
-        Expr *bodyExpr = count > 2 ? expressions[2] : NULL;
-        GroupingExpr *body;
-
-        if (bodyExpr && bodyExpr->type == EXPR_GROUPING && ((GroupingExpr *) bodyExpr)->name.type == TOKEN_RIGHT_BRACE)
-          body = (GroupingExpr *) bodyExpr;
-        else {
-          Expr **expList = bodyExpr ? RESIZE_ARRAY(Expr *, NULL, 0, 1) : NULL;
-
-          if (expList)
-            expList[0] = bodyExpr;
-
-          body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), expList ? 1 : 0, expList, 0, NULL);
-        }
-
-        Compiler &compiler = body->_compiler;
-        ObjFunction *function = newFunction(returnType, copyString(varExp->name.start, varExp->name.length), callExpr->count);
-
-        compiler.beginScope(function);
-        bindFunction(compiler.prefix, function);
-
-        for (int index = 0; index < callExpr->count; index++)
-          if (callExpr->arguments[index]->type == EXPR_LIST) {
-            ListExpr *param = (ListExpr *)callExpr->arguments[index];
-            Expr *paramExpr = param->expressions[0];
-
-            paramExpr->resolve(parser);
-
-            Type type = popType();
-
-            if (isType(type)) {
-              paramExpr = param->expressions[1];
-
-              if (paramExpr->type != EXPR_REFERENCE)
-                parser.error("Parameter name must be a string.");
-              else {
-                getCurrent()->addDeclaration(convertType(type), ((ReferenceExpr *)paramExpr)->name, NULL, false);
-
-                if (param->count > 2)
-                  parser.error("Syntax error");
-              }
-            }
-            else
-              parser.error("Parameter type not found.");
-          }
-          else
-            parser.error("Parameter consists of a type and a name.");
-
-        const char *str = varExp->name.getString().c_str();
-        char firstChar = str[0];
-        bool handlerFlag = str[strlen(str) - 1] == '_';
-
-        if (!handlerFlag && firstChar >= 'A' && firstChar <= 'Z') {
-          char buffer[256] = "";
-          char buf[256];
-
-          if (!IS_VOID(returnType))
-            sprintf(buffer, "%s _ret", returnType.toString());
-
-          sprintf(buf, "void ReturnHandler_(%s);", buffer);
-
-          Expr *handlerExpr = parse(buf, 0, 0, NULL);
-
-          handlerExpr->resolve(parser);
-        }
-
-        getCurrent()->enclosing->checkDeclaration({VAL_OBJ, &function->obj}, varExp, function);
-        function->bodyExpr = body;
-
-        if (body)
-          acceptGroupingExprUnits(body, parser);
-
-        compiler.endScope();
-      }
       return;
     }
     case EXPR_REFERENCE: {
@@ -1200,7 +1157,7 @@ void ListExpr::resolve(Parser &parser) {
       break;
     }
   }
-  else // parse array expression
+  else*/ // parse array expression
     for (int index = 1; index < count; index++) {
       Expr *subExpr = expressions[index];
 
@@ -1305,7 +1262,7 @@ void StatementExpr::resolve(Parser &parser) {
 
   expr->resolve(parser);
 
-  if (expr->type != EXPR_LIST || ((ListExpr *)expr)->listType == EXPR_LIST) {
+  if (expr->type != EXPR_FUNCTION && expr->type != EXPR_DECLARATION) {
     Type type = popType();
 
     if (oldStackSize != getCurrent()->typeStack.size())

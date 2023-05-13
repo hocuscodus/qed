@@ -706,11 +706,10 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
 
       Token name = previous;
 
-      if(check(TOKEN_LEFT_PAREN)) {
+      if(match(TOKEN_LEFT_PAREN)) {
         int arity = 0;
         DeclarationExpr **parameters = NULL;
 
-        consume(TOKEN_LEFT_PAREN, "Expect '(' after function name.");
         passSeparator();
 
         if (!check(TOKEN_RIGHT_PAREN))
@@ -739,9 +738,9 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
   */
         return new FunctionExpr(exp, name, arity, parameters, body, NULL);
       }
-      else
-        if(check(TOKEN_EQUAL)) {
-          consume(TOKEN_EQUAL, "sdfs");
+      else {
+        exp = declareVariable(exp, endGroupTypes);/*
+        if(match(TOKEN_EQUAL)) {
           Token op = previous;
           Expr *right = parsePrecedence(PREC_ASSIGNMENT);
 
@@ -749,12 +748,15 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
           expList[count++] = exp;
           expList[count++] = new AssignExpr(new ReferenceExpr(name, -1, false), op, right, OP_FALSE);
         }
-        else {
-          printf("No comprende");
-          expList = RESIZE_ARRAY(Expr *, expList, 0, 2);
-          expList[count++] = exp;
-          expList[count++] = new ReferenceExpr(name, -1, false);
-        }
+        else
+          if (check(endGroupTypes) || check(TOKEN_EOF)) {
+            expList = RESIZE_ARRAY(Expr *, expList, 0, 2);
+            expList[count++] = exp;
+            expList[count++] = new ReferenceExpr(name, -1, false);
+          }
+          else
+            printf("No comprende");*/
+      }
     }
   }
 
@@ -773,7 +775,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
     expList[count++] = exp2;
   }
 
-  return expList != NULL ? new ListExpr(count, expList, EXPR_LIST) : exp;
+  return expList != NULL ? new ListExpr(count, expList) : exp;
 }
 
 Type Parser::readType() {

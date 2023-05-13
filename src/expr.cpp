@@ -101,10 +101,9 @@ GetExpr::GetExpr(Expr* object, Token name, int index) : Expr(EXPR_GET) {
   this->index = index;
 }
 
-ListExpr::ListExpr(int count, Expr** expressions, ExprType listType) : Expr(EXPR_LIST) {
+ListExpr::ListExpr(int count, Expr** expressions) : Expr(EXPR_LIST) {
   this->count = count;
   this->expressions = expressions;
-  this->listType = listType;
 }
 
 LiteralExpr::LiteralExpr(ValueType type, As as) : Expr(EXPR_LITERAL) {

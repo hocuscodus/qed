@@ -195,6 +195,7 @@ struct DeclarationExpr : public Expr {
   Expr* typeExpr;
   Token name;
   Expr* initExpr;
+  Declaration* _declaration;
 
   DeclarationExpr(Expr* typeExpr, Token name, Expr* initExpr);
   void cleanExprs();
@@ -237,10 +238,8 @@ struct GetExpr : public Expr {
 struct ListExpr : public Expr {
   int count;
   Expr** expressions;
-  ExprType listType;
-  Declaration* _declaration;
 
-  ListExpr(int count, Expr** expressions, ExprType listType);
+  ListExpr(int count, Expr** expressions);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);
