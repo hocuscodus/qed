@@ -38,6 +38,7 @@ ObjFunction *Compiler::compile(Parser &parser) {
 #ifdef DEBUG_PRINT_CODE
   printf("Original parse: ");
   parser.expr->astPrint();
+  printf("\n");
 #endif
 //  Reifier reifier(parser);
   Expr *cpsExpr = parser.expr->toCps([](Expr *expr) {
@@ -54,7 +55,7 @@ ObjFunction *Compiler::compile(Parser &parser) {
 #ifdef DEBUG_PRINT_CODE
   printf("Adapted parse: ");
   parser.expr->astPrint();
-  printf("          ");
+  printf("\n          ");
   for (int i = 0; i < declarationCount; i++) {
     Token *token = &declarations[i].name;
 

@@ -139,7 +139,7 @@ void FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
   if (this->function != function2)
     function2 = this->function;
 
-  str() << (_declaration->isField ? "this." : "let ");// << varExp->name.getString() << " = null";
+  str() << (_declaration->isField ? "this." : "let ");
   str() << _declaration->getRealName() << " = function(";
 
   for (int index = 0; index < count; index++) {

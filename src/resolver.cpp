@@ -877,17 +877,6 @@ Type ArrayExpr::resolve(Parser &parser) {
   return type;
 }
 
-// DECLARATIONS:
-// Type(EXP_VARIABLE) Call(EXP_CALL(EXP_VARIABLE(-1) type-var-1*))
-// Group(EXP_GROUPING) => function Type(EXP_VARIABLE) Assignment(-1) =>
-// declaration Original parse: (group','
-//   (var 2)
-//   (call (var -1) (group',' , (var 2), (var -1)) (group',' , (var 2), (var
-//   -1))) (group'}' )
-// );
-// (group','
-//   (var 2) (= -1 (+ 2 3))
-// );
 Type ListExpr::resolve(Parser &parser) {
   Type type = expressions[0]->resolve(parser);
 
