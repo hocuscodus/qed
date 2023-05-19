@@ -20,41 +20,50 @@ std::string genSymbol(std::string name) {
     return name;
 }
 
+bool compareExpr(Expr *origExpr, Expr *newExpr) {
+  bool equal = origExpr == newExpr;
+
+  if (!equal)
+;//    delete origExpr;
+
+  return equal;
+}
+
 Expr *AssignExpr::toCps(K k) {
-  return varExp->toCps([this, k](Expr *left) {
-    return this->value->toCps([this, k, left](Expr *right) {
-      return this->varExp == left && this->value == right ? this : k(new AssignExpr((ReferenceExpr *) left, this->op, right, this->opCode));
+  return varExp->toCps([this, k](Expr *varExp) {
+    return this->value->toCps([this, k, varExp](Expr *value) {
+      return k(compareExpr(this->varExp, varExp) && compareExpr(this->value, value) ? this : new AssignExpr((ReferenceExpr *) varExp, this->op, value, this->opCode));
     });
   });
 }
 
 Expr *UIAttributeExpr::toCps(K k) {
-  return this; // assume no cps for now
+  return k(this); // assume no cps for now
 }
 
 Expr *UIDirectiveExpr::toCps(K k) {
-  return this; // assume no cps for now
+  return k(this); // assume no cps for now
 }
 
 Expr *BinaryExpr::toCps(K k) {
   return left->toCps([this, k](Expr *left) {
     return this->right->toCps([this, k, left](Expr *right) {
-      return this->left == left && this->right == right ? this : k(new BinaryExpr(left, this->op, right, this->opCode));
+      return k(compareExpr(this->left, left) && compareExpr(this->right, right) ? this : new BinaryExpr(left, this->op, right, this->opCode));
     });
   });
 }
 
 Expr *CallExpr::toCps(K k) {
-  Expr **arguments = new Expr *[count + 1];
+  Expr **arguments = RESIZE_ARRAY(Expr *, NULL, 0, count + 1);
   bool same = true;
 
   return callee->toCps([&same, arguments, this, k](Expr *callee) {
-    same = this->callee == callee;
+    same = compareExpr(this->callee, callee);
 
     std::function<Expr *(int)> loop = [&loop, &same, arguments, callee, this, k](int index) -> Expr * {
       if (index < this->count)
         return this->arguments[index]->toCps([&loop, &same, arguments, callee, this, k, index](Expr *expr) -> Expr * {
-          same &= arguments[index] == expr;
+          same &= compareExpr(arguments[index], expr);
           arguments[index] = expr;
           return loop(index + 1);
         });
@@ -63,8 +72,13 @@ Expr *CallExpr::toCps(K k) {
           return this;
         else {
           std::string cont = genSymbol("R");
+          DeclarationExpr **expList = RESIZE_ARRAY(DeclarationExpr *, NULL, 0, 1);
+          Expr **bodyExpr = RESIZE_ARRAY(Expr *, NULL, 0, 1);
 
-//          arguments[index] = new FunctionExpr(this->type, this->name, count, new Expr* {cont}, k(new DeclarationExpr(cont)), NULL);
+          expList[0] = new DeclarationExpr(NULL/*this->handlerFunction->type*/, buildToken(TOKEN_IDENTIFIER, "ret_", 4, -1), NULL);
+          bodyExpr[0] = k(expList[0]);
+          arguments[index] = new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, cont.c_str(), cont.size(), -1), 1, expList,
+                                              new GroupingExpr(buildToken(TOKEN_LEFT_BRACKET, "{", 1, -1), 1, bodyExpr, 0, NULL), NULL);
           return new CallExpr(callee, this->paren, this->count + 1, arguments, this->newFlag, NULL, NULL, NULL);
         }
     };
@@ -73,19 +87,19 @@ Expr *CallExpr::toCps(K k) {
   });
 /*
 function cps_call(exp, k) {
-    return cps(exp.func, function(func){
-        return (function loop(args, i){
-            if (i == exp.args.length) return {
-                type : "call",
-                func : func,
-                args : args
-            };
-            return cps(exp.args[i], function(value){
-                args[i + 1] = value;
-                return loop(args, i + 1);
-            });
-        })([ make_continuation(k) ], 0);
-    });
+  return cps(exp.func, function(func){
+    return (function loop(args, i){
+      if (i == exp.args.length) return {
+        type : "call",
+        func : func,
+        args : args
+      };
+      return cps(exp.args[i], function(value){
+        args[i + 1] = value;
+        return loop(args, i + 1);
+      });
+    })([ make_continuation(k) ], 0);
+  });
 }*/
 }
 
@@ -95,32 +109,32 @@ Expr *ArrayElementExpr::toCps(K k) {
 
 Expr *DeclarationExpr::toCps(K k) {
   return initExpr->toCps([this, k](Expr *initExpr) {
-    return this->initExpr == initExpr ? this : k(new DeclarationExpr(this->typeExpr, this->name, initExpr));
+    return k(compareExpr(this->initExpr, initExpr) ? this : new DeclarationExpr(this->typeExpr, this->name, initExpr));
   });
 }
 
 Expr *FunctionExpr::toCps(K k) {
   std::string cont = genSymbol("K");
   Expr *bodyExpr = body->toCps([this, cont, k](Expr *body) {
-    Expr **exprList = new Expr *{body};
+    Expr **expList = new Expr *{body};
 
-    return this->body == body ? this : (Expr *) new CallExpr(new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cont.c_str(), cont.size(), -1), -1, false), buildToken(TOKEN_LEFT_PAREN, "(", 1, -1), 1, exprList, false, NULL, NULL, NULL);
+    return compareExpr(this->body, body) ? this : (Expr *) new CallExpr(new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cont.c_str(), cont.size(), -1), -1, false), buildToken(TOKEN_LEFT_PAREN, "(", 1, -1), 1, expList, false, NULL, NULL, NULL);
   });
   GroupingExpr *newBody = bodyExpr->type == EXPR_GROUPING ? (GroupingExpr *) bodyExpr : NULL;
 
-  return bodyExpr == body ? this : k(new FunctionExpr(typeExpr, name, count + 1, params/*.concat(cont)*/, newBody, NULL));
+  return compareExpr(bodyExpr, body) ? this : k(new FunctionExpr(typeExpr, name, count + 1, params/*.concat(cont)*/, newBody, NULL));
 /*
 function cps_lambda(exp, k) {
-    var cont = gensym("K");
-    var body = cps(exp.body, function(body){
-        return { type: "call",
-                 func: { type: "var", value: cont },
-                 args: [ body ] };
-    });
-    return k({ type: "lambda",
-               name: exp.name,
-               vars: [ cont ].concat(exp.vars),
-               body: body });
+  var cont = gensym("K");
+  var body = cps(exp.body, function(body){
+    return { type: "call",
+            func: { type: "var", value: cont },
+            args: [ body ] };
+  });
+  return k({ type: "lambda",
+            name: exp.name,
+            vars: [ cont ].concat(exp.vars),
+            body: body });
 }*/
 }
 
@@ -132,65 +146,60 @@ Expr *GetExpr::toCps(K k) {
   return this;
 }
 
-Expr *GroupingExpr::toCps(K k) {;
-  bool same = true;
-
-  std::function<Expr *(int)> loop = [&same, &loop, this, k](int index) -> Expr * {
+Expr *GroupingExpr::toCps(K k) {
+  std::function<Expr *(Expr *, int, int)> loop = [&loop, this, k](Expr *topExpr, int start, int index) -> Expr * {
     while (index < this->count) { // if
-      Expr *cpsExpr = this->expressions[index]->toCps([&same, &loop, this, k, index](Expr *expr) -> Expr * { // return this->...
-        if (expr != this->expressions[index]) {
-          Expr **expList = NULL;
-
-          expList = RESIZE_ARRAY(Expr *, expList, 0, index + 1);
-          memcpy(expList, this->expressions, index);
-          same = false;
-
-          if (index < this->count) {
-            this->expressions[0] = expr;
-            memmove(&this->expressions[1], &this->expressions[index], this->count -= index);
-            expList[index] = loop(1);
+      Expr *cpsExpr = this->expressions[index]->toCps(index + 1 < this->count
+        ? [start, &loop, this, k, topExpr, index](Expr *expr) -> Expr * {
+            return this->expressions[index] != expr ? loop(expr, index + 1, index + 1) : expr;
           }
-          else
-            expList[index] = k(expr);
+        : k);
 
-          return new GroupingExpr(this->name, index + 1, expList, 0, NULL);
-        }
-        else
-          return expr;//loop(index + 1);
-      });
-/// more
-      if (cpsExpr != this->expressions[index])
-        break;
+      if (!compareExpr(this->expressions[index], cpsExpr)) {
+        int count = index - start;
+        int offset = topExpr ? 1 : 0;
+        Expr **expList = RESIZE_ARRAY(Expr *, NULL, 0, offset + count + 1);
+
+        if (offset)
+          expList[0] = topExpr;
+
+        memcpy(&expList[offset], &this->expressions[start], count * sizeof(Expr *));
+        expList[offset + count] = cpsExpr;
+        return new GroupingExpr(this->name, offset + count + 1, expList, 0, NULL);
+      }
       else
         index++;
     }
 
-    if (index == this->count)
-      if (same)
-        return k(this);
-      else {
-        Expr **expList = NULL;
+    if (index != this->count)
+      return NULL;
 
-        expList = RESIZE_ARRAY(Expr *, expList, 0, this->count);
-        memcpy(expList, this->expressions, this->count);
+    if (!topExpr)
+      return this;
+    else {
+      int count = this->count - start;
+      Expr **expList = RESIZE_ARRAY(Expr *, NULL, 0, 1 + count);
 
-        return k(new GroupingExpr(this->name, this->count, expList, 0, NULL));
-      }
+      expList[0] = topExpr;
+      memcpy(&expList[1], &this->expressions[start], count * sizeof(Expr *));
+      return new GroupingExpr(this->name, 1 + count, expList, 0, NULL);
+    }
   };
 
-  return loop(0);
+  return loop(NULL, 0, 0);
 /*
 function cps_prog(exp, k) {
-    if (exp.prog.length == 0) return k(FALSE);
-    return (function loop(body){
-        if (body.length == 1) return cps(body[0], k);
-        return cps(body[0], function(first){
-            return {
-                type: "prog",
-                prog: [ first, loop(body.slice(1)) ]
-            };
-        });
-    })(exp.prog);
+  if (exp.prog.length == 0) return k(FALSE);
+
+  return (function loop(body){
+    if (body.length == 1) return cps(body[0], k);
+    return cps(body[0], function(first){
+      return {
+        type: "prog",
+        prog: [ first, loop(body.slice(1)) ]
+      };
+    });
+  })(exp.prog);
 }*/
 }
 
@@ -227,14 +236,14 @@ Expr *LogicalExpr::toCps(K k) {
   return this;
 /*
 function cps_if(exp, k) {
-    return cps(exp.cond, function(cond){
-        return {
-            type: "if",
-            cond: cond,
-            then: cps(exp.then, k),
-            else: cps(exp.else || FALSE, k),
-        };
-    });
+  return cps(exp.cond, function(cond){
+    return {
+      type: "if",
+      cond: cond,
+      then: cps(exp.then, k),
+      else: cps(exp.else || FALSE, k),
+    };
+  });
 }*/
 }
 
@@ -244,7 +253,7 @@ Expr *OpcodeExpr::toCps(K k) {
 
 Expr *ReturnExpr::toCps(K k) {
   return value->toCps([this, k](Expr *value) {
-    return this->value == value ? this : k(new ReturnExpr(this->keyword, value));
+    return compareExpr(this->value, value) ? this : k(new ReturnExpr(this->keyword, value));
   });
 }
 
@@ -259,7 +268,7 @@ Expr *SetExpr::toCps(K k) {
 
 Expr *StatementExpr::toCps(K k) {
   return expr->toCps([this, k](Expr *expr) {
-    return this->expr == expr ? this : k(new StatementExpr(expr));
+    return k(compareExpr(this->expr, expr) ? this : new StatementExpr(expr));
   });
 }
 
@@ -282,14 +291,14 @@ Expr *TernaryExpr::toCps(K k) {
   return this;
 /*
 function cps_if(exp, k) {
-    return cps(exp.cond, function(cond){
-        return {
-            type: "if",
-            cond: cond,
-            then: cps(exp.then, k),
-            else: cps(exp.else || FALSE, k),
-        };
-    });
+  return cps(exp.cond, function(cond){
+    return {
+      type: "if",
+      cond: cond,
+      then: cps(exp.then, k),
+      else: cps(exp.else || FALSE, k),
+    };
+  });
 }*/
 }
 
@@ -303,7 +312,7 @@ Expr *TypeExpr::toCps(K k) {
 
 Expr *UnaryExpr::toCps(K k) {
   return right->toCps([this, k](Expr *right) {
-    return this->right == right ? this : k(new UnaryExpr(this->op, right));
+    return compareExpr(this->right, right) ? this : k(new UnaryExpr(this->op, right));
   });
 }
 

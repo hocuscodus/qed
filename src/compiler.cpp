@@ -44,6 +44,11 @@ ObjFunction *Compiler::compile(Parser &parser) {
   Expr *cpsExpr = parser.expr->toCps([](Expr *expr) {
     return expr;
   });
+#ifdef DEBUG_PRINT_CODE
+  printf("CPS parse: ");
+  cpsExpr->astPrint();
+  printf("\n");
+#endif
 
   parser.expr->resolve(parser);
 

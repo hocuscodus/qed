@@ -11,7 +11,7 @@
 #include "vm.hpp"
 #include "qni.hpp"
 
-const char *qedLib =
+const char *qedLib = ""/*
 "var WIDTH = 1;"
 "var HEIGHT = 2;"
 "var OBLIQUE = 3;"
@@ -91,7 +91,7 @@ const char *qedLib =
 "  }, timeoutMillis)$/"
 "\n"
 "  void reset() {}\n"
-"}\n"
+"}\n"*/
 ;
 
 static void repl() {
