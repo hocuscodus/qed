@@ -13,11 +13,12 @@
 
 int GENSYM = 0;
 
-std::string genSymbol(std::string name) {
-    name = "β_" + name;
-    name += ++GENSYM;
+const char *genSymbol(std::string name) {
+    std::string s = "$_" + name + std::to_string(++GENSYM);
+    char *str = new char[s.size() + 1];
 
-    return name;
+    strcpy(str, s.c_str());
+    return str;
 }
 
 bool compareExpr(Expr *origExpr, Expr *newExpr) {
@@ -71,13 +72,14 @@ Expr *CallExpr::toCps(K k) {
         if (same)
           return this;
         else {
-          std::string cont = genSymbol("R");
+          const char *cont = genSymbol("R");
+          const char *var = genSymbol("ret_");
           DeclarationExpr **expList = RESIZE_ARRAY(DeclarationExpr *, NULL, 0, 1);
           Expr **bodyExpr = RESIZE_ARRAY(Expr *, NULL, 0, 1);
 
-          expList[0] = new DeclarationExpr(NULL/*this->handlerFunction->type*/, buildToken(TOKEN_IDENTIFIER, "ret_", 4, -1), NULL);
+          expList[0] = new DeclarationExpr(NULL/*this->handlerFunction->type*/, buildToken(TOKEN_IDENTIFIER, var, strlen(var), -1), NULL);
           bodyExpr[0] = k(expList[0]);
-          arguments[index] = new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, cont.c_str(), cont.size(), -1), 1, expList,
+          arguments[index] = new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, cont, strlen(cont), -1), 1, expList,
                                               new GroupingExpr(buildToken(TOKEN_LEFT_BRACKET, "{", 1, -1), 1, bodyExpr, 0, NULL), NULL);
           return new CallExpr(callee, this->paren, this->count + 1, arguments, this->newFlag, NULL, NULL, NULL);
         }
@@ -114,15 +116,18 @@ Expr *DeclarationExpr::toCps(K k) {
 }
 
 Expr *FunctionExpr::toCps(K k) {
-  std::string cont = genSymbol("K");
+  const char *cont = genSymbol("K");
   Expr *bodyExpr = body->toCps([this, cont, k](Expr *body) {
     Expr **expList = new Expr *{body};
 
-    return compareExpr(this->body, body) ? this : (Expr *) new CallExpr(new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cont.c_str(), cont.size(), -1), -1, false), buildToken(TOKEN_LEFT_PAREN, "(", 1, -1), 1, expList, false, NULL, NULL, NULL);
+    return compareExpr(this->body, body) ? this : (Expr *) new CallExpr(new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cont, strlen(cont), -1), -1, false), buildToken(TOKEN_LEFT_PAREN, "(", 1, -1), 1, expList, false, NULL, NULL, NULL);
   });
   GroupingExpr *newBody = bodyExpr->type == EXPR_GROUPING ? (GroupingExpr *) bodyExpr : NULL;
+  DeclarationExpr **newParams  = RESIZE_ARRAY(DeclarationExpr *, NULL, 0, count + 1);
 
-  return compareExpr(bodyExpr, body) ? this : k(new FunctionExpr(typeExpr, name, count + 1, params/*.concat(cont)*/, newBody, NULL));
+  memcpy(newParams, params, count * sizeof(Expr *));
+  newParams[count] = new DeclarationExpr(typeExpr, buildToken(TOKEN_IDENTIFIER, cont, strlen(cont), -1), NULL);
+  return bodyExpr == body ? this : k(new FunctionExpr(typeExpr, name, count + 1, newParams, newBody, NULL));
 /*
 function cps_lambda(exp, k) {
   var cont = gensym("K");
