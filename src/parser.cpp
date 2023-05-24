@@ -202,7 +202,7 @@ Expr *Parser::assignment(Expr *left) {
 
   switch (left->type) {
   case EXPR_REFERENCE:
-    return new AssignExpr((ReferenceExpr *) left, op, right, OP_FALSE);
+    return new AssignExpr((ReferenceExpr *) left, op, right);
 
   case EXPR_GET: {
     GetExpr *getExpr = (GetExpr *) left;
@@ -227,7 +227,7 @@ Expr *Parser::binary(Expr *left) {
   if (right == NULL)
     error("Expect expression.");
 
-  return new BinaryExpr(left, op, right, OP_FALSE); /*
+  return new BinaryExpr(left, op, right); /*
    switch (op.type) {
      case TOKEN_BANG_EQUAL:    emitBytes(OP_EQUAL, OP_NOT); break;
      case TOKEN_EQUAL_EQUAL:   return new BinaryExpr(left, op, right);
@@ -252,7 +252,7 @@ Expr *Parser::binaryOrPostfix(Expr *left) {
 
   Expr *right = parsePrecedence((Precedence)(rule->precedence + 1));
 
-  return new BinaryExpr(left, op, right, OP_FALSE); /*
+  return new BinaryExpr(left, op, right); /*
    switch (op.type) {
      case TOKEN_BANG_EQUAL:    emitBytes(OP_EQUAL, OP_NOT); break;
      case TOKEN_EQUAL_EQUAL:   return new BinaryExpr(left, op, right);
@@ -275,7 +275,7 @@ Expr *Parser::suffix(Expr *left) {
   switch (op.type) {
     case TOKEN_PLUS_PLUS:
     case TOKEN_MINUS_MINUS:
-      return new AssignExpr((ReferenceExpr *) left, op, NULL, OP_FALSE);
+      return new AssignExpr((ReferenceExpr *) left, op, NULL);
 
     default:
       return new UnaryExpr(op, left);
@@ -648,7 +648,7 @@ Expr *Parser::unary() {
     case TOKEN_MINUS_MINUS: {
       Expr *right = parsePrecedence(PREC_CALL);
 
-      return new AssignExpr(NULL, op, right, OP_FALSE);
+      return new AssignExpr(NULL, op, right);
     }
     default:
       return new UnaryExpr(op, parsePrecedence(PREC_UNARY));
@@ -843,7 +843,7 @@ Expr *Parser::forStatement(TokenType endGroupType) {
     body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 2, expList, 0, NULL);
   }
 
-  body = new BinaryExpr(condition, buildToken(TOKEN_WHILE, "while", 5, -1), body, OP_FALSE);
+  body = new BinaryExpr(condition, buildToken(TOKEN_WHILE, "while", 5, -1), body);
 
   if (initializer != NULL) {
     Expr **expList = RESIZE_ARRAY(Expr *, NULL, 0, 2);
@@ -869,7 +869,7 @@ Expr *Parser::ifStatement(TokenType endGroupType) {
   Expr *thenExp = statement(endGroupType);
   Expr *elseExp = match(TOKEN_ELSE) ? statement(endGroupType) : NULL;
 
-  return new TernaryExpr(name, condExp, thenExp, elseExp);
+  return new IfExpr(condExp, thenExp, elseExp);
 }
 
 Expr *Parser::whileStatement(TokenType endGroupType) {
@@ -882,7 +882,7 @@ Expr *Parser::whileStatement(TokenType endGroupType) {
 
   consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
 
-  return new BinaryExpr(exp, name, statement(endGroupType), OP_FALSE);
+  return new BinaryExpr(exp, name, statement(endGroupType));
 }
 
 Expr *Parser::declaration(TokenType endGroupType) {

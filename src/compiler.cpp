@@ -40,7 +40,6 @@ ObjFunction *Compiler::compile(Parser &parser) {
   parser.expr->astPrint();
   printf("\n");
 #endif
-//  Reifier reifier(parser);
   Expr *cpsExpr = parser.expr->toCps([](Expr *expr) {
     return expr;
   });
@@ -55,8 +54,6 @@ ObjFunction *Compiler::compile(Parser &parser) {
   if (parser.hadError)
     return NULL;
 
-//  if (!reifier.reify())
-//    return NULL;
 #ifdef DEBUG_PRINT_CODE
   printf("Adapted parse: ");
   parser.expr->astPrint();

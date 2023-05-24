@@ -18,6 +18,7 @@ typedef enum {
   EXPR_UIDIRECTIVE,
   EXPR_ASSIGN,
   EXPR_BINARY,
+  EXPR_CAST,
   EXPR_GROUPING,
   EXPR_ARRAY,
   EXPR_CALL,
@@ -25,18 +26,18 @@ typedef enum {
   EXPR_DECLARATION,
   EXPR_FUNCTION,
   EXPR_GET,
+  EXPR_IF,
   EXPR_LIST,
   EXPR_LITERAL,
   EXPR_LOGICAL,
-  EXPR_OPCODE,
   EXPR_RETURN,
   EXPR_SET,
   EXPR_STATEMENT,
-  EXPR_SUPER,
   EXPR_TERNARY,
   EXPR_THIS,
   EXPR_TYPE,
   EXPR_UNARY,
+  EXPR_WHILE,
   EXPR_SWAP,
   EXPR_NATIVE
 } ExprType;
@@ -106,9 +107,8 @@ struct AssignExpr : public Expr {
   ReferenceExpr* varExp;
   Token op;
   Expr* value;
-  OpCode opCode;
 
-  AssignExpr(ReferenceExpr* varExp, Token op, Expr* value, OpCode opCode);
+  AssignExpr(ReferenceExpr* varExp, Token op, Expr* value);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);
@@ -120,9 +120,20 @@ struct BinaryExpr : public Expr {
   Expr* left;
   Token op;
   Expr* right;
-  OpCode opCode;
 
-  BinaryExpr(Expr* left, Token op, Expr* right, OpCode opCode);
+  BinaryExpr(Expr* left, Token op, Expr* right);
+  void cleanExprs();
+  void astPrint();
+  Expr *toCps(K k);
+  Type resolve(Parser &parser);
+  void toCode(Parser &parser, ObjFunction *function);
+};
+
+struct CastExpr : public Expr {
+  Type type;
+  Expr* expr;
+
+  CastExpr(Type type, Expr* expr);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);
@@ -235,6 +246,19 @@ struct GetExpr : public Expr {
   void toCode(Parser &parser, ObjFunction *function);
 };
 
+struct IfExpr : public Expr {
+  Expr* condition;
+  Expr* thenBranch;
+  Expr* elseBranch;
+
+  IfExpr(Expr* condition, Expr* thenBranch, Expr* elseBranch);
+  void cleanExprs();
+  void astPrint();
+  Expr *toCps(K k);
+  Type resolve(Parser &parser);
+  void toCode(Parser &parser, ObjFunction *function);
+};
+
 struct ListExpr : public Expr {
   int count;
   Expr** expressions;
@@ -265,18 +289,6 @@ struct LogicalExpr : public Expr {
   Expr* right;
 
   LogicalExpr(Expr* left, Token op, Expr* right);
-  void cleanExprs();
-  void astPrint();
-  Expr *toCps(K k);
-  Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
-};
-
-struct OpcodeExpr : public Expr {
-  OpCode op;
-  Expr* right;
-
-  OpcodeExpr(OpCode op, Expr* right);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);
@@ -315,18 +327,6 @@ struct StatementExpr : public Expr {
   Expr* expr;
 
   StatementExpr(Expr* expr);
-  void cleanExprs();
-  void astPrint();
-  Expr *toCps(K k);
-  Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
-};
-
-struct SuperExpr : public Expr {
-  Token keyword;
-  Token method;
-
-  SuperExpr(Token keyword, Token method);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);
@@ -375,6 +375,18 @@ struct UnaryExpr : public Expr {
   Expr* right;
 
   UnaryExpr(Token op, Expr* right);
+  void cleanExprs();
+  void astPrint();
+  Expr *toCps(K k);
+  Type resolve(Parser &parser);
+  void toCode(Parser &parser, ObjFunction *function);
+};
+
+struct WhileExpr : public Expr {
+  Expr* condition;
+  Expr* body;
+
+  WhileExpr(Expr* condition, Expr* body);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);

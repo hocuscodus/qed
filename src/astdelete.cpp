@@ -39,6 +39,9 @@ void GetExpr::cleanExprs() {
 void GroupingExpr::cleanExprs() {
 }
 
+void IfExpr::cleanExprs() {
+}
+
 void ArrayExpr::cleanExprs() {
 }
 
@@ -49,9 +52,6 @@ void LiteralExpr::cleanExprs() {
 }
 
 void LogicalExpr::cleanExprs() {
-}
-
-void OpcodeExpr::cleanExprs() {
 }
 
 void ReturnExpr::cleanExprs() {
@@ -65,7 +65,7 @@ void StatementExpr::cleanExprs() {
     expr->destroy();
 }
 
-void SuperExpr::cleanExprs() {
+void CastExpr::cleanExprs() {
 }
 
 void TernaryExpr::cleanExprs() {
@@ -81,6 +81,9 @@ void UnaryExpr::cleanExprs() {
 }
 
 void ReferenceExpr::cleanExprs() {
+}
+
+void WhileExpr::cleanExprs() {
 }
 
 void SwapExpr::cleanExprs() {

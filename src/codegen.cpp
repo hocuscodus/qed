@@ -262,6 +262,22 @@ void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
   endBlock();
 }
 
+void IfExpr::toCode(Parser &parser, ObjFunction *function) {
+  line() << "if (";
+  condition->toCode(parser, function);
+  str() << ") ";
+  startBlock();
+  thenBranch->toCode(parser, function);
+  endBlock();
+
+  if (elseBranch) {
+    str() << " else ";
+    startBlock();
+    elseBranch->toCode(parser, function);
+    endBlock();
+  }
+}
+
 void ArrayExpr::toCode(Parser &parser, ObjFunction *function) {
   str() << "[";
 
@@ -324,11 +340,6 @@ void LogicalExpr::toCode(Parser &parser, ObjFunction *function) {
   str() << ")";
 }
 
-void OpcodeExpr::toCode(Parser &parser, ObjFunction *function) {
-  if (right)
-    right->toCode(parser, function);
-}
-
 void ReturnExpr::toCode(Parser &parser, ObjFunction *function) {
   if (function->isClass()) {
     value->toCode(parser, function);
@@ -362,30 +373,23 @@ void StatementExpr::toCode(Parser &parser, ObjFunction *function) {
     str() << ";\n";
 }
 
-void SuperExpr::toCode(Parser &parser, ObjFunction *function) {
-}
-
 void TernaryExpr::toCode(Parser &parser, ObjFunction *function) {
-  if (right) {
-    str() << "(";
-    left->toCode(parser, function);
-    str() << " ? ";
-    middle->toCode(parser, function);
-    str() << " : ";
-    right->toCode(parser, function);
-    str() << ")";
-  }
-  else {
-    line() << "if (";
-    left->toCode(parser, function);
-    str() << ") ";
-    startBlock();
-    middle->toCode(parser, function);
-    endBlock();
-  }
+  str() << "(";
+  left->toCode(parser, function);
+  str() << " ? ";
+  middle->toCode(parser, function);
+  str() << " : ";
+  right->toCode(parser, function);
+  str() << ")";
 }
 
 void ThisExpr::toCode(Parser &parser, ObjFunction *function) {
+}
+
+void CastExpr::toCode(Parser &parser, ObjFunction *function) {
+}
+
+void WhileExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 void TypeExpr::toCode(Parser &parser, ObjFunction *function) {

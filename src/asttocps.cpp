@@ -32,10 +32,17 @@ bool compareExpr(Expr *origExpr, Expr *newExpr) {
 
 Expr *AssignExpr::toCps(K k) {
   return varExp->toCps([this, k](Expr *varExp) {
-    return this->value->toCps([this, k, varExp](Expr *value) {
-      return k(compareExpr(this->varExp, varExp) && compareExpr(this->value, value) ? this : new AssignExpr((ReferenceExpr *) varExp, this->op, value, this->opCode));
-    });
+    if (this->value)
+      return this->value->toCps([this, k, varExp](Expr *value) {
+        return k(compareExpr(this->varExp, varExp) && compareExpr(this->value, value) ? this : new AssignExpr((ReferenceExpr *) varExp, this->op, value));
+      });
+    else
+      return k(compareExpr(this->varExp, varExp) ? this : new AssignExpr((ReferenceExpr *) varExp, this->op, NULL));
   });
+}
+
+Expr *CastExpr::toCps(K k) {
+  return NULL;
 }
 
 Expr *UIAttributeExpr::toCps(K k) {
@@ -49,7 +56,7 @@ Expr *UIDirectiveExpr::toCps(K k) {
 Expr *BinaryExpr::toCps(K k) {
   return left->toCps([this, k](Expr *left) {
     return this->right->toCps([this, k, left](Expr *right) {
-      return k(compareExpr(this->left, left) && compareExpr(this->right, right) ? this : new BinaryExpr(left, this->op, right, this->opCode));
+      return k(compareExpr(this->left, left) && compareExpr(this->right, right) ? this : new BinaryExpr(left, this->op, right));
     });
   });
 }
@@ -117,17 +124,13 @@ Expr *DeclarationExpr::toCps(K k) {
 
 Expr *FunctionExpr::toCps(K k) {
   const char *cont = genSymbol("K");
-  Expr *bodyExpr = body->toCps([this, cont, k](Expr *body) {
-    Expr **expList = new Expr *{body};
-
-    return compareExpr(this->body, body) ? this : (Expr *) new CallExpr(new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cont, strlen(cont), -1), -1, false), buildToken(TOKEN_LEFT_PAREN, "(", 1, -1), 1, expList, false, NULL, NULL, NULL);
-  });
+  Expr *bodyExpr = body->toCps([this, cont](Expr *body) {return body;});
   GroupingExpr *newBody = bodyExpr->type == EXPR_GROUPING ? (GroupingExpr *) bodyExpr : NULL;
   DeclarationExpr **newParams  = RESIZE_ARRAY(DeclarationExpr *, NULL, 0, count + 1);
 
   memcpy(newParams, params, count * sizeof(Expr *));
   newParams[count] = new DeclarationExpr(typeExpr, buildToken(TOKEN_IDENTIFIER, cont, strlen(cont), -1), NULL);
-  return bodyExpr == body ? this : k(new FunctionExpr(typeExpr, name, count + 1, newParams, newBody, NULL));
+  return k(compareExpr(body, bodyExpr) ? this : new FunctionExpr(typeExpr, name, count + 1, newParams, newBody, NULL));
 /*
 function cps_lambda(exp, k) {
   var cont = gensym("K");
@@ -252,11 +255,14 @@ function cps_if(exp, k) {
 }*/
 }
 
-Expr *OpcodeExpr::toCps(K k) {
+Expr *WhileExpr::toCps(K k) {
   return this;
 }
 
 Expr *ReturnExpr::toCps(K k) {
+//    Expr **expList = new Expr *{body};
+
+//    return  ? body : (Expr *) new CallExpr(new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cont, strlen(cont), -1), -1, false), buildToken(TOKEN_LEFT_PAREN, "(", 1, -1), 1, expList, false, NULL, NULL, NULL);
   return value->toCps([this, k](Expr *value) {
     return compareExpr(this->value, value) ? this : k(new ReturnExpr(this->keyword, value));
   });
@@ -277,7 +283,7 @@ Expr *StatementExpr::toCps(K k) {
   });
 }
 
-Expr *SuperExpr::toCps(K k) {
+Expr *IfExpr::toCps(K k) {
 //  parenthesize2("super", 1, method);
   return this;
 }

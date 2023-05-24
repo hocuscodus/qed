@@ -11,7 +11,7 @@
 #include "vm.hpp"
 #include "qni.hpp"
 
-const char *qedLib = ""/*
+const char *qedLib =/*
 "var WIDTH = 1;"
 "var HEIGHT = 2;"
 "var OBLIQUE = 3;"
@@ -83,15 +83,15 @@ const char *qedLib = ""/*
 "  ctx.textBaseline = \"top\";\n"
 "  ctx.fillText(text, pos1[0], pos1[1])"
 "$/\n}\n"
-"\n"
+"\n"*/
 "void Timer(int timeoutMillis) {\n"
 "/$setTimeout(function() {\n"
 "    ReturnHandler_();\n"
 "    _refresh();\n"
 "  }, timeoutMillis)$/"
 "\n"
-"  void reset() {}\n"
-"}\n"*/
+//"  void reset() {}\n"
+"}\n"
 ;
 
 static void repl() {

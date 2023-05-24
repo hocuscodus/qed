@@ -261,8 +261,9 @@ int main(int argc, const char *argv[]) {
     "Reference   : Token name, int8_t index, bool upvalueFlag, Declaration* _declaration",
     "UIAttribute : Token name, Expr* handler, int _uiIndex, int _index",
     "UIDirective : int childDir, int attCount, UIAttributeExpr** attributes, UIDirectiveExpr* previous, UIDirectiveExpr* lastChild, int viewIndex, bool childrenViewFlag, int _layoutIndexes[NUM_DIRS], long _eventFlags",
-    "Assign      : ReferenceExpr* varExp, Token op, Expr* value, OpCode opCode",
-    "Binary      : Expr* left, Token op, Expr* right, OpCode opCode",
+    "Assign      : ReferenceExpr* varExp, Token op, Expr* value",
+    "Binary      : Expr* left, Token op, Expr* right",
+    "Cast        : Type type, Expr* expr",
     "Grouping    : Token name, int count, Expr** expressions, int popLevels, Expr* ui, Compiler _compiler",
     "Array       : int count, Expr** expressions, ObjFunction* function",
     "Call        : Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler, ObjCallable* callable, ObjFunction* handlerFunction",
@@ -270,36 +271,21 @@ int main(int argc, const char *argv[]) {
     "Declaration : Expr* typeExpr, Token name, Expr* initExpr, Declaration* _declaration",
     "Function    : Expr* typeExpr, Token name, int count, DeclarationExpr** params, GroupingExpr* body, ObjFunction* function, Declaration* _declaration",
     "Get         : Expr* object, Token name, int index",
+    "If          : Expr* condition, Expr* thenBranch, Expr* elseBranch",
     "List        : int count, Expr** expressions",
     "Literal     : ValueType type, As as",
     "Logical     : Expr* left, Token op, Expr* right",
-    "Opcode      : OpCode op, Expr* right",
     "Return      : Token keyword, Expr* value",
     "Set         : Expr* object, Token name, Token op, Expr* value, int index",
     "Statement   : Expr* expr",
-    "Super       : Token keyword, Token method",
     "Ternary     : Token op, Expr* left, Expr* middle, Expr* right",
     "This        : Token keyword",
     "Type        : Expr* typeExpr",
     "Unary       : Token op, Expr* right",
+    "While       : Expr* condition, Expr* body",
     "Swap        : Expr* _expr",
     "Native      : Token nativeCode",
     NULL
   };
   GenerateAst().defineAst(outputDir, "Expr", array1);
-/*
-  const char *array2[] = {
-    "Block      : Stmt** statements",
-    "Class      : Token name, Expr.Variable superclass, Stmt::Function** methods",
-    "Expression : Expr* expression",
-    "Function   : Token name, Token* params, Stmt** body",
-    "If         : Expr* condition, Stmt* thenBranch, Stmt* elseBranch",
-    "Print      : Expr* expression",
-    "Return     : Token keyword, Expr* value",
-    "Var        : Token name, Expr* initializer",
-    "While      : Expr* condition, Stmt* body",
-    NULL
-  };
-
-  GenerateAst().defineAst(outputDir, "Stmt", array2);*/
 }

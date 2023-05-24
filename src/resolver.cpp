@@ -123,15 +123,15 @@ static Type convertType(Type &type) {
 static Expr *convertToString(Expr *expr, Type &type, Parser &parser) {
   switch (type.valueType) {
   case VAL_INT:
-    expr = new OpcodeExpr(OP_INT_TO_STRING, expr);
+    expr = new CastExpr({(ValueType) OP_INT_TO_STRING}, expr);
     break;
 
   case VAL_FLOAT:
-    expr = new OpcodeExpr(OP_FLOAT_TO_STRING, expr);
+    expr = new CastExpr({(ValueType) OP_FLOAT_TO_STRING}, expr);
     break;
 
   case VAL_BOOL:
-    expr = new OpcodeExpr(OP_BOOL_TO_STRING, expr);
+    expr = new CastExpr({(ValueType) OP_BOOL_TO_STRING}, expr);
     break;
 
   case VAL_VOID:
@@ -139,7 +139,7 @@ static Expr *convertToString(Expr *expr, Type &type, Parser &parser) {
     break;
 
   case VAL_OBJ:
-    //    expr = new OpcodeExpr(OP_OBJ_TO_STRING, expr);
+    //    expr = new CastExpr(OP_OBJ_TO_STRING, expr);
     break;
 
   default:
@@ -155,7 +155,7 @@ static Expr *convertToInt(Expr *expr, Type &type, Parser &parser) {
     break;
 
   case VAL_FLOAT:
-    expr = new OpcodeExpr(OP_FLOAT_TO_INT, expr);
+    expr = new CastExpr({(ValueType) OP_FLOAT_TO_INT}, expr);
     break;
 
   case VAL_VOID:
@@ -172,7 +172,7 @@ static Expr *convertToInt(Expr *expr, Type &type, Parser &parser) {
 static Expr *convertToFloat(Expr *expr, Type &type, Parser &parser) {
   switch (type.valueType) {
   case VAL_INT:
-    expr = new OpcodeExpr(OP_INT_TO_FLOAT, expr);
+    expr = new CastExpr({(ValueType) OP_INT_TO_FLOAT}, expr);
     break;
 
   case VAL_FLOAT:
@@ -242,74 +242,6 @@ static Expr *convertToType(Type srcType, Expr *expr, Type &type, Parser &parser)
   }
 
   return expr;
-}
-
-static OpCode getOpCode(Type type, Token token) {
-  OpCode opCode = OP_FALSE;
-
-  switch (token.type) {
-  case TOKEN_PLUS:
-  case TOKEN_PLUS_PLUS:
-  case TOKEN_PLUS_EQUAL:
-    opCode = IS_OBJ(type) ? OP_ADD_STRING : IS_INT(type) ? OP_ADD_INT : OP_ADD_FLOAT;
-    break;
-  case TOKEN_MINUS:
-  case TOKEN_MINUS_MINUS:
-  case TOKEN_MINUS_EQUAL:
-    opCode = IS_INT(type) ? OP_SUBTRACT_INT : OP_SUBTRACT_FLOAT;
-    break;
-  case TOKEN_STAR:
-  case TOKEN_STAR_EQUAL:
-    opCode = IS_INT(type) ? OP_MULTIPLY_INT : OP_MULTIPLY_FLOAT;
-    break;
-  case TOKEN_SLASH:
-  case TOKEN_SLASH_EQUAL:
-    opCode = IS_INT(type) ? OP_DIVIDE_INT : OP_DIVIDE_FLOAT;
-    break;
-  case TOKEN_BANG_EQUAL:
-  case TOKEN_EQUAL_EQUAL:
-    opCode = IS_STRING(type) ? OP_EQUAL_STRING : IS_INT(type) ? OP_EQUAL_INT : OP_EQUAL_FLOAT;
-    break;
-  case TOKEN_GREATER:
-  case TOKEN_LESS_EQUAL:
-    opCode = IS_STRING(type) ? OP_GREATER_STRING : IS_INT(type) ? OP_GREATER_INT : OP_GREATER_FLOAT;
-    break;
-  case TOKEN_GREATER_EQUAL:
-  case TOKEN_LESS:
-    opCode = IS_STRING(type) ? OP_LESS_STRING : IS_INT(type) ? OP_LESS_INT : OP_LESS_FLOAT;
-    break;
-  case TOKEN_OR:
-  case TOKEN_OR_EQUAL:
-    opCode = IS_INT(type) ? OP_BITWISE_OR : OP_LOGICAL_OR;
-    break;
-  case TOKEN_OR_OR:
-    opCode = OP_LOGICAL_OR;
-    break;
-  case TOKEN_AND:
-  case TOKEN_AND_EQUAL:
-    opCode = IS_INT(type) ? OP_BITWISE_AND : OP_LOGICAL_AND;
-    break;
-  case TOKEN_AND_AND:
-    opCode = OP_LOGICAL_AND;
-    break;
-  case TOKEN_XOR:
-  case TOKEN_XOR_EQUAL:
-    opCode = OP_BITWISE_XOR;
-    break;
-  case TOKEN_GREATER_GREATER:
-  case TOKEN_GREATER_GREATER_EQUAL:
-    opCode = OP_SHIFT_RIGHT;
-    break;
-  case TOKEN_GREATER_GREATER_GREATER:
-    opCode = OP_SHIFT_URIGHT;
-    break;
-  case TOKEN_LESS_LESS:
-  case TOKEN_LESS_LESS_EQUAL:
-    opCode = OP_SHIFT_LEFT;
-    break;
-  }
-
-  return opCode;
 }
 
 static int aCount;
@@ -479,8 +411,6 @@ Type AssignExpr::resolve(Parser &parser) {
   Type type1 = varExp->resolve(parser);
   Type type2 = value ? value->resolve(parser) : type1;
 
-  opCode = getOpCode(type1, op);
-
   if (IS_VOID(type1))
     parser.error("Variable not found");
   else if (!type1.equals(type2)) {
@@ -509,8 +439,6 @@ Type BinaryExpr::resolve(Parser &parser) {
   Type type2 = right->resolve(parser);
   Type type = type1;
   bool boolVal = false;
-
-  opCode = getOpCode(type, op);
 
   switch (op.type) {
   case TOKEN_PLUS:
@@ -547,7 +475,6 @@ Type BinaryExpr::resolve(Parser &parser) {
         }
 
         left = convertToFloat(left, type1, parser);
-        opCode = (OpCode)((int)opCode + (int)OP_ADD_FLOAT - (int)OP_ADD_INT);
         return {boolVal ? VAL_BOOL : VAL_FLOAT};
       }
       else
@@ -792,7 +719,7 @@ Type FunctionExpr::resolve(Parser &parser) {
 
   if (!handlerFlag && firstChar >= 'A' && firstChar <= 'Z') {
     char buffer[256] = "";
-    char buf[256];
+    char buf[512];
 
     if (!IS_VOID(returnType))
       sprintf(buffer, "%s _ret", returnType.toString());
@@ -861,6 +788,22 @@ Type GroupingExpr::resolve(Parser &parser) {
   return parenType;
 }
 
+Type CastExpr::resolve(Parser &parser) {
+  return {VAL_VOID};
+}
+
+Type IfExpr::resolve(Parser &parser) {
+  if (IS_VOID(condition->resolve(parser)))
+    parser.error("Value must not be void");
+
+  thenBranch->resolve(parser);
+
+  if (elseBranch)
+    elseBranch->resolve(parser);
+
+  return {VAL_VOID};
+}
+
 Type ArrayExpr::resolve(Parser &parser) {
   ObjArray *objArray = newArray();
   Type type = {VAL_OBJ, &objArray->obj};
@@ -908,9 +851,9 @@ Type LogicalExpr::resolve(Parser &parser) {
   return {VAL_BOOL};
 }
 
-Type OpcodeExpr::resolve(Parser &parser) {
+Type WhileExpr::resolve(Parser &parser) {
   parser.compilerError("In OpcodeExpr!");
-  return right->resolve(parser);
+  return body->resolve(parser);
 }
 
 static std::list<Expr *> uiExprs;
@@ -985,10 +928,6 @@ Type StatementExpr::resolve(Parser &parser) {
       expr = new OpcodeExpr(OP_POP, expr);
   }
 */
-  return {VAL_VOID};
-}
-
-Type SuperExpr::resolve(Parser &parser) {
   return {VAL_VOID};
 }
 

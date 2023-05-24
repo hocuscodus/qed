@@ -34,18 +34,21 @@ UIDirectiveExpr::UIDirectiveExpr(int childDir, int attCount, UIAttributeExpr** a
   this->childrenViewFlag = childrenViewFlag;
 }
 
-AssignExpr::AssignExpr(ReferenceExpr* varExp, Token op, Expr* value, OpCode opCode) : Expr(EXPR_ASSIGN) {
+AssignExpr::AssignExpr(ReferenceExpr* varExp, Token op, Expr* value) : Expr(EXPR_ASSIGN) {
   this->varExp = varExp;
   this->op = op;
   this->value = value;
-  this->opCode = opCode;
 }
 
-BinaryExpr::BinaryExpr(Expr* left, Token op, Expr* right, OpCode opCode) : Expr(EXPR_BINARY) {
+BinaryExpr::BinaryExpr(Expr* left, Token op, Expr* right) : Expr(EXPR_BINARY) {
   this->left = left;
   this->op = op;
   this->right = right;
-  this->opCode = opCode;
+}
+
+CastExpr::CastExpr(Type type, Expr* expr) : Expr(EXPR_CAST) {
+  this->type = type;
+  this->expr = expr;
 }
 
 GroupingExpr::GroupingExpr(Token name, int count, Expr** expressions, int popLevels, Expr* ui) : Expr(EXPR_GROUPING) {
@@ -101,6 +104,12 @@ GetExpr::GetExpr(Expr* object, Token name, int index) : Expr(EXPR_GET) {
   this->index = index;
 }
 
+IfExpr::IfExpr(Expr* condition, Expr* thenBranch, Expr* elseBranch) : Expr(EXPR_IF) {
+  this->condition = condition;
+  this->thenBranch = thenBranch;
+  this->elseBranch = elseBranch;
+}
+
 ListExpr::ListExpr(int count, Expr** expressions) : Expr(EXPR_LIST) {
   this->count = count;
   this->expressions = expressions;
@@ -113,11 +122,6 @@ LiteralExpr::LiteralExpr(ValueType type, As as) : Expr(EXPR_LITERAL) {
 
 LogicalExpr::LogicalExpr(Expr* left, Token op, Expr* right) : Expr(EXPR_LOGICAL) {
   this->left = left;
-  this->op = op;
-  this->right = right;
-}
-
-OpcodeExpr::OpcodeExpr(OpCode op, Expr* right) : Expr(EXPR_OPCODE) {
   this->op = op;
   this->right = right;
 }
@@ -139,11 +143,6 @@ StatementExpr::StatementExpr(Expr* expr) : Expr(EXPR_STATEMENT) {
   this->expr = expr;
 }
 
-SuperExpr::SuperExpr(Token keyword, Token method) : Expr(EXPR_SUPER) {
-  this->keyword = keyword;
-  this->method = method;
-}
-
 TernaryExpr::TernaryExpr(Token op, Expr* left, Expr* middle, Expr* right) : Expr(EXPR_TERNARY) {
   this->op = op;
   this->left = left;
@@ -162,6 +161,11 @@ TypeExpr::TypeExpr(Expr* typeExpr) : Expr(EXPR_TYPE) {
 UnaryExpr::UnaryExpr(Token op, Expr* right) : Expr(EXPR_UNARY) {
   this->op = op;
   this->right = right;
+}
+
+WhileExpr::WhileExpr(Expr* condition, Expr* body) : Expr(EXPR_WHILE) {
+  this->condition = condition;
+  this->body = body;
 }
 
 SwapExpr::SwapExpr() : Expr(EXPR_SWAP) {

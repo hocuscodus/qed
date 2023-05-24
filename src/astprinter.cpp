@@ -192,6 +192,19 @@ void GroupingExpr::astPrint() {
   printf(")");
 }
 
+void IfExpr::astPrint() {
+  printf("(if ");
+  condition->astPrint();
+  printf(" ");
+  thenBranch->astPrint();
+
+  if (elseBranch) {
+    printf(" else ");
+    elseBranch->astPrint();
+  }
+  printf(")");
+}
+
 void ArrayExpr::astPrint() {
   printf("[");
   for (int index = 0; index < count; index++) {
@@ -250,18 +263,14 @@ void LogicalExpr::astPrint() {
   printf(")");
 }
 
-void OpcodeExpr::astPrint() {
-  printf("(Op %d ", op);
-  if (right)
-    right->astPrint();
-  printf(")");
-}
-
 void ReturnExpr::astPrint() {
   printf("return ");
   if (value != NULL)
     value->astPrint();
   printf(";");
+}
+
+void CastExpr::astPrint() {
 }
 
 void SetExpr::astPrint() {
@@ -275,10 +284,6 @@ void SetExpr::astPrint() {
 void StatementExpr::astPrint() {
   expr->astPrint();
   printf(";");
-}
-
-void SuperExpr::astPrint() {
-//  parenthesize2("super", 1, method);
 }
 
 void TernaryExpr::astPrint() {
@@ -310,6 +315,14 @@ void UnaryExpr::astPrint() {
 
 void ReferenceExpr::astPrint() {
   printf("(var %s %d)", name.getString().c_str(), index);
+}
+
+void WhileExpr::astPrint() {
+  printf("(while ");
+  condition->astPrint();
+  printf(" ");
+  body->astPrint();
+  printf(")");
 }
 
 void SwapExpr::astPrint() {
