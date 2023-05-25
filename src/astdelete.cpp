@@ -60,11 +60,6 @@ void ReturnExpr::cleanExprs() {
 void SetExpr::cleanExprs() {
 }
 
-void StatementExpr::cleanExprs() {
-  if (expr)
-    expr->destroy();
-}
-
 void CastExpr::cleanExprs() {
 }
 
@@ -72,9 +67,6 @@ void TernaryExpr::cleanExprs() {
 }
 
 void ThisExpr::cleanExprs() {
-}
-
-void TypeExpr::cleanExprs() {
 }
 
 void UnaryExpr::cleanExprs() {

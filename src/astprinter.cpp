@@ -186,6 +186,7 @@ void GroupingExpr::astPrint() {
   for (int index = 0; index < count; index++) {
     printf(", ");
     expressions[index]->astPrint();
+    printf(";");
   }
   if (ui)
     ui->astPrint();
@@ -281,11 +282,6 @@ void SetExpr::astPrint() {
   printf(")");
 }
 
-void StatementExpr::astPrint() {
-  expr->astPrint();
-  printf(";");
-}
-
 void TernaryExpr::astPrint() {
   printf("(%.*s ", op.length, op.start);
   left->astPrint();
@@ -301,10 +297,6 @@ void TernaryExpr::astPrint() {
 
 void ThisExpr::astPrint() {
   printf("this");
-}
-
-void TypeExpr::astPrint() {
-  typeExpr->astPrint();
 }
 
 void UnaryExpr::astPrint() {

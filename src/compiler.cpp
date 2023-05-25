@@ -40,7 +40,7 @@ ObjFunction *Compiler::compile(Parser &parser) {
   parser.expr->astPrint();
   printf("\n");
 #endif
-  Expr *cpsExpr = parser.expr->toCps([](Expr *expr) {
+/*  Expr *cpsExpr = parser.expr->toCps([](Expr *expr) {
     return expr;
   });
 #ifdef DEBUG_PRINT_CODE
@@ -48,7 +48,7 @@ ObjFunction *Compiler::compile(Parser &parser) {
   cpsExpr->astPrint();
   printf("\n");
 #endif
-
+*/
   parser.expr->resolve(parser);
 
   if (parser.hadError)

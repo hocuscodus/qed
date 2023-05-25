@@ -277,12 +277,6 @@ Expr *SetExpr::toCps(K k) {
   return this;
 }
 
-Expr *StatementExpr::toCps(K k) {
-  return expr->toCps([this, k](Expr *expr) {
-    return k(compareExpr(this->expr, expr) ? this : new StatementExpr(expr));
-  });
-}
-
 Expr *IfExpr::toCps(K k) {
 //  parenthesize2("super", 1, method);
   return this;
@@ -314,10 +308,6 @@ function cps_if(exp, k) {
 }
 
 Expr *ThisExpr::toCps(K k) {
-  return this;
-}
-
-Expr *TypeExpr::toCps(K k) {
   return this;
 }
 

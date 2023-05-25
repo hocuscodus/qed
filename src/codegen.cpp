@@ -16,7 +16,7 @@ static int nTabs = -1;
 std::stringstream s;
 
 bool needsSemicolon(Expr *expr) {
-  return expr->type != EXPR_GROUPING && expr->type != EXPR_FUNCTION && !(expr->type == EXPR_SWAP && !needsSemicolon(((SwapExpr *) expr)->_expr));
+  return expr->type != EXPR_GROUPING && expr->type != EXPR_IF && expr->type != EXPR_RETURN && expr->type != EXPR_WHILE && expr->type != EXPR_FUNCTION && !(expr->type == EXPR_SWAP && !needsSemicolon(((SwapExpr *) expr)->_expr));
 }
 
 static std::stringstream &str() {
@@ -224,7 +224,11 @@ void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
   for (int index = 0; index < count; index++) {
     Expr *subExpr = expressions[index];
 
+    line();
     subExpr->toCode(parser, function);
+
+    if (needsSemicolon(subExpr))
+      str() << ";\n";
   }
 
   if (ui)
@@ -263,16 +267,18 @@ void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 void IfExpr::toCode(Parser &parser, ObjFunction *function) {
-  line() << "if (";
+  str() << "if (";
   condition->toCode(parser, function);
   str() << ") ";
   startBlock();
+  line();
   thenBranch->toCode(parser, function);
   endBlock();
 
   if (elseBranch) {
     str() << " else ";
     startBlock();
+    line();
     elseBranch->toCode(parser, function);
     endBlock();
   }
@@ -343,10 +349,10 @@ void LogicalExpr::toCode(Parser &parser, ObjFunction *function) {
 void ReturnExpr::toCode(Parser &parser, ObjFunction *function) {
   if (function->isClass()) {
     value->toCode(parser, function);
-    line() << "return;";
+    line() << "return;\n";
   }
   else {
-    line() << "return";
+    str() << "return";
 
     if (value) {
       str() << " (";
@@ -365,14 +371,6 @@ void SetExpr::toCode(Parser &parser, ObjFunction *function) {
   value->toCode(parser, function);
 }
 
-void StatementExpr::toCode(Parser &parser, ObjFunction *function) {
-  line();
-  expr->toCode(parser, function);
-
-  if (needsSemicolon(expr))
-    str() << ";\n";
-}
-
 void TernaryExpr::toCode(Parser &parser, ObjFunction *function) {
   str() << "(";
   left->toCode(parser, function);
@@ -387,12 +385,10 @@ void ThisExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 void CastExpr::toCode(Parser &parser, ObjFunction *function) {
+  expr->toCode(parser, function);
 }
 
 void WhileExpr::toCode(Parser &parser, ObjFunction *function) {
-}
-
-void TypeExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 void UnaryExpr::toCode(Parser &parser, ObjFunction *function) {

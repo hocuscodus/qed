@@ -462,14 +462,6 @@ UIAttributeExpr *Parser::attribute(TokenType endGroupType) {
   else
     handler = statement(endGroupType);
 
-  if (handler->type == EXPR_STATEMENT) {
-    StatementExpr *oldHandler = (StatementExpr *) handler;
-
-    handler = oldHandler->expr;
-    oldHandler->expr = NULL;
-    delete oldHandler;
-  }
-
   return new UIAttributeExpr(identifier, handler);
 }
 
@@ -556,13 +548,9 @@ Expr *Parser::grouping(TokenType endGroupType, const char *errorMessage) {
 
   scopeDepth--;
   return new GroupingExpr(previous, count, expList, 0, ui);*/
-  StatementExpr *statementExpr = endGroupType == TOKEN_RIGHT_PAREN && wasStatementExpr ? (StatementExpr *) expList[count - 1] : NULL;
-  Expr *exp = statementExpr ? statementExpr->expr : NULL;
+  Expr *exp = endGroupType == TOKEN_RIGHT_PAREN && wasStatementExpr ? expList[count - 1] : NULL;
 
   if (exp) {
-    statementExpr->expr = NULL;
-    statementExpr->destroy();
-
     if (count == 1)
       RESIZE_ARRAY(Expr *, expList, 1, 0);
     else {
@@ -808,11 +796,11 @@ Expr *Parser::expressionStatement(TokenType endGroupType) {
   TokenType tokens[] = {TOKEN_SEPARATOR, endGroupType, TOKEN_ELSE, TOKEN_EOF};
   Expr *exp = expression(tokens);
 
-  if (!check(endGroupType) && !check(TOKEN_ELSE))
+  if (!check(endGroupType))
     consume(TOKEN_SEPARATOR, "Expect ';' or newline after expression.");
 
   statementExprs |= 1 << scopeDepth;
-  return new StatementExpr(exp);
+  return exp;
 }
 
 Expr *Parser::forStatement(TokenType endGroupType) {
@@ -873,8 +861,6 @@ Expr *Parser::ifStatement(TokenType endGroupType) {
 }
 
 Expr *Parser::whileStatement(TokenType endGroupType) {
-  Token name = previous;
-
   consume(TOKEN_LEFT_PAREN, "Expect '(' after 'while'.");
 
   TokenType tokens[] = {TOKEN_RIGHT_PAREN, TOKEN_ELSE, TOKEN_EOF};
@@ -882,7 +868,7 @@ Expr *Parser::whileStatement(TokenType endGroupType) {
 
   consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
 
-  return new BinaryExpr(exp, name, statement(endGroupType));
+  return new WhileExpr(exp, statement(endGroupType));
 }
 
 Expr *Parser::declaration(TokenType endGroupType) {

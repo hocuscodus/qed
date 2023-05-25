@@ -32,10 +32,8 @@ typedef enum {
   EXPR_LOGICAL,
   EXPR_RETURN,
   EXPR_SET,
-  EXPR_STATEMENT,
   EXPR_TERNARY,
   EXPR_THIS,
-  EXPR_TYPE,
   EXPR_UNARY,
   EXPR_WHILE,
   EXPR_SWAP,
@@ -130,10 +128,12 @@ struct BinaryExpr : public Expr {
 };
 
 struct CastExpr : public Expr {
-  Type type;
+  Expr* typeExpr;
   Expr* expr;
+  Type _srcType;
+  Type _dstType;
 
-  CastExpr(Type type, Expr* expr);
+  CastExpr(Expr* typeExpr, Expr* expr);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);
@@ -323,17 +323,6 @@ struct SetExpr : public Expr {
   void toCode(Parser &parser, ObjFunction *function);
 };
 
-struct StatementExpr : public Expr {
-  Expr* expr;
-
-  StatementExpr(Expr* expr);
-  void cleanExprs();
-  void astPrint();
-  Expr *toCps(K k);
-  Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
-};
-
 struct TernaryExpr : public Expr {
   Token op;
   Expr* left;
@@ -352,17 +341,6 @@ struct ThisExpr : public Expr {
   Token keyword;
 
   ThisExpr(Token keyword);
-  void cleanExprs();
-  void astPrint();
-  Expr *toCps(K k);
-  Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
-};
-
-struct TypeExpr : public Expr {
-  Expr* typeExpr;
-
-  TypeExpr(Expr* typeExpr);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);

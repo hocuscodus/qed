@@ -46,8 +46,8 @@ BinaryExpr::BinaryExpr(Expr* left, Token op, Expr* right) : Expr(EXPR_BINARY) {
   this->right = right;
 }
 
-CastExpr::CastExpr(Type type, Expr* expr) : Expr(EXPR_CAST) {
-  this->type = type;
+CastExpr::CastExpr(Expr* typeExpr, Expr* expr) : Expr(EXPR_CAST) {
+  this->typeExpr = typeExpr;
   this->expr = expr;
 }
 
@@ -139,10 +139,6 @@ SetExpr::SetExpr(Expr* object, Token name, Token op, Expr* value, int index) : E
   this->index = index;
 }
 
-StatementExpr::StatementExpr(Expr* expr) : Expr(EXPR_STATEMENT) {
-  this->expr = expr;
-}
-
 TernaryExpr::TernaryExpr(Token op, Expr* left, Expr* middle, Expr* right) : Expr(EXPR_TERNARY) {
   this->op = op;
   this->left = left;
@@ -152,10 +148,6 @@ TernaryExpr::TernaryExpr(Token op, Expr* left, Expr* middle, Expr* right) : Expr
 
 ThisExpr::ThisExpr(Token keyword) : Expr(EXPR_THIS) {
   this->keyword = keyword;
-}
-
-TypeExpr::TypeExpr(Expr* typeExpr) : Expr(EXPR_TYPE) {
-  this->typeExpr = typeExpr;
 }
 
 UnaryExpr::UnaryExpr(Token op, Expr* right) : Expr(EXPR_UNARY) {

@@ -121,30 +121,16 @@ static Type convertType(Type &type) {
 }
 
 static Expr *convertToString(Expr *expr, Type &type, Parser &parser) {
-  switch (type.valueType) {
-  case VAL_INT:
-    expr = new CastExpr({(ValueType) OP_INT_TO_STRING}, expr);
-    break;
-
-  case VAL_FLOAT:
-    expr = new CastExpr({(ValueType) OP_FLOAT_TO_STRING}, expr);
-    break;
-
-  case VAL_BOOL:
-    expr = new CastExpr({(ValueType) OP_BOOL_TO_STRING}, expr);
-    break;
-
-  case VAL_VOID:
+  if (type.valueType == VAL_VOID)
     parser.error("Value must not be void");
-    break;
+  else
+    if (!type.equals(stringType)) {
+      CastExpr *castExpr = new CastExpr(NULL, expr);
 
-  case VAL_OBJ:
-    //    expr = new CastExpr(OP_OBJ_TO_STRING, expr);
-    break;
-
-  default:
-    break;
-  }
+      castExpr->_srcType = type;
+      castExpr->_dstType = stringType;
+      expr = castExpr;
+    }
 
   return expr;
 }
@@ -154,16 +140,19 @@ static Expr *convertToInt(Expr *expr, Type &type, Parser &parser) {
   case VAL_INT:
     break;
 
-  case VAL_FLOAT:
-    expr = new CastExpr({(ValueType) OP_FLOAT_TO_INT}, expr);
-    break;
-
   case VAL_VOID:
-    parser.error("Value must not be void");
+  case VAL_OBJ:
+    parser.error("Value cannot be cast to integer");
     break;
 
-  default:
+  default: {
+    CastExpr *castExpr = new CastExpr(NULL, expr);
+
+    castExpr->_srcType = type;
+    castExpr->_dstType = {VAL_INT};
+    expr = castExpr;
     break;
+    }
   }
 
   return expr;
@@ -171,19 +160,22 @@ static Expr *convertToInt(Expr *expr, Type &type, Parser &parser) {
 
 static Expr *convertToFloat(Expr *expr, Type &type, Parser &parser) {
   switch (type.valueType) {
-  case VAL_INT:
-    expr = new CastExpr({(ValueType) OP_INT_TO_FLOAT}, expr);
-    break;
-
   case VAL_FLOAT:
     break;
 
   case VAL_VOID:
-    parser.error("Value must not be void");
+  case VAL_OBJ:
+    parser.error("Value cannot be cast to float");
     break;
 
-  default:
+  default: {
+    CastExpr *castExpr = new CastExpr(NULL, expr);
+
+    castExpr->_srcType = type;
+    castExpr->_dstType = {VAL_FLOAT};
+    expr = castExpr;
     break;
+    }
   }
 
   return expr;
@@ -299,10 +291,6 @@ static Expr *generateFunction(const char *type, const char *name, char *args, Ex
   return new FunctionExpr(typeExpr, nameToken, nbParms, parms, body, NULL);
 }
 
-static Expr *generateUIFunction(const char *type, const char *name, char *args, Expr *uiExpr, int count, int restLength, Expr **rest) {
-  return new StatementExpr(generateFunction(type, name, args, uiExpr, count, restLength, rest));
-}
-
 Type acceptGroupingExprUnits(GroupingExpr *expr, Parser &parser) {
   Type returnType = {VAL_VOID};
   TokenType type = expr->name.type;
@@ -370,19 +358,19 @@ Type acceptGroupingExprUnits(GroupingExpr *expr, Parser &parser) {
 
     if (exprUI->previous || exprUI->lastChild) {
       // Perform the UI AST magic
-      Expr *clickFunction = generateUIFunction("bool", "onEvent", "int event, int pos0, int pos1, int size0, int size1", exprUI, 1, 0, NULL);
-      Expr *paintFunction = generateUIFunction("void", "paint", "int pos0, int pos1, int size0, int size1", exprUI, 1, 0, NULL);
+      Expr *clickFunction = generateFunction("bool", "onEvent", "int event, int pos0, int pos1, int size0, int size1", exprUI, 1, 0, NULL);
+      Expr *paintFunction = generateFunction("void", "paint", "int pos0, int pos1, int size0, int size1", exprUI, 1, 0, NULL);
       Expr **uiFunctions = new Expr *[2];
 
       uiFunctions[0] = paintFunction;
       uiFunctions[1] = clickFunction;
 
-      Expr *layoutFunction = generateUIFunction("void", "Layout_", NULL, exprUI, 3, 2, uiFunctions);
+      Expr *layoutFunction = generateFunction("void", "Layout_", NULL, exprUI, 3, 2, uiFunctions);
       Expr **layoutExprs = new Expr *[1];
 
       layoutExprs[0] = layoutFunction;
 
-      Expr *valueFunction = generateUIFunction("void", "UI_", NULL, exprUI, 1, 1, layoutExprs);
+      Expr *valueFunction = generateFunction("void", "UI_", NULL, exprUI, 1, 1, layoutExprs);
 
       aCount = 1;
       valueFunction->resolve(parser);
@@ -789,7 +777,13 @@ Type GroupingExpr::resolve(Parser &parser) {
 }
 
 Type CastExpr::resolve(Parser &parser) {
-  return {VAL_VOID};
+  if (typeExpr) {
+    Type type = typeExpr->resolve(parser);
+
+   _dstType = convertType(type);
+  }
+
+  return _dstType;
 }
 
 Type IfExpr::resolve(Parser &parser) {
@@ -914,23 +908,6 @@ Type SetExpr::resolve(Parser &parser) {
   return {VAL_VOID};
 }
 
-Type StatementExpr::resolve(Parser &parser) {
-//  int oldStackSize = getCurrent()->typeStack.size();
-
-  Type type = expr->resolve(parser);
-/*
-  if (expr->type != EXPR_FUNCTION && expr->type != EXPR_DECLARATION) {
-    if (oldStackSize != getCurrent()->typeStack.size())
-      parser.compilerError("COMPILER ERROR: oldStackSize: %d stackSize: %d",
-                           oldStackSize, getCurrent()->typeStack.size());
-
-    if (!IS_VOID(type))
-      expr = new OpcodeExpr(OP_POP, expr);
-  }
-*/
-  return {VAL_VOID};
-}
-
 Type TernaryExpr::resolve(Parser &parser) {
   if (IS_VOID(left->resolve(parser)))
     parser.error("Value must not be void");
@@ -944,12 +921,6 @@ Type TernaryExpr::resolve(Parser &parser) {
 }
 
 Type ThisExpr::resolve(Parser &parser) {
-  return {VAL_VOID};
-}
-
-Type TypeExpr::resolve(Parser &parser) {
-  //  getCurrent()->addDeclaration({VAL_OBJ, (ObjPrimitiveType) {{OBJ_PRIMITIVE_TYPE},
-  //  type}});
   return {VAL_VOID};
 }
 
