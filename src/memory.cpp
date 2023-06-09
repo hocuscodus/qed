@@ -47,7 +47,7 @@ static void freeObject(Obj *object) {
 
     case OBJ_OBJECT: {
       ObjObject *qedObject = (ObjObject *) object;
-      int count = qedObject->getClosure()->function->compiler->fieldCount;
+      int count = 0;//qedObject->getClosure()->function->compiler->fieldCount;
 
       FREE_ARRAY(Value*, qedObject->fields, count);
       FREE(ObjObject, object);

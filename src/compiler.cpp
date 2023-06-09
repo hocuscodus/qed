@@ -15,9 +15,9 @@
 #include "debug.hpp"
 #endif
 
-static std::stack<ObjCallable *> signatures;
+static std::stack<ObjFunction *> signatures;
 
-void pushSignature(ObjCallable *signature) {
+void pushSignature(ObjFunction *signature) {
   signatures.push(signature);
 }
 
@@ -25,22 +25,22 @@ void popSignature() {
   signatures.pop();
 }
 
-static ObjCallable *getSignature() {
+static ObjFunction *getSignature() {
   return signatures.empty() ? NULL : signatures.top();
 }
 
 Compiler *Compiler::current = NULL;
+extern std::stringstream &line();
 
-ObjFunction *Compiler::compile(Parser &parser) {
-  this->parser = &parser;
-  beginScope(newFunction({VAL_VOID}, NULL, 0));
+ObjFunction *Compiler::compile(GroupingExpr *expr) {
+  pushScope();
 
 #ifdef DEBUG_PRINT_CODE
   printf("Original parse: ");
-  parser.expr->astPrint();
+  expr->astPrint();
   printf("\n");
 #endif
-/*  Expr *cpsExpr = parser.expr->toCps([](Expr *expr) {
+/*  Expr *cpsExpr = expr->toCps([](Expr *expr) {
     return expr;
   });
 #ifdef DEBUG_PRINT_CODE
@@ -49,14 +49,14 @@ ObjFunction *Compiler::compile(Parser &parser) {
   printf("\n");
 #endif
 */
-  parser.expr->resolve(parser);
+  expr->resolve(*parser);
 
-  if (parser.hadError)
+  if (parser->hadError)
     return NULL;
 
 #ifdef DEBUG_PRINT_CODE
   printf("Adapted parse: ");
-  parser.expr->astPrint();
+  expr->astPrint();
   printf("\n          ");
   for (int i = 0; i < declarationCount; i++) {
     Token *token = &declarations[i].name;
@@ -68,24 +68,62 @@ ObjFunction *Compiler::compile(Parser &parser) {
   }
   printf("\n");
 #endif
-  parser.expr->toCode(parser, function);
+  line() << "const canvas = document.getElementById(\"canvas\");\n";
+  line() << "let postCount = 1;\n";
+  line() << "let attributeStacks = [];\n";
+  line() << "const ctx = canvas.getContext(\"2d\");\n";
+  line() << "function toColor(color) {return \"#\" + color.toString(16).padStart(6, '0');}\n";
+  line() << "let getAttribute = function(index) {\n";
+  line() << "  return attributeStacks[index][attributeStacks[index].length - 1];\n";
+  line() << "}\n";
 
-  if (parser.hadError)
+  expr->toCode(*parser, function);
+
+  line() << "this.pushAttribute(4, 20);\n";
+  line() << "this.pushAttribute(10, 0);\n";
+  line() << "this.pushAttribute(11, 1.0);\n";
+  line() << "function _refresh() {\n";
+  line() << "  if (--postCount == 0) {\n";
+  line() << "    globalThis$.ui_ = new globalThis$.UI_();\n";
+  line() << "    globalThis$.layout_ = new globalThis$.ui_.Layout_();\n";
+  line() << "    ctx.globalAlpha = 1.0;\n";
+  line() << "    ctx.clearRect(0, 0, canvas.width, canvas.height);\n";
+  line() << "    globalThis$.layout_.paint(0, 0, globalThis$.layout_.size >> 16, globalThis$.layout_.size & 65535);\n";
+  line() << "  }\n";
+  line() << "}\n";
+  line() << "_refresh();\n";
+  line() << "canvas.addEventListener(\"mousedown\", function(ev) {\n";
+  line() << "  postCount++;\n";
+  line() << "  var rect = canvas.getBoundingClientRect();\n";
+  line() << "  globalThis$.layout_.onEvent(0, ev.clientX - rect.left, ev.clientY - rect.top, globalThis$.layout_.size >> 16, globalThis$.layout_.size & 65535);\n";
+  line() << "  globalThis$._refresh();\n";
+  line() << "  });\n";
+  line() << "canvas.addEventListener(\"mouseup\", function(ev) {\n";
+  line() << "  postCount++;\n";
+  line() << "  var rect = canvas.getBoundingClientRect();\n";
+  line() << "  globalThis$.layout_.onEvent(1, ev.clientX - rect.left, ev.clientY - rect.top, globalThis$.layout_.size >> 16, globalThis$.layout_.size & 65535);\n";
+  line() << "  globalThis$._refresh();\n";
+  line() << "});\n";
+  line() << "canvas.onselectstart = function () { return false; }\n";
+
+  if (parser->hadError)
     function->chunk.reset();
 
-  current = enclosing;
+  endScope();
 
-  return parser.hadError ? NULL : function;
+  return parser->hadError ? NULL : function;
+}
+
+void Compiler::pushScope() {
+  this->enclosing = current;
+  current = this;
 }
 
 Token token = buildToken(TOKEN_IDENTIFIER, "", 0, -1);
 Declaration *Compiler::beginScope(ObjFunction *function) {
   parser = current ? current->parser : parser;
-  this->enclosing = current;
-  current = this;
+  pushScope();
   function->compiler = this;
-  fieldCount = 1;
-  declarationStart = 0;
   declarationCount = 0;
   vCount = 1;
   this->function = function;
@@ -94,24 +132,17 @@ Declaration *Compiler::beginScope(ObjFunction *function) {
     ObjString *enclosingNameObj = enclosing->function->name;
     std::string enclosingName = enclosingNameObj ? std::string("_") + enclosingNameObj->chars : "";
 
-    prefix = enclosing->prefix + enclosingName;
     enclosing->function->add(function);
   }
-  else
-    prefix = "qni";
 
   return addDeclaration({VAL_OBJ, &function->obj}, token, NULL, false);
 }
 
 void Compiler::beginScope() {
   parser = current->parser;
-  this->enclosing = current;
-  current = this;
-  fieldCount = 0;
-  declarationStart = enclosing->declarationStart + enclosing->declarationCount;
+  pushScope();
   declarationCount = 0;
   function = enclosing->function;
-  prefix = enclosing->prefix;
 }
 
 void Compiler::endScope() {
@@ -162,7 +193,7 @@ Type &Compiler::peekDeclaration() {
 
 int Compiler::resolveReference(Token *name) {
   int found = -1;
-  ObjCallable *signature = getSignature();
+  ObjFunction *signature = getSignature();
 
   for (int i = declarationCount - 1; found < 0 && i >= 0; i--) {
     Declaration *dec = &declarations[i];
@@ -176,15 +207,15 @@ int Compiler::resolveReference(Token *name) {
       if (signature && IS_OBJ(type) && name->getString().find("Instance") == std::string::npos && strcmp(name->getString().c_str(), "post"))
         switch (AS_OBJ_TYPE(type)) {
         case OBJ_FUNCTION: {
-          ObjCallable *callable = AS_FUNCTION_TYPE(type);
-          bool isSignature = signature->arity == callable->arity;
+          ObjFunction *callable = AS_FUNCTION_TYPE(type);
+          bool isSignature = signature->compiler->declarationCount == callable->expr->arity;
 
-          for (int index = 0; isSignature && index < signature->arity; index++)
+          for (int index = 0; isSignature && index < callable->expr->arity; index++)
             isSignature = signature->compiler->declarations[index + 1].type.equals(callable->compiler->declarations[index + 1].type);
 
-          found = isSignature ? i : -2 - i - declarationStart; // -2 = found name, no good signature yet
+          found = isSignature ? i : -2 - i; // -2 = found name, no good signature yet
           break;
-        }
+        }/*
         case OBJ_FUNCTION_PTR: {
           ObjFunctionPtr *callable = (ObjFunctionPtr *)type.objType;
           bool isSignature = signature->arity == callable->arity;
@@ -192,15 +223,15 @@ int Compiler::resolveReference(Token *name) {
           for (int index = 0; isSignature && index < signature->arity; index++)
             isSignature = signature->compiler->declarations[index].type.equals(callable->parms[index + 1]);
 
-          found = isSignature ? i : -2 - i - declarationStart; // -2 = found name, no good signature yet
+          found = isSignature ? i : -2 - i; // -2 = found name, no good signature yet
           break;
-        }
+        }*/
         default:
           parser->error("Variable '%.*s' is not a call.", name->length, name->start);
-          return -2 - i - declarationStart;
+          return -2 - i;
         }
       else
-        found = declarationStart + i;
+        found = i;
     }
   }
 
@@ -211,16 +242,16 @@ int Compiler::resolveReference2(Token *name) {
   int found = resolveReference(name);
 
   if (found <= -2) {
-    ObjCallable *signature = getSignature();
+    ObjFunction *signature = getSignature();
     char parms[512] = "";
     char buf[2048];
-    Declaration *dec = &declarations[-2 - found - declarationStart];
+    Declaration *dec = &declarations[-2 - found];
     Type type = dec->type;
-    ObjCallable *callable = AS_FUNCTION_TYPE(type);
+    ObjFunction *callable = AS_FUNCTION_TYPE(type);
 
     sprintf(buf, "'%.*s(", name->length, name->start);
 
-    for (int index = 0; index < callable->arity; index++) {
+    for (int index = 0; index < callable->expr->arity; index++) {
       if (index)
         strcat(buf, ", ");
 
@@ -229,7 +260,7 @@ int Compiler::resolveReference2(Token *name) {
 
     strcat(buf, ")'");
 
-    for (int index = 0; index < signature->arity; index++) {
+    for (int index = 0; index < signature->compiler->declarationCount; index++) {
       if (index)
         strcat(parms, ", ");
 
@@ -279,44 +310,43 @@ int Compiler::addUpvalue(uint8_t index, Declaration *declaration, bool isDeclara
 
 Type Compiler::resolveReferenceExpr(ReferenceExpr *expr) {
   Compiler *current = this;
+  int index = -1;
 
   while (true) {
-    expr->index = current->resolveReference2(&expr->name);
+    index = current->resolveReference2(&expr->name);
 
-    if (expr->index == -1 && current->inBlock())
+    if (index == -1 && current->inBlock())
       current = current->enclosing;
     else {
-      if (expr->index >= 0)
+//      if (index >= 0)
 ;//        expr->revIndex = expr->index - getDeclarationCount();
       break;
     }
   }
 
-  if (expr->index == -1)
-    if ((expr->index = current->resolveUpvalue(&expr->name)) != -1) {
-      expr->upvalueFlag = true;
-      expr->_declaration = function->upvalues[expr->index].declaration;
-    }
+  if (index == -1)
+    if ((index = current->resolveUpvalue(&expr->name)) != -1)
+      expr->_declaration = function->upvalues[index].declaration;
     else {
       parser->error("Variable '%.*s' must be defined", expr->name.length, expr->name.start);
       expr->_declaration = NULL;
     }
   else
-    if (expr->index >= 0)
-      expr->_declaration = &current->getDeclaration(expr->index);
+    if (index >= 0)
+      expr->_declaration = &current->getDeclaration(index);
     else {
-      expr->index = -1;
+      index = -1;
       expr->_declaration = NULL;
     }
 
-  return expr->_declaration ? expr->_declaration->type : (Type) {VAL_VOID};
+  return expr->_declaration ? expr->_declaration->type : (Type) {VAL_UNKNOWN};
 }
 
-void Compiler::checkDeclaration(Type returnType, ReferenceExpr *expr, ObjCallable *signature) {
+void Compiler::checkDeclaration(Type returnType, ReferenceExpr *expr, ObjFunction *signature) {
   expr->_declaration = checkDeclaration(returnType, expr->name, signature);
 }
 
-Declaration *Compiler::checkDeclaration(Type returnType, Token &name, ObjCallable *signature) {
+Declaration *Compiler::checkDeclaration(Type returnType, Token &name, ObjFunction *signature) {
   Declaration *peerDeclaration = NULL;
   bool parentFlag = false;
 

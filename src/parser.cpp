@@ -80,18 +80,20 @@ Parser::Parser(Scanner &scanner) : scanner(scanner) {
   panicMode = false;
 
   advance();
+  advance();
 }
 
 void Parser::advance() {
   previous = current;
+  current = next;
 
   for (;;) {
-    current = scanner.scanToken();
+    next = scanner.scanToken();
 
-    if (current.type != TOKEN_ERROR)
+    if (next.type != TOKEN_ERROR)
       break;
 
-    errorAtCurrent(current.start);
+    errorAtCurrent(next.start);
   }
 }
 
@@ -115,6 +117,10 @@ bool Parser::check(TokenType *endGroupTypes) {
     checked = check(endGroupTypes[index]);
 
   return checked;
+}
+
+bool Parser::checkNext(TokenType type) {
+  return next.type == type;
 }
 
 bool Parser::match(TokenType type) {
@@ -159,10 +165,12 @@ void Parser::errorAt(Token *token, const char *fmt, ...) {
 #undef FORMAT_MESSAGE
 
 ObjFunction *Parser::compile() {
-  return parse() ? expr->_compiler.compile(*this) : NULL;
+  GroupingExpr *expr = (GroupingExpr *) parse();
+
+  return expr ? expr->_compiler.compile(expr) : NULL;
 }
 
-bool Parser::parse() {
+Expr *Parser::parse() {
   /*
     int line = -1;
 
@@ -179,9 +187,28 @@ bool Parser::parse() {
       if (token.type == TOKEN_EOF) break;
     }
   */
-  expr = (GroupingExpr *) grouping(TOKEN_EOF, "Expect end of file.");
+  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_EOF, "-", 1, -1), 0, NULL, NULL);
+  FunctionExpr *functionExpr = new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, "main", 4, -1), 0, group);
 
-  return !hadError;
+  group->_compiler.groupingExpr = group;
+  group->_compiler.parser = this;
+  functionExpr->_function.expr = functionExpr;
+  functionExpr->_function.type = {VAL_VOID};
+  functionExpr->_function.name = NULL;//copyString(name.start, name.length);
+  group->_compiler.beginScope(&functionExpr->_function);
+  expList(group, TOKEN_EOF, "Expect end of file.");
+  group->_compiler.endScope();
+////////
+/*  Compiler *compiler = new Compiler;
+
+  compiler->parser = this;
+  compiler->beginScope(newFunction({VAL_VOID}, NULL, 0));
+
+  Expr *expr = grouping(TOKEN_EOF, compiler, "Expect end of file.");
+
+  compiler->endScope();
+*/
+  return hadError ? NULL : group;
 }
 
 void Parser::passSeparator() {
@@ -411,14 +438,14 @@ Expr *Parser::primitiveType() {
   case 'v':
     switch (previous.start[1]) {
     case 'a':
-      return new ReferenceExpr(previous, VAL_VAR, false);
+      return new ReferenceExpr(previous, {VAL_UNKNOWN});
     case 'o':
-      return new ReferenceExpr(previous, VAL_VOID, false);
+      return new ReferenceExpr(previous, {VAL_VOID});
     }
-  case 'b': return new ReferenceExpr(previous, VAL_BOOL, false);
-  case 'i': return new ReferenceExpr(previous, VAL_INT, false);
-  case 'f': return new ReferenceExpr(previous, VAL_FLOAT, false);
-  case 'S': return new ReferenceExpr(previous, VAL_OBJ, false);
+  case 'b': return new ReferenceExpr(previous, {VAL_BOOL});
+  case 'i': return new ReferenceExpr(previous, {VAL_INT});
+  case 'f': return new ReferenceExpr(previous, {VAL_FLOAT});
+  case 'S': return new ReferenceExpr(previous, stringType);
   default: return NULL; // Unreachable.
   }
 }
@@ -427,6 +454,7 @@ Expr *Parser::grouping() {
   char closingChar;
   TokenType endGroupType;
   char errorMessage[64];
+  GroupingExpr *group = new GroupingExpr(previous, 0, NULL, NULL);
 
   switch (previous.type) {
   case TOKEN_LEFT_PAREN:
@@ -441,7 +469,22 @@ Expr *Parser::grouping() {
   }
 
   sprintf(errorMessage, "Expect '%c' after expression.", closingChar);
-  return grouping(endGroupType, errorMessage);
+  group->_compiler.groupingExpr = group;
+  group->_compiler.beginScope();
+  expList(group, endGroupType, errorMessage);
+  group->_compiler.endScope();
+
+  if (endGroupType == TOKEN_RIGHT_PAREN && (statementExprs & (1 << scopeDepth)) != 0)
+    if (group->count == 1) {
+      Expr *exp = group->expressions[group->count - 1];
+
+      RESIZE_ARRAY(Expr *, group->expressions, 1, 0);
+      return exp;
+    }
+    else
+      return NULL;
+
+  return group;
 }
 
 UIAttributeExpr *Parser::attribute(TokenType endGroupType) {
@@ -512,9 +555,7 @@ UIDirectiveExpr *Parser::directive(TokenType endGroupType, UIDirectiveExpr *prev
   return newNode(childDir, attCount, attributeList, previous, lastChild);
 }
 
-Expr *Parser::grouping(TokenType endGroupType, const char *errorMessage) {
-  int count = 0;
-  Expr **expList = NULL;
+void Parser::expList(GroupingExpr *groupingExpr, TokenType endGroupType, const char *errorMessage) {
   bool uiFlag = false;
 
   passSeparator();
@@ -529,39 +570,17 @@ Expr *Parser::grouping(TokenType endGroupType, const char *errorMessage) {
       statementExprs &= ~(1 << scopeDepth);
       Expr *exp = declaration(endGroupType);
 
-      expList = RESIZE_ARRAY(Expr *, expList, count, count + 1);
-      expList[count++] = exp;
+      groupingExpr->expressions = RESIZE_ARRAY(Expr *, groupingExpr->expressions, groupingExpr->count, groupingExpr->count + 1);
+      groupingExpr->expressions[groupingExpr->count++] = exp;
     }
   }
 
-  Expr *ui = uiFlag ? directive(endGroupType, NULL) : NULL;
+  if (uiFlag)
+    groupingExpr->ui = directive(endGroupType, NULL);
 
   consume(endGroupType, errorMessage);
-  bool wasStatementExpr = (statementExprs & (1 << scopeDepth)) != 0;/*
-  StatementExpr *exp = endGroupType == TOKEN_RIGHT_PAREN && wasStatementExpr ? ((StatementExpr *) expList[count - 1]) : NULL;
-
-  if (exp != NULL) {
-    expList[count - 1] = exp->expr;
-    exp->expr = NULL;
-    exp->destroy();
-  }
-
   scopeDepth--;
-  return new GroupingExpr(previous, count, expList, 0, ui);*/
-  Expr *exp = endGroupType == TOKEN_RIGHT_PAREN && wasStatementExpr ? expList[count - 1] : NULL;
-
-  if (exp) {
-    if (count == 1)
-      RESIZE_ARRAY(Expr *, expList, 1, 0);
-    else {
-      expList[count - 1] = exp;
-      exp = NULL;
-    }
-  }
-
-  scopeDepth--;
-  return exp != NULL ? exp : new GroupingExpr(previous, count, expList, 0, ui);
- }
+}
 
 Expr *Parser::array() {
   TokenType tokens[] = {TOKEN_RIGHT_BRACKET, TOKEN_COMMA, TOKEN_ELSE, TOKEN_EOF};
@@ -608,7 +627,33 @@ Expr *Parser::string() {
 }
 
 Expr *Parser::variable() {
-  return new ReferenceExpr(previous, -1, false);
+  int index = -1;
+  Compiler *current = getCurrent();
+  Declaration *declaration = NULL;
+
+  while (true) {
+    index = current->resolveReference2(&previous);
+
+    if (index == -1 && current->inBlock())
+      current = current->enclosing;
+    else {
+      if (index >= 0)
+        declaration = &current->getDeclaration(index);
+;//        expr->revIndex = expr->index - getDeclarationCount();
+      break;
+    }
+  }
+
+  if (index == -1) {
+    if ((index = current->resolveUpvalue(&previous)) != -1)
+      declaration = current->function->upvalues[index].declaration;
+  }
+
+  ReferenceExpr *expr = new ReferenceExpr(previous, declaration ? declaration->type : (Type) {VAL_UNKNOWN});
+
+  expr->_declaration = declaration;
+  return expr;
+//  return declaration ? new TypeExpr(previous, false, false, 0, index) : NULL;//declaration->type : (Type) {VAL_VOID};
 }
 
 Expr *Parser::unary() {
@@ -680,73 +725,66 @@ DeclarationExpr *Parser::parseVariable(TokenType *endGroupTypes, const char *err
   return declareVariable(typeExp, endGroupTypes);
 }
 
+extern bool isType(Type &type);
+extern Type convertType(Type &type);
+
 Expr *Parser::expression(TokenType *endGroupTypes) {
-  int count = 0;
-  Expr **expList = NULL;
   Expr *exp = parsePrecedence((Precedence)(PREC_NONE + 1));
 
   if (exp == NULL)
     error("Expect expression.");
 
   if (exp->type == EXPR_REFERENCE) {
-    if (check(TOKEN_IDENTIFIER)) {
-      consume(TOKEN_IDENTIFIER, "Expect name identifier.");
+    if (check(TOKEN_IDENTIFIER) && (checkNext(TOKEN_EQUAL) || checkNext(TOKEN_LEFT_PAREN) || checkNext(TOKEN_SEPARATOR))) {
+      consume(TOKEN_IDENTIFIER, "Expect name identifier after type.");
 
       Token name = previous;
 
       if(match(TOKEN_LEFT_PAREN)) {
-        int arity = 0;
-        DeclarationExpr **parameters = NULL;
+        if (IS_UNKNOWN(((ReferenceExpr *) exp)->returnType))
+          error("Return type not known");
 
+        GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "}", 1, -1), 0, NULL, NULL);
+        FunctionExpr *functionExpr = new FunctionExpr(exp, name, 0, group);
+
+        functionExpr->_function.expr = functionExpr;
+        functionExpr->_function.type = ((ReferenceExpr *) exp)->returnType;
+        functionExpr->_function.name = copyString(name.start, name.length);
+        group->_compiler.groupingExpr = group;
+        group->_compiler.beginScope(&functionExpr->_function);
+  //      bindFunction(compiler.prefix, function);
         passSeparator();
 
         if (!check(TOKEN_RIGHT_PAREN))
           do {
             DeclarationExpr *param = parseVariable(endGroupTypes, "Expect parameter name.");
 
-            parameters = RESIZE_ARRAY(DeclarationExpr *, parameters, arity, arity + 1);
-            parameters[arity++] = param;
+            if (param->typeExpr->type == EXPR_REFERENCE && !IS_UNKNOWN(((ReferenceExpr *) param->typeExpr)->returnType)) {
+              group->expressions = RESIZE_ARRAY(Expr *, group->expressions, group->count, group->count + 1);
+              group->expressions[group->count++] = param;
+              group->_compiler.addDeclaration(((ReferenceExpr *) param->typeExpr)->returnType, param->name, NULL, false);
+            }
+            else
+              error("Parameter %d not typed correctly", group->count + 1);
           } while (match(TOKEN_COMMA));
 
         consume(TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
         consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.");
 
-        GroupingExpr *body = (GroupingExpr *) grouping(TOKEN_RIGHT_BRACE, "Expect '}' after expression.");
-  /*
-    if (body && body->type == EXPR_GROUPING && ((GroupingExpr *) bodyExpr)->name.type == TOKEN_RIGHT_BRACE)
-      body = (GroupingExpr *) bodyExpr;
-    else {
-      Expr **expList = bodyExpr ? RESIZE_ARRAY(Expr *, NULL, 0, 1) : NULL;
-
-      if (expList)
-        expList[0] = bodyExpr;
-
-      body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), expList ? 1 : 0, expList, 0, NULL);
-    }
-  */
-        return new FunctionExpr(exp, name, arity, parameters, body, NULL);
+        group->name = previous;
+        functionExpr->arity = group->count;
+        functionExpr->_declaration = getCurrent()->enclosing->checkDeclaration({VAL_OBJ, &functionExpr->_function.obj}, name, &functionExpr->_function);
+        expList(group, TOKEN_RIGHT_BRACE, "Expect '}' after expression.");
+        group->_compiler.endScope();
+        return functionExpr;
       }
-      else {
-        exp = declareVariable(exp, endGroupTypes);/*
-        if(match(TOKEN_EQUAL)) {
-          Token op = previous;
-          Expr *right = parsePrecedence(PREC_ASSIGNMENT);
-
-          expList = RESIZE_ARRAY(Expr *, expList, 0, 2);
-          expList[count++] = exp;
-          expList[count++] = new AssignExpr(new ReferenceExpr(name, -1, false), op, right, OP_FALSE);
-        }
-        else
-          if (check(endGroupTypes) || check(TOKEN_EOF)) {
-            expList = RESIZE_ARRAY(Expr *, expList, 0, 2);
-            expList[count++] = exp;
-            expList[count++] = new ReferenceExpr(name, -1, false);
-          }
-          else
-            printf("No comprende");*/
-      }
+      else
+        exp = declareVariable(exp, endGroupTypes);
     }
   }
+
+  int count = 0;
+  Expr **expList = NULL;
 
   while (!check(endGroupTypes) && !check(TOKEN_EOF)) {
     Expr *exp2 = parsePrecedence((Precedence)(PREC_NONE + 1));
@@ -763,23 +801,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
     expList[count++] = exp2;
   }
 
-  return expList != NULL ? new ListExpr(count, expList) : exp;
-}
-
-Type Parser::readType() {
-  if (match(TOKEN_TYPE_LITERAL))
-    switch (previous.start[0]) {
-    case 'v': return {VAL_VOID, NULL};
-    case 'b': return {VAL_BOOL};
-    case 'i': return {VAL_INT};
-    case 'f': return {VAL_FLOAT};
-    case 'S': return stringType;
-//    default: return {VAL_VOID, &objString}; // Unreachable.
-    }
-  else {
-    consume(TOKEN_IDENTIFIER, "Expect type.");
-    return {VAL_VOID, (Obj *) new ReferenceExpr(previous, -1, false)};
-  }
+  return expList ? new ListExpr(count, expList) : exp;
 }
 
 Expr *Parser::varDeclaration(TokenType endGroupType) {
@@ -828,17 +850,19 @@ Expr *Parser::forStatement(TokenType endGroupType) {
 
     expList[0] = new UnaryExpr(buildToken(TOKEN_PRINT, "print", 5, -1), body);
     expList[1] = new UnaryExpr(buildToken(TOKEN_PRINT, "print", 5, -1), increment);
-    body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 2, expList, 0, NULL);
+    body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 2, expList, NULL);
+    ((GroupingExpr *) body)->_compiler.groupingExpr = (GroupingExpr *) body;
   }
 
-  body = new BinaryExpr(condition, buildToken(TOKEN_WHILE, "while", 5, -1), body);
+  body = new WhileExpr(condition, body);
 
   if (initializer != NULL) {
     Expr **expList = RESIZE_ARRAY(Expr *, NULL, 0, 2);
 
     expList[0] = initializer;
     expList[1] = body;
-    body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 2, expList, 0, NULL);
+    body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 2, expList, NULL);
+    ((GroupingExpr *) body)->_compiler.groupingExpr = (GroupingExpr *) body;
   }
 
   return body;

@@ -61,7 +61,7 @@ static void printObjType(Obj *obj) {
   switch(obj->type) {
     case OBJ_STRING: printf("String"); return;
     case OBJ_FUNCTION: {
-      ObjString *name = ((ObjCallable *) obj)->name;
+      ObjString *name = ((ObjFunction *) obj)->name;
 
       printf("%.s", name->length, name->chars);
       return;
@@ -94,7 +94,12 @@ static void printType(Type *type) {
 }
 
 void AssignExpr::astPrint() {
-  printf("(%.*s %d ", op.length, op.start, varExp ? varExp->index : -1);
+  printf("(%.*s ", op.length, op.start);
+
+  if (varExp)
+    varExp->astPrint();
+
+  printf(" ");
 
   if (value)
     value->astPrint();
@@ -165,12 +170,20 @@ void DeclarationExpr::astPrint() {
 
 void FunctionExpr::astPrint() {
   printf("(fun %.*s(", name.length, name.start);
-  for (int index = 0; index < count; index++) {
+  for (int index = 0; index < arity; index++) {
     printf(", ");
-    params[index]->astPrint();
+    body->expressions[index]->astPrint();
   }
   printf(") {");
-  body->astPrint();
+  printf("(group'%.*s' ", body->name.length, body->name.start);
+  for (int index = arity; index < body->count; index++) {
+    printf(", ");
+    body->expressions[index]->astPrint();
+    printf(";");
+  }
+  if (body->ui)
+    body->ui->astPrint();
+  printf(")");
   printf(") }");
 }
 
@@ -299,6 +312,10 @@ void ThisExpr::astPrint() {
   printf("this");
 }
 
+void TypeExpr::astPrint() {
+  printf("(type %.*s)", name.length, name.start);
+}
+
 void UnaryExpr::astPrint() {
   printf("(%.*s ", op.length, op.start);
   right->astPrint();
@@ -306,7 +323,7 @@ void UnaryExpr::astPrint() {
 }
 
 void ReferenceExpr::astPrint() {
-  printf("(var %s %d)", name.getString().c_str(), index);
+  printf("(%s %.*s)", returnType.toString(), name.length, name.start);
 }
 
 void WhileExpr::astPrint() {

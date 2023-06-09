@@ -23,7 +23,7 @@ static std::stringstream &str() {
   return s;
 }
 
-static std::stringstream &line() {
+std::stringstream &line() {
   for (int index = 0; index < nTabs; index++)
     str() << "  ";
 
@@ -61,32 +61,25 @@ void UIDirectiveExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 void BinaryExpr::toCode(Parser &parser, ObjFunction *function) {
-  if (op.type == TOKEN_WHILE) {
-    str() << "while(" << left << ") ";
-    startBlock();
-    right->toCode(parser, function);
-    endBlock();
-  } else {
-    str() << "(";
-    left->toCode(parser, function);
-    str() << " ";
+  str() << "(";
+  left->toCode(parser, function);
+  str() << " ";
 
-    switch (op.type) {
-      case TOKEN_EQUAL_EQUAL:
-        str() << "===";
-        break;
-      case TOKEN_BANG_EQUAL:
-        str() << "!==";
-        break;
-      default:
-        str() << op.getString();
-        break;
-    }
-
-    str() << " ";
-    right->toCode(parser, function);
-    str() << ")";
+  switch (op.type) {
+    case TOKEN_EQUAL_EQUAL:
+      str() << "===";
+      break;
+    case TOKEN_BANG_EQUAL:
+      str() << "!==";
+      break;
+    default:
+      str() << op.getString();
+      break;
   }
+
+  str() << " ";
+  right->toCode(parser, function);
+  str() << ")";
 }
 
 void CallExpr::toCode(Parser &parser, ObjFunction *function) {
@@ -136,21 +129,21 @@ void DeclarationExpr::toCode(Parser &parser, ObjFunction *function) {
 void FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
   ObjFunction *function2 = (ObjFunction *) _declaration->type.objType;
 
-  if (this->function != function2)
-    function2 = this->function;
+  if (&_function != function2)
+    function2 = &_function;
 
   str() << (_declaration->isField ? "this." : "let ");
   str() << _declaration->getRealName() << " = function(";
 
-  for (int index = 0; index < count; index++) {
+  for (int index = 0; index < arity; index++) {
     if (index)
       str() << ", ";
 
-    str() << params[index]->name.getString();
+    str() << ((DeclarationExpr *) body->expressions[index])->name.getString();
   }
 
-  if (this->function->isUserClass()) {
-    if (count)
+  if (_function.isUserClass()) {
+    if (arity)
       str() << ", ";
 
     str() << "ReturnHandler_";
@@ -161,14 +154,14 @@ void FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
 //    for (ObjFunction *child = this->function->firstChild; this->function; child = child->next)
 //      generator.accept<int>(child->bodyExpr);
   if (body)
-    body->toCode(parser, this->function);
+    body->toCode(parser, &_function);
 
   if (parser.hadError)
     return;
 
 //    emitBytes(OP_CLOSURE, makeConstant(OBJ_VAL(this->function)));
 
-  for (int i = 0; i < this->function->upvalueCount; i++) {
+  for (int i = 0; i < _function.upvalueCount; i++) {
 //      emitByte(this->function->upvalues[i].isField ? 1 : 0);
 //      emitByte(this->function->upvalues[i].index);
   }
@@ -183,28 +176,17 @@ void GetExpr::toCode(Parser &parser, ObjFunction *function) {
 void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
   startBlock();
 
-  if (this == parser.expr) {
-    line() << "const canvas = document.getElementById(\"canvas\");\n";
-    line() << "let postCount = 1;\n";
-    line() << "let attributeStacks = [];\n";
-    line() << "const ctx = canvas.getContext(\"2d\");\n";
-    line() << "function toColor(color) {return \"#\" + color.toString(16).padStart(6, '0');}\n";
-    line() << "let getAttribute = function(index) {\n";
-    line() << "  return attributeStacks[index][attributeStacks[index].length - 1];\n";
-    line() << "}\n";
-  }
-
-  if (function->name ? function->bodyExpr == this : this == parser.expr) {
+  if (function->expr->body == this) {
     bool classFlag = function->isClass();
     bool arityFlag = false;
 
-    for (int index = 0; !arityFlag && index < function->arity; index++)
+    for (int index = 0; !arityFlag && index < function->expr->arity; index++)
       arityFlag = function->compiler->declarations[index + 1].isField;
 
 //    for (int index = 0; !classFlag && index < function->upvalueCount; index++)
 //      classFlag = function->upvalues[index].isField;
 
-    for (int index = 0; index < function->arity; index++) {
+    for (int index = 0; index < function->expr->arity; index++) {
       Declaration &declaration = function->compiler->declarations[index + 1];
 
       if (declaration.isField) {
@@ -233,35 +215,6 @@ void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
 
   if (ui)
     ui->toCode(parser, function);
-
-  if (this == parser.expr) {
-    line() << "this.pushAttribute(4, 20);\n";
-    line() << "this.pushAttribute(10, 0);\n";
-    line() << "this.pushAttribute(11, 1.0);\n";
-    line() << "function _refresh() {\n";
-    line() << "  if (--postCount == 0) {\n";
-    line() << "    globalThis$.ui_ = new globalThis$.UI_();\n";
-    line() << "    globalThis$.layout_ = new globalThis$.ui_.Layout_();\n";
-    line() << "    ctx.globalAlpha = 1.0;\n";
-    line() << "    ctx.clearRect(0, 0, canvas.width, canvas.height);\n";
-    line() << "    globalThis$.layout_.paint(0, 0, globalThis$.layout_.size >> 16, globalThis$.layout_.size & 65535);\n";
-    line() << "  }\n";
-    line() << "}\n";
-    line() << "_refresh();\n";
-    line() << "canvas.addEventListener(\"mousedown\", function(ev) {\n";
-    line() << "  postCount++;\n";
-    line() << "  var rect = canvas.getBoundingClientRect();\n";
-    line() << "  globalThis$.layout_.onEvent(0, ev.clientX - rect.left, ev.clientY - rect.top, globalThis$.layout_.size >> 16, globalThis$.layout_.size & 65535);\n";
-    line() << "  globalThis$._refresh();\n";
-    line() << "  });\n";
-    line() << "canvas.addEventListener(\"mouseup\", function(ev) {\n";
-    line() << "  postCount++;\n";
-    line() << "  var rect = canvas.getBoundingClientRect();\n";
-    line() << "  globalThis$.layout_.onEvent(1, ev.clientX - rect.left, ev.clientY - rect.top, globalThis$.layout_.size >> 16, globalThis$.layout_.size & 65535);\n";
-    line() << "  globalThis$._refresh();\n";
-    line() << "});\n";
-    line() << "canvas.onselectstart = function () { return false; }\n";
-  }
 
   endBlock();
 }
@@ -384,11 +337,28 @@ void TernaryExpr::toCode(Parser &parser, ObjFunction *function) {
 void ThisExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
+void TypeExpr::toCode(Parser &parser, ObjFunction *function) {
+  if (declaration)
+    if (declaration->function->isClass())
+      if (declaration->function == function)
+        str() << "this." << declaration->getRealName();
+      else
+        str() << declaration->function->getThisVariableName() << "." << declaration->getRealName();
+    else
+      str() << declaration->getRealName();
+  else
+    str() << name.getString();
+}
+
 void CastExpr::toCode(Parser &parser, ObjFunction *function) {
   expr->toCode(parser, function);
 }
 
 void WhileExpr::toCode(Parser &parser, ObjFunction *function) {
+  str() << "while(" << condition << ") ";
+  startBlock();
+  body->toCode(parser, function);
+  endBlock();
 }
 
 void UnaryExpr::toCode(Parser &parser, ObjFunction *function) {

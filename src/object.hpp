@@ -73,7 +73,6 @@ struct Declaration {
   Type type;
   Token name;
   bool isField;
-  int realIndex;
   ObjFunction *function;
   Declaration *previous;
   int parentFlag;
@@ -91,13 +90,11 @@ struct Compiler;
 
 struct ObjCallable : ObjNamed {
   Type type;
-  int arity;
   Compiler *compiler;
 
   bool isClass();
   bool isUserClass();
   std::string getThisVariableName();
-  bool isObject();
 };
 
 struct IndexList {
@@ -113,13 +110,12 @@ struct IndexList {
   int get(int index);
 };
 
-struct Expr;
-struct DeclarationExpr;
+struct FunctionExpr;
 
 struct ObjFunction : ObjCallable {
+  FunctionExpr *expr;
   int upvalueCount;
   Upvalue upvalues[UINT8_COUNT];
-  Expr *bodyExpr;
   Chunk chunk;
   Obj *native;
   IndexList *instanceIndexes;
@@ -128,6 +124,8 @@ struct ObjFunction : ObjCallable {
   ObjFunction *firstChild;
   ObjFunction *lastChild;
   ObjFunction *next;
+
+  ObjFunction();
 
   int addUpvalue(uint8_t index, bool isField, Declaration *declaration, Parser &parser);
   void add(ObjFunction *function);
@@ -269,7 +267,6 @@ CoThread *newThread(CoThread *caller);
 ObjInstance *newInstance(ObjCallable *callable);
 ObjObject *newObject(ObjClosure *closure);
 ObjClosure *newClosure(ObjFunction *function, CoThread *parent);
-ObjFunction *newFunction(Type type, ObjString *name, int arity);
 ObjNative *newNative(NativeFn function);
 ObjPrimitive *newPrimitive(char *name, Type type);
 ObjFunctionPtr *newFunctionPtr(Type type, int arity, Type *parms);

@@ -13,10 +13,13 @@ void Expr::destroy() {
   delete this;
 }
 
-ReferenceExpr::ReferenceExpr(Token name, int8_t index, bool upvalueFlag) : Expr(EXPR_REFERENCE) {
+TypeExpr::TypeExpr(Token name, bool functionFlag, bool noneFlag, int numDim, int index, Declaration* declaration) : Expr(EXPR_TYPE) {
   this->name = name;
+  this->functionFlag = functionFlag;
+  this->noneFlag = noneFlag;
+  this->numDim = numDim;
   this->index = index;
-  this->upvalueFlag = upvalueFlag;
+  this->declaration = declaration;
 }
 
 UIAttributeExpr::UIAttributeExpr(Token name, Expr* handler) : Expr(EXPR_UIATTRIBUTE) {
@@ -34,7 +37,7 @@ UIDirectiveExpr::UIDirectiveExpr(int childDir, int attCount, UIAttributeExpr** a
   this->childrenViewFlag = childrenViewFlag;
 }
 
-AssignExpr::AssignExpr(ReferenceExpr* varExp, Token op, Expr* value) : Expr(EXPR_ASSIGN) {
+AssignExpr::AssignExpr(Expr* varExp, Token op, Expr* value) : Expr(EXPR_ASSIGN) {
   this->varExp = varExp;
   this->op = op;
   this->value = value;
@@ -51,11 +54,10 @@ CastExpr::CastExpr(Expr* typeExpr, Expr* expr) : Expr(EXPR_CAST) {
   this->expr = expr;
 }
 
-GroupingExpr::GroupingExpr(Token name, int count, Expr** expressions, int popLevels, Expr* ui) : Expr(EXPR_GROUPING) {
+GroupingExpr::GroupingExpr(Token name, int count, Expr** expressions, Expr* ui) : Expr(EXPR_GROUPING) {
   this->name = name;
   this->count = count;
   this->expressions = expressions;
-  this->popLevels = popLevels;
   this->ui = ui;
 }
 
@@ -89,13 +91,11 @@ DeclarationExpr::DeclarationExpr(Expr* typeExpr, Token name, Expr* initExpr) : E
   this->initExpr = initExpr;
 }
 
-FunctionExpr::FunctionExpr(Expr* typeExpr, Token name, int count, DeclarationExpr** params, GroupingExpr* body, ObjFunction* function) : Expr(EXPR_FUNCTION) {
+FunctionExpr::FunctionExpr(Expr* typeExpr, Token name, int arity, GroupingExpr* body) : Expr(EXPR_FUNCTION) {
   this->typeExpr = typeExpr;
   this->name = name;
-  this->count = count;
-  this->params = params;
+  this->arity = arity;
   this->body = body;
-  this->function = function;
 }
 
 GetExpr::GetExpr(Expr* object, Token name, int index) : Expr(EXPR_GET) {
@@ -124,6 +124,11 @@ LogicalExpr::LogicalExpr(Expr* left, Token op, Expr* right) : Expr(EXPR_LOGICAL)
   this->left = left;
   this->op = op;
   this->right = right;
+}
+
+ReferenceExpr::ReferenceExpr(Token name, Type returnType) : Expr(EXPR_REFERENCE) {
+  this->name = name;
+  this->returnType = returnType;
 }
 
 ReturnExpr::ReturnExpr(Token keyword, Expr* value) : Expr(EXPR_RETURN) {

@@ -69,6 +69,9 @@ void TernaryExpr::cleanExprs() {
 void ThisExpr::cleanExprs() {
 }
 
+void TypeExpr::cleanExprs() {
+}
+
 void UnaryExpr::cleanExprs() {
 }
 

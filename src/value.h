@@ -10,11 +10,12 @@
 #include <array>
 #include "common.h"
 
-#define IS_VOID(type)  ((type).valueType == VAL_VOID)
-#define IS_BOOL(type)  ((type).valueType == VAL_BOOL)
-#define IS_INT(type)   ((type).valueType == VAL_INT)
-#define IS_FLOAT(type) ((type).valueType == VAL_FLOAT)
-#define IS_OBJ(type)   ((type).valueType == VAL_OBJ)
+#define IS_UNKNOWN(type)  ((type).valueType == VAL_UNKNOWN)
+#define IS_VOID(type)     ((type).valueType == VAL_VOID)
+#define IS_BOOL(type)     ((type).valueType == VAL_BOOL)
+#define IS_INT(type)      ((type).valueType == VAL_INT)
+#define IS_FLOAT(type)    ((type).valueType == VAL_FLOAT)
+#define IS_OBJ(type)      ((type).valueType == VAL_OBJ)
 
 #define AS_OBJ_TYPE(type1)    (IS_OBJ(type1) && (type1).objType ? (type1).objType->type : (ObjType) -1)
 
@@ -39,12 +40,12 @@ typedef DirType<int> Point;
 typedef struct Obj Obj;
 
 typedef enum {
+  VAL_UNKNOWN,
   VAL_VOID,
   VAL_BOOL,
   VAL_INT,
   VAL_FLOAT,
   VAL_OBJ,
-  VAL_VAR,
   VAL_POINT,
 } ValueType;
 

@@ -534,8 +534,19 @@ std::string ObjCallable::getThisVariableName() {
   return name ? std::string(name->chars, name->length) + "$this" : "globalThis$";
 }
 
-bool ObjCallable::isObject() {
-  return compiler->inBlock() ? compiler->fieldCount : compiler->fieldCount > 1 || isClass();
+ObjFunction::ObjFunction() {
+  obj.type = OBJ_FUNCTION;
+  type = {VAL_UNKNOWN};
+  upvalueCount = 0;
+  name = NULL;
+  chunk.init();
+  native = NULL;
+  instanceIndexes = new IndexList();
+  eventFlags = 0L;
+  uiFunction = NULL;
+  firstChild = NULL;
+  lastChild = NULL;
+  next = NULL;
 }
 
 int ObjFunction::addUpvalue(uint8_t index, bool isField, Declaration *declaration, Parser &parser) {
@@ -1056,7 +1067,7 @@ ObjInstance *newInstance(ObjCallable *callable) {
 }
 
 ObjObject *newObject(ObjClosure *closure) {
-  int fieldCount = closure->function->compiler->fieldCount;
+  int fieldCount = 0;//closure->function->compiler->fieldCount;
   ObjObject *object = ALLOCATE_OBJ(ObjObject, OBJ_OBJECT);
 
   object->fields = ALLOCATE(Value, fieldCount);
@@ -1079,25 +1090,6 @@ ObjClosure *newClosure(ObjFunction *function, CoThread *parent) {
   closure->upvalues = upvalues;
   closure->upvalueCount = function->upvalueCount;
   return closure;
-}
-
-ObjFunction *newFunction(Type type, ObjString *name, int arity) {
-  ObjFunction *function = ALLOCATE_OBJ(ObjFunction, OBJ_FUNCTION);
-
-  function->type = type;
-  function->arity = arity;
-  function->upvalueCount = 0;
-  function->name = name;
-  function->chunk.init();
-  function->native = NULL;
-  function->instanceIndexes = new IndexList();
-  function->eventFlags = 0L;
-  function->uiFunction = NULL;
-  function->firstChild = NULL;
-  function->lastChild = NULL;
-  function->next = NULL;
-//  new(&function->s) std::stringstream();
-  return function;
 }
 
 ObjNative *newNative(NativeFn function) {

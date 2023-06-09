@@ -60,7 +60,7 @@ Type popType1();
 bool resolve(Compiler *compiler);
 void acceptGroupingExprUnits(GroupingExpr *expr);
 void acceptSubExpr(Expr *expr);
-Expr *parse(const char *source, int index, int replace, Expr *body);
+Expr *parse(GroupingExpr *groupingExpr, const char *source, int index, int replace, Expr *body);
 
 ParseStep getParseStep();
 int getParseDir();
@@ -89,15 +89,15 @@ int uiParseCount = -1;
 
 static Obj objInternalType = {OBJ_INTERNAL};
 static Obj *primitives[] = {
+  &newPrimitive("var", {VAL_UNKNOWN})->obj,
   &newPrimitive("void", {VAL_VOID})->obj,
   &newPrimitive("bool", {VAL_BOOL})->obj,
   &newPrimitive("int", {VAL_INT})->obj,
   &newPrimitive("float", {VAL_FLOAT})->obj,
   &newPrimitive("String", stringType)->obj,
-  &newPrimitive("var", {VAL_OBJ, &objInternalType})->obj,
 };
 
-static bool isType(Type &type) {
+bool isType(Type &type) {
   switch (AS_OBJ_TYPE(type)) {
   case OBJ_FUNCTION: {
     ObjString *name = AS_FUNCTION_TYPE(type)->name;
@@ -114,7 +114,7 @@ static bool isType(Type &type) {
   return false;
 }
 
-static Type convertType(Type &type) {
+Type convertType(Type &type) {
   ObjPrimitive *primitiveType = AS_PRIMITIVE_TYPE(type);
 
   return primitiveType ? primitiveType->type : IS_FUNCTION(type) ? (Type) {VAL_OBJ, &newInstance(AS_FUNCTION_TYPE(type))->obj} : type;
@@ -282,21 +282,25 @@ static Expr *generateFunction(const char *type, const char *name, char *args, Ex
 
   for (int index = 0; typeIndex == -1 && index < sizeof(primitives) / sizeof(Obj *); index++)
     if (!strcmp(((ObjPrimitive *) primitives[index])->name->chars, type))
-      typeIndex = index;
+      typeIndex = index; 
 
-  Expr *typeExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, type, strlen(type), -1), typeIndex, false);
+  Expr *typeExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, type, strlen(type), -1), {(ValueType) typeIndex});
   Token nameToken = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
-  GroupingExpr *body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), count + restLength, bodyExprs, 0, NULL);
+  GroupingExpr *body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), count + restLength, bodyExprs, NULL);
+  FunctionExpr *functionExpr = new FunctionExpr(typeExpr, nameToken, nbParms, /*parms, */body);
 
-  return new FunctionExpr(typeExpr, nameToken, nbParms, parms, body, NULL);
+  functionExpr->_function.expr = functionExpr;
+  body->_compiler.groupingExpr = body;
+
+  return functionExpr;
 }
 
-Type acceptGroupingExprUnits(GroupingExpr *expr, Parser &parser) {
+Type acceptGroupingExprUnits(GroupingExpr *expr, int start, Parser &parser) {
   Type returnType = {VAL_VOID};
   TokenType type = expr->name.type;
   bool parenFlag = type == TOKEN_RIGHT_PAREN;
 
-  for (int index = 0; index < expr->count; index++) {
+  for (int index = start; index < expr->count; index++) {
     Expr *subExpr = expr->expressions[index];
 
     if (subExpr->type == EXPR_UIDIRECTIVE) {
@@ -335,7 +339,7 @@ Type acceptGroupingExprUnits(GroupingExpr *expr, Parser &parser) {
 #ifdef DEBUG_PRINT_CODE
         printf("CODE %d\n%s", uiParseCount, str->c_str());
 #endif
-        expr = (GroupingExpr *) parse(str->c_str(), index, 1, expr);
+        expr = (GroupingExpr *) parse(expr, str->c_str(), index, 1, expr);
       }/*
       else {
         getCurrent()->function->eventFlags = exprUI->_eventFlags;
@@ -358,6 +362,80 @@ Type acceptGroupingExprUnits(GroupingExpr *expr, Parser &parser) {
 
     if (exprUI->previous || exprUI->lastChild) {
       // Perform the UI AST magic
+      ss->str("");
+      insertTabs();
+      (*ss) << "void UI_() {\n";
+      nTabs++;
+      processAttrs(exprUI, parser);/*
+      insertTabs();
+      (*ss) << "void Layout_() {\n";
+      nTabs++;
+      pushAreas(exprUI, parser);
+      recalcLayout(exprUI, parser);
+      recalcLayout(exprUI, parser);
+      insertTabs();
+      (*ss) << "void paint(int pos0, int pos1, int size0, int size1) {\n";
+      nTabs++;
+      printf(ss->str().c_str());
+      paint(exprUI, parser);
+      nTabs--;
+      insertTabs();
+      (*ss) << "}\n";
+      insertTabs();
+      (*ss) << "bool onEvent(int event, int pos0, int pos1, int size0, int size1) {\n";
+      nTabs++;
+      onEvent(exprUI, parser);
+      nTabs--;
+      insertTabs();
+      (*ss) << "}\n";
+      nTabs--;
+      insertTabs();
+      (*ss) << "}\n";*/
+      getCurrent()->function->eventFlags = exprUI->_eventFlags;
+
+      for (int ndx2 = -1; (ndx2 = getCurrent()->function->instanceIndexes->getNext(ndx2)) != -1;)
+        (*ss) << "v" << ndx2 << ".ui_ = new v" << ndx2 << ".UI_();\n";
+      nTabs--;
+      insertTabs();
+      (*ss) << "}\n";
+      printf(ss->str().c_str());
+      GroupingExpr *eee = (GroupingExpr *) parse(expr, ss->str().c_str(), 0, 0, NULL);
+//      expr->expressions[expr->count++] = eee->expressions[0];
+      eee->expressions[eee->count - 1]->resolve(parser);
+//      eee->resolve(parser);
+//      insertTabs();
+//      (*ss) << "UI_ ui_;\n";
+//      Type type = getCurrent()->peekDeclaration();// = popType();
+      FunctionExpr *uiFunctionExpr = (FunctionExpr *) eee->expressions[eee->count - 1];
+      ObjFunction *uiFunction = (ObjFunction *) uiFunctionExpr->_declaration->type.objType;
+
+      getCurrent()->function->uiFunction = uiFunction;
+
+//      expr->expressions = RESIZE_ARRAY(Expr *, expr->expressions, expr->count, expr->count + 2);
+//      expr->expressions[expr->count++] = eee->expressions[0];
+      GroupingExpr *uiExpr = (GroupingExpr *) parse(expr, "UI_ ui_;\n", 0, 0, NULL);
+//      expr->expressions[expr->count++] = uiExpr->expressions[0];
+      uiExpr->expressions[uiExpr->count - 1]->resolve(parser);
+
+      uiFunction->compiler->pushScope();
+      ss->str("");
+      insertTabs();
+      (*ss) << "void Layout_() {\n";
+      nTabs++;
+      pushAreas(exprUI, parser);
+      uiParseCount = PARSE_LAYOUT;
+      recalcLayout(exprUI, parser);
+      uiParseCount++;
+      recalcLayout(exprUI, parser);
+      nTabs--;
+      insertTabs();
+      (*ss) << "}\n";
+      printf(ss->str().c_str());
+      GroupingExpr *eee1 = (GroupingExpr *) parse(uiFunctionExpr->body, ss->str().c_str(), 0, 0, NULL);
+//      expr->expressions[expr->count++] = eee->expressions[0];
+      eee1->expressions[eee1->count - 1]->resolve(parser);
+      getCurrent()->endScope();
+/*
       Expr *clickFunction = generateFunction("bool", "onEvent", "int event, int pos0, int pos1, int size0, int size1", exprUI, 1, 0, NULL);
       Expr *paintFunction = generateFunction("void", "paint", "int pos0, int pos1, int size0, int size1", exprUI, 1, 0, NULL);
       Expr **uiFunctions = new Expr *[2];
@@ -377,19 +455,16 @@ Type acceptGroupingExprUnits(GroupingExpr *expr, Parser &parser) {
       Type type = getCurrent()->peekDeclaration();// = popType();
       getCurrent()->function->uiFunction = AS_FUNCTION_TYPE(type);
 //      getCurrent()->declarationCount--;
-      delete exprUI;
-      expr->ui = NULL;
       expr->expressions = RESIZE_ARRAY(Expr *, expr->expressions, expr->count, expr->count + 2);
       expr->expressions[expr->count++] = valueFunction;
       uiParseCount = -1;
       GroupingExpr *uiExpr = (GroupingExpr *) parse("UI_ ui_;\n", 0, 0, NULL);
       expr->expressions[expr->count++] = uiExpr->expressions[0];
-      uiExpr->expressions[0]->resolve(parser);
+      uiExpr->expressions[0]->resolve(parser);*/
     }
-    else {
-      delete exprUI;
-      expr->ui = NULL;
-    }
+
+    delete exprUI;
+    expr->ui = NULL;
   }
 
   return returnType;
@@ -511,7 +586,6 @@ Type CallExpr::resolve(Parser &parser) {
   Compiler compiler;
   ObjFunction signature;
 
-  signature.arity = count;
   signature.compiler = &compiler;
   compiler.function = &signature;
   compiler.function->name = copyString("Capital", 7);
@@ -535,7 +609,7 @@ Type CallExpr::resolve(Parser &parser) {
   case OBJ_FUNCTION: {
     callable = AS_FUNCTION_TYPE(type);
 
-    if (newFlag) {
+    if (newFlag) {/*
       if (handler != NULL) {
         char buffer[256] = "";
 
@@ -548,7 +622,7 @@ Type CallExpr::resolve(Parser &parser) {
         handlerFunction = AS_FUNCTION_TYPE(type);
         getCurrent()->declarationCount--;
       }
-
+*/
       return (Type) {VAL_OBJ, &newInstance(callable)->obj};
     }
     else
@@ -643,7 +717,7 @@ Type DeclarationExpr::resolve(Parser &parser) {
     Type type1 = initExpr->resolve(parser);
     Type internalType = {VAL_OBJ, &objInternalType};
 
-    if (returnType.equals(internalType) || (type.valueType == VAL_OBJ && !type.objType))
+    if (returnType.equals(internalType) || type.valueType == VAL_UNKNOWN)
       returnType = type1;
     else if (!type1.equals(returnType)) {
       initExpr = convertToType(returnType, initExpr, type1, parser);
@@ -689,17 +763,17 @@ Type DeclarationExpr::resolve(Parser &parser) {
 }
 
 Type FunctionExpr::resolve(Parser &parser) {
-  Type type = typeExpr->resolve(parser);
-  Type returnType = convertType(type);
+//  Type type = typeExpr->resolve(parser);
+//  Type returnType = convertType(type);
   Compiler &compiler = body->_compiler;
 
-  function = newFunction(returnType, copyString(name.start, name.length), count);
+//  function = newFunction(returnType, copyString(name.start, name.length), count);
+//  compiler.parser = &parser;
+  compiler.pushScope();
+//  bindFunction(compiler.prefix, function);
 
-  compiler.beginScope(function);
-  bindFunction(compiler.prefix, function);
-
-  for (int index = 0; index < count; index++)
-    params[index]->resolve(parser);
+//  for (int index = 0; index < count; index++)
+//    params[index]->resolve(parser);
 
   const char *str = name.getString().c_str();
   char firstChar = str[0];
@@ -709,21 +783,21 @@ Type FunctionExpr::resolve(Parser &parser) {
     char buffer[256] = "";
     char buf[512];
 
-    if (!IS_VOID(returnType))
-      sprintf(buffer, "%s _ret", returnType.toString());
+    if (!IS_VOID(compiler.function->type))
+      sprintf(buffer, "%s _ret", compiler.function->type.toString());
 
     sprintf(buf, "void ReturnHandler_(%s) {};", buffer);
 
-    Expr *handlerExpr = parse(buf, 0, 0, NULL);
+//    Expr *handlerExpr = parse(NULL, buf, 0, 0, NULL);
 
-    handlerExpr->resolve(parser);
+//    handlerExpr->resolve(parser);
   }
 
-  _declaration = getCurrent()->enclosing->checkDeclaration({VAL_OBJ, &function->obj}, name, function);
-  function->bodyExpr = body;
+//  _declaration = getCurrent()->enclosing->checkDeclaration({VAL_OBJ, &function->obj}, name, function);
+//  function->bodyExpr = body;
 
   if (body)
-    acceptGroupingExprUnits(body, parser);
+    acceptGroupingExprUnits(body, arity, parser);
 
   compiler.endScope();
   return {VAL_VOID};
@@ -765,13 +839,12 @@ Type GroupingExpr::resolve(Parser &parser) {
   Type parenType;
 
   if (groupFlag) {
-    _compiler.beginScope();
-    parenType = acceptGroupingExprUnits(this, parser);
-    popLevels = _compiler.declarationCount;
+    _compiler.pushScope();
+    parenType = acceptGroupingExprUnits(this, 0, parser);
     _compiler.endScope();
   }
   else
-    parenType = acceptGroupingExprUnits(this, parser);
+    parenType = acceptGroupingExprUnits(this, 0, parser);
 
   return parenType;
 }
@@ -801,16 +874,16 @@ Type IfExpr::resolve(Parser &parser) {
 Type ArrayExpr::resolve(Parser &parser) {
   ObjArray *objArray = newArray();
   Type type = {VAL_OBJ, &objArray->obj};
-  Compiler compiler;
+//  Compiler compiler;
 
-  compiler.beginScope(newFunction({VAL_VOID}, NULL, 0));
+//  compiler.beginScope(newFunction({VAL_VOID}, NULL, 0));
 
   for (int index = 0; index < count; index++)
     objArray->elementType = expressions[index]->resolve(parser);
 
-  compiler.endScope();
-  compiler.function->type = type;
-  function = compiler.function;
+//  compiler.endScope();
+//  compiler.function->type = type;
+//  function = compiler.function;
   return type;
 }
 
@@ -863,7 +936,7 @@ Type ReturnExpr::resolve(Parser &parser) {
       strcpy(buf, "{void Ret_() {ReturnHandler_($EXPR)}; post(Ret_)}");
     }
 
-    value = parse(buf, 0, 0, NULL);
+    value = parse(NULL, buf, 0, 0, NULL);
   }
 
   // sync processing below
@@ -924,6 +997,19 @@ Type ThisExpr::resolve(Parser &parser) {
   return {VAL_VOID};
 }
 
+Type TypeExpr::resolve(Parser &parser) {/*
+  if (index != -1) {
+    Obj *obj = primitives[index];
+
+    index = -1;
+    _declaration = NULL;
+    return {VAL_OBJ, obj};
+  }
+
+  return getCurrent()->resolveReferenceExpr(this);*/
+  return {VAL_VOID};
+}
+
 Type UnaryExpr::resolve(Parser &parser) {
   Type type = right->resolve(parser);
 
@@ -960,13 +1046,8 @@ Type UnaryExpr::resolve(Parser &parser) {
 }
 
 Type ReferenceExpr::resolve(Parser &parser) {
-  if (index != -1) {
-    Obj *obj = primitives[index];
-
-    index = -1;
-    _declaration = NULL;
-    return {VAL_OBJ, obj};
-  }
+  if (returnType.valueType != VAL_UNKNOWN || name.equal("var"))
+    return returnType;
 
   return getCurrent()->resolveReferenceExpr(this);
 }
@@ -1080,11 +1161,12 @@ void acceptSubExpr(Expr *expr) {
   }
 }*/
 
-Expr *parse(const char *source, int index, int replace, Expr *body) {
+Expr *parse(GroupingExpr *groupingExpr, const char *source, int index, int replace, Expr *body) {
   Scanner scanner((new std::string(source))->c_str());
   Parser parser(scanner);
-  GroupingExpr *group = (GroupingExpr *) parser.parse() ? (GroupingExpr *) parser.expr : NULL;
 
+  parser.expList(groupingExpr, TOKEN_EOF, "Expect end of file.");
+/*
   if (body == NULL)
     body = group;
   else
@@ -1094,7 +1176,7 @@ Expr *parse(const char *source, int index, int replace, Expr *body) {
           Expr **newExprList = RESIZE_ARRAY(Expr *, NULL, 0, 1);
 
           newExprList[0] = body;
-          body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 1, newExprList, 0, NULL);
+          body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 1, newExprList, NULL, new Compiler);
           index = 0;
           replace = 0;
         }
@@ -1114,8 +1196,8 @@ Expr *parse(const char *source, int index, int replace, Expr *body) {
 
       delete group;
     }
-
-  return body;
+*/
+  return groupingExpr;
 }
 
 ParseStep getParseStep() {
@@ -1161,13 +1243,13 @@ UIDirectiveExpr *parent = NULL;
 
 void processAttrs(UIDirectiveExpr *expr, Parser &parser) {
   if (expr->previous)
-    expr->previous->resolve(parser);
+    processAttrs(expr->previous, parser);
 
   if (expr->lastChild) {
     UIDirectiveExpr *oldParent = parent;
 
     parent = expr;
-    expr->lastChild->resolve(parser);
+    processAttrs(expr->lastChild, parser);
     parent = oldParent;
   }
 
@@ -1278,7 +1360,7 @@ static bool isHeritable(int uiIndex) {
 // viewIndex > 0  -> sized unit, has an associated variable
 void pushAreas(UIDirectiveExpr *expr, Parser &parser) {
   if (expr->previous)
-    expr->previous->resolve(parser);
+    pushAreas(expr->previous, parser);
 
   for (int index = 0; index < expr->attCount; index++)
     if (!isEventHandler(expr->attributes[index]))
@@ -1294,7 +1376,7 @@ void pushAreas(UIDirectiveExpr *expr, Parser &parser) {
     }
 
   if (expr->lastChild) {
-    expr->lastChild->resolve(parser);
+    pushAreas(expr->lastChild, parser);
 
     for (UIDirectiveExpr *child = expr->lastChild; !expr->childrenViewFlag && child; child = child->previous)
       expr->childrenViewFlag = hasAreas(child);
@@ -1377,13 +1459,13 @@ void recalcLayout(UIDirectiveExpr *expr, Parser &parser) {
   int dir = getParseDir();
 
   if (expr->previous)
-    expr->previous->resolve(parser);
+    recalcLayout(expr->previous, parser);
 
   if (expr->lastChild) {
     UIDirectiveExpr *oldParent = parent;
 
     parent = expr;
-    expr->lastChild->resolve(parser);
+    recalcLayout(expr->lastChild, parser);
     parent = oldParent;
   }
 
@@ -1488,7 +1570,7 @@ int adjustLayout(UIDirectiveExpr *expr, Parser &parser) {
 
 void paint(UIDirectiveExpr *expr, Parser &parser) {
   if (expr->previous)
-    expr->previous->resolve(parser);
+    paint(expr->previous, parser);
 
   if (nTabs) {
     insertTabs();
@@ -1566,7 +1648,7 @@ void paint(UIDirectiveExpr *expr, Parser &parser) {
     UIDirectiveExpr *oldParent = parent;
 
     parent = expr;
-    expr->lastChild->resolve(parser);
+    paint(expr->lastChild, parser);
     parent = oldParent;
   }
 
@@ -1634,7 +1716,7 @@ void onEvent(UIDirectiveExpr *expr, Parser &parser) {
       UIDirectiveExpr *oldParent = parent;
 
       parent = expr;
-      expr->lastChild->resolve(parser);
+      onEvent(expr->lastChild, parser);
       parent = oldParent;
     }
     else {
@@ -1700,7 +1782,7 @@ void onEvent(UIDirectiveExpr *expr, Parser &parser) {
       nTabs++;
     }
 
-    expr->previous->resolve(parser);
+    onEvent(expr->previous, parser);
 
     if (expr->_eventFlags) {
       --nTabs;

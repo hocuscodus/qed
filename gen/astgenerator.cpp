@@ -33,7 +33,7 @@ char *strtok2(const char *str, const char *delim) {
   return (strtok(str != NULL ? lowercaseStr : NULL, delim));
 }
 
-char **split(char *str, char *sep) {
+char **split(char *str, const char *sep) {
     static char string[2048];
     static char *list[100];
 
@@ -258,23 +258,24 @@ int main(int argc, const char *argv[]) {
   const char *outputDir = argv[1];
 
   const char *array1[] = {
-    "Reference   : Token name, int8_t index, bool upvalueFlag, Declaration* _declaration",
+    "Type        : Token name, bool functionFlag, bool noneFlag, int numDim, int index, Declaration* declaration",
     "UIAttribute : Token name, Expr* handler, int _uiIndex, int _index",
     "UIDirective : int childDir, int attCount, UIAttributeExpr** attributes, UIDirectiveExpr* previous, UIDirectiveExpr* lastChild, int viewIndex, bool childrenViewFlag, int _layoutIndexes[NUM_DIRS], long _eventFlags",
-    "Assign      : ReferenceExpr* varExp, Token op, Expr* value",
+    "Assign      : Expr* varExp, Token op, Expr* value",
     "Binary      : Expr* left, Token op, Expr* right",
     "Cast        : Expr* typeExpr, Expr* expr, Type _srcType, Type _dstType",
-    "Grouping    : Token name, int count, Expr** expressions, int popLevels, Expr* ui, Compiler _compiler",
+    "Grouping    : Token name, int count, Expr** expressions, Expr* ui, Compiler _compiler",
     "Array       : int count, Expr** expressions, ObjFunction* function",
     "Call        : Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler, ObjCallable* callable, ObjFunction* handlerFunction",
     "ArrayElement: Expr* callee, Token bracket, int count, Expr** indexes",
     "Declaration : Expr* typeExpr, Token name, Expr* initExpr, Declaration* _declaration",
-    "Function    : Expr* typeExpr, Token name, int count, DeclarationExpr** params, GroupingExpr* body, ObjFunction* function, Declaration* _declaration",
+    "Function    : Expr* typeExpr, Token name, int arity, GroupingExpr* body, ObjFunction _function, Declaration* _declaration",
     "Get         : Expr* object, Token name, int index",
     "If          : Expr* condition, Expr* thenBranch, Expr* elseBranch",
     "List        : int count, Expr** expressions",
     "Literal     : ValueType type, As as",
     "Logical     : Expr* left, Token op, Expr* right",
+    "Reference   : Token name, Type returnType, Declaration* _declaration",
     "Return      : Token keyword, Expr* value",
     "Set         : Expr* object, Token name, Token op, Expr* value, int index",
     "Ternary     : Token op, Expr* left, Expr* middle, Expr* right",

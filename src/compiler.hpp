@@ -14,27 +14,23 @@
 
 class Parser;
 struct ReferenceExpr;
+struct GroupingExpr;
 
 struct Compiler {
   Parser *parser;
-  std::string prefix;
   Compiler *enclosing;
+  GroupingExpr *groupingExpr;
   ObjFunction *function = NULL;
-  int fieldCount;
-  int declarationStart;
-  int declarationCount;
   int vCount;
-//  std::stack<Type> typeStack;
+  int declarationCount;
   Declaration declarations[UINT8_COUNT];
-  ObjFunction *compile(Parser &parser);
 
+  ObjFunction *compile(GroupingExpr *expr);
+  void pushScope();
   Declaration *beginScope(ObjFunction *function);
   void beginScope();
   void endScope();
-/*
-  void pushType1(ValueType type);
-  void pushType1(Type type);
-  Type popType1();*/
+
   Declaration *addDeclaration(Type type, Token &name, Declaration *previous, bool parentFlag);
   Type &peekDeclaration();
   int resolveReference(Token *name);
@@ -42,8 +38,8 @@ struct Compiler {
   int resolveUpvalue(Token *name);
   int addUpvalue(uint8_t index, Declaration *declaration, bool isDeclaration);
   Type resolveReferenceExpr(ReferenceExpr *expr);
-  void checkDeclaration(Type returnType, ReferenceExpr *expr, ObjCallable *signature);
-  Declaration *checkDeclaration(Type returnType, Token &name, ObjCallable *signature);
+  void checkDeclaration(Type returnType, ReferenceExpr *expr, ObjFunction *signature);
+  Declaration *checkDeclaration(Type returnType, Token &name, ObjFunction *signature);
   bool inBlock();
 
   static inline Compiler *getCurrent() {
@@ -51,22 +47,19 @@ struct Compiler {
   }
 
   inline int getDeclarationCount() {
-    return declarationStart + declarationCount;// + typeStack.size();
+    return declarationCount;
   }
 
   inline Declaration &getDeclaration(int index) {
-    return declarations[index - declarationStart];
+    return declarations[index];
   }
 private:
   static Compiler *current;
 };
 
-struct ObjCallable;
-
 bool identifiersEqual(Token *a, Token *b);
-void pushSignature(ObjCallable *signature);
+void pushSignature(ObjFunction *signature);
 void popSignature();
-
 
 static inline Compiler *getCurrent() {
   return Compiler::getCurrent();

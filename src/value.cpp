@@ -16,14 +16,14 @@ bool Type::equals(Type &type) {
 
 const char *Type::toString() {
   switch (valueType) {
+    case VAL_UNKNOWN: return "!unknown!";
     case VAL_VOID: return "void";
     case VAL_BOOL: return "bool";
     case VAL_INT: return "int";
     case VAL_FLOAT: return "float";
-    case VAL_VAR: return "!var!";
     case VAL_POINT: return "!point!";
-    case VAL_OBJ: return objType ? objType->toString() : "int";
-    default: return "!unknown!";
+    case VAL_OBJ: return objType ? objType->toString() : "!weird!";
+    default: return "!weird2!";
   }
 }
 

@@ -13,7 +13,7 @@ struct ObjFunction;
 struct ObjCallable;
 
 typedef enum {
-  EXPR_REFERENCE,
+  EXPR_TYPE,
   EXPR_UIATTRIBUTE,
   EXPR_UIDIRECTIVE,
   EXPR_ASSIGN,
@@ -30,6 +30,7 @@ typedef enum {
   EXPR_LIST,
   EXPR_LITERAL,
   EXPR_LOGICAL,
+  EXPR_REFERENCE,
   EXPR_RETURN,
   EXPR_SET,
   EXPR_TERNARY,
@@ -54,13 +55,15 @@ struct Expr {
   virtual void toCode(Parser &parser, ObjFunction *function) = 0;
 };
 
-struct ReferenceExpr : public Expr {
+struct TypeExpr : public Expr {
   Token name;
-  int8_t index;
-  bool upvalueFlag;
-  Declaration* _declaration;
+  bool functionFlag;
+  bool noneFlag;
+  int numDim;
+  int index;
+  Declaration* declaration;
 
-  ReferenceExpr(Token name, int8_t index, bool upvalueFlag);
+  TypeExpr(Token name, bool functionFlag, bool noneFlag, int numDim, int index, Declaration* declaration);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);
@@ -102,11 +105,11 @@ struct UIDirectiveExpr : public Expr {
 };
 
 struct AssignExpr : public Expr {
-  ReferenceExpr* varExp;
+  Expr* varExp;
   Token op;
   Expr* value;
 
-  AssignExpr(ReferenceExpr* varExp, Token op, Expr* value);
+  AssignExpr(Expr* varExp, Token op, Expr* value);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);
@@ -145,11 +148,10 @@ struct GroupingExpr : public Expr {
   Token name;
   int count;
   Expr** expressions;
-  int popLevels;
   Expr* ui;
   Compiler _compiler;
 
-  GroupingExpr(Token name, int count, Expr** expressions, int popLevels, Expr* ui);
+  GroupingExpr(Token name, int count, Expr** expressions, Expr* ui);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);
@@ -219,13 +221,12 @@ struct DeclarationExpr : public Expr {
 struct FunctionExpr : public Expr {
   Expr* typeExpr;
   Token name;
-  int count;
-  DeclarationExpr** params;
+  int arity;
   GroupingExpr* body;
-  ObjFunction* function;
+  ObjFunction _function;
   Declaration* _declaration;
 
-  FunctionExpr(Expr* typeExpr, Token name, int count, DeclarationExpr** params, GroupingExpr* body, ObjFunction* function);
+  FunctionExpr(Expr* typeExpr, Token name, int arity, GroupingExpr* body);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);
@@ -289,6 +290,19 @@ struct LogicalExpr : public Expr {
   Expr* right;
 
   LogicalExpr(Expr* left, Token op, Expr* right);
+  void cleanExprs();
+  void astPrint();
+  Expr *toCps(K k);
+  Type resolve(Parser &parser);
+  void toCode(Parser &parser, ObjFunction *function);
+};
+
+struct ReferenceExpr : public Expr {
+  Token name;
+  Type returnType;
+  Declaration* _declaration;
+
+  ReferenceExpr(Token name, Type returnType);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);

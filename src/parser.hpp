@@ -48,13 +48,13 @@ ParseExpRule *getExpRule(TokenType type);
 
 class Parser {
   Scanner &scanner;
+  Token next;
   Token current;
   Token previous;
   bool panicMode;
   uint64_t statementExprs = 0L; // Helper booleans in groups
 public:
   bool hadError;
-  GroupingExpr *expr;
 public:
   Parser(Scanner &scanner);
 private:
@@ -63,6 +63,7 @@ public:
   void consume(TokenType type, const char *message);
   bool check(TokenType type);
   bool check(TokenType *endGroupTypes);
+  bool checkNext(TokenType type);
   bool match(TokenType type);
   void errorAtCurrent(const char *fmt, ...);
   void error(const char *fmt, ...);
@@ -70,7 +71,7 @@ public:
   void errorAt(Token *token, const char *fmt, ...);
 ////
   ObjFunction *compile();
-  bool parse();
+  Expr *parse();
   void passSeparator();
 
   Expr *suffix(Expr *left);
@@ -89,7 +90,7 @@ public:
   UIAttributeExpr *attribute(TokenType endGroupType);
   UIDirectiveExpr *directive(TokenType endGroupType, UIDirectiveExpr *previous);
   Expr *grouping();
-  Expr *grouping(TokenType endGroupType, const char *errorMessage);
+  void expList(GroupingExpr *groupingExpr, TokenType endGroupType, const char *errorMessage);
   Expr *array();
   Expr *floatNumber();
   Expr *intNumber();
@@ -100,7 +101,6 @@ public:
   DeclarationExpr *declareVariable(Expr *typeExpr, TokenType *endGroupTypes);
   DeclarationExpr *parseVariable(TokenType *endGroupTypes, const char *errorMessage);
   Expr *expression(TokenType *endGroupType);
-  Type readType();
   Expr *varDeclaration(TokenType endGroupType);
   Expr *expressionStatement(TokenType endGroupType);
   Expr *forStatement(TokenType endGroupType);
