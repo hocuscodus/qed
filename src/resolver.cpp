@@ -286,7 +286,7 @@ static Expr *generateFunction(const char *type, const char *name, char *args, Ex
 
   Expr *typeExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, type, strlen(type), -1), {(ValueType) typeIndex});
   Token nameToken = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
-  GroupingExpr *body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), count + restLength, bodyExprs, NULL);
+  GroupingExpr *body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{", 1, -1), count + restLength, bodyExprs, NULL);
   FunctionExpr *functionExpr = new FunctionExpr(typeExpr, nameToken, nbParms, /*parms, */body);
 
   functionExpr->_function.expr = functionExpr;
@@ -1165,7 +1165,7 @@ void parse(GroupingExpr *groupingExpr, const char *source, int index, int replac
           Expr **newExprList = RESIZE_ARRAY(Expr *, NULL, 0, 1);
 
           newExprList[0] = body;
-          body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 1, newExprList, NULL, new Compiler);
+          body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{", 1, -1), 1, newExprList, NULL, new Compiler);
           index = 0;
           replace = 0;
         }

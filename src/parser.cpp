@@ -187,7 +187,7 @@ Expr *Parser::parse() {
       if (token.type == TOKEN_EOF) break;
     }
   */
-  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_EOF, "-", 1, -1), 0, NULL, NULL);
+  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_EOF, "", 0, -1), 0, NULL, NULL);
   FunctionExpr *functionExpr = new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, "main", 4, -1), 0, group);
 
   group->_compiler.groupingExpr = group;
@@ -474,7 +474,7 @@ Expr *Parser::grouping() {
   expList(group, endGroupType, errorMessage);
   group->_compiler.endScope();
 
-  if (endGroupType == TOKEN_RIGHT_PAREN && (statementExprs & (1 << scopeDepth)) != 0)
+  if (endGroupType == TOKEN_RIGHT_PAREN && (statementExprs & (1 << (scopeDepth + 1))) != 0)
     if (group->count == 1) {
       Expr *exp = group->expressions[group->count - 1];
 
@@ -744,7 +744,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
         if (IS_UNKNOWN(((ReferenceExpr *) exp)->returnType))
           error("Return type not known");
 
-        GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "}", 1, -1), 0, NULL, NULL);
+        GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{", 1, -1), 0, NULL, NULL);
         FunctionExpr *functionExpr = new FunctionExpr(exp, name, 0, group);
 
         functionExpr->_function.expr = functionExpr;
@@ -850,7 +850,7 @@ Expr *Parser::forStatement(TokenType endGroupType) {
 
     expList[0] = new UnaryExpr(buildToken(TOKEN_PRINT, "print", 5, -1), body);
     expList[1] = new UnaryExpr(buildToken(TOKEN_PRINT, "print", 5, -1), increment);
-    body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 2, expList, NULL);
+    body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{", 1, -1), 2, expList, NULL);
     ((GroupingExpr *) body)->_compiler.groupingExpr = (GroupingExpr *) body;
   }
 
@@ -861,7 +861,7 @@ Expr *Parser::forStatement(TokenType endGroupType) {
 
     expList[0] = initializer;
     expList[1] = body;
-    body = new GroupingExpr(buildToken(TOKEN_RIGHT_BRACE, "}", 1, -1), 2, expList, NULL);
+    body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{", 1, -1), 2, expList, NULL);
     ((GroupingExpr *) body)->_compiler.groupingExpr = (GroupingExpr *) body;
   }
 
