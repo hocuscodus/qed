@@ -203,7 +203,7 @@ void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
       line() << "const " << function->getThisVariableName() << " = this;\n";
   }
 
-  for (int index = 0; index < count; index++) {
+  for (int index = function->expr->body == this ? function->expr->arity : 0; index < count; index++) {
     Expr *subExpr = expressions[index];
 
     line();
@@ -301,7 +301,9 @@ void LogicalExpr::toCode(Parser &parser, ObjFunction *function) {
 
 void ReturnExpr::toCode(Parser &parser, ObjFunction *function) {
   if (function->isClass()) {
-    value->toCode(parser, function);
+    if (value)
+      value->toCode(parser, function);
+
     line() << "return;\n";
   }
   else {
