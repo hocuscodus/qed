@@ -208,7 +208,7 @@ int Compiler::resolveReference(Token *name) {
         switch (AS_OBJ_TYPE(type)) {
         case OBJ_FUNCTION: {
           ObjFunction *callable = AS_FUNCTION_TYPE(type);
-          bool isSignature = signature->compiler->declarationCount == callable->expr->arity;
+          bool isSignature = signature->compiler->declarationCount - 1 == callable->expr->arity;
 
           for (int index = 0; isSignature && index < callable->expr->arity; index++)
             isSignature = signature->compiler->declarations[index + 1].type.equals(callable->compiler->declarations[index + 1].type);
@@ -255,13 +255,13 @@ int Compiler::resolveReference2(Token *name) {
       if (index)
         strcat(buf, ", ");
 
-      strcat(buf, declarations[index + 1].type.toString());
+      strcat(buf, callable->compiler->declarations[index + 1].type.toString());
     }
 
     strcat(buf, ")'");
 
-    for (int index = 0; index < signature->compiler->declarationCount; index++) {
-      if (index)
+    for (int index = 1; index < signature->compiler->declarationCount; index++) {
+      if (index > 1)
         strcat(parms, ", ");
 
       strcat(parms, signature->compiler->declarations[index].type.toString());

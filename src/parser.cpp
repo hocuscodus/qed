@@ -627,33 +627,7 @@ Expr *Parser::string() {
 }
 
 Expr *Parser::variable() {
-  int index = -1;
-  Compiler *current = getCurrent();
-  Declaration *declaration = NULL;
-
-  while (true) {
-    index = current->resolveReference2(&previous);
-
-    if (index == -1 && current->inBlock())
-      current = current->enclosing;
-    else {
-      if (index >= 0)
-        declaration = &current->getDeclaration(index);
-;//        expr->revIndex = expr->index - getDeclarationCount();
-      break;
-    }
-  }
-
-  if (index == -1) {
-    if ((index = current->resolveUpvalue(&previous)) != -1)
-      declaration = current->function->upvalues[index].declaration;
-  }
-
-  ReferenceExpr *expr = new ReferenceExpr(previous, declaration ? declaration->type : (Type) {VAL_UNKNOWN});
-
-  expr->_declaration = declaration;
-  return expr;
-//  return declaration ? new TypeExpr(previous, false, false, 0, index) : NULL;//declaration->type : (Type) {VAL_VOID};
+  return new ReferenceExpr(previous, {VAL_UNKNOWN});
 }
 
 Expr *Parser::unary() {
@@ -741,8 +715,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
       Token name = previous;
 
       if(match(TOKEN_LEFT_PAREN)) {
-        if (IS_UNKNOWN(((ReferenceExpr *) exp)->returnType))
-          error("Return type not known");
+        exp->resolve(*this);
 
         GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{", 1, -1), 0, NULL, NULL);
         FunctionExpr *functionExpr = new FunctionExpr(exp, name, 0, group);
@@ -758,6 +731,8 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
         if (!check(TOKEN_RIGHT_PAREN))
           do {
             DeclarationExpr *param = parseVariable(endGroupTypes, "Expect parameter name.");
+
+            param->typeExpr->resolve(*this);
 
             if (param->typeExpr->type == EXPR_REFERENCE && !IS_UNKNOWN(((ReferenceExpr *) param->typeExpr)->returnType)) {
               group->expressions = RESIZE_ARRAY(Expr *, group->expressions, group->count, group->count + 1);

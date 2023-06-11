@@ -1038,7 +1038,8 @@ Type ReferenceExpr::resolve(Parser &parser) {
   if (returnType.valueType != VAL_UNKNOWN || name.equal("var"))
     return returnType;
 
-  return getCurrent()->resolveReferenceExpr(this);
+  returnType = getCurrent()->resolveReferenceExpr(this);
+  return returnType;
 }
 
 Type SwapExpr::resolve(Parser &parser) {
