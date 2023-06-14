@@ -502,7 +502,6 @@ const char *Obj::toString() {
     case OBJ_CLOSURE:
     case OBJ_NATIVE:
     case OBJ_NATIVE_CLASS:
-    case OBJ_PRIMITIVE:
     case OBJ_UPVALUE:
     case OBJ_FUNCTION_PTR:
     case OBJ_INTERNAL:
@@ -1097,14 +1096,6 @@ ObjNative *newNative(NativeFn function) {
 
   native->function = function;
   return native;
-}
-
-ObjPrimitive *newPrimitive(char *name, Type type) {
-  ObjPrimitive *primitive = ALLOCATE_OBJ(ObjPrimitive, OBJ_PRIMITIVE);
-
-  primitive->name = takeString(name, strlen(name));
-  primitive->type = type;
-  return primitive;
 }
 
 ObjFunctionPtr *newFunctionPtr(Type type, int arity, Type *parms) {

@@ -88,14 +88,6 @@ extern ParseExpRule expRules[];
 int uiParseCount = -1;
 
 static Obj objInternalType = {OBJ_INTERNAL};
-static Obj *primitives[] = {
-  &newPrimitive("var", {VAL_UNKNOWN})->obj,
-  &newPrimitive("void", {VAL_VOID})->obj,
-  &newPrimitive("bool", {VAL_BOOL})->obj,
-  &newPrimitive("int", {VAL_INT})->obj,
-  &newPrimitive("float", {VAL_FLOAT})->obj,
-  &newPrimitive("String", stringType)->obj,
-};
 
 bool isType(Type &type) {
   switch (AS_OBJ_TYPE(type)) {
@@ -106,7 +98,6 @@ bool isType(Type &type) {
   }
 
   case OBJ_ARRAY:
-  case OBJ_PRIMITIVE:
   case OBJ_FUNCTION_PTR:
     return true;
   }
@@ -115,9 +106,7 @@ bool isType(Type &type) {
 }
 
 Type convertType(Type &type) {
-  ObjPrimitive *primitiveType = AS_PRIMITIVE_TYPE(type);
-
-  return primitiveType ? primitiveType->type : IS_FUNCTION(type) ? (Type) {VAL_OBJ, &newInstance(AS_FUNCTION_TYPE(type))->obj} : type;
+  return IS_FUNCTION(type) ? (Type) {VAL_OBJ, &newInstance(AS_FUNCTION_TYPE(type))->obj} : type;
 }
 
 static Expr *convertToString(Expr *expr, Type &type, Parser &parser) {
@@ -199,6 +188,9 @@ static Expr *convertToObj(Obj *srcObjType, Expr *expr, Type &type, Parser &parse
     expr = convertToString(expr, type, parser);
     break;
 
+  case OBJ_INSTANCE:
+    break;
+
   default:
     parser.error("Cannot convert to object");
     break;
@@ -248,52 +240,6 @@ static void insertTabs() {
 }
 
 static const char *getGroupName(UIDirectiveExpr *expr, int dir);
-
-static Expr *generateFunction(const char *type, const char *name, char *args, Expr *copyExpr, int count, int restLength, Expr **rest) {
-  Expr **bodyExprs = NULL;
-  Expr **functionExprs = new Expr *[3];
-  int nbParms = 0;
-  DeclarationExpr **parms = NULL;
-
-  if (args != NULL) {
-    Scanner scanner(args);
-    Parser parser(scanner);
-    TokenType tokens[] = {TOKEN_COMMA, TOKEN_EOF};
-
-    do {
-      DeclarationExpr *expr = parser.parseVariable(NULL, "Expect parameter name.");
-
-      parms = RESIZE_ARRAY(DeclarationExpr *, parms, nbParms, nbParms + 1);
-      parms[nbParms++] = expr;
-    } while (parser.match(TOKEN_COMMA));
-
-    parser.consume(TOKEN_EOF, "Expect EOF after arguments.");
-  }
-
-  bodyExprs = RESIZE_ARRAY(Expr *, bodyExprs, 0, count + restLength);
-
-  for (int index = 0; index < count; index++)
-    bodyExprs[index] = copyExpr;
-
-  for (int index = 0; index < restLength; index++)
-    bodyExprs[count + index] = rest[index];
-
-  int typeIndex = -1;
-
-  for (int index = 0; typeIndex == -1 && index < sizeof(primitives) / sizeof(Obj *); index++)
-    if (!strcmp(((ObjPrimitive *) primitives[index])->name->chars, type))
-      typeIndex = index; 
-
-  Expr *typeExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, type, strlen(type), -1), {(ValueType) typeIndex});
-  Token nameToken = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
-  GroupingExpr *body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{", 1, -1), count + restLength, bodyExprs, NULL);
-  FunctionExpr *functionExpr = new FunctionExpr(typeExpr, nameToken, nbParms, /*parms, */body);
-
-  functionExpr->_function.expr = functionExpr;
-  body->_compiler.groupingExpr = body;
-
-  return functionExpr;
-}
 
 Type acceptGroupingExprUnits(GroupingExpr *expr, int start, Parser &parser) {
   Type returnType = {VAL_VOID};
@@ -580,12 +526,12 @@ Type CallExpr::resolve(Parser &parser) {
 
 //  return {VAL_OBJ}; // Dummy callee for space purposes
 
-  compiler.addDeclaration({VAL_VOID}, tok, NULL, false);
+  compiler.addDeclaration({VAL_VOID}, tok, NULL, false, &parser);
 
   for (int index = 0; index < count; index++) {
     Type type = arguments[index]->resolve(parser);
 
-    compiler.addDeclaration(type, tok, NULL, false);
+    compiler.addDeclaration(type, tok, NULL, false, &parser);
   }
 
   pushSignature(&signature);
@@ -615,7 +561,7 @@ Type CallExpr::resolve(Parser &parser) {
     else
       return callable->type;
     break;
-  }
+  }/*
   case OBJ_FUNCTION_PTR: {
     ObjFunctionPtr *callable = (ObjFunctionPtr *)type.objType;
 
@@ -636,7 +582,7 @@ Type CallExpr::resolve(Parser &parser) {
     else
       return callable->type;
     break;
-  }
+  }*/
   default:
     parser.error("Non-callable object type");
     return {VAL_VOID};
@@ -745,7 +691,7 @@ Type DeclarationExpr::resolve(Parser &parser) {
       break;
     }
 
-  _declaration = getCurrent()->checkDeclaration(returnType, name, NULL);
+  _declaration = getCurrent()->checkDeclaration(returnType, name, NULL, &parser);
   return {VAL_VOID};
 }
 
@@ -1038,7 +984,7 @@ Type ReferenceExpr::resolve(Parser &parser) {
   if (returnType.valueType != VAL_UNKNOWN || name.equal("var"))
     return returnType;
 
-  returnType = getCurrent()->resolveReferenceExpr(this);
+  returnType = getCurrent()->resolveReferenceExpr(this, &parser);
   return returnType;
 }
 
@@ -1387,7 +1333,7 @@ void pushAreas(UIDirectiveExpr *expr, Parser &parser) {
 
     if (name != NULL) {
       Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
-      Type outType = getCurrent()->getDeclaration(getCurrent()->resolveReference2(&token)).type;
+      Type outType = getCurrent()->getDeclaration(getCurrent()->resolveReference2(&token, &parser)).type;
       char *callee = NULL;
 
       switch (AS_OBJ_TYPE(outType)) {
@@ -1606,7 +1552,7 @@ void paint(UIDirectiveExpr *expr, Parser &parser) {
     }
 
     Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
-    Type outType = getCurrent()->enclosing->getDeclaration(getCurrent()->enclosing->resolveReference2(&token)).type;
+    Type outType = getCurrent()->enclosing->getDeclaration(getCurrent()->enclosing->resolveReference2(&token, &parser)).type;
     switch (AS_OBJ_TYPE(outType)) {
       case OBJ_INSTANCE:
         insertTabs();
@@ -1716,7 +1662,7 @@ void onEvent(UIDirectiveExpr *expr, Parser &parser) {
     else {
       const char *name = getValueVariableName(expr, ATTRIBUTE_OUT);
       Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
-      int index = getCurrent()->enclosing->resolveReference2(&token);
+      int index = getCurrent()->enclosing->resolveReference2(&token, &parser);
       Type outType = getCurrent()->enclosing->getDeclaration(index).type;
 
       switch (AS_OBJ_TYPE(outType)) {

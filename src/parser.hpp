@@ -68,7 +68,7 @@ public:
   void errorAtCurrent(const char *fmt, ...);
   void error(const char *fmt, ...);
   void compilerError(const char *fmt, ...);
-  void errorAt(Token *token, const char *fmt, ...);
+  virtual void errorAt(Token *token, const char *fmt, ...);
 ////
   ObjFunction *compile();
   Expr *parse();

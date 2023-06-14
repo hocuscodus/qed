@@ -167,7 +167,7 @@ void Parser::errorAt(Token *token, const char *fmt, ...) {
 ObjFunction *Parser::compile() {
   GroupingExpr *expr = (GroupingExpr *) parse();
 
-  return expr ? expr->_compiler.compile(expr) : NULL;
+  return expr ? expr->_compiler.compile(expr, this) : NULL;
 }
 
 Expr *Parser::parse() {
@@ -191,11 +191,10 @@ Expr *Parser::parse() {
   FunctionExpr *functionExpr = new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, "main", 4, -1), 0, group);
 
   group->_compiler.groupingExpr = group;
-  group->_compiler.parser = this;
   functionExpr->_function.expr = functionExpr;
   functionExpr->_function.type = {VAL_VOID};
   functionExpr->_function.name = NULL;//copyString(name.start, name.length);
-  group->_compiler.beginScope(&functionExpr->_function);
+  group->_compiler.beginScope(&functionExpr->_function, this);
   expList(group, TOKEN_EOF, "Expect end of file.");
   group->_compiler.endScope();
 ////////
@@ -242,8 +241,30 @@ Expr *Parser::assignment(Expr *left) {
   }
 }
 
+Scanner fakeScanner("");
+
+struct FakeParser : Parser {
+
+  FakeParser() : Parser(fakeScanner) {}
+
+  void errorAt(Token *token, const char *fmt, ...) {
+      hadError = true;
+  }
+};
+
 Expr *Parser::binary(Expr *left) {
   Token op = previous;
+
+  if (op.type == TOKEN_STAR && left->type == EXPR_REFERENCE && check(TOKEN_IDENTIFIER)) {
+    FakeParser tempParser;
+
+    left->resolve(tempParser);
+
+    if (!tempParser.hadError && ((ReferenceExpr *) left)->returnType.objType->type == OBJ_FUNCTION) {
+      return left;
+    }
+  }
+
   ParseExpRule *rule = getExpRule(op.type);
 
   // ignore optional separator before second operand
@@ -724,7 +745,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
         functionExpr->_function.type = ((ReferenceExpr *) exp)->returnType;
         functionExpr->_function.name = copyString(name.start, name.length);
         group->_compiler.groupingExpr = group;
-        group->_compiler.beginScope(&functionExpr->_function);
+        group->_compiler.beginScope(&functionExpr->_function, this);
   //      bindFunction(compiler.prefix, function);
         passSeparator();
 
@@ -737,7 +758,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
             if (param->typeExpr->type == EXPR_REFERENCE && !IS_UNKNOWN(((ReferenceExpr *) param->typeExpr)->returnType)) {
               group->expressions = RESIZE_ARRAY(Expr *, group->expressions, group->count, group->count + 1);
               group->expressions[group->count++] = param;
-              group->_compiler.addDeclaration(((ReferenceExpr *) param->typeExpr)->returnType, param->name, NULL, false);
+              group->_compiler.addDeclaration(((ReferenceExpr *) param->typeExpr)->returnType, param->name, NULL, false, this);
             }
             else
               error("Parameter %d not typed correctly", group->count + 1);
@@ -748,7 +769,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
 
         group->name = previous;
         functionExpr->arity = group->count;
-        functionExpr->_declaration = getCurrent()->enclosing->checkDeclaration({VAL_OBJ, &functionExpr->_function.obj}, name, &functionExpr->_function);
+        functionExpr->_declaration = getCurrent()->enclosing->checkDeclaration({VAL_OBJ, &functionExpr->_function.obj}, name, &functionExpr->_function, this);
         expList(group, TOKEN_RIGHT_BRACE, "Expect '}' after expression.");
         group->_compiler.endScope();
         return functionExpr;

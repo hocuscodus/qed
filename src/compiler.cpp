@@ -32,7 +32,7 @@ static ObjFunction *getSignature() {
 Compiler *Compiler::current = NULL;
 extern std::stringstream &line();
 
-ObjFunction *Compiler::compile(GroupingExpr *expr) {
+ObjFunction *Compiler::compile(GroupingExpr *expr, Parser *parser) {
   pushScope();
 
 #ifdef DEBUG_PRINT_CODE
@@ -120,8 +120,7 @@ void Compiler::pushScope() {
 }
 
 Token token = buildToken(TOKEN_IDENTIFIER, "", 0, -1);
-Declaration *Compiler::beginScope(ObjFunction *function) {
-  parser = current ? current->parser : parser;
+Declaration *Compiler::beginScope(ObjFunction *function, Parser *parser) {
   pushScope();
   function->compiler = this;
   declarationCount = 0;
@@ -135,11 +134,10 @@ Declaration *Compiler::beginScope(ObjFunction *function) {
     enclosing->function->add(function);
   }
 
-  return addDeclaration({VAL_OBJ, &function->obj}, token, NULL, false);
+  return addDeclaration({VAL_OBJ, &function->obj}, token, NULL, false, parser);
 }
 
 void Compiler::beginScope() {
-  parser = current->parser;
   pushScope();
   declarationCount = 0;
   function = enclosing->function;
@@ -167,7 +165,7 @@ Type Compiler::popType() {
   return type;
 }
 */
-Declaration *Compiler::addDeclaration(Type type, Token &name, Declaration *previous, bool parentFlag) {
+Declaration *Compiler::addDeclaration(Type type, Token &name, Declaration *previous, bool parentFlag, Parser *parser) {
   if (declarationCount == UINT8_COUNT) {
     parser->error("Too many declarations in function.");
     return NULL;
@@ -191,7 +189,7 @@ Type &Compiler::peekDeclaration() {
   return declarations[declarationCount - 1].type;
 }
 
-int Compiler::resolveReference(Token *name) {
+int Compiler::resolveReference(Token *name, Parser *parser) {
   int found = -1;
   ObjFunction *signature = getSignature();
 
@@ -238,8 +236,8 @@ int Compiler::resolveReference(Token *name) {
   return found;
 }
 
-int Compiler::resolveReference2(Token *name) {
-  int found = resolveReference(name);
+int Compiler::resolveReference2(Token *name, Parser *parser) {
+  int found = resolveReference(name, parser);
 
   if (found <= -2) {
     ObjFunction *signature = getSignature();
@@ -273,14 +271,14 @@ int Compiler::resolveReference2(Token *name) {
   return found;
 }
 
-int Compiler::resolveUpvalue(Token *name) {
+int Compiler::resolveUpvalue(Token *name, Parser *parser) {
   if (enclosing != NULL) {
     int decIndex = -1;
 
     Compiler *current = enclosing;
 
     while (true) {
-      decIndex = current->resolveReference2(name);
+      decIndex = current->resolveReference2(name, parser);
 
       if (decIndex == -1 && current->inBlock())
         current = current->enclosing;
@@ -289,31 +287,31 @@ int Compiler::resolveUpvalue(Token *name) {
     }
 
     if (decIndex == -1) {
-      int upvalue = current->resolveUpvalue(name);
+      int upvalue = current->resolveUpvalue(name, parser);
 
       if (upvalue != -1)
-        return addUpvalue((uint8_t) upvalue, enclosing->function->upvalues[upvalue].declaration, false);
+        return addUpvalue((uint8_t) upvalue, enclosing->function->upvalues[upvalue].declaration, false, parser);
     }
     else
       if (decIndex >= 0) {
         current->getDeclaration(decIndex).isField = true;
-        return addUpvalue((uint8_t) decIndex, &current->getDeclaration(decIndex), true);
+        return addUpvalue((uint8_t) decIndex, &current->getDeclaration(decIndex), true, parser);
       }
   }
 
   return -1;
 }
 
-int Compiler::addUpvalue(uint8_t index, Declaration *declaration, bool isDeclaration) {
+int Compiler::addUpvalue(uint8_t index, Declaration *declaration, bool isDeclaration, Parser *parser) {
   return function->addUpvalue(index, isDeclaration, declaration, *parser);
 }
 
-Type Compiler::resolveReferenceExpr(ReferenceExpr *expr) {
+Type Compiler::resolveReferenceExpr(ReferenceExpr *expr, Parser *parser) {
   Compiler *current = this;
   int index = -1;
 
   while (true) {
-    index = current->resolveReference2(&expr->name);
+    index = current->resolveReference2(&expr->name, parser);
 
     if (index == -1 && current->inBlock())
       current = current->enclosing;
@@ -325,7 +323,7 @@ Type Compiler::resolveReferenceExpr(ReferenceExpr *expr) {
   }
 
   if (index == -1)
-    if ((index = current->resolveUpvalue(&expr->name)) != -1)
+    if ((index = current->resolveUpvalue(&expr->name, parser)) != -1)
       expr->_declaration = function->upvalues[index].declaration;
     else {
       parser->error("Variable '%.*s' must be defined", expr->name.length, expr->name.start);
@@ -342,23 +340,23 @@ Type Compiler::resolveReferenceExpr(ReferenceExpr *expr) {
   return expr->_declaration ? expr->_declaration->type : (Type) {VAL_UNKNOWN};
 }
 
-void Compiler::checkDeclaration(Type returnType, ReferenceExpr *expr, ObjFunction *signature) {
-  expr->_declaration = checkDeclaration(returnType, expr->name, signature);
+void Compiler::checkDeclaration(Type returnType, ReferenceExpr *expr, ObjFunction *signature, Parser *parser) {
+  expr->_declaration = checkDeclaration(returnType, expr->name, signature, parser);
 }
 
-Declaration *Compiler::checkDeclaration(Type returnType, Token &name, ObjFunction *signature) {
+Declaration *Compiler::checkDeclaration(Type returnType, Token &name, ObjFunction *signature, Parser *parser) {
   Declaration *peerDeclaration = NULL;
   bool parentFlag = false;
 
   pushSignature(signature);
 
-  if (resolveReference(&name) >= 0)
+  if (resolveReference(&name, parser) >= 0)
     parser->error("Identical identifier '%.*s' with this name in this scope.", name.length, name.start);
   else {
     pushSignature(NULL);
 
     for (Compiler *compiler = this; !peerDeclaration && compiler; compiler = compiler->enclosing) {
-      int index = compiler->resolveReference(&name);
+      int index = compiler->resolveReference(&name, parser);
 
       peerDeclaration = index >= 0 ? &compiler->getDeclaration(index) : NULL;
       parentFlag = peerDeclaration && compiler != this;
@@ -368,7 +366,7 @@ Declaration *Compiler::checkDeclaration(Type returnType, Token &name, ObjFunctio
   }
 
   popSignature();
-  return addDeclaration(returnType, name, peerDeclaration, parentFlag);
+  return addDeclaration(returnType, name, peerDeclaration, parentFlag, parser);
 }
 
 bool Compiler::inBlock() {

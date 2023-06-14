@@ -23,7 +23,6 @@
 #define AS_FUNCTION(value)     ((ObjFunction*)AS_OBJ(value))
 #define AS_NATIVE(value)       (((ObjNative*)AS_OBJ(value))->function)
 #define AS_NATIVE_CLASS(value) (((ObjNativeClass*)AS_OBJ(value))->classFn)
-#define AS_PRIMITIVE(value)    ((ObjPrimitive*)AS_OBJ(value))
 #define AS_STRING(value)       ((ObjString*)AS_OBJ(value))
 #define AS_CSTRING(value)      (((ObjString*)AS_OBJ(value))->chars)
 #define AS_ARRAY(value)        ((ObjArray*)AS_OBJ(value))
@@ -38,7 +37,6 @@ typedef enum {
   OBJ_FUNCTION,
   OBJ_NATIVE,
   OBJ_NATIVE_CLASS,
-  OBJ_PRIMITIVE,
   OBJ_STRING,
   OBJ_UPVALUE,
   OBJ_ARRAY,
@@ -137,10 +135,6 @@ typedef Value (*NativeFn)(int argCount, Value *args);
 struct ObjNative {
   Obj obj;
   NativeFn function;
-};
-
-struct ObjPrimitive : ObjNamed {
-  Type type;
 };
 
 struct ObjString {
@@ -268,7 +262,6 @@ ObjInstance *newInstance(ObjCallable *callable);
 ObjObject *newObject(ObjClosure *closure);
 ObjClosure *newClosure(ObjFunction *function, CoThread *parent);
 ObjNative *newNative(NativeFn function);
-ObjPrimitive *newPrimitive(char *name, Type type);
 ObjFunctionPtr *newFunctionPtr(Type type, int arity, Type *parms);
 ObjString *takeString(char *chars, int length);
 ObjString *copyString(const char *chars, int length);

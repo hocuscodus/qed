@@ -29,7 +29,6 @@
 #define AS_FUNCTION_TYPE(type)  (IS_FUNCTION(type) ? (ObjFunction *) (type).objType : NULL)
 #define AS_ARRAY_TYPE(type)     (IS_ARRAY(type) ? (ObjArray *) (type).objType : NULL)
 #define AS_STRING_TYPE(type)    (IS_STRING(type) ? (ObjString *) (type).objType : NULL)
-#define AS_PRIMITIVE_TYPE(type) (IS_PRIMITIVE(type) ? (ObjPrimitive *) (type).objType : NULL)
 
 #define NUM_DIRS 2
 

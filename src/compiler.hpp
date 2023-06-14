@@ -17,7 +17,6 @@ struct ReferenceExpr;
 struct GroupingExpr;
 
 struct Compiler {
-  Parser *parser;
   Compiler *enclosing;
   GroupingExpr *groupingExpr;
   ObjFunction *function = NULL;
@@ -25,21 +24,21 @@ struct Compiler {
   int declarationCount;
   Declaration declarations[UINT8_COUNT];
 
-  ObjFunction *compile(GroupingExpr *expr);
+  ObjFunction *compile(GroupingExpr *expr, Parser *parser);
   void pushScope();
-  Declaration *beginScope(ObjFunction *function);
+  Declaration *beginScope(ObjFunction *function, Parser *parser);
   void beginScope();
   void endScope();
 
-  Declaration *addDeclaration(Type type, Token &name, Declaration *previous, bool parentFlag);
+  Declaration *addDeclaration(Type type, Token &name, Declaration *previous, bool parentFlag, Parser *parser);
   Type &peekDeclaration();
-  int resolveReference(Token *name);
-  int resolveReference2(Token *name);
-  int resolveUpvalue(Token *name);
-  int addUpvalue(uint8_t index, Declaration *declaration, bool isDeclaration);
-  Type resolveReferenceExpr(ReferenceExpr *expr);
-  void checkDeclaration(Type returnType, ReferenceExpr *expr, ObjFunction *signature);
-  Declaration *checkDeclaration(Type returnType, Token &name, ObjFunction *signature);
+  int resolveReference(Token *name, Parser *parser);
+  int resolveReference2(Token *name, Parser *parser);
+  int resolveUpvalue(Token *name, Parser *parser);
+  int addUpvalue(uint8_t index, Declaration *declaration, bool isDeclaration, Parser *parser);
+  Type resolveReferenceExpr(ReferenceExpr *expr, Parser *parser);
+  void checkDeclaration(Type returnType, ReferenceExpr *expr, ObjFunction *signature, Parser *parser);
+  Declaration *checkDeclaration(Type returnType, Token &name, ObjFunction *signature, Parser *parser);
   bool inBlock();
 
   static inline Compiler *getCurrent() {
