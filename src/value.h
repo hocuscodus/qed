@@ -50,8 +50,7 @@ typedef enum {
   VAL_BOOL,
   VAL_INT,
   VAL_FLOAT,
-  VAL_OBJ,
-  VAL_POINT,
+  VAL_OBJ
 } ValueType;
 
 struct Type {

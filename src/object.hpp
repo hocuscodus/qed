@@ -41,7 +41,6 @@ typedef enum {
   OBJ_NATIVE,
   OBJ_NATIVE_CLASS,
   OBJ_UPVALUE,
-  OBJ_FUNCTION_PTR,
   OBJ_INTERNAL
 } ObjType;
 
@@ -54,13 +53,6 @@ struct Obj {
 };
 
 class Parser;
-
-struct ObjFunctionPtr {
-  Obj obj;
-  Type type;
-  int arity;
-  Type *parms;
-};
 
 struct ObjNamed {
   Obj obj;
@@ -264,7 +256,6 @@ ObjInstance *newInstance(ObjCallable *callable);
 ObjObject *newObject(ObjClosure *closure);
 ObjClosure *newClosure(ObjFunction *function, CoThread *parent);
 ObjNative *newNative(NativeFn function);
-ObjFunctionPtr *newFunctionPtr(Type type, int arity, Type *parms);
 ObjString *takeString(char *chars, int length);
 ObjString *copyString(const char *chars, int length);
 ObjUpvalue *newUpvalue(Value *slot);

@@ -40,7 +40,12 @@ ObjFunction *Compiler::compile(GroupingExpr *expr, Parser *parser) {
   expr->astPrint();
   printf("\n");
 #endif
-/*  Expr *cpsExpr = expr->toCps([](Expr *expr) {
+  expr->resolve(*parser);
+
+  if (parser->hadError)
+    return NULL;
+
+  Expr *cpsExpr = expr->toCps([](Expr *expr) {
     return expr;
   });
 #ifdef DEBUG_PRINT_CODE
@@ -48,11 +53,6 @@ ObjFunction *Compiler::compile(GroupingExpr *expr, Parser *parser) {
   cpsExpr->astPrint();
   printf("\n");
 #endif
-*/
-  expr->resolve(*parser);
-
-  if (parser->hadError)
-    return NULL;
 
 #ifdef DEBUG_PRINT_CODE
   printf("Adapted parse: ");
@@ -213,17 +213,7 @@ int Compiler::resolveReference(Token *name, Parser *parser) {
 
           found = isSignature ? i : -2 - i; // -2 = found name, no good signature yet
           break;
-        }/*
-        case OBJ_FUNCTION_PTR: {
-          ObjFunctionPtr *callable = (ObjFunctionPtr *)type.objType;
-          bool isSignature = signature->arity == callable->arity;
-
-          for (int index = 0; isSignature && index < signature->arity; index++)
-            isSignature = signature->compiler->declarations[index].type.equals(callable->parms[index + 1]);
-
-          found = isSignature ? i : -2 - i; // -2 = found name, no good signature yet
-          break;
-        }*/
+        }
         default:
           parser->error("Variable '%.*s' is not a call.", name->length, name->start);
           return -2 - i;

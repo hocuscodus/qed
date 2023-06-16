@@ -764,12 +764,16 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
           } while (match(TOKEN_COMMA));
 
         consume(TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
-        consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.");
+
+        bool parenFlag = match(TOKEN_LEFT_PAREN);
+
+        if (!parenFlag)
+          consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.");
 
         group->name = previous;
         functionExpr->arity = group->count;
         functionExpr->_declaration = getCurrent()->enclosing->checkDeclaration(OBJ_TYPE(&functionExpr->_function), name, &functionExpr->_function, this);
-        expList(group, TOKEN_RIGHT_BRACE, "Expect '}' after expression.");
+        expList(group, parenFlag ? TOKEN_RIGHT_PAREN : TOKEN_RIGHT_BRACE, "Expect '}' after expression.");
         group->_compiler.endScope();
         return functionExpr;
       }

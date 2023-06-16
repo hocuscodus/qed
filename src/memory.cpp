@@ -93,15 +93,6 @@ static void freeObject(Obj *object) {
     case OBJ_ARRAY:
       FREE(ObjArray, object);
       break;
-
-    case OBJ_FUNCTION_PTR:
-      ObjFunctionPtr *functionPtr = (ObjFunctionPtr *)object;
-
-      if (functionPtr->parms)
-        delete[] functionPtr->parms;
-
-      FREE(ObjFunctionPtr, object);
-      break;
   }
 }
 

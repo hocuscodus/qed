@@ -21,7 +21,6 @@ const char *Type::toString() {
     case VAL_BOOL: return "bool";
     case VAL_INT: return "int";
     case VAL_FLOAT: return "float";
-    case VAL_POINT: return "!point!";
     case VAL_OBJ: return objType ? objType->toString() : "!weird!";
     default: return "!weird2!";
   }

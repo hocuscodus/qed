@@ -507,7 +507,6 @@ const char *Obj::toString() {
     case OBJ_NATIVE:
     case OBJ_NATIVE_CLASS:
     case OBJ_UPVALUE:
-    case OBJ_FUNCTION_PTR:
     case OBJ_INTERNAL:
       return "!unknownObj!";
   }
@@ -1100,19 +1099,6 @@ ObjNative *newNative(NativeFn function) {
 
   native->function = function;
   return native;
-}
-
-ObjFunctionPtr *newFunctionPtr(Type type, int arity, Type *parms) {
-  ObjFunctionPtr *functionPtr = ALLOCATE_OBJ(ObjFunctionPtr, OBJ_FUNCTION_PTR);
-
-  functionPtr->type = type;
-  functionPtr->arity = arity;
-  functionPtr->parms = arity ? new Type[arity] : NULL;
-
-  for (int index = 0; index < arity; index++)
-    functionPtr->parms[index] = parms[index];
-
-  return functionPtr;
 }
 
 static ObjString *allocateString(char *chars, int length) {

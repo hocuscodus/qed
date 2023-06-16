@@ -117,7 +117,7 @@ Expr *ArrayElementExpr::toCps(K k) {
 }
 
 Expr *DeclarationExpr::toCps(K k) {
-  return initExpr->toCps([this, k](Expr *initExpr) {
+  return !initExpr ? this : initExpr->toCps([this, k](Expr *initExpr) {
     return k(compareExpr(this->initExpr, initExpr) ? this : new DeclarationExpr(this->typeExpr, this->name, initExpr));
   });
 }

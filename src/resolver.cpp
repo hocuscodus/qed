@@ -98,7 +98,6 @@ bool isType(Type &type) {
   }
 
   case OBJ_ARRAY:
-  case OBJ_FUNCTION_PTR:
     return true;
   }
 
@@ -178,7 +177,6 @@ static Expr *convertToObj(Obj *srcObjType, Expr *expr, Type &type, Parser &parse
   OBJ_NATIVE
   OBJ_NATIVE_CLASS
   OBJ_STRING
-  OBJ_FUNCTION_PTR
 */
   case OBJ_STRING:
     expr = convertToString(expr, type, parser);
@@ -554,28 +552,7 @@ Type CallExpr::resolve(Parser &parser) {
     else
       return callable->type;
     break;
-  }/*
-  case OBJ_FUNCTION_PTR: {
-    ObjFunctionPtr *callable = (ObjFunctionPtr *)type.objType;
-
-    if (newFlag) {
-      if (handler != NULL) {
-        char buffer[256] = "";
-
-        if (!IS_VOID(callable->type))
-          sprintf(buffer, "%s _ret", callable->type.toString());
-
-        handler = generateFunction("void", "ReturnHandler_", !IS_VOID(callable->type) ? buffer : NULL, handler, 1, 0, NULL);
-        handler->resolve(parser);
-      }
-
-;//        getCurrent()->addDeclaration(ONJ_TYPE(newInstance(callable)));
-      return VOID_TYPE;
-    }
-    else
-      return callable->type;
-    break;
-  }*/
+  }
   default:
     parser.error("Non-callable object type");
     return VOID_TYPE;
