@@ -366,7 +366,7 @@ InterpretResult run(CoThread *current) {
       }
       else */{
         ValueType type = frame->closure->function->type.valueType;
-        Value result = type != VAL_VOID ? POP : (Value) {VAL_VOID};
+        Value result = type != VAL_VOID ? POP : VOID_VAL;
 
         current->onReturn(result);
         frame = &current->frames[current->frameCount - 1];
@@ -471,6 +471,10 @@ Obj *allocateObject(size_t size, ObjType type) {
   return object;
 }
 
+bool Obj::equals(Obj *obj) {
+  return obj && type == obj->type;
+}
+
 const char *Obj::toString() {
   static char buf[256];
 
@@ -494,7 +498,7 @@ const char *Obj::toString() {
       ObjCallable *callable = ((ObjInstance *) this)->callable;
       ObjString *name = callable->name;
 
-      sprintf(buf, "%.*s", name->length, name->chars);
+      sprintf(buf, "%.*s*", name->length, name->chars);
       return buf;
     }
     case OBJ_THREAD:
@@ -535,7 +539,7 @@ std::string ObjCallable::getThisVariableName() {
 
 ObjFunction::ObjFunction() {
   obj.type = OBJ_FUNCTION;
-  type = {VAL_UNKNOWN};
+  type = UNKNOWN_TYPE;
   upvalueCount = 0;
   name = NULL;
   chunk.init();
@@ -686,7 +690,7 @@ LocationUnit *CallFrame::init(VM &vm, Value *values, IndexList *instanceIndexes,
 extern void postMessage(void (*fn)(void *), void *);
 
 bool CoThread::callValue(Value callee, int argCount) {
-  switch (OBJ_TYPE(callee)) {
+  switch (GET_OBJ_TYPE(callee)) {
 //    case OBJ_NATIVE_CLASS:
     case OBJ_OBJECT:
       return call(AS_OBJECT(callee)->getClosure(), argCount);
@@ -1141,7 +1145,7 @@ ObjUpvalue *newUpvalue(Value *slot) {
 
 ObjArray *newArray() {
   ObjArray *array = ALLOCATE_OBJ(ObjArray, OBJ_ARRAY);
-  array->elementType = {VAL_VOID};
+  array->elementType = VOID_TYPE;
   return array;
 }
 
@@ -1155,7 +1159,7 @@ static void printFunction(ObjCallable *function) {
 }
 
 void printObject(Value value) {
-  switch (OBJ_TYPE(value)) {
+  switch (GET_OBJ_TYPE(value)) {
   case OBJ_INTERNAL:
     printf("<internal>");
     break;

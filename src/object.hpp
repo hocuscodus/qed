@@ -13,7 +13,7 @@
 #include "value.h"
 #include "scanner.hpp"
 
-#define OBJ_TYPE(value)        (AS_OBJ(value)->type)
+#define GET_OBJ_TYPE(value)        (AS_OBJ(value)->type)
 
 #define AS_THREAD(value)       ((CoThread*)AS_OBJ(value))
 #define AS_INSTANCE(value)     ((ObjInstance*)AS_OBJ(value))
@@ -30,16 +30,17 @@
 typedef struct ObjString ObjString;
 
 typedef enum {
+  OBJ_STRING,
+  OBJ_INSTANCE,
+  OBJ_FUNCTION,
+  OBJ_ARRAY,
+/////////////////////////////
   OBJ_THREAD,
   OBJ_OBJECT,
-  OBJ_INSTANCE,
   OBJ_CLOSURE,
-  OBJ_FUNCTION,
   OBJ_NATIVE,
   OBJ_NATIVE_CLASS,
-  OBJ_STRING,
   OBJ_UPVALUE,
-  OBJ_ARRAY,
   OBJ_FUNCTION_PTR,
   OBJ_INTERNAL
 } ObjType;
@@ -48,6 +49,7 @@ struct Obj {
   ObjType type;
   struct Obj *next;
 
+  bool equals(Obj *obj);
   const char *toString();
 };
 

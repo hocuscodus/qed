@@ -10,6 +10,13 @@
 #include <array>
 #include "common.h"
 
+#define UNKNOWN_TYPE      (Type) {VAL_UNKNOWN}
+#define VOID_TYPE         (Type) {VAL_VOID}
+#define BOOL_TYPE         (Type) {VAL_BOOL}
+#define INT_TYPE          (Type) {VAL_INT}
+#define FLOAT_TYPE        (Type) {VAL_FLOAT}
+#define OBJ_TYPE(objType) (Type) {VAL_OBJ, &(objType)->obj}
+
 #define IS_UNKNOWN(type)  ((type).valueType == VAL_UNKNOWN)
 #define IS_VOID(type)     ((type).valueType == VAL_VOID)
 #define IS_BOOL(type)     ((type).valueType == VAL_BOOL)
@@ -21,7 +28,6 @@
 
 #define IS_INSTANCE(type)     isObjType(type, OBJ_INSTANCE)
 #define IS_FUNCTION(type)     isObjType(type, OBJ_FUNCTION)
-#define IS_PRIMITIVE(type)    isObjType(type, OBJ_PRIMITIVE)
 #define IS_STRING(type)       isObjType(type, OBJ_STRING)
 #define IS_ARRAY(type)        isObjType(type, OBJ_ARRAY)
 

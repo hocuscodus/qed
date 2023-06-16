@@ -11,7 +11,7 @@
 #include "memory.h"
 
 bool Type::equals(Type &type) {
-  return valueType == type.valueType && (valueType != VAL_OBJ || objType == type.objType);
+  return valueType == type.valueType && (valueType != VAL_OBJ || objType->equals(type.objType));
 }
 
 const char *Type::toString() {

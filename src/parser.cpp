@@ -192,7 +192,7 @@ Expr *Parser::parse() {
 
   group->_compiler.groupingExpr = group;
   functionExpr->_function.expr = functionExpr;
-  functionExpr->_function.type = {VAL_VOID};
+  functionExpr->_function.type = VOID_TYPE;
   functionExpr->_function.name = NULL;//copyString(name.start, name.length);
   group->_compiler.beginScope(&functionExpr->_function, this);
   expList(group, TOKEN_EOF, "Expect end of file.");
@@ -201,7 +201,7 @@ Expr *Parser::parse() {
 /*  Compiler *compiler = new Compiler;
 
   compiler->parser = this;
-  compiler->beginScope(newFunction({VAL_VOID}, NULL, 0));
+  compiler->beginScope(newFunction(VOID_TYPE, NULL, 0));
 
   Expr *expr = grouping(TOKEN_EOF, compiler, "Expect end of file.");
 
@@ -257,10 +257,12 @@ Expr *Parser::binary(Expr *left) {
 
   if (op.type == TOKEN_STAR && left->type == EXPR_REFERENCE && check(TOKEN_IDENTIFIER)) {
     FakeParser tempParser;
+    ReferenceExpr *expr = (ReferenceExpr *) left;
 
     left->resolve(tempParser);
 
-    if (!tempParser.hadError && ((ReferenceExpr *) left)->returnType.objType->type == OBJ_FUNCTION) {
+    if (!tempParser.hadError && IS_FUNCTION(expr->returnType)) {
+      expr->returnType = OBJ_TYPE(newInstance(AS_FUNCTION_TYPE(expr->returnType)));
       return left;
     }
   }
@@ -459,13 +461,13 @@ Expr *Parser::primitiveType() {
   case 'v':
     switch (previous.start[1]) {
     case 'a':
-      return new ReferenceExpr(previous, {VAL_UNKNOWN});
+      return new ReferenceExpr(previous, UNKNOWN_TYPE);
     case 'o':
-      return new ReferenceExpr(previous, {VAL_VOID});
+      return new ReferenceExpr(previous, VOID_TYPE);
     }
-  case 'b': return new ReferenceExpr(previous, {VAL_BOOL});
-  case 'i': return new ReferenceExpr(previous, {VAL_INT});
-  case 'f': return new ReferenceExpr(previous, {VAL_FLOAT});
+  case 'b': return new ReferenceExpr(previous, BOOL_TYPE);
+  case 'i': return new ReferenceExpr(previous, INT_TYPE);
+  case 'f': return new ReferenceExpr(previous, FLOAT_TYPE);
   case 'S': return new ReferenceExpr(previous, stringType);
   default: return NULL; // Unreachable.
   }
@@ -648,7 +650,7 @@ Expr *Parser::string() {
 }
 
 Expr *Parser::variable() {
-  return new ReferenceExpr(previous, {VAL_UNKNOWN});
+  return new ReferenceExpr(previous, UNKNOWN_TYPE);
 }
 
 Expr *Parser::unary() {
@@ -720,9 +722,6 @@ DeclarationExpr *Parser::parseVariable(TokenType *endGroupTypes, const char *err
   return declareVariable(typeExp, endGroupTypes);
 }
 
-extern bool isType(Type &type);
-extern Type convertType(Type &type);
-
 Expr *Parser::expression(TokenType *endGroupTypes) {
   Expr *exp = parsePrecedence((Precedence)(PREC_NONE + 1));
 
@@ -769,7 +768,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
 
         group->name = previous;
         functionExpr->arity = group->count;
-        functionExpr->_declaration = getCurrent()->enclosing->checkDeclaration({VAL_OBJ, &functionExpr->_function.obj}, name, &functionExpr->_function, this);
+        functionExpr->_declaration = getCurrent()->enclosing->checkDeclaration(OBJ_TYPE(&functionExpr->_function), name, &functionExpr->_function, this);
         expList(group, TOKEN_RIGHT_BRACE, "Expect '}' after expression.");
         group->_compiler.endScope();
         return functionExpr;

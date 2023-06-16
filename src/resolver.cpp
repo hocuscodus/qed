@@ -105,10 +105,6 @@ bool isType(Type &type) {
   return false;
 }
 
-Type convertType(Type &type) {
-  return IS_FUNCTION(type) ? (Type) {VAL_OBJ, &newInstance(AS_FUNCTION_TYPE(type))->obj} : type;
-}
-
 static Expr *convertToString(Expr *expr, Type &type, Parser &parser) {
   if (type.valueType == VAL_VOID)
     parser.error("Value must not be void");
@@ -138,7 +134,7 @@ static Expr *convertToInt(Expr *expr, Type &type, Parser &parser) {
     CastExpr *castExpr = new CastExpr(NULL, expr);
 
     castExpr->_srcType = type;
-    castExpr->_dstType = {VAL_INT};
+    castExpr->_dstType = INT_TYPE;
     expr = castExpr;
     break;
     }
@@ -161,7 +157,7 @@ static Expr *convertToFloat(Expr *expr, Type &type, Parser &parser) {
     CastExpr *castExpr = new CastExpr(NULL, expr);
 
     castExpr->_srcType = type;
-    castExpr->_dstType = {VAL_FLOAT};
+    castExpr->_dstType = FLOAT_TYPE;
     expr = castExpr;
     break;
     }
@@ -242,7 +238,7 @@ static void insertTabs() {
 static const char *getGroupName(UIDirectiveExpr *expr, int dir);
 
 Type acceptGroupingExprUnits(GroupingExpr *expr, int start, Parser &parser) {
-  Type returnType = {VAL_VOID};
+  Type returnType = VOID_TYPE;
   TokenType type = expr->name.type;
   bool parenFlag = type == TOKEN_LEFT_PAREN;
 
@@ -330,7 +326,7 @@ Type acceptGroupingExprUnits(GroupingExpr *expr, int start, Parser &parser) {
       ObjFunction *uiFunction = (ObjFunction *) uiFunctionExpr->_declaration->type.objType;
 
       getCurrent()->function->uiFunction = uiFunction;
-      parse(expr, "UI_ ui_;\n", 0, 0, NULL);
+      parse(expr, "UI_ *ui_;\n", 0, 0, NULL);
       expr->expressions[expr->count - 1]->resolve(parser);
 
       uiFunction->compiler->pushScope();
@@ -422,12 +418,12 @@ Type AssignExpr::resolve(Parser &parser) {
 
 Type UIAttributeExpr::resolve(Parser &parser) {
   parser.error("Internal error, cannot be invoked..");
-  return {VAL_VOID};
+  return VOID_TYPE;
 }
 
 Type UIDirectiveExpr::resolve(Parser &parser) {
   (*directiveFns[getParseStep()])(this, parser);
-  return {VAL_VOID};
+  return VOID_TYPE;
 }
 
 Type BinaryExpr::resolve(Parser &parser) {
@@ -455,7 +451,7 @@ Type BinaryExpr::resolve(Parser &parser) {
       if (!IS_OBJ(type2))
         parser.error("Second operand must be a string");
 
-      return {VAL_BOOL};
+      return BOOL_TYPE;
     }
     // no break statement, fall through
 
@@ -467,7 +463,7 @@ Type BinaryExpr::resolve(Parser &parser) {
       if (!type1.equals(type2)) {
         if (!IS_FLOAT(type2)) {
           parser.error("Second operand must be numeric");
-          return {VAL_VOID};
+          return VOID_TYPE;
         }
 
         left = convertToFloat(left, type1, parser);
@@ -480,7 +476,7 @@ Type BinaryExpr::resolve(Parser &parser) {
       if (!type1.equals(type2)) {
         if (!IS_INT(type2)) {
           parser.error("Second operand must be numeric");
-          return {VAL_VOID};
+          return VOID_TYPE;
         }
 
         right = convertToFloat(right, type2, parser);
@@ -503,14 +499,14 @@ Type BinaryExpr::resolve(Parser &parser) {
   case TOKEN_GREATER_GREATER_GREATER:
   case TOKEN_GREATER_GREATER:
   case TOKEN_LESS_LESS:
-    return {VAL_INT};
+    return INT_TYPE;
 
   case TOKEN_OR_OR:
   case TOKEN_AND_AND:
-    return {VAL_BOOL};
+    return BOOL_TYPE;
 
   default:
-    return {VAL_VOID}; // Unreachable.
+    return VOID_TYPE; // Unreachable.
   }
 }
 
@@ -523,10 +519,7 @@ Type CallExpr::resolve(Parser &parser) {
   compiler.function = &signature;
   compiler.function->name = copyString("Capital", 7);
   compiler.declarationCount = 0;
-
-//  return {VAL_OBJ}; // Dummy callee for space purposes
-
-  compiler.addDeclaration({VAL_VOID}, tok, NULL, false, &parser);
+  compiler.addDeclaration(VOID_TYPE, tok, NULL, false, &parser);
 
   for (int index = 0; index < count; index++) {
     Type type = arguments[index]->resolve(parser);
@@ -556,7 +549,7 @@ Type CallExpr::resolve(Parser &parser) {
         getCurrent()->declarationCount--;
       }
 */
-      return (Type) {VAL_OBJ, &newInstance(callable)->obj};
+      return OBJ_TYPE(newInstance(callable));
     }
     else
       return callable->type;
@@ -576,8 +569,8 @@ Type CallExpr::resolve(Parser &parser) {
         handler->resolve(parser);
       }
 
-;//        getCurrent()->addDeclaration((Type) {VAL_OBJ, &newInstance(callable)->obj});
-      return {VAL_VOID};
+;//        getCurrent()->addDeclaration(ONJ_TYPE(newInstance(callable)));
+      return VOID_TYPE;
     }
     else
       return callable->type;
@@ -585,7 +578,7 @@ Type CallExpr::resolve(Parser &parser) {
   }*/
   default:
     parser.error("Non-callable object type");
-    return {VAL_VOID};
+    return VOID_TYPE;
     break; // Non-callable object type.
   }
 }
@@ -595,20 +588,19 @@ Type ArrayElementExpr::resolve(Parser &parser) {
 
   if (!count)
     if (isType(type)) {
-      Type returnType = convertType(type);
       ObjArray *array = newArray();
 
-      array->elementType = returnType;
-      return {VAL_OBJ, &array->obj};
+      array->elementType = type;
+      return OBJ_TYPE(array);
     }
     else {
       parser.error("No index defined.");
-      return {VAL_VOID};
+      return VOID_TYPE;
     }
   else
     if (isType(type)) {
       parser.error("A type cannot have an index.");
-      return {VAL_VOID};
+      return VOID_TYPE;
     }
     else
       switch (AS_OBJ_TYPE(type)) {
@@ -634,26 +626,25 @@ Type ArrayElementExpr::resolve(Parser &parser) {
 
           argType = argType;
         }*/
-        return {VAL_VOID};
+        return VOID_TYPE;
       }
       default:
         parser.error("Non-indexable object type");
-        return {VAL_VOID};
+        return VOID_TYPE;
       }
 }
 
 Type DeclarationExpr::resolve(Parser &parser) {
   Type type = typeExpr->resolve(parser);
-  Type returnType = convertType(type);
 
   if (initExpr) {
     Type type1 = initExpr->resolve(parser);
     Type internalType = {VAL_OBJ, &objInternalType};
 
-    if (returnType.equals(internalType) || type.valueType == VAL_UNKNOWN)
-      returnType = type1;
-    else if (!type1.equals(returnType)) {
-      initExpr = convertToType(returnType, initExpr, type1, parser);
+    if (type.equals(internalType) || type.valueType == VAL_UNKNOWN)
+      type = type1;
+    else if (!type1.equals(type)) {
+      initExpr = convertToType(type, initExpr, type1, parser);
 
       if (!initExpr) {
         parser.error("Value must match the variable type");
@@ -679,7 +670,7 @@ Type DeclarationExpr::resolve(Parser &parser) {
       break;
 
     case VAL_OBJ:
-      switch (AS_OBJ_TYPE(returnType)) {
+      switch (AS_OBJ_TYPE(type)) {
       case OBJ_STRING:
         initExpr = new LiteralExpr(VAL_OBJ, {.obj = &copyString("", 0)->obj});
         break;
@@ -691,16 +682,15 @@ Type DeclarationExpr::resolve(Parser &parser) {
       break;
     }
 
-  _declaration = getCurrent()->checkDeclaration(returnType, name, NULL, &parser);
-  return {VAL_VOID};
+  _declaration = getCurrent()->checkDeclaration(type, name, NULL, &parser);
+  return VOID_TYPE;
 }
 
 Type FunctionExpr::resolve(Parser &parser) {
 //  Type type = typeExpr->resolve(parser);
-//  Type returnType = convertType(type);
   Compiler &compiler = body->_compiler;
 
-//  function = newFunction(returnType, copyString(name.start, name.length), count);
+//  function = newFunction(type, copyString(name.start, name.length), count);
 //  compiler.parser = &parser;
   compiler.pushScope();
 //  bindFunction(compiler.prefix, function);
@@ -726,14 +716,14 @@ Type FunctionExpr::resolve(Parser &parser) {
     getCurrent()->groupingExpr->expressions[getCurrent()->groupingExpr->count - 1]->resolve(parser);
   }
 
-//  _declaration = getCurrent()->enclosing->checkDeclaration({VAL_OBJ, &function->obj}, name, function);
+//  _declaration = getCurrent()->enclosing->checkDeclaration(OBJ_TYPE(function), name, function);
 //  function->bodyExpr = body;
 
   if (body)
     acceptGroupingExprUnits(body, arity, parser);
 
   compiler.endScope();
-  return {VAL_VOID};
+  return OBJ_TYPE(compiler.function);
 }
 
 Type GetExpr::resolve(Parser &parser) {
@@ -762,7 +752,7 @@ Type GetExpr::resolve(Parser &parser) {
     parser.errorAt(&name, "Field '%.*s' not found.", name.length, name.start);
   }
 
-  return {VAL_VOID};
+  return VOID_TYPE;
 }
 
 Type GroupingExpr::resolve(Parser &parser) {
@@ -783,11 +773,8 @@ Type GroupingExpr::resolve(Parser &parser) {
 }
 
 Type CastExpr::resolve(Parser &parser) {
-  if (typeExpr) {
-    Type type = typeExpr->resolve(parser);
-
-   _dstType = convertType(type);
-  }
+  if (typeExpr)
+    _dstType = typeExpr->resolve(parser);
 
   return _dstType;
 }
@@ -801,15 +788,15 @@ Type IfExpr::resolve(Parser &parser) {
   if (elseBranch)
     elseBranch->resolve(parser);
 
-  return {VAL_VOID};
+  return VOID_TYPE;
 }
 
 Type ArrayExpr::resolve(Parser &parser) {
   ObjArray *objArray = newArray();
-  Type type = {VAL_OBJ, &objArray->obj};
+  Type type = OBJ_TYPE(objArray);
 //  Compiler compiler;
 
-//  compiler.beginScope(newFunction({VAL_VOID}, NULL, 0));
+//  compiler.beginScope(newFunction(VOID_TYPE, NULL, 0));
 
   for (int index = 0; index < count; index++)
     objArray->elementType = expressions[index]->resolve(parser);
@@ -831,7 +818,7 @@ Type ListExpr::resolve(Parser &parser) {
       return type;
   }
 
-  return {VAL_VOID};
+  return VOID_TYPE;
 }
 
 Type LiteralExpr::resolve(Parser &parser) {
@@ -848,7 +835,7 @@ Type LogicalExpr::resolve(Parser &parser) {
   if (!IS_BOOL(type1) || !IS_BOOL(type2))
     parser.error("Value must be boolean");
 
-  return {VAL_BOOL};
+  return BOOL_TYPE;
 }
 
 Type WhileExpr::resolve(Parser &parser) {
@@ -885,7 +872,7 @@ Type ReturnExpr::resolve(Parser &parser) {
     // else return void
   }
 
-  return {VAL_VOID};
+  return VOID_TYPE;
 }
 
 Type SetExpr::resolve(Parser &parser) {
@@ -913,7 +900,7 @@ Type SetExpr::resolve(Parser &parser) {
     parser.errorAt(&name, "Field '%.*s' not found.", name.length, name.start);
   }
 
-  return {VAL_VOID};
+  return VOID_TYPE;
 }
 
 Type TernaryExpr::resolve(Parser &parser) {
@@ -929,7 +916,7 @@ Type TernaryExpr::resolve(Parser &parser) {
 }
 
 Type ThisExpr::resolve(Parser &parser) {
-  return {VAL_VOID};
+  return VOID_TYPE;
 }
 
 Type TypeExpr::resolve(Parser &parser) {/*
@@ -942,7 +929,7 @@ Type TypeExpr::resolve(Parser &parser) {/*
   }
 
   return getCurrent()->resolveReferenceExpr(this);*/
-  return {VAL_VOID};
+  return VOID_TYPE;
 }
 
 Type UnaryExpr::resolve(Parser &parser) {
@@ -954,7 +941,7 @@ Type UnaryExpr::resolve(Parser &parser) {
   switch (op.type) {
   case TOKEN_PRINT:
     right = convertToString(right, type, parser);
-    return {VAL_VOID};
+    return VOID_TYPE;
 
   case TOKEN_NEW: {
     bool errorFlag = true;
@@ -973,7 +960,7 @@ Type UnaryExpr::resolve(Parser &parser) {
 
   case TOKEN_PERCENT:
     right = convertToFloat(right, type, parser);
-    return {VAL_FLOAT};
+    return FLOAT_TYPE;
 
   default:
     return type;
@@ -981,10 +968,9 @@ Type UnaryExpr::resolve(Parser &parser) {
 }
 
 Type ReferenceExpr::resolve(Parser &parser) {
-  if (returnType.valueType != VAL_UNKNOWN || name.equal("var"))
-    return returnType;
+  if (returnType.valueType == VAL_UNKNOWN && !name.equal("var"))
+    returnType = getCurrent()->resolveReferenceExpr(this, &parser);
 
-  returnType = getCurrent()->resolveReferenceExpr(this, &parser);
   return returnType;
 }
 
@@ -1002,7 +988,7 @@ Type SwapExpr::resolve(Parser &parser) {
 }
 
 Type NativeExpr::resolve(Parser &parser) {
-  return {VAL_VOID};
+  return VOID_TYPE;
 }
 /*
 void AttrSet::parseCreateAreasTree(VM &vm, ValueStack<Value *> &valueStack, int dimFlags, const Path &path, Value *values, IndexList *instanceIndexes, LocationUnit **areaUnits) {

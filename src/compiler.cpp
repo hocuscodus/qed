@@ -134,7 +134,7 @@ Declaration *Compiler::beginScope(ObjFunction *function, Parser *parser) {
     enclosing->function->add(function);
   }
 
-  return addDeclaration({VAL_OBJ, &function->obj}, token, NULL, false, parser);
+  return addDeclaration(OBJ_TYPE(function), token, NULL, false, parser);
 }
 
 void Compiler::beginScope() {
@@ -337,7 +337,7 @@ Type Compiler::resolveReferenceExpr(ReferenceExpr *expr, Parser *parser) {
       expr->_declaration = NULL;
     }
 
-  return expr->_declaration ? expr->_declaration->type : (Type) {VAL_UNKNOWN};
+  return expr->_declaration ? expr->_declaration->type : UNKNOWN_TYPE;
 }
 
 void Compiler::checkDeclaration(Type returnType, ReferenceExpr *expr, ObjFunction *signature, Parser *parser) {
