@@ -529,7 +529,6 @@ bool endsWith(std::string const &str, std::string const &suffix) {
 
 bool ObjCallable::isUserClass() {
   return isClass() && name && !endsWith(std::string(name->chars, name->length), "_");
-//  return isClass() && (!name || !endsWith(std::string(name->chars, name->length), "_"));
 }
 
 std::string ObjCallable::getThisVariableName() {

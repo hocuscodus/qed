@@ -14,17 +14,6 @@
 #include "qni.hpp"
 #include <stack>
 
-#define UI_PARSES_DEF \
-    UI_PARSE_DEF( PARSE_VALUES, &processAttrs ), \
-    UI_PARSE_DEF( PARSE_AREAS, &pushAreas ), \
-    UI_PARSE_DEF( PARSE_LAYOUT, &recalcLayout ), \
-    UI_PARSE_DEF( PARSE_REFRESH, &paint ), \
-    UI_PARSE_DEF( PARSE_EVENTS, &onEvent ), \
-
-#define UI_PARSE_DEF( identifier, directiveFn )  identifier
-typedef enum { UI_PARSES_DEF } ParseStep;
-#undef UI_PARSE_DEF
-
 struct ValueStack3 {
   int max;
 	std::stack<int> *map;
@@ -62,31 +51,18 @@ void acceptGroupingExprUnits(GroupingExpr *expr);
 void acceptSubExpr(Expr *expr);
 void parse(GroupingExpr *groupingExpr, const char *source, int index, int replace, Expr *body);
 
-ParseStep getParseStep();
-int getParseDir();
-
 void processAttrs(UIDirectiveExpr *expr, Parser &parser);
 void pushAreas(UIDirectiveExpr *expr, Parser &parser);
-void recalcLayout(UIDirectiveExpr *expr, Parser &parser);
+void recalcLayout(UIDirectiveExpr *expr, Parser &parser, int dir);
 int adjustLayout(UIDirectiveExpr *expr, Parser &parser);
 void paint(UIDirectiveExpr *expr, Parser &parser);
 void onEvent(UIDirectiveExpr *expr, Parser &parser);
-
-typedef void (*DirectiveFn)(UIDirectiveExpr *expr, Parser &parser);
-
-#define UI_PARSE_DEF( identifier, directiveFn )  { directiveFn }
-DirectiveFn directiveFns[] = { UI_PARSES_DEF };
-#undef UI_PARSE_DEF
-
-extern ParseExpRule expRules[];
 
 /*
 #ifdef DEBUG_PRINT_CODE
 #include "debug.hpp"
 #endif
 */
-int uiParseCount = -1;
-
 static Obj objInternalType = {OBJ_INTERNAL};
 
 bool isType(Type &type) {
@@ -241,60 +217,10 @@ Type acceptGroupingExprUnits(GroupingExpr *expr, int start, Parser &parser) {
   bool parenFlag = type == TOKEN_LEFT_PAREN;
 
   for (int index = start; index < expr->count; index++) {
-    Expr *subExpr = expr->expressions[index];
-
-    if (subExpr->type == EXPR_UIDIRECTIVE) {
-      if (++uiParseCount >= 0)
-        ss->str("");
-
-      if (getParseStep() == PARSE_EVENTS) {
-        insertTabs();
-        (*ss) << "bool flag = false\n";
-      }
-    }
-
-    Type subType = subExpr->resolve(parser);
+    Type subType = expr->expressions[index]->resolve(parser);
 
     if (parenFlag)
       returnType = subType;
-
-    if (subExpr->type == EXPR_UIDIRECTIVE) {
-      UIDirectiveExpr *exprUI = (UIDirectiveExpr *) subExpr;
-
-      if (uiParseCount >= 0) {
-        if (uiParseCount == 0) {
-          getCurrent()->function->eventFlags = exprUI->_eventFlags;
-
-          for (int ndx2 = -1; (ndx2 = getCurrent()->function->instanceIndexes->getNext(ndx2)) != -1;)
-            (*ss) << "v" << ndx2 << ".ui_ = new v" << ndx2 << ".UI_();\n";
-        }
-
-        if (uiParseCount == 3) {
-          nTabs++;
-          insertTabs();
-          (*ss) << "var size = (" << getGroupName(exprUI, 0) << " << 16) | " << getGroupName(exprUI, 1) << "\n";
-          nTabs--;
-        }
-        std::string *str = new std::string(ss->str().c_str());
-#ifdef DEBUG_PRINT_CODE
-        printf("CODE %d\n%s", uiParseCount, str->c_str());
-#endif
-        parse(expr, str->c_str(), index, 1, expr);
-      }/*
-      else {
-        getCurrent()->function->eventFlags = exprUI->_eventFlags;
-        expressions = RESIZE_ARRAY(Expr *, expressions, count, count + uiExprs.size() - 1);
-        memmove(&expressions[index + uiExprs.size()], &expressions[index + 1], (--count - index) * sizeof(Expr *));
-
-        for (Expr *uiExpr : uiExprs)
-          expressions[index++] = uiExpr;
-
-        count += uiExprs.size();
-        uiExprs.clear();
-      }
-*/
-      index--;
-    }
   }
 
   if (expr->ui != NULL) {
@@ -334,10 +260,8 @@ Type acceptGroupingExprUnits(GroupingExpr *expr, int start, Parser &parser) {
       nTabs++;
       aCount = 1;
       pushAreas(exprUI, parser);
-      uiParseCount = PARSE_LAYOUT;
-      recalcLayout(exprUI, parser);
-      uiParseCount++;
-      recalcLayout(exprUI, parser);
+      recalcLayout(exprUI, parser, 0);
+      recalcLayout(exprUI, parser, 1);
       insertTabs();
       (*ss) << "var size = (" << getGroupName(exprUI, 0) << " << 16) | " << getGroupName(exprUI, 1) << "\n";
       nTabs--;
@@ -420,7 +344,7 @@ Type UIAttributeExpr::resolve(Parser &parser) {
 }
 
 Type UIDirectiveExpr::resolve(Parser &parser) {
-  (*directiveFns[getParseStep()])(this, parser);
+  parser.error("Internal error, cannot be invoked..");
   return VOID_TYPE;
 }
 
@@ -664,43 +588,26 @@ Type DeclarationExpr::resolve(Parser &parser) {
 }
 
 Type FunctionExpr::resolve(Parser &parser) {
-//  Type type = typeExpr->resolve(parser);
-  Compiler &compiler = body->_compiler;
+  if (body) {
+    body->_compiler.pushScope();
+/*
+    if (_function.isUserClass()) {
+      char buffer[256] = "";
+      char buf[512];
 
-//  function = newFunction(type, copyString(name.start, name.length), count);
-//  compiler.parser = &parser;
-  compiler.pushScope();
-//  bindFunction(compiler.prefix, function);
+      if (!IS_VOID(_function.type))
+        sprintf(buffer, "%s _ret", _function.type.toString());
 
-//  for (int index = 0; index < count; index++)
-//    params[index]->resolve(parser);
-
-  const char *str = name.getString().c_str();
-  char firstChar = str[0];
-  bool handlerFlag = str[strlen(str) - 1] == '_';
-
-  if (!handlerFlag && firstChar >= 'A' && firstChar <= 'Z') {
-    char buffer[256] = "";
-    char buf[512];
-
-    if (!IS_VOID(compiler.function->type))
-      sprintf(buffer, "%s _ret", compiler.function->type.toString());
-
-    sprintf(buf, "void ReturnHandler_(%s) {};", buffer);
-
-    parse(getCurrent()->groupingExpr, buf, 0, 0, NULL);
-
-    getCurrent()->groupingExpr->expressions[getCurrent()->groupingExpr->count - 1]->resolve(parser);
+      sprintf(buf, "void ReturnHandler_(%s) {};", buffer);
+      parse(getCurrent()->groupingExpr, buf, 0, 0, NULL);
+      getCurrent()->groupingExpr->expressions[getCurrent()->groupingExpr->count - 1]->resolve(parser);
+    }
+*/
+    acceptGroupingExprUnits(body, arity, parser);
+    body->_compiler.endScope();
   }
 
-//  _declaration = getCurrent()->enclosing->checkDeclaration(OBJ_TYPE(function), name, function);
-//  function->bodyExpr = body;
-
-  if (body)
-    acceptGroupingExprUnits(body, arity, parser);
-
-  compiler.endScope();
-  return OBJ_TYPE(compiler.function);
+  return OBJ_TYPE(&_function);
 }
 
 Type GetExpr::resolve(Parser &parser) {
@@ -823,7 +730,7 @@ Type WhileExpr::resolve(Parser &parser) {
 static std::list<Expr *> uiExprs;
 static std::list<Type> uiTypes;
 
-Type ReturnExpr::resolve(Parser &parser) {
+Type ReturnExpr::resolve(Parser &parser) {/*
   if (getCurrent()->function->isClass()) {
     char buf[128] = "{post(ReturnHandler_)}";
 
@@ -837,7 +744,7 @@ Type ReturnExpr::resolve(Parser &parser) {
 
     getCurrent()->groupingExpr->expressions[getCurrent()->groupingExpr->count - 1]->resolve(parser);
   }
-
+*/
   // sync processing below
 
   if (value) {
@@ -1099,14 +1006,6 @@ void parse(GroupingExpr *groupingExpr, const char *source, int index, int replac
   return groupingExpr;*/
 }
 
-ParseStep getParseStep() {
-  return uiParseCount <= PARSE_AREAS ? (ParseStep) uiParseCount : uiParseCount <= PARSE_AREAS + NUM_DIRS ? PARSE_LAYOUT : (ParseStep) (uiParseCount - NUM_DIRS + 1);
-}
-
-int getParseDir() {
-  return uiParseCount - PARSE_LAYOUT;
-}
-
 #define UI_ATTRIBUTE_DEF( identifier, text, conversionFunction )  text
 static const char *uiAttributes[] = { UI_ATTRIBUTES_DEF };
 #undef UI_ATTRIBUTE_DEF
@@ -1358,17 +1257,15 @@ static const char *getGroupName(UIDirectiveExpr *expr, int dir) {
     return getUnitName(expr, dir);
 }
 
-void recalcLayout(UIDirectiveExpr *expr, Parser &parser) {
-  int dir = getParseDir();
-
+void recalcLayout(UIDirectiveExpr *expr, Parser &parser, int dir) {
   if (expr->previous)
-    recalcLayout(expr->previous, parser);
+    recalcLayout(expr->previous, parser, dir);
 
   if (expr->lastChild) {
     UIDirectiveExpr *oldParent = parent;
 
     parent = expr;
-    recalcLayout(expr->lastChild, parser);
+    recalcLayout(expr->lastChild, parser, dir);
     parent = oldParent;
   }
 

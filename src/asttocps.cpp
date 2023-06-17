@@ -42,7 +42,9 @@ Expr *AssignExpr::toCps(K k) {
 }
 
 Expr *CastExpr::toCps(K k) {
-  return NULL;
+  return expr->toCps([this, k](Expr *expr) {
+    return compareExpr(this->expr, expr) ? this : k(new CastExpr(typeExpr, expr));
+  });
 }
 
 Expr *UIAttributeExpr::toCps(K k) {
@@ -123,6 +125,9 @@ Expr *DeclarationExpr::toCps(K k) {
 }
 
 Expr *FunctionExpr::toCps(K k) {
+  if (!_function.isClass())
+    return this;
+
   const char *cont = genSymbol("K");
   Expr *bodyExpr = body->toCps([this, cont](Expr *body) {return body;});
   GroupingExpr *newBody = bodyExpr->type == EXPR_GROUPING ? (GroupingExpr *) bodyExpr : NULL;
@@ -148,9 +153,7 @@ function cps_lambda(exp, k) {
 
 Expr *GetExpr::toCps(K k) {
 //  return parenthesize2(".", expr.object, expr.name.lexeme);
-  printf("(. ");
   object->toCps(k);
-  printf(" %.*s)", name.length, name.start);
   return this;
 }
 

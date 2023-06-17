@@ -45,15 +45,6 @@ ObjFunction *Compiler::compile(GroupingExpr *expr, Parser *parser) {
   if (parser->hadError)
     return NULL;
 
-  Expr *cpsExpr = expr->toCps([](Expr *expr) {
-    return expr;
-  });
-#ifdef DEBUG_PRINT_CODE
-  printf("CPS parse: ");
-  cpsExpr->astPrint();
-  printf("\n");
-#endif
-
 #ifdef DEBUG_PRINT_CODE
   printf("Adapted parse: ");
   expr->astPrint();
@@ -66,6 +57,15 @@ ObjFunction *Compiler::compile(GroupingExpr *expr, Parser *parser) {
     else
       printf("[ N/A ]");
   }
+  printf("\n");
+#endif
+
+  Expr *cpsExpr = expr->toCps([](Expr *expr) {
+    return expr;
+  });
+#ifdef DEBUG_PRINT_CODE
+  printf("CPS parse: ");
+  cpsExpr->astPrint();
   printf("\n");
 #endif
   line() << "const canvas = document.getElementById(\"canvas\");\n";

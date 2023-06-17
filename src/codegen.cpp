@@ -141,14 +141,14 @@ void FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
 
     str() << ((DeclarationExpr *) body->expressions[index])->name.getString();
   }
-
+/*
   if (_function.isUserClass()) {
     if (arity)
       str() << ", ";
 
     str() << "ReturnHandler_";
   }
-
+*/
   str() << ") ";
 
 //    for (ObjFunction *child = this->function->firstChild; this->function; child = child->next)
@@ -195,10 +195,10 @@ void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
         line() << "this." << name << " = " << name << ";\n";
       }
     }
-
+/*
     if (function->isUserClass())
         line() << "this.ReturnHandler_ = ReturnHandler_;\n";
-
+*/
     if (classFlag)
       line() << "const " << function->getThisVariableName() << " = this;\n";
   }
