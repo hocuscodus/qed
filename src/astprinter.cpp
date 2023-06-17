@@ -69,7 +69,7 @@ static void printObjType(Obj *obj) {
     case OBJ_INSTANCE: {
       ObjString *name = ((ObjInstance *) obj)->callable->name;
 
-      printf("%.s instance", name->length, name->chars);
+      printf("%.s *", name->length, name->chars);
       return;
     }
   }

@@ -441,7 +441,6 @@ Type CallExpr::resolve(Parser &parser) {
   compiler.function = &signature;
   compiler.function->name = copyString("Capital", 7);
   compiler.declarationCount = 0;
-  compiler.addDeclaration(VOID_TYPE, tok, NULL, false, &parser);
 
   for (int index = 0; index < count; index++) {
     Type type = arguments[index]->resolve(parser);

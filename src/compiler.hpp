@@ -26,7 +26,7 @@ struct Compiler {
 
   ObjFunction *compile(GroupingExpr *expr, Parser *parser);
   void pushScope();
-  Declaration *beginScope(ObjFunction *function, Parser *parser);
+  void beginScope(ObjFunction *function, Parser *parser);
   void beginScope();
   void endScope();
 

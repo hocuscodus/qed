@@ -119,22 +119,15 @@ void Compiler::pushScope() {
   current = this;
 }
 
-Token token = buildToken(TOKEN_IDENTIFIER, "", 0, -1);
-Declaration *Compiler::beginScope(ObjFunction *function, Parser *parser) {
+void Compiler::beginScope(ObjFunction *function, Parser *parser) {
   pushScope();
-  function->compiler = this;
   declarationCount = 0;
-  vCount = 1;
   this->function = function;
+  function->compiler = this;
+  vCount = 1;
 
-  if (enclosing) {
-    ObjString *enclosingNameObj = enclosing->function->name;
-    std::string enclosingName = enclosingNameObj ? std::string("_") + enclosingNameObj->chars : "";
-
+  if (enclosing)
     enclosing->function->add(function);
-  }
-
-  return addDeclaration(OBJ_TYPE(function), token, NULL, false, parser);
 }
 
 void Compiler::beginScope() {
@@ -206,10 +199,10 @@ int Compiler::resolveReference(Token *name, Parser *parser) {
         switch (AS_OBJ_TYPE(type)) {
         case OBJ_FUNCTION: {
           ObjFunction *callable = AS_FUNCTION_TYPE(type);
-          bool isSignature = signature->compiler->declarationCount - 1 == callable->expr->arity;
+          bool isSignature = signature->compiler->declarationCount == callable->expr->arity;
 
           for (int index = 0; isSignature && index < callable->expr->arity; index++)
-            isSignature = signature->compiler->declarations[index + 1].type.equals(callable->compiler->declarations[index + 1].type);
+            isSignature = signature->compiler->declarations[index].type.equals(callable->compiler->declarations[index].type);
 
           found = isSignature ? i : -2 - i; // -2 = found name, no good signature yet
           break;
@@ -243,13 +236,13 @@ int Compiler::resolveReference2(Token *name, Parser *parser) {
       if (index)
         strcat(buf, ", ");
 
-      strcat(buf, callable->compiler->declarations[index + 1].type.toString());
+      strcat(buf, callable->compiler->declarations[index].type.toString());
     }
 
     strcat(buf, ")'");
 
-    for (int index = 1; index < signature->compiler->declarationCount; index++) {
-      if (index > 1)
+    for (int index = 0; index < signature->compiler->declarationCount; index++) {
+      if (index)
         strcat(parms, ", ");
 
       strcat(parms, signature->compiler->declarations[index].type.toString());

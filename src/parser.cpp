@@ -188,7 +188,7 @@ Expr *Parser::parse() {
     }
   */
   GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_EOF, "", 0, -1), 0, NULL, NULL);
-  FunctionExpr *functionExpr = new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, "main", 4, -1), 0, group);
+  FunctionExpr *functionExpr = new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, "Main", 4, -1), 0, group);
 
   group->_compiler.groupingExpr = group;
   functionExpr->_function.expr = functionExpr;

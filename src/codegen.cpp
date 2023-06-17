@@ -181,13 +181,13 @@ void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
     bool arityFlag = false;
 
     for (int index = 0; !arityFlag && index < function->expr->arity; index++)
-      arityFlag = function->compiler->declarations[index + 1].isField;
+      arityFlag = function->compiler->declarations[index].isField;
 
 //    for (int index = 0; !classFlag && index < function->upvalueCount; index++)
 //      classFlag = function->upvalues[index].isField;
 
     for (int index = 0; index < function->expr->arity; index++) {
-      Declaration &declaration = function->compiler->declarations[index + 1];
+      Declaration &declaration = function->compiler->declarations[index];
 
       if (declaration.isField) {
         std::string name = declaration.name.getString();
