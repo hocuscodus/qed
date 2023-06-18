@@ -101,7 +101,7 @@ void CallExpr::toCode(Parser &parser, ObjFunction *function) {
       str() << ", ";
 
     if (handler)
-      handler->toCode(parser, handlerFunction);
+      handler->toCode(parser, &((FunctionExpr *) handler)->_function);
 
     if (parser.hadError)
       return;

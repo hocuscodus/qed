@@ -90,7 +90,7 @@ Expr *CallExpr::toCps(K k) {
           bodyExpr[0] = k(expList[0]);
           arguments[index] = new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, cont, strlen(cont), -1), 1,// expList,
                                               new GroupingExpr(buildToken(TOKEN_LEFT_BRACKET, "{", 1, -1), 1, bodyExpr, NULL));
-          return new CallExpr(callee, this->paren, this->count + 1, arguments, this->newFlag, NULL, NULL, NULL);
+          return new CallExpr(this->newFlag, callee, this->paren, this->count + 1, arguments, NULL);
         }
     };
 

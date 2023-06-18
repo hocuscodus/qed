@@ -45,6 +45,9 @@ struct ValueStack3 {
   }
 };
 
+static std::list<Expr *> uiExprs;
+static std::list<Type> uiTypes;
+
 Type popType1();
 bool resolve(Compiler *compiler);
 void acceptGroupingExprUnits(GroupingExpr *expr);
@@ -452,34 +455,30 @@ Type CallExpr::resolve(Parser &parser) {
   Type type = callee->resolve(parser);
   popSignature();
 
-  switch (AS_OBJ_TYPE(type)) {
-  case OBJ_FUNCTION: {
-    callable = AS_FUNCTION_TYPE(type);
+  if (IS_FUNCTION(type)) {
+    char buffer[256];
+    ObjFunction *callable = AS_FUNCTION_TYPE(type);
+    bool parmFlag = !IS_VOID(callable->type);
+    char parm[128] = "";
+    GroupingExpr group(buildToken(TOKEN_EOF, "", 0, -1), 0, NULL, NULL);
 
-    if (newFlag) {/*
-      if (handler != NULL) {
-        char buffer[256] = "";
+    // create an empty function handler for now
+    if (parmFlag)
+      sprintf(parm, "%s _ret", callable->type.toString());
 
-        if (!IS_VOID(callable->type))
-          sprintf(buffer, "%s _ret", callable->type.toString());
-
-        handler = generateFunction("void", "ReturnHandler_", !IS_VOID(callable->type) ? buffer : NULL, handler, 1, 0, NULL);
-        handler->resolve(parser);
-        Type type = getCurrent()->peekDeclaration();// = popType();
-        handlerFunction = AS_FUNCTION_TYPE(type);
-        getCurrent()->declarationCount--;
-      }
-*/
-      return OBJ_TYPE(newInstance(callable));
+    if (handler) {
+      uiExprs.push_back(handler);
+      uiTypes.push_back(UNKNOWN_TYPE);
     }
-    else
-      return callable->type;
-    break;
-  }
-  default:
+
+    sprintf(buffer, "(void Lambda(%s) {%s})", parm, handler ? "$EXPR" : "");
+    parse(&group, buffer, 0, 0, NULL);
+    handler = group.expressions[0];
+    handler->resolve(parser);
+    return newFlag ? OBJ_TYPE(newInstance(callable)) : callable->type;
+  } else {
     parser.error("Non-callable object type");
     return VOID_TYPE;
-    break; // Non-callable object type.
   }
 }
 
@@ -726,9 +725,6 @@ Type WhileExpr::resolve(Parser &parser) {
   return body->resolve(parser);
 }
 
-static std::list<Expr *> uiExprs;
-static std::list<Type> uiTypes;
-
 Type ReturnExpr::resolve(Parser &parser) {/*
   if (getCurrent()->function->isClass()) {
     char buf[128] = "{post(ReturnHandler_)}";
@@ -864,7 +860,7 @@ Type SwapExpr::resolve(Parser &parser) {
   uiExprs.pop_front();
   uiTypes.pop_front();
 
-  if (type.valueType < VAL_VOID)
+  if (type.valueType == VAL_UNKNOWN)
     return _expr->resolve(parser);
 
   return type;
@@ -1544,7 +1540,7 @@ void onEvent(UIDirectiveExpr *expr, Parser &parser) {
                 insertTabs();
                 (*ss) << "{void Ret_() {$EXPR}; post(Ret_)}\n";
                 uiExprs.push_back(attExpr->handler);
-                uiTypes.push_back({(ValueType)-1});
+                uiTypes.push_back(UNKNOWN_TYPE);
                 attExpr->handler = NULL;
 
                 --nTabs;

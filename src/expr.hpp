@@ -173,16 +173,14 @@ struct ArrayExpr : public Expr {
 };
 
 struct CallExpr : public Expr {
+  bool newFlag;
   Expr* callee;
   Token paren;
   int count;
   Expr** arguments;
-  bool newFlag;
   Expr* handler;
-  ObjCallable* callable;
-  ObjFunction* handlerFunction;
 
-  CallExpr(Expr* callee, Token paren, int count, Expr** arguments, bool newFlag, Expr* handler, ObjCallable* callable, ObjFunction* handlerFunction);
+  CallExpr(bool newFlag, Expr* callee, Token paren, int count, Expr** arguments, Expr* handler);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);
