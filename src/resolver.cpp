@@ -226,101 +226,6 @@ Type acceptGroupingExprUnits(GroupingExpr *expr, int start, Parser &parser) {
       returnType = subType;
   }
 
-  if (expr->ui != NULL) {
-    UIDirectiveExpr *exprUI = (UIDirectiveExpr *) expr->ui;
-
-    if (exprUI->previous || exprUI->lastChild) {
-      // Perform the UI AST magic
-      ss->str("");
-      insertTabs();
-      (*ss) << "void UI_() {\n";
-      nTabs++;
-      processAttrs(exprUI, parser);
-
-      for (int ndx2 = -1; (ndx2 = getCurrent()->function->instanceIndexes->getNext(ndx2)) != -1;)
-        (*ss) << "v" << ndx2 << ".ui_ = new v" << ndx2 << ".UI_();\n";
-      nTabs--;
-      insertTabs();
-      (*ss) << "}\n";
-      printf(ss->str().c_str());
-      parse(expr, ss->str().c_str(), 0, 0, NULL);
-
-      FunctionExpr *uiFunctionExpr = (FunctionExpr *) expr->expressions[expr->count - 1];
-
-      uiFunctionExpr->resolve(parser);
-      uiFunctionExpr->_function.eventFlags = exprUI->_eventFlags;
-
-      ObjFunction *uiFunction = (ObjFunction *) uiFunctionExpr->_declaration->type.objType;
-
-      getCurrent()->function->uiFunction = uiFunction;
-      parse(expr, "UI_ *ui_;\n", 0, 0, NULL);
-      expr->expressions[expr->count - 1]->resolve(parser);
-
-      uiFunction->compiler->pushScope();
-      ss->str("");
-      insertTabs();
-      (*ss) << "void Layout_() {\n";
-      nTabs++;
-      aCount = 1;
-      pushAreas(exprUI, parser);
-      recalcLayout(exprUI, parser, 0);
-      recalcLayout(exprUI, parser, 1);
-      insertTabs();
-      (*ss) << "var size = (" << getGroupName(exprUI, 0) << " << 16) | " << getGroupName(exprUI, 1) << "\n";
-      nTabs--;
-      insertTabs();
-      (*ss) << "}\n";
-      printf(ss->str().c_str());
-      parse(uiFunctionExpr->body, ss->str().c_str(), 0, 0, NULL);
-
-      FunctionExpr *layoutFunctionExpr = (FunctionExpr *) uiFunctionExpr->body->expressions[uiFunctionExpr->body->count - 1];
-
-      layoutFunctionExpr->resolve(parser);
-
-      ObjFunction *layoutFunction = (ObjFunction *) layoutFunctionExpr->_declaration->type.objType;
-
-      layoutFunction->compiler->pushScope();
-
-      ss->str("");
-      insertTabs();
-      (*ss) << "void paint(int pos0, int pos1, int size0, int size1) {\n";
-      nTabs++;
-      paint(exprUI, parser);
-      nTabs--;
-      insertTabs();
-      (*ss) << "}\n";
-      printf(ss->str().c_str());
-      parse(layoutFunctionExpr->body, ss->str().c_str(), 0, 0, NULL);
-
-      FunctionExpr *paintFunctionExpr = (FunctionExpr *) layoutFunctionExpr->body->expressions[layoutFunctionExpr->body->count - 1];
-
-      paintFunctionExpr->resolve(parser);
-
-      ss->str("");
-      insertTabs();
-      (*ss) << "bool onEvent(int event, int pos0, int pos1, int size0, int size1) {\n";
-      nTabs++;
-      insertTabs();
-      (*ss) << "bool flag = false\n";
-      onEvent(exprUI, parser);
-      nTabs--;
-      insertTabs();
-      (*ss) << "}\n";
-      printf(ss->str().c_str());
-      parse(layoutFunctionExpr->body, ss->str().c_str(), 0, 0, NULL);
-
-      FunctionExpr *eventFunctionExpr = (FunctionExpr *) layoutFunctionExpr->body->expressions[layoutFunctionExpr->body->count - 1];
-
-      eventFunctionExpr->resolve(parser);
-
-      getCurrent()->endScope();
-      getCurrent()->endScope();
-    }
-
-    delete exprUI;
-    expr->ui = NULL;
-  }
-
   return returnType;
 }
 
@@ -456,25 +361,29 @@ Type CallExpr::resolve(Parser &parser) {
   popSignature();
 
   if (IS_FUNCTION(type)) {
-    char buffer[256];
     ObjFunction *callable = AS_FUNCTION_TYPE(type);
-    bool parmFlag = !IS_VOID(callable->type);
-    char parm[128] = "";
-    GroupingExpr group(buildToken(TOKEN_EOF, "", 0, -1), 0, NULL, NULL);
 
-    // create an empty function handler for now
-    if (parmFlag)
-      sprintf(parm, "%s _ret", callable->type.toString());
+    if (callable->isUserClass()) {
+      char buffer[256];
+      bool parmFlag = !IS_VOID(callable->type);
+      char parm[128] = "";
+      GroupingExpr group(buildToken(TOKEN_EOF, "", 0, -1), 0, NULL);
 
-    if (handler) {
-      uiExprs.push_back(handler);
-      uiTypes.push_back(UNKNOWN_TYPE);
+      // create an empty function handler for now
+      if (parmFlag)
+        sprintf(parm, "%s _ret", callable->type.toString());
+
+      if (handler) {
+        uiExprs.push_back(handler);
+        uiTypes.push_back(UNKNOWN_TYPE);
+      }
+
+      sprintf(buffer, "(void Lambda(%s) {%s})", parm, handler ? "$EXPR" : "");
+      parse(&group, buffer, 0, 0, NULL);
+      handler = group.expressions[0];
+      handler->resolve(parser);
     }
 
-    sprintf(buffer, "(void Lambda(%s) {%s})", parm, handler ? "$EXPR" : "");
-    parse(&group, buffer, 0, 0, NULL);
-    handler = group.expressions[0];
-    handler->resolve(parser);
     return newFlag ? OBJ_TYPE(newInstance(callable)) : callable->type;
   } else {
     parser.error("Non-callable object type");
@@ -602,6 +511,101 @@ Type FunctionExpr::resolve(Parser &parser) {
     }
 */
     acceptGroupingExprUnits(body, arity, parser);
+
+    if (ui != NULL) {
+      UIDirectiveExpr *exprUI = (UIDirectiveExpr *) ui;
+
+      if (exprUI->previous || exprUI->lastChild) {
+        // Perform the UI AST magic
+        ss->str("");
+        insertTabs();
+        (*ss) << "void UI_() {\n";
+        nTabs++;
+        processAttrs(exprUI, parser);
+
+        for (int ndx2 = -1; (ndx2 = getCurrent()->function->instanceIndexes->getNext(ndx2)) != -1;)
+          (*ss) << "v" << ndx2 << ".ui_ = new v" << ndx2 << ".UI_();\n";
+        nTabs--;
+        insertTabs();
+        (*ss) << "}\n";
+        printf(ss->str().c_str());
+        parse(body, ss->str().c_str(), 0, 0, NULL);
+
+        FunctionExpr *uiFunctionExpr = (FunctionExpr *) body->expressions[body->count - 1];
+
+        uiFunctionExpr->resolve(parser);
+        uiFunctionExpr->_function.eventFlags = exprUI->_eventFlags;
+
+        ObjFunction *uiFunction = (ObjFunction *) uiFunctionExpr->_declaration->type.objType;
+
+        getCurrent()->function->uiFunction = uiFunction;
+        parse(body, "UI_ *ui_;\n", 0, 0, NULL);
+        body->expressions[body->count - 1]->resolve(parser);
+
+        uiFunction->compiler->pushScope();
+        ss->str("");
+        insertTabs();
+        (*ss) << "void Layout_() {\n";
+        nTabs++;
+        aCount = 1;
+        pushAreas(exprUI, parser);
+        recalcLayout(exprUI, parser, 0);
+        recalcLayout(exprUI, parser, 1);
+        insertTabs();
+        (*ss) << "var size = (" << getGroupName(exprUI, 0) << " << 16) | " << getGroupName(exprUI, 1) << "\n";
+        nTabs--;
+        insertTabs();
+        (*ss) << "}\n";
+        printf(ss->str().c_str());
+        parse(uiFunctionExpr->body, ss->str().c_str(), 0, 0, NULL);
+
+        FunctionExpr *layoutFunctionExpr = (FunctionExpr *) uiFunctionExpr->body->expressions[uiFunctionExpr->body->count - 1];
+
+        layoutFunctionExpr->resolve(parser);
+
+        ObjFunction *layoutFunction = (ObjFunction *) layoutFunctionExpr->_declaration->type.objType;
+
+        layoutFunction->compiler->pushScope();
+
+        ss->str("");
+        insertTabs();
+        (*ss) << "void paint(int pos0, int pos1, int size0, int size1) {\n";
+        nTabs++;
+        paint(exprUI, parser);
+        nTabs--;
+        insertTabs();
+        (*ss) << "}\n";
+        printf(ss->str().c_str());
+        parse(layoutFunctionExpr->body, ss->str().c_str(), 0, 0, NULL);
+
+        FunctionExpr *paintFunctionExpr = (FunctionExpr *) layoutFunctionExpr->body->expressions[layoutFunctionExpr->body->count - 1];
+
+        paintFunctionExpr->resolve(parser);
+
+        ss->str("");
+        insertTabs();
+        (*ss) << "bool onEvent(int event, int pos0, int pos1, int size0, int size1) {\n";
+        nTabs++;
+        insertTabs();
+        (*ss) << "bool flag = false\n";
+        onEvent(exprUI, parser);
+        nTabs--;
+        insertTabs();
+        (*ss) << "}\n";
+        printf(ss->str().c_str());
+        parse(layoutFunctionExpr->body, ss->str().c_str(), 0, 0, NULL);
+
+        FunctionExpr *eventFunctionExpr = (FunctionExpr *) layoutFunctionExpr->body->expressions[layoutFunctionExpr->body->count - 1];
+
+        eventFunctionExpr->resolve(parser);
+
+        getCurrent()->endScope();
+        getCurrent()->endScope();
+      }
+
+      delete exprUI;
+      ui = NULL;
+    }
     body->_compiler.endScope();
   }
 
@@ -966,7 +970,8 @@ void parse(GroupingExpr *groupingExpr, const char *source, int index, int replac
   Scanner scanner((new std::string(source))->c_str());
   Parser parser(scanner);
 
-  parser.expList(groupingExpr, TOKEN_EOF, "Expect end of file.");
+  parser.expList(groupingExpr, TOKEN_EOF);
+  parser.consume(TOKEN_EOF, "Expect end of file.");
 /*
   if (body == NULL)
     body = group;

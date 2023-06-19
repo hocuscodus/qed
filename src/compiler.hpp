@@ -24,7 +24,7 @@ struct Compiler {
   int declarationCount;
   Declaration declarations[UINT8_COUNT];
 
-  ObjFunction *compile(GroupingExpr *expr, Parser *parser);
+  ObjFunction *compile(FunctionExpr *expr, Parser *parser);
   void pushScope();
   void beginScope(ObjFunction *function, Parser *parser);
   void beginScope();

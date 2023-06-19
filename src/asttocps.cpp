@@ -89,7 +89,7 @@ Expr *CallExpr::toCps(K k) {
           expList[0] = new DeclarationExpr(NULL/*this->handlerFunction->type*/, buildToken(TOKEN_IDENTIFIER, var, strlen(var), -1), NULL);
           bodyExpr[0] = k(expList[0]);
           arguments[index] = new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, cont, strlen(cont), -1), 1,// expList,
-                                              new GroupingExpr(buildToken(TOKEN_LEFT_BRACKET, "{", 1, -1), 1, bodyExpr, NULL));
+                                              new GroupingExpr(buildToken(TOKEN_LEFT_BRACKET, "{", 1, -1), 1, bodyExpr), NULL);
           return new CallExpr(this->newFlag, callee, this->paren, this->count + 1, arguments, NULL);
         }
     };
@@ -135,7 +135,7 @@ Expr *FunctionExpr::toCps(K k) {
 
   memcpy(newParams, body->expressions, arity * sizeof(Expr *));
   newParams[arity] = new DeclarationExpr(typeExpr, buildToken(TOKEN_IDENTIFIER, cont, strlen(cont), -1), NULL);
-  return k(compareExpr(body, bodyExpr) ? this : new FunctionExpr(typeExpr, name, arity + 1, newBody));
+  return k(compareExpr(body, bodyExpr) ? this : new FunctionExpr(typeExpr, name, arity + 1, newBody, NULL));
 /*
 function cps_lambda(exp, k) {
   var cont = gensym("K");
@@ -176,7 +176,7 @@ Expr *GroupingExpr::toCps(K k) {
 
         memcpy(&expList[offset], &this->expressions[start], count * sizeof(Expr *));
         expList[offset + count] = cpsExpr;
-        return new GroupingExpr(this->name, offset + count + 1, expList, NULL);
+        return new GroupingExpr(this->name, offset + count + 1, expList);
       }
       else
         index++;
@@ -193,7 +193,7 @@ Expr *GroupingExpr::toCps(K k) {
 
       expList[0] = topExpr;
       memcpy(&expList[1], &this->expressions[start], count * sizeof(Expr *));
-      return new GroupingExpr(this->name, 1 + count, expList, NULL);
+      return new GroupingExpr(this->name, 1 + count, expList);
     }
   };
 

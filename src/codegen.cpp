@@ -12,7 +12,7 @@
 #include "attrset.hpp"
 #include "debug.hpp"
 
-static int nTabs = -1;
+static int nTabs = 0;
 std::stringstream s;
 
 bool needsSemicolon(Expr *expr) {
@@ -127,29 +127,31 @@ void DeclarationExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 void FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
-  ObjFunction *function2 = (ObjFunction *) _declaration->type.objType;
+  ObjFunction *function2 = (ObjFunction *) (_declaration ? _declaration->type.objType : NULL);
 
-  if (&_function != function2)
-    function2 = &_function;
+  if (function2 && function != function2)
+    function2 = function;
 
-  str() << (_declaration->isField ? "this." : "let ");
-  str() << _declaration->getRealName() << " = function(";
+  if (!body || body->_compiler.enclosing) {
+    str() << (_declaration->isField ? "this." : "let ");
+    str() << _declaration->getRealName() << " = function(";
 
-  for (int index = 0; index < arity; index++) {
-    if (index)
-      str() << ", ";
+    for (int index = 0; index < arity; index++) {
+      if (index)
+        str() << ", ";
 
-    str() << ((DeclarationExpr *) body->expressions[index])->name.getString();
+      str() << ((DeclarationExpr *) body->expressions[index])->name.getString();
+    }
+  /*
+    if (_function.isUserClass()) {
+      if (arity)
+        str() << ", ";
+
+      str() << "ReturnHandler_";
+    }
+  */
+      str() << ") ";
   }
-/*
-  if (_function.isUserClass()) {
-    if (arity)
-      str() << ", ";
-
-    str() << "ReturnHandler_";
-  }
-*/
-  str() << ") ";
 
 //    for (ObjFunction *child = this->function->firstChild; this->function; child = child->next)
 //      generator.accept<int>(child->bodyExpr);
@@ -174,7 +176,8 @@ void GetExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
-  startBlock();
+  if (_compiler.enclosing)
+    startBlock();
 
   if (function->expr->body == this) {
     bool classFlag = function->isClass();
@@ -213,10 +216,11 @@ void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
       str() << ";\n";
   }
 
-  if (ui)
-    ui->toCode(parser, function);
+  if (function->expr->body == this && function->expr->ui)
+    function->expr->ui->toCode(parser, function);
 
-  endBlock();
+  if (_compiler.enclosing)
+    endBlock();
 }
 
 void IfExpr::toCode(Parser &parser, ObjFunction *function) {

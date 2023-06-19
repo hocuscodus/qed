@@ -181,8 +181,8 @@ void FunctionExpr::astPrint() {
     body->expressions[index]->astPrint();
     printf(";");
   }
-  if (body->ui)
-    body->ui->astPrint();
+  if (ui)
+    ui->astPrint();
   printf(")");
   printf(") }");
 }
@@ -201,8 +201,6 @@ void GroupingExpr::astPrint() {
     expressions[index]->astPrint();
     printf(";");
   }
-  if (ui)
-    ui->astPrint();
   printf(")");
 }
 

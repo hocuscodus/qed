@@ -32,9 +32,7 @@ static ObjFunction *getSignature() {
 Compiler *Compiler::current = NULL;
 extern std::stringstream &line();
 
-ObjFunction *Compiler::compile(GroupingExpr *expr, Parser *parser) {
-  pushScope();
-
+ObjFunction *Compiler::compile(FunctionExpr *expr, Parser *parser) {
 #ifdef DEBUG_PRINT_CODE
   printf("Original parse: ");
   expr->astPrint();
@@ -108,8 +106,6 @@ ObjFunction *Compiler::compile(GroupingExpr *expr, Parser *parser) {
 
   if (parser->hadError)
     function->chunk.reset();
-
-  endScope();
 
   return parser->hadError ? NULL : function;
 }

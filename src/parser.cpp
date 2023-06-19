@@ -165,12 +165,12 @@ void Parser::errorAt(Token *token, const char *fmt, ...) {
 #undef FORMAT_MESSAGE
 
 ObjFunction *Parser::compile() {
-  GroupingExpr *expr = (GroupingExpr *) parse();
+  FunctionExpr *expr = parse();
 
-  return expr ? expr->_compiler.compile(expr, this) : NULL;
+  return expr ? expr->body->_compiler.compile(expr, this) : NULL;
 }
 
-Expr *Parser::parse() {
+FunctionExpr *Parser::parse() {
   /*
     int line = -1;
 
@@ -187,15 +187,20 @@ Expr *Parser::parse() {
       if (token.type == TOKEN_EOF) break;
     }
   */
-  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_EOF, "", 0, -1), 0, NULL, NULL);
-  FunctionExpr *functionExpr = new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, "Main", 4, -1), 0, group);
+  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_EOF, "", 0, -1), 0, NULL);
+  FunctionExpr *functionExpr = new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, "Main", 4, -1), 0, group, NULL);
 
   group->_compiler.groupingExpr = group;
   functionExpr->_function.expr = functionExpr;
   functionExpr->_function.type = VOID_TYPE;
   functionExpr->_function.name = NULL;//copyString(name.start, name.length);
   group->_compiler.beginScope(&functionExpr->_function, this);
-  expList(group, TOKEN_EOF, "Expect end of file.");
+  expList(group, TOKEN_EOF);
+
+  if (check(TOKEN_LESS))
+    functionExpr->ui = directive(TOKEN_EOF, NULL);
+
+  consume(TOKEN_EOF, "Expect end of file.");
   group->_compiler.endScope();
 ////////
 /*  Compiler *compiler = new Compiler;
@@ -207,7 +212,7 @@ Expr *Parser::parse() {
 
   compiler->endScope();
 */
-  return hadError ? NULL : group;
+  return hadError ? NULL : functionExpr;
 }
 
 void Parser::passSeparator() {
@@ -477,7 +482,7 @@ Expr *Parser::grouping() {
   char closingChar;
   TokenType endGroupType;
   char errorMessage[64];
-  GroupingExpr *group = new GroupingExpr(previous, 0, NULL, NULL);
+  GroupingExpr *group = new GroupingExpr(previous, 0, NULL);
 
   switch (previous.type) {
   case TOKEN_LEFT_PAREN:
@@ -494,7 +499,8 @@ Expr *Parser::grouping() {
   sprintf(errorMessage, "Expect '%c' after expression.", closingChar);
   group->_compiler.groupingExpr = group;
   group->_compiler.beginScope();
-  expList(group, endGroupType, errorMessage);
+  expList(group, endGroupType);
+  consume(endGroupType, errorMessage);
   group->_compiler.endScope();
 
   if (endGroupType == TOKEN_RIGHT_PAREN && (statementExprs & (1 << (scopeDepth + 1))) != 0)
@@ -578,16 +584,12 @@ UIDirectiveExpr *Parser::directive(TokenType endGroupType, UIDirectiveExpr *prev
   return newNode(childDir, attCount, attributeList, previous, lastChild);
 }
 
-void Parser::expList(GroupingExpr *groupingExpr, TokenType endGroupType, const char *errorMessage) {
-  bool uiFlag = false;
-
+void Parser::expList(GroupingExpr *groupingExpr, TokenType endGroupType) {
   passSeparator();
   statementExprs &= ~(1 << ++scopeDepth);
 
   while (!check(endGroupType) && !check(TOKEN_EOF)) {
-    uiFlag |= endGroupType != TOKEN_RIGHT_PAREN && check(TOKEN_LESS);
-
-    if (uiFlag)
+    if (endGroupType != TOKEN_RIGHT_PAREN && check(TOKEN_LESS))
       break;
     else {
       statementExprs &= ~(1 << scopeDepth);
@@ -598,10 +600,6 @@ void Parser::expList(GroupingExpr *groupingExpr, TokenType endGroupType, const c
     }
   }
 
-  if (uiFlag)
-    groupingExpr->ui = directive(endGroupType, NULL);
-
-  consume(endGroupType, errorMessage);
   scopeDepth--;
 }
 
@@ -737,8 +735,8 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
       if(match(TOKEN_LEFT_PAREN)) {
         exp->resolve(*this);
 
-        GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{", 1, -1), 0, NULL, NULL);
-        FunctionExpr *functionExpr = new FunctionExpr(exp, name, 0, group);
+        GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{", 1, -1), 0, NULL);
+        FunctionExpr *functionExpr = new FunctionExpr(exp, name, 0, group, NULL);
 
         functionExpr->_function.expr = functionExpr;
         functionExpr->_function.type = ((ReferenceExpr *) exp)->returnType;
@@ -766,6 +764,8 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
         consume(TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
 
         bool parenFlag = match(TOKEN_LEFT_PAREN);
+        TokenType endGroupType = parenFlag ? TOKEN_RIGHT_PAREN : TOKEN_RIGHT_BRACE;
+        const char *errorMessage = parenFlag ? "Expect ')' after expression." : "Expect '}' after expression.";
 
         if (!parenFlag)
           consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.");
@@ -773,7 +773,12 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
         group->name = previous;
         functionExpr->arity = group->count;
         functionExpr->_declaration = getCurrent()->enclosing->checkDeclaration(OBJ_TYPE(&functionExpr->_function), name, &functionExpr->_function, this);
-        expList(group, parenFlag ? TOKEN_RIGHT_PAREN : TOKEN_RIGHT_BRACE, "Expect '}' after expression.");
+        expList(group, endGroupType);
+
+        if (check(TOKEN_LESS))
+          functionExpr->ui = directive(parenFlag ? TOKEN_RIGHT_PAREN : TOKEN_RIGHT_BRACE, NULL);
+
+        consume(endGroupType, errorMessage);
         group->_compiler.endScope();
         return functionExpr;
       }
@@ -849,7 +854,7 @@ Expr *Parser::forStatement(TokenType endGroupType) {
 
     expList[0] = new UnaryExpr(buildToken(TOKEN_PRINT, "print", 5, -1), body);
     expList[1] = new UnaryExpr(buildToken(TOKEN_PRINT, "print", 5, -1), increment);
-    body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{", 1, -1), 2, expList, NULL);
+    body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{", 1, -1), 2, expList);
     ((GroupingExpr *) body)->_compiler.groupingExpr = (GroupingExpr *) body;
   }
 
@@ -860,7 +865,7 @@ Expr *Parser::forStatement(TokenType endGroupType) {
 
     expList[0] = initializer;
     expList[1] = body;
-    body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{", 1, -1), 2, expList, NULL);
+    body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{", 1, -1), 2, expList);
     ((GroupingExpr *) body)->_compiler.groupingExpr = (GroupingExpr *) body;
   }
 

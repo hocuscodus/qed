@@ -71,7 +71,7 @@ public:
   virtual void errorAt(Token *token, const char *fmt, ...);
 ////
   ObjFunction *compile();
-  Expr *parse();
+  FunctionExpr *parse();
   void passSeparator();
 
   Expr *suffix(Expr *left);
@@ -90,7 +90,7 @@ public:
   UIAttributeExpr *attribute(TokenType endGroupType);
   UIDirectiveExpr *directive(TokenType endGroupType, UIDirectiveExpr *previous);
   Expr *grouping();
-  void expList(GroupingExpr *groupingExpr, TokenType endGroupType, const char *errorMessage);
+  void expList(GroupingExpr *groupingExpr, TokenType endGroupType);
   Expr *array();
   Expr *floatNumber();
   Expr *intNumber();

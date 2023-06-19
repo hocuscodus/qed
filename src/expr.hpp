@@ -148,10 +148,9 @@ struct GroupingExpr : public Expr {
   Token name;
   int count;
   Expr** expressions;
-  Expr* ui;
   Compiler _compiler;
 
-  GroupingExpr(Token name, int count, Expr** expressions, Expr* ui);
+  GroupingExpr(Token name, int count, Expr** expressions);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);
@@ -221,10 +220,11 @@ struct FunctionExpr : public Expr {
   Token name;
   int arity;
   GroupingExpr* body;
+  Expr* ui;
   ObjFunction _function;
   Declaration* _declaration;
 
-  FunctionExpr(Expr* typeExpr, Token name, int arity, GroupingExpr* body);
+  FunctionExpr(Expr* typeExpr, Token name, int arity, GroupingExpr* body, Expr* ui);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);
