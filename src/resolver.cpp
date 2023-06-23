@@ -215,18 +215,9 @@ static void insertTabs() {
 static const char *getGroupName(UIDirectiveExpr *expr, int dir);
 
 Type acceptGroupingExprUnits(GroupingExpr *expr, int start, Parser &parser) {
-  Type returnType = VOID_TYPE;
-  TokenType type = expr->name.type;
-  bool parenFlag = type == TOKEN_LEFT_PAREN;
+  Type returnType = expr->_body ? expr->_body->resolve(parser) : VOID_TYPE;
 
-  for (int index = start; index < expr->count; index++) {
-    Type subType = expr->expressions[index]->resolve(parser);
-
-    if (parenFlag)
-      returnType = subType;
-  }
-
-  return returnType;
+  return expr->name.type == TOKEN_LEFT_PAREN ? returnType : VOID_TYPE;
 }
 
 Type AssignExpr::resolve(Parser &parser) {
@@ -367,7 +358,7 @@ Type CallExpr::resolve(Parser &parser) {
       char buffer[256];
       bool parmFlag = !IS_VOID(callable->type);
       char parm[128] = "";
-      GroupingExpr group(buildToken(TOKEN_EOF, "", 0, -1), 0, NULL);
+      GroupingExpr group(buildToken(TOKEN_EOF, "", 0, -1));
 
       // create an empty function handler for now
       if (parmFlag)
@@ -380,7 +371,7 @@ Type CallExpr::resolve(Parser &parser) {
 
       sprintf(buffer, "(void Lambda(%s) {%s})", parm, handler ? "$EXPR" : "");
       parse(&group, buffer, 0, 0, NULL);
-      handler = group.expressions[0];
+      handler = group._body;
       handler->resolve(parser);
     }
 
@@ -531,7 +522,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         printf(ss->str().c_str());
         parse(body, ss->str().c_str(), 0, 0, NULL);
 
-        FunctionExpr *uiFunctionExpr = (FunctionExpr *) body->expressions[body->count - 1];
+        FunctionExpr *uiFunctionExpr = (FunctionExpr *) ((BinaryExpr *) body)->right;//expressions[body->count - 1];
 
         uiFunctionExpr->resolve(parser);
         uiFunctionExpr->_function.eventFlags = exprUI->_eventFlags;
@@ -540,7 +531,8 @@ Type FunctionExpr::resolve(Parser &parser) {
 
         getCurrent()->function->uiFunction = uiFunction;
         parse(body, "UI_ *ui_;\n", 0, 0, NULL);
-        body->expressions[body->count - 1]->resolve(parser);
+        ((BinaryExpr *) body)->right->resolve(parser);
+//        body->expressions[body->count - 1]->resolve(parser);
 
         uiFunction->compiler->pushScope();
         ss->str("");
@@ -559,7 +551,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         printf(ss->str().c_str());
         parse(uiFunctionExpr->body, ss->str().c_str(), 0, 0, NULL);
 
-        FunctionExpr *layoutFunctionExpr = (FunctionExpr *) uiFunctionExpr->body->expressions[uiFunctionExpr->body->count - 1];
+        FunctionExpr *layoutFunctionExpr = (FunctionExpr *) ((BinaryExpr *) uiFunctionExpr->body)->right;//s->expressions[uiFunctionExpr->body->count - 1];
 
         layoutFunctionExpr->resolve(parser);
 
@@ -578,7 +570,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         printf(ss->str().c_str());
         parse(layoutFunctionExpr->body, ss->str().c_str(), 0, 0, NULL);
 
-        FunctionExpr *paintFunctionExpr = (FunctionExpr *) layoutFunctionExpr->body->expressions[layoutFunctionExpr->body->count - 1];
+        FunctionExpr *paintFunctionExpr = (FunctionExpr *) ((BinaryExpr *) layoutFunctionExpr->body)->right;//->expressions[layoutFunctionExpr->body->count - 1];
 
         paintFunctionExpr->resolve(parser);
 
@@ -595,7 +587,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         printf(ss->str().c_str());
         parse(layoutFunctionExpr->body, ss->str().c_str(), 0, 0, NULL);
 
-        FunctionExpr *eventFunctionExpr = (FunctionExpr *) layoutFunctionExpr->body->expressions[layoutFunctionExpr->body->count - 1];
+        FunctionExpr *eventFunctionExpr = (FunctionExpr *) ((BinaryExpr *) layoutFunctionExpr->body)->right;//->expressions[layoutFunctionExpr->body->count - 1];
 
         eventFunctionExpr->resolve(parser);
 
@@ -970,7 +962,7 @@ void parse(GroupingExpr *groupingExpr, const char *source, int index, int replac
   Scanner scanner((new std::string(source))->c_str());
   Parser parser(scanner);
 
-  parser.expList(groupingExpr, TOKEN_EOF);
+  groupingExpr->_body = parser.expList(groupingExpr, TOKEN_EOF);
   parser.consume(TOKEN_EOF, "Expect end of file.");
 /*
   if (body == NULL)

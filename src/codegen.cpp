@@ -140,7 +140,7 @@ void FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
       if (index)
         str() << ", ";
 
-      str() << ((DeclarationExpr *) body->expressions[index])->name.getString();
+      str() << ((DeclarationExpr *) params[index])->name.getString();
     }
   /*
     if (_function.isUserClass()) {
@@ -206,7 +206,9 @@ void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
       line() << "const " << function->getThisVariableName() << " = this;\n";
   }
 
-  for (int index = function->expr->body == this ? function->expr->arity : 0; index < count; index++) {
+  //TODO
+/*
+  for (int index = 0; index < count; index++) {
     Expr *subExpr = expressions[index];
 
     line();
@@ -214,7 +216,7 @@ void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
 
     if (needsSemicolon(subExpr))
       str() << ";\n";
-  }
+  }*/
 
   if (function->expr->body == this && function->expr->ui)
     function->expr->ui->toCode(parser, function);

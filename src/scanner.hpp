@@ -12,9 +12,9 @@
 #define KEYS_DEF \
     /* Single-character tokens. */ \
     KEY_DEF( TOKEN_LEFT_PAREN, &Parser::grouping, &Parser::call, PREC_CALL ),  \
-    KEY_DEF( TOKEN_RIGHT_PAREN, NULL, NULL, PREC_NONE ),  \
+    KEY_DEF( TOKEN_RIGHT_PAREN, NULL, &Parser::endBlock, PREC_BLOCK ),  \
     KEY_DEF( TOKEN_LEFT_BRACE, &Parser::grouping, NULL, PREC_NONE ),  \
-    KEY_DEF( TOKEN_RIGHT_BRACE, NULL, NULL, PREC_NONE ),  \
+    KEY_DEF( TOKEN_RIGHT_BRACE, NULL, &Parser::endBlock, PREC_BLOCK ),  \
     KEY_DEF( TOKEN_LEFT_BRACKET, &Parser::array, &Parser::arrayElement, PREC_CALL ),  \
     KEY_DEF( TOKEN_RIGHT_BRACKET, NULL, NULL, PREC_NONE ),  \
     KEY_DEF( TOKEN_COMMA, NULL, NULL, PREC_NONE ),  \
@@ -32,7 +32,7 @@
     KEY_DEF( TOKEN_GREATER_GREATER, NULL, &Parser::binary, PREC_SHIFT ),  \
     KEY_DEF( TOKEN_GREATER_GREATER_EQUAL, NULL, &Parser::assignment, PREC_ASSIGNMENT ),  \
     KEY_DEF( TOKEN_GREATER_GREATER_GREATER, NULL, &Parser::binary, PREC_SHIFT ),  \
-    KEY_DEF( TOKEN_LESS, NULL, &Parser::binary, PREC_COMPARISON ),  \
+    KEY_DEF( TOKEN_LESS, &Parser::startDirective, &Parser::binary, PREC_COMPARISON ),  \
     KEY_DEF( TOKEN_LESS_EQUAL, NULL, &Parser::binary, PREC_COMPARISON ),  \
     KEY_DEF( TOKEN_LESS_LESS, NULL, &Parser::binary, PREC_SHIFT ),  \
     KEY_DEF( TOKEN_LESS_LESS_EQUAL, NULL, &Parser::assignment, PREC_ASSIGNMENT ),  \
@@ -66,7 +66,7 @@
     KEY_DEF( TOKEN_FLOAT, &Parser::floatNumber, NULL, PREC_NONE ),  \
     KEY_DEF( TOKEN_VAL, NULL, NULL, PREC_NONE ),  \
     KEY_DEF( TOKEN_VAR, NULL, NULL, PREC_NONE ),  \
-    KEY_DEF( TOKEN_TYPE_LITERAL, &Parser::primitiveType, NULL, PREC_NONE ),  \
+    KEY_DEF( TOKEN_TYPE_LITERAL, &Parser::primitiveType, NULL, PREC_NONE),  \
     /* Keywords. */ \
     KEY_DEF( TOKEN_AS, NULL, NULL, PREC_NONE ),  \
     KEY_DEF( TOKEN_DEF, NULL, NULL, PREC_NONE ),  \
@@ -85,10 +85,10 @@
     KEY_DEF( TOKEN_THIS, NULL, NULL, PREC_NONE ),  \
     KEY_DEF( TOKEN_TRUE, &Parser::literal, NULL, PREC_NONE ),  \
     KEY_DEF( TOKEN_WHILE, NULL, NULL, PREC_NONE ),  \
-    KEY_DEF( TOKEN_SEPARATOR, NULL, NULL, PREC_NONE ),  \
+    KEY_DEF( TOKEN_SEPARATOR, NULL, &Parser::nextStatement, PREC_STATEMENT ),  \
     KEY_DEF( TOKEN_NATIVE_CODE, &Parser::literal, NULL, PREC_NONE ),  \
     KEY_DEF( TOKEN_ERROR, NULL, NULL, PREC_NONE ),  \
-    KEY_DEF( TOKEN_EOF, NULL, NULL, PREC_NONE ),  \
+    KEY_DEF( TOKEN_EOF, NULL, &Parser::endBlock, PREC_NONE ),  \
     KEY_DEF( TOKEN_INSERT, &Parser::swap, NULL, PREC_NONE ),
 
 #define KEY_DEF( identifier, unary, binary, prec )  identifier

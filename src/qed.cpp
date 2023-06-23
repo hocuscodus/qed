@@ -179,7 +179,7 @@ extern std::stringstream s;
 
 extern "C" {
 void runSource(const char *source) {
-  int qedLibLength = strlen(qedLib);
+  int qedLibLength = 0;//strlen(qedLib);
   int sourceLength = strlen(source);
   char *buffer = (char *) malloc(qedLibLength + sourceLength + 1);
 
@@ -188,7 +188,7 @@ void runSource(const char *source) {
     exit(74);
   }
 
-  strcpy(buffer, qedLib);
+//  strcpy(buffer, qedLib);
   strcpy(&buffer[qedLibLength], source);
 
   buffer[qedLibLength + sourceLength] = '\0';

@@ -88,8 +88,9 @@ Expr *CallExpr::toCps(K k) {
 
           expList[0] = new DeclarationExpr(NULL/*this->handlerFunction->type*/, buildToken(TOKEN_IDENTIFIER, var, strlen(var), -1), NULL);
           bodyExpr[0] = k(expList[0]);
-          arguments[index] = new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, cont, strlen(cont), -1), 1,// expList,
-                                              new GroupingExpr(buildToken(TOKEN_LEFT_BRACKET, "{", 1, -1), 1, bodyExpr), NULL);
+          //TODO
+//          arguments[index] = new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, cont, strlen(cont), -1), 1,// expList,
+//                                              new GroupingExpr(buildToken(TOKEN_LEFT_BRACKET, "{", 1, -1), 1, bodyExpr), NULL);
           return new CallExpr(this->newFlag, callee, this->paren, this->count + 1, arguments, NULL);
         }
     };
@@ -133,9 +134,9 @@ Expr *FunctionExpr::toCps(K k) {
   GroupingExpr *newBody = bodyExpr->type == EXPR_GROUPING ? (GroupingExpr *) bodyExpr : NULL;
   Expr **newParams  = RESIZE_ARRAY(Expr *, NULL, 0, arity + 1);
 
-  memcpy(newParams, body->expressions, arity * sizeof(Expr *));
+  memcpy(newParams, params, arity * sizeof(Expr *));
   newParams[arity] = new DeclarationExpr(typeExpr, buildToken(TOKEN_IDENTIFIER, cont, strlen(cont), -1), NULL);
-  return k(compareExpr(body, bodyExpr) ? this : new FunctionExpr(typeExpr, name, arity + 1, newBody, NULL));
+  return k(compareExpr(body, bodyExpr) ? this : new FunctionExpr(typeExpr, name, arity + 1, newParams, newBody, NULL));
 /*
 function cps_lambda(exp, k) {
   var cont = gensym("K");
@@ -157,7 +158,7 @@ Expr *GetExpr::toCps(K k) {
   return this;
 }
 
-Expr *GroupingExpr::toCps(K k) {
+Expr *GroupingExpr::toCps(K k) {/*
   std::function<Expr *(Expr *, int, int)> loop = [&loop, this, k](Expr *topExpr, int start, int index) -> Expr * {
     while (index < this->count) { // if
       Expr *cpsExpr = this->expressions[index]->toCps(index + 1 < this->count
@@ -182,9 +183,9 @@ Expr *GroupingExpr::toCps(K k) {
         index++;
     }
 
-    if (index != this->count)
+    if (index != this->count)*/
       return NULL;
-
+/*
     if (!topExpr)
       return this;
     else {
@@ -197,7 +198,7 @@ Expr *GroupingExpr::toCps(K k) {
     }
   };
 
-  return loop(NULL, 0, 0);
+  return loop(NULL, 0, 0);*/
 /*
 function cps_prog(exp, k) {
   if (exp.prog.length == 0) return k(FALSE);
