@@ -962,7 +962,7 @@ void parse(GroupingExpr *groupingExpr, const char *source, int index, int replac
   Scanner scanner((new std::string(source))->c_str());
   Parser parser(scanner);
 
-  groupingExpr->_body = parser.expList(groupingExpr, TOKEN_EOF);
+  parser.expList(groupingExpr, TOKEN_EOF);
   parser.consume(TOKEN_EOF, "Expect end of file.");
 /*
   if (body == NULL)

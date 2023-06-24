@@ -165,9 +165,31 @@ void Parser::errorAt(Token *token, const char *fmt, ...) {
 #undef FORMAT_MESSAGE
 
 ObjFunction *Parser::compile() {
-  FunctionExpr *expr = parse();
+//  FunctionExpr *expr = parse();
+  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_EOF, "", 0, -1));
+  FunctionExpr *functionExpr = new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, "Main", 4, -1), 0, NULL, group, NULL);
 
-  return expr ? expr->body->_compiler.compile(expr, this) : NULL;
+  group->_compiler.groupingExpr = group;
+  functionExpr->_function.expr = functionExpr;
+  functionExpr->_function.type = VOID_TYPE;
+  functionExpr->_function.name = NULL;//copyString(name.start, name.length);
+  group->_compiler.beginScope(&functionExpr->_function, this);
+  scopeDepth++;
+  /*group->_body = */nextStatement(NULL);
+
+  while (/*group->_body && */!check(TOKEN_EOF)) {
+    advance();
+    /*group->_body = */(this->*getExpRule(previous.type)->infix)(group->_body);
+  }
+
+  consume(TOKEN_EOF, "Expect end of file.");
+  scopeDepth--;
+  group->_compiler.endScope();
+
+  if (hadError)
+    functionExpr = NULL;
+
+  return functionExpr ? functionExpr->body->_compiler.compile(functionExpr, this) : NULL;
 }
 
 FunctionExpr *Parser::parse() {
@@ -195,7 +217,7 @@ FunctionExpr *Parser::parse() {
   functionExpr->_function.type = VOID_TYPE;
   functionExpr->_function.name = NULL;//copyString(name.start, name.length);
   group->_compiler.beginScope(&functionExpr->_function, this);
-  functionExpr->body->_body = expList(group, TOKEN_EOF);
+  expList(group, TOKEN_EOF);
 /*
   if (check(TOKEN_LESS))
     functionExpr->ui = directive(TOKEN_EOF, NULL);
@@ -464,26 +486,29 @@ Expr *Parser::endBlock(Expr *left) {
 
   // ignore optional separator after block end
   passSeparator();
+  scopeDepth--;
+
+  GroupingExpr *subGroup = getCurrent()->groupingExpr;
+
   getCurrent()->endScope();
-  return left;
+
+  GroupingExpr *group = getCurrent()->groupingExpr;
+
+  group->_body = group->_body ? new BinaryExpr(group->_body, endToken, subGroup) : (Expr *) subGroup;
+  return nextStatement(NULL);
 }
 
-Expr *Parser::nextStatement(Expr *left) {/*
-  if (getCurrent()->groupingExpr->name.type != TOKEN_LEFT_PAREN && check(TOKEN_LESS))
-    break;
-  else {
-    statementExprs &= ~(1 << scopeDepth);
-    Expr *exp = declaration(endGroupType);
-
-    groupingExpr->expressions = RESIZE_ARRAY(Expr *, groupingExpr->expressions, groupingExpr->count, groupingExpr->count + 1);
-    groupingExpr->expressions[groupingExpr->count++] = exp;
-  }
-*/
+Expr *Parser::nextStatement(Expr *left) {
   Token op = previous;
-  ParseExpRule *rule = getExpRule(TOKEN_SEPARATOR);
-  Expr *right = check(TOKEN_EOF) ? NULL : declaration(TOKEN_EOF);
+  Expr *right = declaration(TOKEN_EOF);
 
-  return left ? right ? new BinaryExpr(left, op, right) : left : right;
+  if (right) {
+    GroupingExpr *group = getCurrent()->groupingExpr;
+
+    group->_body = group->_body ? new BinaryExpr(group->_body, op, right) : right;
+  }
+
+  return NULL;
 }
 
 Expr *Parser::startDirective() {
@@ -542,29 +567,24 @@ Expr *Parser::primitiveType() {
 }
 
 Expr *Parser::grouping() {
-//  char closingChar;
   TokenType endGroupType;
-//  char errorMessage[64];
   GroupingExpr *group = new GroupingExpr(previous);
 
   switch (previous.type) {
   case TOKEN_LEFT_PAREN:
-//    closingChar = ')';
     endGroupType = TOKEN_RIGHT_PAREN;
     break;
 
   case TOKEN_LEFT_BRACE:
-//    closingChar = '}';
     endGroupType = TOKEN_RIGHT_BRACE;
     break;
   }
 
-//  sprintf(errorMessage, "Expect '%c' after expression.", closingChar);
   group->_compiler.groupingExpr = group;
   group->_compiler.beginScope();
-  group->_body = expList(group, endGroupType);
-//  consume(endGroupType, errorMessage);
-//  group->_compiler.endScope();
+  scopeDepth++;
+/*
+  expList(group, endGroupType);
 
   if (endGroupType == TOKEN_RIGHT_PAREN && (statementExprs & (1 << (scopeDepth + 1))) != 0)
     if (group->_body != NULL && (group->_body->type != EXPR_BINARY || ((BinaryExpr *) group->_body)->op.type != TOKEN_SEPARATOR)) {
@@ -575,8 +595,41 @@ Expr *Parser::grouping() {
     }
     else
       return NULL;
+*/
+  return NULL;
+}
 
-  return group;
+Expr *Parser::grouping2(Expr *left) {
+  TokenType endGroupType;
+  GroupingExpr *group = new GroupingExpr(previous);
+
+  switch (previous.type) {
+  case TOKEN_LEFT_PAREN:
+    endGroupType = TOKEN_RIGHT_PAREN;
+    break;
+
+  case TOKEN_LEFT_BRACE:
+    endGroupType = TOKEN_RIGHT_BRACE;
+    break;
+  }
+
+  group->_compiler.groupingExpr = group;
+  group->_compiler.beginScope();
+  scopeDepth++;
+/*
+  expList(group, endGroupType);
+
+  if (endGroupType == TOKEN_RIGHT_PAREN && (statementExprs & (1 << (scopeDepth + 1))) != 0)
+    if (group->_body != NULL && (group->_body->type != EXPR_BINARY || ((BinaryExpr *) group->_body)->op.type != TOKEN_SEPARATOR)) {
+      Expr *exp = group->_body;//group->expressions[0];
+
+//      RESIZE_ARRAY(Expr *, group->expressions, 1, 0);
+      return exp;
+    }
+    else
+      return NULL;
+*/
+  return nextStatement(NULL);
 }
 
 UIAttributeExpr *Parser::attribute(TokenType endGroupType) {
@@ -647,25 +700,16 @@ UIDirectiveExpr *Parser::directive(TokenType endGroupType, UIDirectiveExpr *prev
   return newNode(childDir, attCount, attributeList, previous, lastChild);
 }
 
-Expr *Parser::expList(GroupingExpr *groupingExpr, TokenType endGroupType) {
-//  passSeparator();
-  statementExprs &= ~(1 << ++scopeDepth);
-  return parsePrecedence((Precedence)(PREC_NONE + 1));
-//  return nextStatement(groupingExpr->_body);
-/*
-  while (!check(endGroupType) && !check(TOKEN_EOF)) {
-    if (endGroupType != TOKEN_RIGHT_PAREN && check(TOKEN_LESS))
-      break;
-    else {
-      statementExprs &= ~(1 << scopeDepth);
-      Expr *exp = declaration(endGroupType);
+void Parser::expList(GroupingExpr *groupingExpr, TokenType endGroupType) {
+  scopeDepth++;
+  groupingExpr->_body = nextStatement(groupingExpr->_body);
 
-      groupingExpr->expressions = RESIZE_ARRAY(Expr *, groupingExpr->expressions, groupingExpr->count, groupingExpr->count + 1);
-      groupingExpr->expressions[groupingExpr->count++] = exp;
-    }
+  while (groupingExpr->_body && !check(TOKEN_EOF)) {
+    advance();
+    groupingExpr->_body = (this->*getExpRule(previous.type)->infix)(groupingExpr->_body);
   }
 
-  scopeDepth--;*/
+  scopeDepth--;
 }
 
 Expr *Parser::array() {
@@ -786,10 +830,10 @@ DeclarationExpr *Parser::parseVariable(TokenType *endGroupTypes, const char *err
 }
 
 Expr *Parser::expression(TokenType *endGroupTypes) {
-  Expr *exp = parsePrecedence((Precedence)(PREC_STATEMENT + 1));
+  Expr *exp = parsePrecedence((Precedence)(PREC_BLOCK + 1));
 
   if (exp == NULL) {
-    error("Expect expression.");
+//    error("Expect expression.");
     return NULL;
   }
 
@@ -839,7 +883,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
 
         group->name = previous;
         functionExpr->_declaration = getCurrent()->enclosing->checkDeclaration(OBJ_TYPE(&functionExpr->_function), name, &functionExpr->_function, this);
-        functionExpr->body->_body = expList(group, endGroupType);
+//        expList(group, endGroupType);
 /*
         if (check(TOKEN_LESS))
           functionExpr->ui = directive(parenFlag ? TOKEN_RIGHT_PAREN : TOKEN_RIGHT_BRACE, NULL);
@@ -860,7 +904,8 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
     Expr *exp2 = parsePrecedence((Precedence)(PREC_BLOCK + 1));
 
     if (!exp2)
-      error("Expect expression.");
+      break;
+//      error("Expect expression.");
 
     if (!expList) {
       expList = RESIZE_ARRAY(Expr *, expList, count, count + 1);
@@ -891,7 +936,6 @@ Expr *Parser::expressionStatement(TokenType endGroupType) {
   if (!check(endGroupType))
 ;//    consume(TOKEN_SEPARATOR, "Expect ';' or newline after expression.");
 
-  statementExprs |= 1 << scopeDepth;
   return exp;
 }
 
@@ -968,14 +1012,7 @@ Expr *Parser::whileStatement(TokenType endGroupType) {
 }
 
 Expr *Parser::declaration(TokenType endGroupType) {
-  Expr *exp;
-/*
-  if (match(TOKEN_FUN))
-    exp = funDeclaration(endGroupType);
-  else if (match(TOKEN_VAR))
-    exp = varDeclaration(endGroupType);
-  else*/
-    exp = statement(endGroupType);
+  Expr *exp = statement(endGroupType);
 
   if (panicMode)
     synchronize();
@@ -1021,8 +1058,21 @@ Expr *Parser::statement(TokenType endGroupType) {
     return whileStatement(endGroupType);
   else if (match(TOKEN_FOR))
     return forStatement(endGroupType);
-  else
-    return expressionStatement(endGroupType);
+  else {
+    ParseExpRule *rule = getExpRule(current.type);
+
+    if (rule->precedence <= PREC_BLOCK)
+      return NULL;
+
+    statementExprs &= ~(1 << scopeDepth);
+
+    Expr *exp = expressionStatement(endGroupType);
+
+    if (exp)
+      statementExprs |= 1 << scopeDepth;
+
+    return exp;
+  }
 }
 
 void Parser::synchronize() {

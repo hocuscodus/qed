@@ -14,6 +14,7 @@ typedef enum {
   PREC_NONE,
   PREC_STATEMENT,   // ;
   PREC_BLOCK,       // })
+  PREC_EXPRESSION,  // 
   PREC_ASSIGNMENT,  // =
   PREC_TERNARY,     // or
   PREC_LOGICAL_OR,  // or
@@ -95,7 +96,8 @@ public:
   UIAttributeExpr *attribute(TokenType endGroupType);
   UIDirectiveExpr *directive(TokenType endGroupType, UIDirectiveExpr *previous);
   Expr *grouping();
-  Expr *expList(GroupingExpr *groupingExpr, TokenType endGroupType);
+  Expr *grouping2(Expr *left);
+  void expList(GroupingExpr *groupingExpr, TokenType endGroupType);
   Expr *array();
   Expr *floatNumber();
   Expr *intNumber();
