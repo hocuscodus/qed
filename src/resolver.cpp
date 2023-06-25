@@ -214,19 +214,10 @@ static void insertTabs() {
 
 static const char *getGroupName(UIDirectiveExpr *expr, int dir);
 
-Type acceptGroupingExprUnits(GroupingExpr *expr, int start, Parser &parser) {
-  Type returnType = VOID_TYPE;
-  TokenType type = expr->name.type;
-  bool parenFlag = type == TOKEN_LEFT_PAREN;
+Type acceptGroupingExprUnits(GroupingExpr *expr, Parser &parser) {
+  Type bodyType = expr->body ? expr->body->resolve(parser) : VOID_TYPE;
 
-  for (int index = start; index < expr->count; index++) {
-    Type subType = expr->expressions[index]->resolve(parser);
-
-    if (parenFlag)
-      returnType = subType;
-  }
-
-  return returnType;
+  return expr->name.type == TOKEN_LEFT_PAREN ? bodyType : VOID_TYPE;
 }
 
 Type AssignExpr::resolve(Parser &parser) {
@@ -335,6 +326,9 @@ Type BinaryExpr::resolve(Parser &parser) {
   case TOKEN_AND_AND:
     return BOOL_TYPE;
 
+  case TOKEN_SEPARATOR:
+    return type2;
+
   default:
     return VOID_TYPE; // Unreachable.
   }
@@ -367,7 +361,7 @@ Type CallExpr::resolve(Parser &parser) {
       char buffer[256];
       bool parmFlag = !IS_VOID(callable->type);
       char parm[128] = "";
-      GroupingExpr group(buildToken(TOKEN_EOF, "", 0, -1), 0, NULL);
+      GroupingExpr group(buildToken(TOKEN_EOF, "", 0, -1), NULL);
 
       // create an empty function handler for now
       if (parmFlag)
@@ -380,7 +374,7 @@ Type CallExpr::resolve(Parser &parser) {
 
       sprintf(buffer, "(void Lambda(%s) {%s})", parm, handler ? "$EXPR" : "");
       parse(&group, buffer, 0, 0, NULL);
-      handler = group.expressions[0];
+      handler = group.body;
       handler->resolve(parser);
     }
 
@@ -510,7 +504,7 @@ Type FunctionExpr::resolve(Parser &parser) {
       getCurrent()->groupingExpr->expressions[getCurrent()->groupingExpr->count - 1]->resolve(parser);
     }
 */
-    acceptGroupingExprUnits(body, arity, parser);
+    acceptGroupingExprUnits(body, parser);
 
     if (ui != NULL) {
       UIDirectiveExpr *exprUI = (UIDirectiveExpr *) ui;
@@ -531,7 +525,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         printf(ss->str().c_str());
         parse(body, ss->str().c_str(), 0, 0, NULL);
 
-        FunctionExpr *uiFunctionExpr = (FunctionExpr *) body->expressions[body->count - 1];
+        FunctionExpr *uiFunctionExpr = (FunctionExpr *) ((BinaryExpr *) body->body)->right;
 
         uiFunctionExpr->resolve(parser);
         uiFunctionExpr->_function.eventFlags = exprUI->_eventFlags;
@@ -540,7 +534,7 @@ Type FunctionExpr::resolve(Parser &parser) {
 
         getCurrent()->function->uiFunction = uiFunction;
         parse(body, "UI_ *ui_;\n", 0, 0, NULL);
-        body->expressions[body->count - 1]->resolve(parser);
+        ((BinaryExpr *) body->body)->right->resolve(parser);
 
         uiFunction->compiler->pushScope();
         ss->str("");
@@ -559,7 +553,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         printf(ss->str().c_str());
         parse(uiFunctionExpr->body, ss->str().c_str(), 0, 0, NULL);
 
-        FunctionExpr *layoutFunctionExpr = (FunctionExpr *) uiFunctionExpr->body->expressions[uiFunctionExpr->body->count - 1];
+        FunctionExpr *layoutFunctionExpr = (FunctionExpr *) ((BinaryExpr *) uiFunctionExpr->body->body)->right;
 
         layoutFunctionExpr->resolve(parser);
 
@@ -578,7 +572,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         printf(ss->str().c_str());
         parse(layoutFunctionExpr->body, ss->str().c_str(), 0, 0, NULL);
 
-        FunctionExpr *paintFunctionExpr = (FunctionExpr *) layoutFunctionExpr->body->expressions[layoutFunctionExpr->body->count - 1];
+        FunctionExpr *paintFunctionExpr = (FunctionExpr *) ((BinaryExpr *) layoutFunctionExpr->body->body)->right;
 
         paintFunctionExpr->resolve(parser);
 
@@ -595,7 +589,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         printf(ss->str().c_str());
         parse(layoutFunctionExpr->body, ss->str().c_str(), 0, 0, NULL);
 
-        FunctionExpr *eventFunctionExpr = (FunctionExpr *) layoutFunctionExpr->body->expressions[layoutFunctionExpr->body->count - 1];
+        FunctionExpr *eventFunctionExpr = (FunctionExpr *) ((BinaryExpr *) layoutFunctionExpr->body->body)->right;
 
         eventFunctionExpr->resolve(parser);
 
@@ -649,11 +643,11 @@ Type GroupingExpr::resolve(Parser &parser) {
 
   if (groupFlag) {
     _compiler.pushScope();
-    parenType = acceptGroupingExprUnits(this, 0, parser);
+    parenType = acceptGroupingExprUnits(this, parser);
     _compiler.endScope();
   }
   else
-    parenType = acceptGroupingExprUnits(this, 0, parser);
+    parenType = acceptGroupingExprUnits(this, parser);
 
   return parenType;
 }

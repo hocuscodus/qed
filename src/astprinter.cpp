@@ -131,7 +131,7 @@ void UIDirectiveExpr::astPrint() {
 }
 
 void BinaryExpr::astPrint() {
-  printf("(%.*s ", op.length, op.start);
+  printf(op.type == TOKEN_SEPARATOR ? "(; " : "(%.*s ", op.length, op.start);
   left->astPrint();
   printf(" ");
   right->astPrint();
@@ -172,19 +172,16 @@ void FunctionExpr::astPrint() {
   printf("(fun %.*s(", name.length, name.start);
   for (int index = 0; index < arity; index++) {
     printf(", ");
-    body->expressions[index]->astPrint();
+    params[index]->astPrint();
   }
   printf(") {");
-  printf("(group'%.*s' ", body->name.length, body->name.start);
-  for (int index = arity; index < body->count; index++) {
-    printf(", ");
-    body->expressions[index]->astPrint();
-    printf(";");
-  }
+
+  if (body)
+    body->astPrint();
+
   if (ui)
     ui->astPrint();
-  printf(")");
-  printf(") }");
+  printf(")}");
 }
 
 void GetExpr::astPrint() {
@@ -196,11 +193,10 @@ void GetExpr::astPrint() {
 
 void GroupingExpr::astPrint() {
   printf("(group'%.*s' ", name.length, name.start);
-  for (int index = 0; index < count; index++) {
-    printf(", ");
-    expressions[index]->astPrint();
-    printf(";");
-  }
+
+  if (body)
+    body->astPrint();
+
   printf(")");
 }
 

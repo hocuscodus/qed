@@ -84,12 +84,10 @@ Expr *CallExpr::toCps(K k) {
           const char *cont = genSymbol("R");
           const char *var = genSymbol("ret_");
           DeclarationExpr **expList = RESIZE_ARRAY(DeclarationExpr *, NULL, 0, 1);
-          Expr **bodyExpr = RESIZE_ARRAY(Expr *, NULL, 0, 1);
 
           expList[0] = new DeclarationExpr(NULL/*this->handlerFunction->type*/, buildToken(TOKEN_IDENTIFIER, var, strlen(var), -1), NULL);
-          bodyExpr[0] = k(expList[0]);
-          arguments[index] = new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, cont, strlen(cont), -1), 1,// expList,
-                                              new GroupingExpr(buildToken(TOKEN_LEFT_BRACKET, "{", 1, -1), 1, bodyExpr), NULL);
+          arguments[index] = new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, cont, strlen(cont), -1), 1, expList,
+                                              new GroupingExpr(buildToken(TOKEN_LEFT_BRACKET, "{", 1, -1), k(expList[0])), NULL);
           return new CallExpr(this->newFlag, callee, this->paren, this->count + 1, arguments, NULL);
         }
     };
@@ -130,12 +128,12 @@ Expr *FunctionExpr::toCps(K k) {
 
   const char *cont = genSymbol("K");
   Expr *bodyExpr = body->toCps([this, cont](Expr *body) {return body;});
-  GroupingExpr *newBody = bodyExpr->type == EXPR_GROUPING ? (GroupingExpr *) bodyExpr : NULL;
-  Expr **newParams  = RESIZE_ARRAY(Expr *, NULL, 0, arity + 1);
+  GroupingExpr *newBody = bodyExpr && bodyExpr->type == EXPR_GROUPING ? (GroupingExpr *) bodyExpr : NULL;
+  DeclarationExpr **newParams  = RESIZE_ARRAY(DeclarationExpr *, NULL, 0, arity + 1);
 
-  memcpy(newParams, body->expressions, arity * sizeof(Expr *));
+  memcpy(newParams, params, arity * sizeof(Expr *));
   newParams[arity] = new DeclarationExpr(typeExpr, buildToken(TOKEN_IDENTIFIER, cont, strlen(cont), -1), NULL);
-  return k(compareExpr(body, bodyExpr) ? this : new FunctionExpr(typeExpr, name, arity + 1, newBody, NULL));
+  return k(compareExpr(body, bodyExpr) ? this : new FunctionExpr(typeExpr, name, arity + 1, newParams, newBody, NULL));
 /*
 function cps_lambda(exp, k) {
   var cont = gensym("K");
@@ -159,6 +157,8 @@ Expr *GetExpr::toCps(K k) {
 
 Expr *GroupingExpr::toCps(K k) {
   std::function<Expr *(Expr *, int, int)> loop = [&loop, this, k](Expr *topExpr, int start, int index) -> Expr * {
+    //TODO
+/*
     while (index < this->count) { // if
       Expr *cpsExpr = this->expressions[index]->toCps(index + 1 < this->count
         ? [start, &loop, this, k, topExpr, index](Expr *expr) -> Expr * {
@@ -194,7 +194,7 @@ Expr *GroupingExpr::toCps(K k) {
       expList[0] = topExpr;
       memcpy(&expList[1], &this->expressions[start], count * sizeof(Expr *));
       return new GroupingExpr(this->name, 1 + count, expList);
-    }
+    }*/
   };
 
   return loop(NULL, 0, 0);

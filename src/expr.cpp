@@ -54,10 +54,9 @@ CastExpr::CastExpr(Expr* typeExpr, Expr* expr) : Expr(EXPR_CAST) {
   this->expr = expr;
 }
 
-GroupingExpr::GroupingExpr(Token name, int count, Expr** expressions) : Expr(EXPR_GROUPING) {
+GroupingExpr::GroupingExpr(Token name, Expr* body) : Expr(EXPR_GROUPING) {
   this->name = name;
-  this->count = count;
-  this->expressions = expressions;
+  this->body = body;
 }
 
 ArrayExpr::ArrayExpr(int count, Expr** expressions, ObjFunction* function) : Expr(EXPR_ARRAY) {
@@ -88,10 +87,11 @@ DeclarationExpr::DeclarationExpr(Expr* typeExpr, Token name, Expr* initExpr) : E
   this->initExpr = initExpr;
 }
 
-FunctionExpr::FunctionExpr(Expr* typeExpr, Token name, int arity, GroupingExpr* body, Expr* ui) : Expr(EXPR_FUNCTION) {
+FunctionExpr::FunctionExpr(Expr* typeExpr, Token name, int arity, DeclarationExpr** params, GroupingExpr* body, Expr* ui) : Expr(EXPR_FUNCTION) {
   this->typeExpr = typeExpr;
   this->name = name;
   this->arity = arity;
+  this->params = params;
   this->body = body;
   this->ui = ui;
 }

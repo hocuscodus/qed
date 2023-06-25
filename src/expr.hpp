@@ -146,11 +146,10 @@ struct CastExpr : public Expr {
 
 struct GroupingExpr : public Expr {
   Token name;
-  int count;
-  Expr** expressions;
+  Expr* body;
   Compiler _compiler;
 
-  GroupingExpr(Token name, int count, Expr** expressions);
+  GroupingExpr(Token name, Expr* body);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);
@@ -219,12 +218,13 @@ struct FunctionExpr : public Expr {
   Expr* typeExpr;
   Token name;
   int arity;
+  DeclarationExpr** params;
   GroupingExpr* body;
   Expr* ui;
   ObjFunction _function;
   Declaration* _declaration;
 
-  FunctionExpr(Expr* typeExpr, Token name, int arity, GroupingExpr* body, Expr* ui);
+  FunctionExpr(Expr* typeExpr, Token name, int arity, DeclarationExpr** params, GroupingExpr* body, Expr* ui);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);

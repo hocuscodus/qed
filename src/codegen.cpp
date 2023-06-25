@@ -16,7 +16,7 @@ static int nTabs = 0;
 std::stringstream s;
 
 bool needsSemicolon(Expr *expr) {
-  return expr->type != EXPR_GROUPING && expr->type != EXPR_IF && expr->type != EXPR_RETURN && expr->type != EXPR_WHILE && expr->type != EXPR_FUNCTION && !(expr->type == EXPR_SWAP && !needsSemicolon(((SwapExpr *) expr)->_expr));
+  return (expr->type != EXPR_BINARY || ((BinaryExpr *) expr)->op.type != TOKEN_SEPARATOR) && expr->type != EXPR_GROUPING && expr->type != EXPR_IF && expr->type != EXPR_RETURN && expr->type != EXPR_WHILE && expr->type != EXPR_FUNCTION && !(expr->type == EXPR_SWAP && !needsSemicolon(((SwapExpr *) expr)->_expr));
 }
 
 static std::stringstream &str() {
@@ -61,6 +61,21 @@ void UIDirectiveExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 void BinaryExpr::toCode(Parser &parser, ObjFunction *function) {
+  if (op.type == TOKEN_SEPARATOR) {
+    left->toCode(parser, function);
+
+    if (needsSemicolon(left))
+      str() << ";\n";
+
+    line();
+    right->toCode(parser, function);
+
+    if (needsSemicolon(right))
+      str() << ";\n";
+
+    return;
+  }
+
   str() << "(";
   left->toCode(parser, function);
   str() << " ";
@@ -140,7 +155,7 @@ void FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
       if (index)
         str() << ", ";
 
-      str() << ((DeclarationExpr *) body->expressions[index])->name.getString();
+      str() << params[index]->name.getString();
     }
   /*
     if (_function.isUserClass()) {
@@ -206,13 +221,11 @@ void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
       line() << "const " << function->getThisVariableName() << " = this;\n";
   }
 
-  for (int index = function->expr->body == this ? function->expr->arity : 0; index < count; index++) {
-    Expr *subExpr = expressions[index];
-
+  if (body) {
     line();
-    subExpr->toCode(parser, function);
+    body->toCode(parser, function);
 
-    if (needsSemicolon(subExpr))
+    if ((body->type != EXPR_BINARY || ((BinaryExpr *) body)->op.type != TOKEN_SEPARATOR) && needsSemicolon(body))
       str() << ";\n";
   }
 

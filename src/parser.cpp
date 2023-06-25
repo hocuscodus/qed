@@ -187,8 +187,8 @@ FunctionExpr *Parser::parse() {
       if (token.type == TOKEN_EOF) break;
     }
   */
-  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_EOF, "", 0, -1), 0, NULL);
-  FunctionExpr *functionExpr = new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, "Main", 4, -1), 0, group, NULL);
+  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_EOF, "", 0, -1), NULL);
+  FunctionExpr *functionExpr = new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, "Main", 4, -1), 0, NULL, group, NULL);
 
   group->_compiler.groupingExpr = group;
   functionExpr->_function.expr = functionExpr;
@@ -482,7 +482,7 @@ Expr *Parser::grouping() {
   char closingChar;
   TokenType endGroupType;
   char errorMessage[64];
-  GroupingExpr *group = new GroupingExpr(previous, 0, NULL);
+  GroupingExpr *group = new GroupingExpr(previous, NULL);
 
   switch (previous.type) {
   case TOKEN_LEFT_PAREN:
@@ -504,10 +504,11 @@ Expr *Parser::grouping() {
   group->_compiler.endScope();
 
   if (endGroupType == TOKEN_RIGHT_PAREN && (statementExprs & (1 << (scopeDepth + 1))) != 0)
-    if (group->count == 1) {
-      Expr *exp = group->expressions[group->count - 1];
+    if (group->body->type != EXPR_BINARY || ((BinaryExpr *) group->body)->op.type != TOKEN_SEPARATOR) {
+      Expr *exp = group->body;
 
-      RESIZE_ARRAY(Expr *, group->expressions, 1, 0);
+      group->body = NULL;
+//      RESIZE_ARRAY(Expr *, group->expressions, 1, 0);
       return exp;
     }
     else
@@ -586,17 +587,21 @@ UIDirectiveExpr *Parser::directive(TokenType endGroupType, UIDirectiveExpr *prev
 
 void Parser::expList(GroupingExpr *groupingExpr, TokenType endGroupType) {
   passSeparator();
-  statementExprs &= ~(1 << ++scopeDepth);
+  scopeDepth++;
+
+  int count = 0;
 
   while (!check(endGroupType) && !check(TOKEN_EOF)) {
     if (endGroupType != TOKEN_RIGHT_PAREN && check(TOKEN_LESS))
       break;
     else {
-      statementExprs &= ~(1 << scopeDepth);
+      Token op = !count++ ? buildToken(TOKEN_SEPARATOR, ";", 1, -1) : previous;
       Expr *exp = declaration(endGroupType);
 
-      groupingExpr->expressions = RESIZE_ARRAY(Expr *, groupingExpr->expressions, groupingExpr->count, groupingExpr->count + 1);
-      groupingExpr->expressions[groupingExpr->count++] = exp;
+      if (groupingExpr->body && op.type != TOKEN_SEPARATOR)
+        op.type = TOKEN_SEPARATOR;
+
+      groupingExpr->body = groupingExpr->body ? new BinaryExpr(groupingExpr->body, op, exp) : exp;
     }
   }
 
@@ -735,8 +740,8 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
       if(match(TOKEN_LEFT_PAREN)) {
         exp->resolve(*this);
 
-        GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{", 1, -1), 0, NULL);
-        FunctionExpr *functionExpr = new FunctionExpr(exp, name, 0, group, NULL);
+        GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{", 1, -1), NULL);
+        FunctionExpr *functionExpr = new FunctionExpr(exp, name, 0, NULL, group, NULL);
 
         functionExpr->_function.expr = functionExpr;
         functionExpr->_function.type = ((ReferenceExpr *) exp)->returnType;
@@ -753,12 +758,12 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
             param->typeExpr->resolve(*this);
 
             if (param->typeExpr->type == EXPR_REFERENCE && !IS_UNKNOWN(((ReferenceExpr *) param->typeExpr)->returnType)) {
-              group->expressions = RESIZE_ARRAY(Expr *, group->expressions, group->count, group->count + 1);
-              group->expressions[group->count++] = param;
+              functionExpr->params = RESIZE_ARRAY(DeclarationExpr *, functionExpr->params, functionExpr->arity, functionExpr->arity + 1);
+              functionExpr->params[functionExpr->arity++] = param;
               group->_compiler.addDeclaration(((ReferenceExpr *) param->typeExpr)->returnType, param->name, NULL, false, this);
             }
             else
-              error("Parameter %d not typed correctly", group->count + 1);
+              error("Parameter %d not typed correctly", functionExpr->arity + 1);
           } while (match(TOKEN_COMMA));
 
         consume(TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
@@ -771,7 +776,6 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
           consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.");
 
         group->name = previous;
-        functionExpr->arity = group->count;
         functionExpr->_declaration = getCurrent()->enclosing->checkDeclaration(OBJ_TYPE(&functionExpr->_function), name, &functionExpr->_function, this);
         expList(group, endGroupType);
 
@@ -850,22 +854,14 @@ Expr *Parser::forStatement(TokenType endGroupType) {
   Expr *body = statement(endGroupType);
 
   if (increment != NULL) {
-    Expr **expList = RESIZE_ARRAY(Expr *, NULL, 0, 2);
-
-    expList[0] = new UnaryExpr(buildToken(TOKEN_PRINT, "print", 5, -1), body);
-    expList[1] = new UnaryExpr(buildToken(TOKEN_PRINT, "print", 5, -1), increment);
-    body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{", 1, -1), 2, expList);
+    body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{", 1, -1), new BinaryExpr(new UnaryExpr(buildToken(TOKEN_PRINT, "print", 5, -1), body), buildToken(TOKEN_SEPARATOR, ";", 1, -1), new UnaryExpr(buildToken(TOKEN_PRINT, "print", 5, -1), increment)));
     ((GroupingExpr *) body)->_compiler.groupingExpr = (GroupingExpr *) body;
   }
 
   body = new WhileExpr(condition, body);
 
   if (initializer != NULL) {
-    Expr **expList = RESIZE_ARRAY(Expr *, NULL, 0, 2);
-
-    expList[0] = initializer;
-    expList[1] = body;
-    body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{", 1, -1), 2, expList);
+    body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{", 1, -1), new BinaryExpr(initializer, buildToken(TOKEN_SEPARATOR, ";", 1, -1), body));
     ((GroupingExpr *) body)->_compiler.groupingExpr = (GroupingExpr *) body;
   }
 
@@ -942,6 +938,7 @@ Expr *Parser::returnStatement(TokenType endGroupType) {
 Expr *Parser::statement(TokenType endGroupType) {
   // ignore optional separator before second operand
   passSeparator();
+  statementExprs &= ~(1 << scopeDepth);
 
   if (match(TOKEN_PRINT))
     return printStatement(endGroupType);
