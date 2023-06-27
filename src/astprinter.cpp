@@ -131,11 +131,17 @@ void UIDirectiveExpr::astPrint() {
 }
 
 void BinaryExpr::astPrint() {
-  printf(op.type == TOKEN_SEPARATOR ? "(; " : "(%.*s ", op.length, op.start);
-  left->astPrint();
-  printf(" ");
-  right->astPrint();
-  printf(")");
+  if (op.type == TOKEN_SEPARATOR) {
+    left->astPrint();
+    printf(" ");
+    right->astPrint();
+  } else {
+    printf("(%.*s ", op.length, op.start);
+    left->astPrint();
+    printf(" ");
+    right->astPrint();
+    printf(")");
+  }
 }
 
 void CallExpr::astPrint() {
@@ -169,7 +175,7 @@ void DeclarationExpr::astPrint() {
 }
 
 void FunctionExpr::astPrint() {
-  printf("(fun %.*s(", name.length, name.start);
+  printf("fun %.*s(", name.length, name.start);
   for (int index = 0; index < arity; index++) {
     printf(", ");
     params[index]->astPrint();
@@ -181,7 +187,8 @@ void FunctionExpr::astPrint() {
 
   if (ui)
     ui->astPrint();
-  printf(")}");
+
+  printf("}");
 }
 
 void GetExpr::astPrint() {

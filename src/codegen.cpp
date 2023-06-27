@@ -72,29 +72,27 @@ void BinaryExpr::toCode(Parser &parser, ObjFunction *function) {
 
     if (needsSemicolon(right))
       str() << ";\n";
+  } else {
+    str() << "(";
+    left->toCode(parser, function);
+    str() << " ";
 
-    return;
+    switch (op.type) {
+      case TOKEN_EQUAL_EQUAL:
+        str() << "===";
+        break;
+      case TOKEN_BANG_EQUAL:
+        str() << "!==";
+        break;
+      default:
+        str() << op.getString();
+        break;
+    }
+
+    str() << " ";
+    right->toCode(parser, function);
+    str() << ")";
   }
-
-  str() << "(";
-  left->toCode(parser, function);
-  str() << " ";
-
-  switch (op.type) {
-    case TOKEN_EQUAL_EQUAL:
-      str() << "===";
-      break;
-    case TOKEN_BANG_EQUAL:
-      str() << "!==";
-      break;
-    default:
-      str() << op.getString();
-      break;
-  }
-
-  str() << " ";
-  right->toCode(parser, function);
-  str() << ")";
 }
 
 void CallExpr::toCode(Parser &parser, ObjFunction *function) {

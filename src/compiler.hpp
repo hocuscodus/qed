@@ -24,6 +24,8 @@ struct Compiler {
   int declarationCount;
   Declaration declarations[UINT8_COUNT];
 
+  Compiler();
+
   ObjFunction *compile(FunctionExpr *expr, Parser *parser);
   void pushScope();
   void beginScope(ObjFunction *function, Parser *parser);
@@ -67,6 +69,12 @@ static inline Compiler *getCurrent() {
 struct Expr;
 
 typedef std::function<Expr *(Expr *)> K;
+
+struct ExprGroup {
+  Expr *body;
+
+  ExprGroup();
+};
 
 #endif
 

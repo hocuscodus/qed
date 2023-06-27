@@ -32,6 +32,14 @@ static ObjFunction *getSignature() {
 Compiler *Compiler::current = NULL;
 extern std::stringstream &line();
 
+Compiler::Compiler() {
+  enclosing = NULL;
+  groupingExpr = NULL;
+  function = NULL;
+  vCount = 0;
+  declarationCount = 0;
+}
+
 ObjFunction *Compiler::compile(FunctionExpr *expr, Parser *parser) {
 #ifdef DEBUG_PRINT_CODE
   printf("Original parse: ");
@@ -350,4 +358,8 @@ Declaration *Compiler::checkDeclaration(Type returnType, Token &name, ObjFunctio
 
 bool Compiler::inBlock() {
   return enclosing && enclosing->function == function;
+}
+
+ExprGroup::ExprGroup() {
+  body = NULL;
 }

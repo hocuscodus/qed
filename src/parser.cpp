@@ -601,7 +601,16 @@ void Parser::expList(GroupingExpr *groupingExpr, TokenType endGroupType) {
       if (groupingExpr->body && op.type != TOKEN_SEPARATOR)
         op.type = TOKEN_SEPARATOR;
 
-      groupingExpr->body = groupingExpr->body ? new BinaryExpr(groupingExpr->body, op, exp) : exp;
+      if (!groupingExpr->body)
+        groupingExpr->body = exp;
+      else {
+        Expr **body = &groupingExpr->body;
+
+        while ((*body)->type == EXPR_BINARY && ((BinaryExpr *) *body)->op.type == TOKEN_SEPARATOR)
+          body = &((BinaryExpr *) *body)->right;
+
+        *body = new BinaryExpr(*body, op, exp);
+      }
     }
   }
 
