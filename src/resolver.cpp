@@ -344,8 +344,8 @@ Type CallExpr::resolve(Parser &parser) {
   compiler.function->name = copyString("Capital", 7);
   compiler.declarationCount = 0;
 
-  for (int index = 0; index < count; index++) {
-    Type type = arguments[index]->resolve(parser);
+  for (Expr *params = this->params; params; params = cdr(params, TOKEN_COMMA)) {
+    Type type = car(params, TOKEN_COMMA)->resolve(parser);
 
     compiler.addDeclaration(type, tok, NULL, false, &parser);
   }
@@ -488,15 +488,6 @@ Type DeclarationExpr::resolve(Parser &parser) {
   return VOID_TYPE;
 }
 
-Expr *getLastBodyExpr(Expr *expr) {
-  Expr **body = &expr;
-
-  while ((*body)->type == EXPR_BINARY && ((BinaryExpr *) *body)->op.type == TOKEN_SEPARATOR)
-    body = &((BinaryExpr *) *body)->right;
-
-  return *body;
-}
-
 Type FunctionExpr::resolve(Parser &parser) {
   if (body) {
     body->_compiler.pushScope();
@@ -534,7 +525,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         printf(ss->str().c_str());
         parse(body, ss->str().c_str(), 0, 0, NULL);
 
-        FunctionExpr *uiFunctionExpr = (FunctionExpr *) getLastBodyExpr(body->body);
+        FunctionExpr *uiFunctionExpr = (FunctionExpr *) getLastBodyExpr(body->body, TOKEN_SEPARATOR);
 
         uiFunctionExpr->resolve(parser);
         uiFunctionExpr->_function.eventFlags = exprUI->_eventFlags;
@@ -543,7 +534,7 @@ Type FunctionExpr::resolve(Parser &parser) {
 
         getCurrent()->function->uiFunction = uiFunction;
         parse(body, "UI_ *ui_;\n", 0, 0, NULL);
-        getLastBodyExpr(body->body)->resolve(parser);
+        getLastBodyExpr(body->body, TOKEN_SEPARATOR)->resolve(parser);
 
         uiFunction->compiler->pushScope();
         ss->str("");
@@ -562,7 +553,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         printf(ss->str().c_str());
         parse(uiFunctionExpr->body, ss->str().c_str(), 0, 0, NULL);
 
-        FunctionExpr *layoutFunctionExpr = (FunctionExpr *) getLastBodyExpr(uiFunctionExpr->body->body);
+        FunctionExpr *layoutFunctionExpr = (FunctionExpr *) getLastBodyExpr(uiFunctionExpr->body->body, TOKEN_SEPARATOR);
 
         layoutFunctionExpr->resolve(parser);
 
@@ -581,7 +572,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         printf(ss->str().c_str());
         parse(layoutFunctionExpr->body, ss->str().c_str(), 0, 0, NULL);
 
-        FunctionExpr *paintFunctionExpr = (FunctionExpr *) getLastBodyExpr(layoutFunctionExpr->body->body);
+        FunctionExpr *paintFunctionExpr = (FunctionExpr *) getLastBodyExpr(layoutFunctionExpr->body->body, TOKEN_SEPARATOR);
 
         paintFunctionExpr->resolve(parser);
 
@@ -598,7 +589,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         printf(ss->str().c_str());
         parse(layoutFunctionExpr->body, ss->str().c_str(), 0, 0, NULL);
 
-        FunctionExpr *eventFunctionExpr = (FunctionExpr *) getLastBodyExpr(layoutFunctionExpr->body->body);
+        FunctionExpr *eventFunctionExpr = (FunctionExpr *) getLastBodyExpr(layoutFunctionExpr->body->body, TOKEN_SEPARATOR);
 
         eventFunctionExpr->resolve(parser);
 

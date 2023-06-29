@@ -266,7 +266,7 @@ int main(int argc, const char *argv[]) {
     "Cast        : Expr* typeExpr, Expr* expr, Type _srcType, Type _dstType",
     "Grouping    : Token name, Expr* body, Compiler _compiler",
     "Array       : int count, Expr** expressions, ObjFunction* function",
-    "Call        : bool newFlag, Expr* callee, Token paren, int count, Expr** arguments, Expr* handler",
+    "Call        : bool newFlag, Expr* callee, Token paren, Expr* params, Expr* handler",
     "ArrayElement: Expr* callee, Token bracket, int count, Expr** indexes",
     "Declaration : Expr* typeExpr, Token name, Expr* initExpr, Declaration* _declaration",
     "Function    : Expr* typeExpr, Token name, int arity, DeclarationExpr** params, GroupingExpr* body, Expr* ui, ObjFunction _function, Declaration* _declaration",

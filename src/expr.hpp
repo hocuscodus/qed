@@ -174,11 +174,10 @@ struct CallExpr : public Expr {
   bool newFlag;
   Expr* callee;
   Token paren;
-  int count;
-  Expr** arguments;
+  Expr* params;
   Expr* handler;
 
-  CallExpr(bool newFlag, Expr* callee, Token paren, int count, Expr** arguments, Expr* handler);
+  CallExpr(bool newFlag, Expr* callee, Token paren, Expr* params, Expr* handler);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);

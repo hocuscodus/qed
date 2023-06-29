@@ -131,16 +131,21 @@ void UIDirectiveExpr::astPrint() {
 }
 
 void BinaryExpr::astPrint() {
-  if (op.type == TOKEN_SEPARATOR) {
-    left->astPrint();
-    printf(" ");
-    right->astPrint();
-  } else {
-    printf("(%.*s ", op.length, op.start);
-    left->astPrint();
-    printf(" ");
-    right->astPrint();
-    printf(")");
+  switch (op.type) {
+    case TOKEN_SEPARATOR:
+    case TOKEN_COMMA:
+      left->astPrint();
+      printf(op.type == TOKEN_SEPARATOR ? " " : ", ");
+      right->astPrint();
+      break;
+
+    default:
+      printf("(%.*s ", op.length, op.start);
+      left->astPrint();
+      printf(" ");
+      right->astPrint();
+      printf(")");
+      break;
   }
 }
 
@@ -148,10 +153,12 @@ void CallExpr::astPrint() {
 //  parenthesize2("call", 2, callee, arguments);
   printf("(call ");
   callee->astPrint();
-  for (int index = 0; index < count; index++) {
+
+  if (params) {
     printf(" ");
-    arguments[index]->astPrint();
+    params->astPrint();
   }
+
   printf(")");
 }
 

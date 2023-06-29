@@ -15,57 +15,6 @@
 #define KEY_DEF( identifier, unary, binary, prec )  { unary, binary, prec }
 ParseExpRule expRules[] = { KEYS_DEF };
 #undef KEY_DEF
-/*
-ParseExpRule expRules[] = {
-    [TOKEN_LEFT_PAREN] = {&Parser::grouping, &Parser::call, PREC_CALL},
-    [TOKEN_RIGHT_PAREN] = {NULL, NULL, PREC_NONE},
-    [TOKEN_LEFT_BRACE] = {&Parser::grouping, NULL, PREC_NONE},
-    [TOKEN_RIGHT_BRACE] = {NULL, NULL, PREC_NONE},
-    [TOKEN_LEFT_BRACKET] = {&Parser::grouping, NULL, PREC_NONE},
-    [TOKEN_RIGHT_BRACKET] = {NULL, NULL, PREC_NONE},
-    [TOKEN_COMMA] = {NULL, NULL, PREC_NONE},
-    [TOKEN_DOT] = {NULL, &Parser::dot, PREC_MEMBER},
-    [TOKEN_MINUS] = {&Parser::unary, &Parser::binary, PREC_TERM},
-    [TOKEN_PLUS] = {NULL, &Parser::binary, PREC_TERM},
-    [TOKEN_SEPARATOR] = {NULL, NULL, PREC_NONE},
-    [TOKEN_SLASH] = {NULL, &Parser::binary, PREC_FACTOR},
-    [TOKEN_STAR] = {NULL, &Parser::binary, PREC_FACTOR},
-    [TOKEN_BANG] = {&Parser::unary, NULL, PREC_NONE},
-    [TOKEN_BANG_EQUAL] = {NULL, &Parser::binary, PREC_EQUALITY},
-    [TOKEN_EQUAL] = {NULL, &Parser::assignment, PREC_ASSIGNMENT},
-    [TOKEN_EQUAL_EQUAL] = {NULL, &Parser::binary, PREC_EQUALITY},
-    [TOKEN_GREATER] = {NULL, &Parser::binary, PREC_COMPARISON},
-    [TOKEN_GREATER_EQUAL] = {NULL, &Parser::binary, PREC_COMPARISON},
-    [TOKEN_LESS] = {NULL, &Parser::binary, PREC_COMPARISON},
-    [TOKEN_LESS_EQUAL] = {NULL, &Parser::binary, PREC_COMPARISON},
-    [TOKEN_IDENTIFIER] = {&Parser::variable, NULL, PREC_NONE},
-    [TOKEN_STRING] = {&Parser::string, NULL, PREC_NONE},
-    [TOKEN_FUN]           = {NULL,     NULL,   PREC_NONE},
-    [TOKEN_FLOAT] = {&Parser::floatNumber, NULL, PREC_NONE},
-    [TOKEN_INT] = {&Parser::intNumber, NULL, PREC_NONE},
-    [TOKEN_TYPE_LITERAL] = {&Parser::primitiveType, NULL, PREC_NONE},
-    [TOKEN_AND] = {NULL, NULL, PREC_NONE},
-    [TOKEN_AND_AND] = {NULL, &Parser::logical, PREC_AND},
-    //  [TOKEN_CLASS]         = {NULL,     NULL,   PREC_NONE},
-    [TOKEN_ELSE] = {NULL, NULL, PREC_NONE},
-    [TOKEN_FALSE] = {&Parser::literal, NULL, PREC_NONE},
-    [TOKEN_FOR] = {NULL, NULL, PREC_NONE},
-    [TOKEN_DEF] = {NULL, NULL, PREC_NONE},
-    [TOKEN_IF] = {NULL, NULL, PREC_NONE},
-    [TOKEN_NEW] = {&Parser::unary, NULL, PREC_NONE},
-    [TOKEN_OR] = {NULL, NULL, PREC_NONE},
-    [TOKEN_OR_OR] = {NULL, &Parser::logical, PREC_EQUALITY},
-    [TOKEN_PRINT] = {NULL, NULL, PREC_NONE},
-    [TOKEN_RETURN] = {NULL, NULL, PREC_NONE},
-    [TOKEN_SUPER] = {NULL, NULL, PREC_NONE},
-    [TOKEN_THIS] = {NULL, NULL, PREC_NONE},
-    [TOKEN_TRUE] = {&Parser::literal, NULL, PREC_NONE},
-  //  [TOKEN_VAR] = {NULL, NULL, PREC_NONE},
-    [TOKEN_WHILE] = {NULL, NULL, PREC_NONE},
-    [TOKEN_ERROR] = {NULL, NULL, PREC_NONE},
-    [TOKEN_EOF] = {NULL, NULL, PREC_NONE},
-};
-*/
 Obj objString = {OBJ_STRING, NULL};
 Type stringType = {VAL_OBJ, &objString};
 
@@ -366,19 +315,18 @@ Expr *Parser::dot(Expr *left) {
 
 Expr *Parser::call(Expr *left) {
   TokenType tokens[] = {TOKEN_RIGHT_PAREN, TOKEN_COMMA, TOKEN_ELSE, TOKEN_EOF};
-  uint8_t argCount = 0;
-  Expr **expList = NULL;
+  Expr *params = NULL;
   Expr *handler = NULL;
 
   if (!check(TOKEN_RIGHT_PAREN)) {
     do {
+      Token comma = previous;
       Expr *expr = expression(tokens);
 
-      if (argCount == 255)
-        error("Can't have more than 255 arguments.");
+//      if (argCount == 255)
+//        error("Can't have more than 255 arguments.");
 
-      expList = RESIZE_ARRAY(Expr *, expList, argCount, argCount + 1);
-      expList[argCount++] = expr;
+      addExpr(&params, expr, comma);
     } while (match(TOKEN_COMMA));
   }
 
@@ -395,7 +343,7 @@ Expr *Parser::call(Expr *left) {
       handler = statement(TOKEN_SEPARATOR);
   }
 
-  return new CallExpr(false, left, previous, argCount, expList, handler);
+  return new CallExpr(false, left, previous, params, handler);
 }
 
 Expr *Parser::arrayElement(Expr *left) {
@@ -409,9 +357,6 @@ Expr *Parser::arrayElement(Expr *left) {
       break;
 
     Expr *expr = expression(tokens);
-
-    if (indexCount == 255)
-      error("Can't have more than 255 indexes.");
 
     expList = RESIZE_ARRAY(Expr *, expList, indexCount, indexCount + 1);
     expList[indexCount++] = expr;
@@ -504,11 +449,10 @@ Expr *Parser::grouping() {
   group->_compiler.endScope();
 
   if (endGroupType == TOKEN_RIGHT_PAREN && (statementExprs & (1 << (scopeDepth + 1))) != 0)
-    if (group->body->type != EXPR_BINARY || ((BinaryExpr *) group->body)->op.type != TOKEN_SEPARATOR) {
+    if (!isGroup(group->body, TOKEN_SEPARATOR)) {
       Expr *exp = group->body;
 
       group->body = NULL;
-//      RESIZE_ARRAY(Expr *, group->expressions, 1, 0);
       return exp;
     }
     else
@@ -601,16 +545,7 @@ void Parser::expList(GroupingExpr *groupingExpr, TokenType endGroupType) {
       if (groupingExpr->body && op.type != TOKEN_SEPARATOR)
         op.type = TOKEN_SEPARATOR;
 
-      if (!groupingExpr->body)
-        groupingExpr->body = exp;
-      else {
-        Expr **body = &groupingExpr->body;
-
-        while ((*body)->type == EXPR_BINARY && ((BinaryExpr *) *body)->op.type == TOKEN_SEPARATOR)
-          body = &((BinaryExpr *) *body)->right;
-
-        *body = new BinaryExpr(*body, op, exp);
-      }
+      addExpr(&groupingExpr->body, exp, op);
     }
   }
 

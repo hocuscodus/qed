@@ -360,6 +360,31 @@ bool Compiler::inBlock() {
   return enclosing && enclosing->function == function;
 }
 
-ExprGroup::ExprGroup() {
-  body = NULL;
+void addExpr(Expr **body, Expr *exp, Token op) {
+  if (!*body)
+    *body = exp;
+  else {
+    while (isGroup(*body, op.type))
+      body = &((BinaryExpr *) *body)->right;
+
+    *body = new BinaryExpr(*body, op, exp);
+  }
+}
+
+Expr *getLastBodyExpr(Expr *body, TokenType tokenType) {
+  Expr *exp = cdr(body, tokenType);
+
+  return exp ? getLastBodyExpr(exp, tokenType) : body;
+}
+
+bool isGroup(Expr *exp, TokenType tokenType) {
+  return exp->type == EXPR_BINARY && ((BinaryExpr *) exp)->op.type == tokenType;
+}
+
+Expr *car(Expr *exp, TokenType tokenType) {
+  return isGroup(exp, tokenType) ? ((BinaryExpr *) exp)->left : exp;
+}
+
+Expr *cdr(Expr *exp, TokenType tokenType) {
+  return isGroup(exp, tokenType) ? ((BinaryExpr *) exp)->right : NULL;
 }

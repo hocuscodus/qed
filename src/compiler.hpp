@@ -70,11 +70,11 @@ struct Expr;
 
 typedef std::function<Expr *(Expr *)> K;
 
-struct ExprGroup {
-  Expr *body;
-
-  ExprGroup();
-};
+void addExpr(Expr **body, Expr *exp, Token op);
+Expr *getLastBodyExpr(Expr *body, TokenType tokenType);
+bool isGroup(Expr *exp, TokenType tokenType);
+Expr *car(Expr *exp, TokenType tokenType);
+Expr *cdr(Expr *exp, TokenType tokenType);
 
 #endif
 

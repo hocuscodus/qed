@@ -65,12 +65,11 @@ ArrayExpr::ArrayExpr(int count, Expr** expressions, ObjFunction* function) : Exp
   this->function = function;
 }
 
-CallExpr::CallExpr(bool newFlag, Expr* callee, Token paren, int count, Expr** arguments, Expr* handler) : Expr(EXPR_CALL) {
+CallExpr::CallExpr(bool newFlag, Expr* callee, Token paren, Expr* params, Expr* handler) : Expr(EXPR_CALL) {
   this->newFlag = newFlag;
   this->callee = callee;
   this->paren = paren;
-  this->count = count;
-  this->arguments = arguments;
+  this->params = params;
   this->handler = handler;
 }
 

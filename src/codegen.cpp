@@ -61,37 +61,45 @@ void UIDirectiveExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 void BinaryExpr::toCode(Parser &parser, ObjFunction *function) {
-  if (op.type == TOKEN_SEPARATOR) {
-    left->toCode(parser, function);
+  switch (op.type) {
+    case TOKEN_SEPARATOR:
+      left->toCode(parser, function);
 
-    if (needsSemicolon(left))
-      str() << ";\n";
+      if (needsSemicolon(left))
+        str() << ";\n";
 
-    line();
-    right->toCode(parser, function);
+      line();
+      right->toCode(parser, function);
 
-    if (needsSemicolon(right))
-      str() << ";\n";
-  } else {
-    str() << "(";
-    left->toCode(parser, function);
-    str() << " ";
+      if (needsSemicolon(right))
+        str() << ";\n";
+      break;
+    case TOKEN_COMMA:
+      left->toCode(parser, function);
+      str() << ", ";
+      right->toCode(parser, function);
+      break;
+    default:
+      str() << "(";
+      left->toCode(parser, function);
+      str() << " ";
 
-    switch (op.type) {
-      case TOKEN_EQUAL_EQUAL:
-        str() << "===";
-        break;
-      case TOKEN_BANG_EQUAL:
-        str() << "!==";
-        break;
-      default:
-        str() << op.getString();
-        break;
-    }
+      switch (op.type) {
+        case TOKEN_EQUAL_EQUAL:
+          str() << "===";
+          break;
+        case TOKEN_BANG_EQUAL:
+          str() << "!==";
+          break;
+        default:
+          str() << op.getString();
+          break;
+      }
 
-    str() << " ";
-    right->toCode(parser, function);
-    str() << ")";
+      str() << " ";
+      right->toCode(parser, function);
+      str() << ")";
+      break;
   }
 }
 
@@ -102,15 +110,11 @@ void CallExpr::toCode(Parser &parser, ObjFunction *function) {
   callee->toCode(parser, function);
   str() << "(";
 
-  for (int index = 0; index < count; index++) {
-    if (index)
-      str() << ", ";
-
-    arguments[index]->toCode(parser, function);
-  }
+  if (params)
+    params->toCode(parser, function);
 
   if (handler) {
-    if (count)
+    if (params)
       str() << ", ";
 
     if (handler)
@@ -223,7 +227,7 @@ void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
     line();
     body->toCode(parser, function);
 
-    if ((body->type != EXPR_BINARY || ((BinaryExpr *) body)->op.type != TOKEN_SEPARATOR) && needsSemicolon(body))
+    if (!isGroup(body, TOKEN_SEPARATOR) && needsSemicolon(body))
       str() << ";\n";
   }
 
