@@ -81,28 +81,34 @@ Expr *BinaryExpr::toCps(K k) {
 }
 
 Expr *CallExpr::toCps(K k) {
-  const char *cont = genSymbol("R");
-  const char *var = genSymbol("ret_");
-  DeclarationExpr **expList = RESIZE_ARRAY(DeclarationExpr *, NULL, 0, 1);
+  if (!newFlag) {
+    const char *cont = genSymbol("R");
+    const char *var = genSymbol("ret_");
+    DeclarationExpr **expList = RESIZE_ARRAY(DeclarationExpr *, NULL, 0, 1);
 
-  expList[0] = new DeclarationExpr(NULL/*this->handlerFunction->type*/, buildToken(TOKEN_IDENTIFIER, var, strlen(var), -1), NULL);
+    expList[0] = new DeclarationExpr(NULL/*this->handlerFunction->type*/, buildToken(TOKEN_IDENTIFIER, var, strlen(var), -1), NULL);
+    handler = new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, cont, strlen(cont), -1), 1, expList,
+                               new GroupingExpr(buildToken(TOKEN_LEFT_BRACKET, "{", 1, -1), k(expList[0])), NULL);
+  }
 
-  Expr *handlerFunction = new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, cont, strlen(cont), -1), 1, expList,
-                                           new GroupingExpr(buildToken(TOKEN_LEFT_BRACKET, "{", 1, -1), k(expList[0])), NULL);
+  auto genCall = [this](bool same, Expr *callee, Expr *&params) {
+    if (this->handler) {
+      addExpr(same ? &this->params : &params, this->handler, buildToken(TOKEN_COMMA, ",", -1, 1));
+      this->handler = NULL;
+    }
 
-  return callee->toCps([this, handlerFunction, k](Expr *callee) {
+    return same ? this : newExpr(new CallExpr(this->newFlag, callee, this->paren, params, this->handler));
+  };
+
+  return callee->toCps([this, genCall](Expr *callee) {
     bool same = compareExpr(this->callee, callee);
 
     if (this->params)
-      this->params->toCps([this, &same, handlerFunction, callee, k](Expr *params) {
-        same &= compareExpr(this->params, params);
-        addExpr(&params, handlerFunction, buildToken(TOKEN_COMMA, ",", -1, 1));
-        return same ? this : newExpr(new CallExpr(this->newFlag, callee, this->paren, params, this->handler));
+      return this->params->toCps([this, genCall, same, callee](Expr *params) {
+        return genCall(same && compareExpr(this->params, params), callee, params);
       });
-    else {
-      addExpr(&params, handlerFunction, buildToken(TOKEN_COMMA, ",", -1, 1));
-      return same ? this : newExpr(new CallExpr(this->newFlag, callee, this->paren, NULL, this->handler));
-    }
+    else
+      return genCall(same, callee, this->params);
   });
 /*
 function cps_call(exp, k) {
