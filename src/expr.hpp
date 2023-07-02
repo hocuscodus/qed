@@ -309,9 +309,10 @@ struct ReferenceExpr : public Expr {
 
 struct ReturnExpr : public Expr {
   Token keyword;
+  Expr* postExpr;
   Expr* value;
 
-  ReturnExpr(Token keyword, Expr* value);
+  ReturnExpr(Token keyword, Expr* postExpr, Expr* value);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);

@@ -119,11 +119,11 @@ ObjFunction *Compiler::compile(FunctionExpr *expr, Parser *parser) {
 }
 
 void Compiler::pushScope() {
-  this->enclosing = current;
   current = this;
 }
 
-void Compiler::beginScope(ObjFunction *function, Parser *parser) {
+void Compiler::pushScope(ObjFunction *function, Parser *parser) {
+  this->enclosing = current;
   pushScope();
   declarationCount = 0;
   this->function = function;
@@ -134,13 +134,15 @@ void Compiler::beginScope(ObjFunction *function, Parser *parser) {
     enclosing->function->add(function);
 }
 
-void Compiler::beginScope() {
+void Compiler::pushScope(GroupingExpr *groupingExpr) {
+  this->groupingExpr = groupingExpr;
+  this->enclosing = current;
   pushScope();
   declarationCount = 0;
   function = enclosing->function;
 }
 
-void Compiler::endScope() {
+void Compiler::popScope() {
   current = enclosing;
 }
 /*

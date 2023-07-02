@@ -28,9 +28,9 @@ struct Compiler {
 
   ObjFunction *compile(FunctionExpr *expr, Parser *parser);
   void pushScope();
-  void beginScope(ObjFunction *function, Parser *parser);
-  void beginScope();
-  void endScope();
+  void pushScope(ObjFunction *function, Parser *parser);
+  void pushScope(GroupingExpr *groupingExpr);
+  void popScope();
 
   Declaration *addDeclaration(Type type, Token &name, Declaration *previous, bool parentFlag, Parser *parser);
   Type &peekDeclaration();

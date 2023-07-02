@@ -372,7 +372,7 @@ Type CallExpr::resolve(Parser &parser) {
         uiTypes.push_back(UNKNOWN_TYPE);
       }
 
-      sprintf(buffer, "(void Lambda(%s) {%s})", parm, handler ? "$EXPR" : "");
+      sprintf(buffer, "(void Lambda(%s) {%s; return})", parm, handler ? "$EXPR" : "");
       parse(&group, buffer, 0, 0, NULL);
       handler = group.body;
       handler->resolve(parser);
@@ -593,14 +593,14 @@ Type FunctionExpr::resolve(Parser &parser) {
 
         eventFunctionExpr->resolve(parser);
 
-        getCurrent()->endScope();
-        getCurrent()->endScope();
+        getCurrent()->popScope();
+        getCurrent()->popScope();
       }
 
       delete exprUI;
       ui = NULL;
     }
-    body->_compiler.endScope();
+    body->_compiler.popScope();
   }
 
   return OBJ_TYPE(&_function);
@@ -644,7 +644,7 @@ Type GroupingExpr::resolve(Parser &parser) {
   if (groupFlag) {
     _compiler.pushScope();
     parenType = acceptGroupingExprUnits(this, parser);
-    _compiler.endScope();
+    _compiler.popScope();
   }
   else
     parenType = acceptGroupingExprUnits(this, parser);

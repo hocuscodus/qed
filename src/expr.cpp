@@ -128,8 +128,9 @@ ReferenceExpr::ReferenceExpr(Token name, Type returnType) : Expr(EXPR_REFERENCE)
   this->returnType = returnType;
 }
 
-ReturnExpr::ReturnExpr(Token keyword, Expr* value) : Expr(EXPR_RETURN) {
+ReturnExpr::ReturnExpr(Token keyword, Expr* postExpr, Expr* value) : Expr(EXPR_RETURN) {
   this->keyword = keyword;
+  this->postExpr = postExpr;
   this->value = value;
 }
 

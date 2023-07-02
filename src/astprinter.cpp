@@ -286,9 +286,15 @@ void LogicalExpr::astPrint() {
 }
 
 void ReturnExpr::astPrint() {
-  printf("return ");
-  if (value != NULL)
+  if (postExpr != NULL) {
+    postExpr->astPrint();
+    printf("; ");
+  }
+  printf("return");
+  if (value != NULL) {
+    printf(" ");
     value->astPrint();
+  }
   printf(";");
 }
 

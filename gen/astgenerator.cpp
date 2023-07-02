@@ -276,7 +276,7 @@ int main(int argc, const char *argv[]) {
     "Literal     : ValueType type, As as",
     "Logical     : Expr* left, Token op, Expr* right",
     "Reference   : Token name, Type returnType, Declaration* _declaration",
-    "Return      : Token keyword, Expr* value",
+    "Return      : Token keyword, Expr* postExpr, Expr* value",
     "Set         : Expr* object, Token name, Token op, Expr* value, int index",
     "Ternary     : Token op, Expr* left, Expr* middle, Expr* right",
     "This        : Token keyword",

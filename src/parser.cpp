@@ -143,14 +143,14 @@ FunctionExpr *Parser::parse() {
   functionExpr->_function.expr = functionExpr;
   functionExpr->_function.type = VOID_TYPE;
   functionExpr->_function.name = NULL;//copyString(name.start, name.length);
-  group->_compiler.beginScope(&functionExpr->_function, this);
+  group->_compiler.pushScope(&functionExpr->_function, this);
   expList(group, TOKEN_EOF);
 
   if (check(TOKEN_LESS))
     functionExpr->ui = directive(TOKEN_EOF, NULL);
 
   consume(TOKEN_EOF, "Expect end of file.");
-  group->_compiler.endScope();
+  group->_compiler.popScope();
 ////////
 /*  Compiler *compiler = new Compiler;
 
@@ -442,11 +442,10 @@ Expr *Parser::grouping() {
   }
 
   sprintf(errorMessage, "Expect '%c' after expression.", closingChar);
-  group->_compiler.groupingExpr = group;
-  group->_compiler.beginScope();
+  group->_compiler.pushScope(group);
   expList(group, endGroupType);
   consume(endGroupType, errorMessage);
-  group->_compiler.endScope();
+  group->_compiler.popScope();
 
   if (endGroupType == TOKEN_RIGHT_PAREN && (statementExprs & (1 << (scopeDepth + 1))) != 0)
     if (!isGroup(group->body, TOKEN_SEPARATOR)) {
@@ -691,7 +690,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
         functionExpr->_function.type = ((ReferenceExpr *) exp)->returnType;
         functionExpr->_function.name = copyString(name.start, name.length);
         group->_compiler.groupingExpr = group;
-        group->_compiler.beginScope(&functionExpr->_function, this);
+        group->_compiler.pushScope(&functionExpr->_function, this);
   //      bindFunction(compiler.prefix, function);
         passSeparator();
 
@@ -704,7 +703,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
             if (param->typeExpr->type == EXPR_REFERENCE && !IS_UNKNOWN(((ReferenceExpr *) param->typeExpr)->returnType)) {
               functionExpr->params = RESIZE_ARRAY(DeclarationExpr *, functionExpr->params, functionExpr->arity, functionExpr->arity + 1);
               functionExpr->params[functionExpr->arity++] = param;
-              group->_compiler.addDeclaration(((ReferenceExpr *) param->typeExpr)->returnType, param->name, NULL, false, this);
+              param->_declaration = group->_compiler.addDeclaration(((ReferenceExpr *) param->typeExpr)->returnType, param->name, NULL, false, this);
             }
             else
               error("Parameter %d not typed correctly", functionExpr->arity + 1);
@@ -727,7 +726,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
           functionExpr->ui = directive(parenFlag ? TOKEN_RIGHT_PAREN : TOKEN_RIGHT_BRACE, NULL);
 
         consume(endGroupType, errorMessage);
-        group->_compiler.endScope();
+        group->_compiler.popScope();
         return functionExpr;
       }
       else
@@ -876,7 +875,7 @@ Expr *Parser::returnStatement(TokenType endGroupType) {
   if (!check(endGroupType))
     consume(TOKEN_SEPARATOR, "Expect ';' after return value.");
 
-  return new ReturnExpr(keyword, value);
+  return new ReturnExpr(keyword, NULL, value);
 }
 
 Expr *Parser::statement(TokenType endGroupType) {
