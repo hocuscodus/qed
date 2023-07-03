@@ -20,6 +20,7 @@ struct Compiler {
   Compiler *enclosing;
   GroupingExpr *groupingExpr;
   ObjFunction *function = NULL;
+  bool hasSuperCalls;
   int vCount;
   int declarationCount;
   Declaration declarations[UINT8_COUNT];
@@ -71,7 +72,7 @@ struct Expr;
 typedef std::function<Expr *(Expr *)> K;
 
 void addExpr(Expr **body, Expr *exp, Token op);
-Expr *getLastBodyExpr(Expr *body, TokenType tokenType);
+Expr **getLastBodyExpr(Expr **body, TokenType tokenType);
 bool isGroup(Expr *exp, TokenType tokenType);
 Expr *car(Expr *exp, TokenType tokenType);
 Expr *cdr(Expr *exp, TokenType tokenType);

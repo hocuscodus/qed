@@ -52,7 +52,7 @@ class Parser {
   Token current;
   Token previous;
   bool panicMode;
-  uint64_t statementExprs = 0L; // Helper booleans in groups
+  bool newFlag;
 public:
   bool hadError;
 public:
@@ -60,7 +60,7 @@ public:
 private:
   void advance();
 public:
-  void consume(TokenType type, const char *message);
+  void consume(TokenType type, const char *fmt, ...);
   bool check(TokenType type);
   bool check(TokenType *endGroupTypes);
   bool checkNext(TokenType type);

@@ -192,12 +192,12 @@ void GetExpr::toCode(Parser &parser, ObjFunction *function) {
   str() << "). " << name.getString();
 }
 
-void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {/*
+void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
   if (name.type == TOKEN_LEFT_PAREN) {
-    str() << "";
+    str() << "(";
     body->toCode(parser, function);
     str() << ")";
-  } else {*/
+  } else {
     if (_compiler.enclosing)
       startBlock();
 
@@ -241,7 +241,7 @@ void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {/*
 
     if (_compiler.enclosing)
       endBlock();
-//  }
+  }
 }
 
 void IfExpr::toCode(Parser &parser, ObjFunction *function) {

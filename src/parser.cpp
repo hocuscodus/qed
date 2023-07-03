@@ -12,6 +12,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define FORMAT_MESSAGE(fmt) \
+  char message[256]; \
+  va_list args; \
+ \
+  va_start (args, fmt); \
+  vsnprintf(message, 256, fmt, args); \
+  va_end(args);
+
 #define KEY_DEF( identifier, unary, binary, prec )  { unary, binary, prec }
 ParseExpRule expRules[] = { KEYS_DEF };
 #undef KEY_DEF
@@ -27,6 +35,7 @@ static int scopeDepth = -1;
 Parser::Parser(Scanner &scanner) : scanner(scanner) {
   hadError = false;
   panicMode = false;
+  newFlag = false;
 
   advance();
   advance();
@@ -46,12 +55,13 @@ void Parser::advance() {
   }
 }
 
-void Parser::consume(TokenType type, const char *message) {
+void Parser::consume(TokenType type, const char *fmt, ...) {
   if (current.type == type) {
     advance();
     return;
   }
 
+  FORMAT_MESSAGE(fmt);
   errorAtCurrent(message);
 }
 
@@ -78,14 +88,6 @@ bool Parser::match(TokenType type) {
   advance();
   return true;
 }
-
-#define FORMAT_MESSAGE(fmt) \
-  char message[256]; \
-  va_list args; \
- \
-  va_start (args, fmt); \
-  vsnprintf(message, 256, fmt, args); \
-  va_end(args);
 
 void Parser::errorAtCurrent(const char *fmt, ...) {
   FORMAT_MESSAGE(fmt);
@@ -316,6 +318,12 @@ Expr *Parser::call(Expr *left) {
   TokenType tokens[] = {TOKEN_RIGHT_PAREN, TOKEN_COMMA, TOKEN_ELSE, TOKEN_EOF};
   Expr *params = NULL;
   Expr *handler = NULL;
+  bool newFlag = this->newFlag;
+
+  this->newFlag = false;
+
+  if (!newFlag)
+    getCurrent()->hasSuperCalls |= false;//isUserClass(left);
 
   if (!check(TOKEN_RIGHT_PAREN)) {
     do {
@@ -342,7 +350,7 @@ Expr *Parser::call(Expr *left) {
       handler = statement(TOKEN_SEPARATOR);
   }
 
-  return new CallExpr(false, left, previous, params, handler);
+  return new CallExpr(newFlag, left, previous, params, handler);
 }
 
 Expr *Parser::arrayElement(Expr *left) {
@@ -425,10 +433,10 @@ Expr *Parser::primitiveType() {
 Expr *Parser::grouping() {
   char closingChar;
   TokenType endGroupType;
-  char errorMessage[64];
+  Token op = previous;
   GroupingExpr *group = new GroupingExpr(previous, NULL);
 
-  switch (previous.type) {
+  switch (op.type) {
   case TOKEN_LEFT_PAREN:
     closingChar = ')';
     endGroupType = TOKEN_RIGHT_PAREN;
@@ -440,21 +448,15 @@ Expr *Parser::grouping() {
     break;
   }
 
-  sprintf(errorMessage, "Expect '%c' after expression.", closingChar);
   group->_compiler.pushScope(group);
   expList(group, endGroupType);
-  consume(endGroupType, errorMessage);
+  consume(endGroupType, "Expect '%c' after expression.", closingChar);
   group->_compiler.popScope();
 
-  if (endGroupType == TOKEN_RIGHT_PAREN && (statementExprs & (1 << (scopeDepth + 1))) != 0)
-    if (!isGroup(group->body, TOKEN_SEPARATOR)) {
-      Expr *exp = group->body;
-
-      group->body = NULL;
-      return exp;
-    }
-    else
-      return NULL;
+  if (op.type == TOKEN_LEFT_PAREN && group->body && isGroup(group->body, TOKEN_SEPARATOR)) {
+    getCurrent()->hasSuperCalls |= group->_compiler.hasSuperCalls;
+    return new CallExpr(false, new GroupingExpr(op, new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, group->_compiler.hasSuperCalls ? "L" : "l", 1, -1), 0, NULL, group, NULL)), op, NULL, NULL);
+  }
 
   return group;
 }
@@ -603,18 +605,15 @@ Expr *Parser::unary() {
 
   // Emit the operator instruction.
   switch (op.type) {
-    case TOKEN_NEW: {
+  case TOKEN_NEW: {
+      if (newFlag)
+        errorAt(&op, "Use 'new' once before call");
+
+      newFlag = true;
+
       Expr *right = parsePrecedence(PREC_CALL);
 
-      if (right->type == EXPR_CALL) {
-        CallExpr *call = (CallExpr *) right;
-
-        if (call->newFlag)
-          errorAt(&op, "Use 'new' once before call");
-        else
-          call->newFlag = true;
-      }
-      else
+      if (right->type != EXPR_CALL)
         errorAt(&op, "Cannot use 'new' before non-callable expression");
 
       return right;
@@ -711,7 +710,6 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
 
         bool parenFlag = match(TOKEN_LEFT_PAREN);
         TokenType endGroupType = parenFlag ? TOKEN_RIGHT_PAREN : TOKEN_RIGHT_BRACE;
-        const char *errorMessage = parenFlag ? "Expect ')' after expression." : "Expect '}' after expression.";
 
         if (!parenFlag)
           consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.");
@@ -723,7 +721,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
         if (check(TOKEN_LESS))
           functionExpr->ui = directive(parenFlag ? TOKEN_RIGHT_PAREN : TOKEN_RIGHT_BRACE, NULL);
 
-        consume(endGroupType, errorMessage);
+        consume(endGroupType, "Expect '%c' after expression.", parenFlag ? ')' : '}');
         group->_compiler.popScope();
         return functionExpr;
       }
@@ -770,7 +768,6 @@ Expr *Parser::expressionStatement(TokenType endGroupType) {
   if (!check(endGroupType))
     consume(TOKEN_SEPARATOR, "Expect ';' or newline after expression.");
 
-  statementExprs |= 1 << scopeDepth;
   return exp;
 }
 
@@ -879,7 +876,6 @@ Expr *Parser::returnStatement(TokenType endGroupType) {
 Expr *Parser::statement(TokenType endGroupType) {
   // ignore optional separator before second operand
   passSeparator();
-  statementExprs &= ~(1 << scopeDepth);
 
   if (match(TOKEN_PRINT))
     return printStatement(endGroupType);

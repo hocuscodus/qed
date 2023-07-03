@@ -36,6 +36,7 @@ Compiler::Compiler() {
   enclosing = NULL;
   groupingExpr = NULL;
   function = NULL;
+  hasSuperCalls = false;
   vCount = 0;
   declarationCount = 0;
 }
@@ -366,15 +367,14 @@ void addExpr(Expr **body, Expr *exp, Token op) {
   if (!*body)
     *body = exp;
   else {
-    while (isGroup(*body, op.type))
-      body = &((BinaryExpr *) *body)->right;
+    Expr **lastExpr = getLastBodyExpr(body, op.type);
 
-    *body = new BinaryExpr(*body, op, exp);
+    *lastExpr = new BinaryExpr(*lastExpr, op, exp);
   }
 }
 
-Expr *getLastBodyExpr(Expr *body, TokenType tokenType) {
-  Expr *exp = cdr(body, tokenType);
+Expr **getLastBodyExpr(Expr **body, TokenType tokenType) {
+  Expr **exp = isGroup(*body, tokenType) ? &((BinaryExpr *) *body)->right : NULL;
 
   return exp ? getLastBodyExpr(exp, tokenType) : body;
 }

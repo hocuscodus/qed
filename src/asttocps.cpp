@@ -160,7 +160,7 @@ Expr *FunctionExpr::toCps(K k) {
   Expr *newBodyExpr = body->toCps([this](Expr *body) {return body;});
   body = (GroupingExpr *) newBodyExpr;// && newBodyExpr->type == EXPR_GROUPING ? (GroupingExpr *) newBodyExpr : NULL;
 
-  Expr *lastExpr = getLastBodyExpr(body->body, TOKEN_SEPARATOR);
+  Expr *lastExpr = *getLastBodyExpr(&body->body, TOKEN_SEPARATOR);
 
   if (!lastExpr || lastExpr->type != EXPR_RETURN)
     addExpr(&body->body, new ReturnExpr(buildToken(TOKEN_IDENTIFIER, "return", 6, -1), NULL, NULL), buildToken(TOKEN_SEPARATOR, ";", 1, -1));

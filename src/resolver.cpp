@@ -526,7 +526,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         printf(ss->str().c_str());
         parse(body, ss->str().c_str(), 0, 0, NULL);
 
-        FunctionExpr *uiFunctionExpr = (FunctionExpr *) getLastBodyExpr(body->body, TOKEN_SEPARATOR);
+        FunctionExpr *uiFunctionExpr = (FunctionExpr *) *getLastBodyExpr(&body->body, TOKEN_SEPARATOR);
 
         uiFunctionExpr->resolve(parser);
         uiFunctionExpr->_function.eventFlags = exprUI->_eventFlags;
@@ -535,7 +535,7 @@ Type FunctionExpr::resolve(Parser &parser) {
 
         getCurrent()->function->uiFunction = uiFunction;
         parse(body, "UI_ *ui_;\n", 0, 0, NULL);
-        getLastBodyExpr(body->body, TOKEN_SEPARATOR)->resolve(parser);
+        (*getLastBodyExpr(&body->body, TOKEN_SEPARATOR))->resolve(parser);
 
         uiFunction->compiler->pushScope();
         ss->str("");
@@ -554,7 +554,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         printf(ss->str().c_str());
         parse(uiFunctionExpr->body, ss->str().c_str(), 0, 0, NULL);
 
-        FunctionExpr *layoutFunctionExpr = (FunctionExpr *) getLastBodyExpr(uiFunctionExpr->body->body, TOKEN_SEPARATOR);
+        FunctionExpr *layoutFunctionExpr = (FunctionExpr *) *getLastBodyExpr(&uiFunctionExpr->body->body, TOKEN_SEPARATOR);
 
         layoutFunctionExpr->resolve(parser);
 
@@ -573,7 +573,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         printf(ss->str().c_str());
         parse(layoutFunctionExpr->body, ss->str().c_str(), 0, 0, NULL);
 
-        FunctionExpr *paintFunctionExpr = (FunctionExpr *) getLastBodyExpr(layoutFunctionExpr->body->body, TOKEN_SEPARATOR);
+        FunctionExpr *paintFunctionExpr = (FunctionExpr *) *getLastBodyExpr(&layoutFunctionExpr->body->body, TOKEN_SEPARATOR);
 
         paintFunctionExpr->resolve(parser);
 
@@ -590,7 +590,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         printf(ss->str().c_str());
         parse(layoutFunctionExpr->body, ss->str().c_str(), 0, 0, NULL);
 
-        FunctionExpr *eventFunctionExpr = (FunctionExpr *) getLastBodyExpr(layoutFunctionExpr->body->body, TOKEN_SEPARATOR);
+        FunctionExpr *eventFunctionExpr = (FunctionExpr *) *getLastBodyExpr(&layoutFunctionExpr->body->body, TOKEN_SEPARATOR);
 
         eventFunctionExpr->resolve(parser);
 
@@ -720,8 +720,10 @@ Type LogicalExpr::resolve(Parser &parser) {
 }
 
 Type WhileExpr::resolve(Parser &parser) {
-  parser.compilerError("In OpcodeExpr!");
-  return body->resolve(parser);
+  Type type = condition->resolve(parser);
+
+  body->resolve(parser);
+  return VOID_TYPE;
 }
 
 Type ReturnExpr::resolve(Parser &parser) {/*
