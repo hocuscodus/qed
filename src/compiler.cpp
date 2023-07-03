@@ -65,13 +65,13 @@ ObjFunction *Compiler::compile(FunctionExpr *expr, Parser *parser) {
   }
   printf("\n");
 #endif
-
+/*
   Expr *cpsExpr = expr->toCps([](Expr *expr) {
     return expr;
-  });
+  });*/
 #ifdef DEBUG_PRINT_CODE
   printf("CPS parse: ");
-  cpsExpr->astPrint();
+//  cpsExpr->astPrint();
   printf("\n");
 #endif
   line() << "const canvas = document.getElementById(\"canvas\");\n";
@@ -175,7 +175,7 @@ Declaration *Compiler::addDeclaration(Type type, Token &name, Declaration *previ
   if (dec) {
     dec->type = type;
     dec->name = name;
-    dec->isField = function->isClass();
+    dec->isField = function && function->expr && function->isClass();
     dec->function = function;
     dec->previous = previous;
     dec->parentFlag = parentFlag;

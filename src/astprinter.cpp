@@ -61,17 +61,15 @@ static void printObjType(Obj *obj) {
   switch(obj->type) {
     case OBJ_STRING: printf("String"); return;
     case OBJ_FUNCTION: {
-      ObjString *name = ((ObjFunction *) obj)->name;
+      Token name = ((ObjFunction *) obj)->expr->name;
 
-      printf("%.s", name->length, name->chars);
+      printf("%.s", name.length, name.start);
       return;
     }
-    case OBJ_INSTANCE: {
-      ObjString *name = ((ObjInstance *) obj)->callable->name;
-
-      printf("%.s *", name->length, name->chars);
+    case OBJ_INSTANCE:
+      printObjType(&((ObjInstance *) obj)->callable->obj);
+      printf(" *");
       return;
-    }
   }
 }
 

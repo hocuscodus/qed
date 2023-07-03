@@ -21,6 +21,9 @@ void writeHeader(FILE *file) {
   fprintf(file, "/*\n");
   fprintf(file, " * The QED Programming Language\n");
   fprintf(file, " * Copyright (C) 2022-2023  Hocus Codus Software inc.\n");
+  fprintf(file, " *\n");
+  fprintf(file, " * This code has been generated using astgenerator.cpp.\n");
+  fprintf(file, " * Do not manually modify it.\n");
   fprintf(file, " */\n");
 }
 
@@ -257,7 +260,7 @@ int main(int argc, const char *argv[]) {
 
   const char *outputDir = argv[1];
 
-  const char *array1[] = {
+  const char *array[] = {
     "Type        : Token name, bool functionFlag, bool noneFlag, int numDim, int index, Declaration* declaration",
     "UIAttribute : Token name, Expr* handler, int _uiIndex, int _index",
     "UIDirective : int childDir, int attCount, UIAttributeExpr** attributes, UIDirectiveExpr* previous, UIDirectiveExpr* lastChild, int viewIndex, bool childrenViewFlag, int _layoutIndexes[NUM_DIRS], long _eventFlags",
@@ -286,5 +289,5 @@ int main(int argc, const char *argv[]) {
     "Native      : Token nativeCode",
     NULL
   };
-  GenerateAst().defineAst(outputDir, "Expr", array1);
+  GenerateAst().defineAst(outputDir, "Expr", array);
 }

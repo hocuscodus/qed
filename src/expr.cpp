@@ -1,6 +1,9 @@
 /*
  * The QED Programming Language
  * Copyright (C) 2022-2023  Hocus Codus Software inc.
+ *
+ * This code has been generated using astgenerator.cpp.
+ * Do not manually modify it.
  */
 #include "expr.hpp"
 

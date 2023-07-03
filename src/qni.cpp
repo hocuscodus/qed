@@ -7,6 +7,7 @@
 #include <map>
 #include <string.h>
 #include "qni.hpp"
+#include "expr.hpp"
 
 static std::map<std::string, NativeFn> &getQniFnMap() {
   static std::map<std::string, NativeFn> qniFnMap;
@@ -31,7 +32,7 @@ bool addNativeClassFn(const char *name, NativeClassFn nativeClassFn) {
 }
 
 bool bindFunction(std::string prefix, ObjFunction *function) {
-  std::string name = prefix + "_" + function->name->chars;
+  std::string name = prefix + "_" + function->expr->name.getString();
   std::map<std::string, NativeFn>::iterator i = getQniFnMap().find(name);
   bool rc = i != getQniFnMap().end();
 

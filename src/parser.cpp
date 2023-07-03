@@ -142,7 +142,6 @@ FunctionExpr *Parser::parse() {
   group->_compiler.groupingExpr = group;
   functionExpr->_function.expr = functionExpr;
   functionExpr->_function.type = VOID_TYPE;
-  functionExpr->_function.name = NULL;//copyString(name.start, name.length);
   group->_compiler.pushScope(&functionExpr->_function, this);
   expList(group, TOKEN_EOF);
 
@@ -688,7 +687,6 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
 
         functionExpr->_function.expr = functionExpr;
         functionExpr->_function.type = ((ReferenceExpr *) exp)->returnType;
-        functionExpr->_function.name = copyString(name.start, name.length);
         group->_compiler.groupingExpr = group;
         group->_compiler.pushScope(&functionExpr->_function, this);
   //      bindFunction(compiler.prefix, function);

@@ -71,9 +71,9 @@ static Obj objInternalType = {OBJ_INTERNAL};
 bool isType(Type &type) {
   switch (AS_OBJ_TYPE(type)) {
   case OBJ_FUNCTION: {
-    ObjString *name = AS_FUNCTION_TYPE(type)->name;
+    const char *name = AS_FUNCTION_TYPE(type)->expr->name.start;
 
-    return name != NULL && name->chars[0] >= 'A' && name->chars[0] <= 'Z';
+    return memcmp(name, "Main", 4) && name[0] >= 'A' && name[0] <= 'Z';
   }
 
   case OBJ_ARRAY:
@@ -341,7 +341,7 @@ Type CallExpr::resolve(Parser &parser) {
 
   signature.compiler = &compiler;
   compiler.function = &signature;
-  compiler.function->name = copyString("Capital", 7);
+  compiler.function->expr = NULL;
   compiler.declarationCount = 0;
 
   for (Expr *params = this->params; params; params = cdr(params, TOKEN_COMMA)) {
@@ -519,6 +519,7 @@ Type FunctionExpr::resolve(Parser &parser) {
 
         for (int ndx2 = -1; (ndx2 = getCurrent()->function->instanceIndexes->getNext(ndx2)) != -1;)
           (*ss) << "v" << ndx2 << ".ui_ = new v" << ndx2 << ".UI_();\n";
+
         nTabs--;
         insertTabs();
         (*ss) << "}\n";
@@ -725,12 +726,12 @@ Type WhileExpr::resolve(Parser &parser) {
 
 Type ReturnExpr::resolve(Parser &parser) {/*
   if (getCurrent()->function->isClass()) {
-    char buf[128] = "{post(ReturnHandler_)}";
+    char buf[128] = "{post_(ReturnHandler_)}";
 
     if (value) {
       uiExprs.push_back(value);
       uiTypes.push_back({(ValueType)-1});
-      strcpy(buf, "{void Ret_() {ReturnHandler_($EXPR)}; post(Ret_)}");
+      strcpy(buf, "{void Ret_() {ReturnHandler_($EXPR)}; post_(Ret_)}");
     }
 
     parse(getCurrent()->groupingExpr, buf, 0, 0, NULL);
@@ -1397,7 +1398,7 @@ void paint(UIDirectiveExpr *expr, Parser &parser) {
   }
 
   char *name = (char *) getValueVariableName(expr, ATTRIBUTE_OUT);
-  char *callee = NULL;
+  const char *callee = NULL;
 
   if (name) {
     if (expr->lastChild) {
@@ -1418,7 +1419,7 @@ void paint(UIDirectiveExpr *expr, Parser &parser) {
         break;
 
       case OBJ_FUNCTION:
-        callee = AS_FUNCTION_TYPE(outType)->name->chars;
+        callee = AS_FUNCTION_TYPE(outType)->expr->name.getString().c_str();
         name[0] = 0;
         break;
 
@@ -1537,7 +1538,7 @@ void onEvent(UIDirectiveExpr *expr, Parser &parser) {
                 nTabs++;
 
                 insertTabs();
-                (*ss) << "{void Ret_() {$EXPR}; post(Ret_)}\n";
+                (*ss) << "{void Ret_() {$EXPR}; post_(Ret_)}\n";
                 uiExprs.push_back(attExpr->handler);
                 uiTypes.push_back(UNKNOWN_TYPE);
                 attExpr->handler = NULL;

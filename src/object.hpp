@@ -52,13 +52,6 @@ struct Obj {
   const char *toString();
 };
 
-class Parser;
-
-struct ObjNamed {
-  Obj obj;
-  ObjString *name;
-};
-
 struct ObjFunction;
 
 struct Declaration {
@@ -78,17 +71,6 @@ typedef struct {
   Declaration *declaration;
 } Upvalue;
 
-struct Compiler;
-
-struct ObjCallable : ObjNamed {
-  Type type;
-  Compiler *compiler;
-
-  bool isClass();
-  bool isUserClass();
-  std::string getThisVariableName();
-};
-
 struct IndexList {
   int size;
   long *array;
@@ -102,7 +84,16 @@ struct IndexList {
   int get(int index);
 };
 
+struct Compiler;
+
+struct ObjCallable {
+  Obj obj;
+  Type type;
+  Compiler *compiler;
+};
+
 struct FunctionExpr;
+class Parser;
 
 struct ObjFunction : ObjCallable {
   FunctionExpr *expr;
@@ -122,6 +113,9 @@ struct ObjFunction : ObjCallable {
   int addUpvalue(uint8_t index, bool isField, Declaration *declaration, Parser &parser);
   void add(ObjFunction *function);
   void print();
+  bool isClass();
+  bool isUserClass();
+  std::string getThisVariableName();
 };
 
 typedef Value (*NativeFn)(int argCount, Value *args);

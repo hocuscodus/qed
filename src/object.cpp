@@ -488,19 +488,15 @@ const char *Obj::toString() {
       return buf;
     }
     case OBJ_FUNCTION: {
-      ObjString *name = ((ObjFunction *) this)->name;
+      Token name = ((ObjFunction *) this)->expr->name;
 
-      if (name)
-        sprintf(buf, "%.*s", name->length, name->chars);
+      sprintf(buf, "%.*s", name.length, name.start);
       return buf;
     }
-    case OBJ_INSTANCE: {
-      ObjCallable *callable = ((ObjInstance *) this)->callable;
-      ObjString *name = callable->name;
-
-      sprintf(buf, "%.*s*", name->length, name->chars);
+    case OBJ_INSTANCE:
+      ((ObjInstance *) this)->callable->obj.toString();
+      strcat(buf, "*");
       return buf;
-    }
     case OBJ_THREAD:
     case OBJ_OBJECT:
     case OBJ_CLOSURE:
@@ -516,30 +512,11 @@ std::string Declaration::getRealName() {
   return previous ? previous->getRealName() + (parentFlag ? "$" : "$_") : std::string(name.start, name.length);
 }
 
-bool ObjCallable::isClass() {
-  return name == NULL || (name->chars[0] >= 'A' && name->chars[0] <= 'Z');
-}
-
-bool endsWith(std::string const &str, std::string const &suffix) {
-    if (str.length() < suffix.length()) {
-        return false;
-    }
-    return str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0;
-}
-
-bool ObjCallable::isUserClass() {
-  return isClass() && name && !endsWith(std::string(name->chars, name->length), "_");
-}
-
-std::string ObjCallable::getThisVariableName() {
-  return name ? std::string(name->chars, name->length) + "$this" : "globalThis$";
-}
-
 ObjFunction::ObjFunction() {
   obj.type = OBJ_FUNCTION;
   type = UNKNOWN_TYPE;
   upvalueCount = 0;
-  name = NULL;
+//  name = NULL;
   chunk.init();
   native = NULL;
   instanceIndexes = new IndexList();
@@ -581,6 +558,25 @@ void ObjFunction::add(ObjFunction *function) {
 
 void ObjFunction::print() {
 //  std::cout << s.str();
+}
+
+bool ObjFunction::isClass() {
+  return expr->name.start[0] >= 'A' && expr->name.start[0] <= 'Z';
+}
+
+bool endsWith(std::string const &str, std::string const &suffix) {
+    if (str.length() < suffix.length()) {
+        return false;
+    }
+    return str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0;
+}
+
+bool ObjFunction::isUserClass() {
+  return isClass() && !endsWith(std::string(expr->name.start, expr->name.length), "_");
+}
+
+std::string ObjFunction::getThisVariableName() {
+  return strcmp(expr->name.start, "Main") ? std::string(expr->name.start, expr->name.length) + "$this" : "globalThis$";
 }
 
 IndexList::IndexList() {
@@ -765,9 +761,9 @@ void CoThread::runtimeError(const char *format, ...) {
     ObjFunction *function = frame->closure->function;
     size_t instruction = frame->ip - function->chunk.code - 1;
 
-    fprintf(stderr, "[line %d] in %s\n",
-            function->chunk.lines[instruction],
-            function->name == NULL ? "script" : function->name->chars);
+//    fprintf(stderr, "[line %d] in %s\n",
+//            function->chunk.lines[instruction],
+//            function->name == NULL ? "script" : function->name->chars);
   }
 
   resetStack();
@@ -1134,13 +1130,8 @@ ObjArray *newArray() {
   return array;
 }
 
-static void printFunction(ObjCallable *function) {
-  if (function->name == NULL) {
-    printf("<script>");
-    return;
-  }
-
-  printf("<fn %s>", function->name->chars);
+static void printFunction(ObjFunction *function) {
+  printf("<fn %s>", function->expr->name.start);
 }
 
 void printObject(Value value) {
@@ -1150,7 +1141,7 @@ void printObject(Value value) {
     break;
 
   case OBJ_THREAD: {
-    ObjString *name = AS_THREAD(value)->frames[0].closure->function->name;
+    ObjString *name = NULL;//AS_THREAD(value)->frames[0].closure->function->name;
 
     if (name)
       printf("<%.*s instance>", name->length, name->chars);
@@ -1159,7 +1150,7 @@ void printObject(Value value) {
     break;
   }
   case OBJ_INSTANCE: {
-    ObjString *name = AS_INSTANCE(value)->callable->name;
+    ObjString *name = NULL;//AS_INSTANCE(value)->callable->name;
 
     printf("<%.*s instance>", name->length, name->chars);
     break;
@@ -1171,7 +1162,7 @@ void printObject(Value value) {
     printFunction(AS_CLOSURE(value)->function);
     break;
   case OBJ_FUNCTION:
-    printFunction(AS_CALLABLE(value));
+    printFunction(AS_FUNCTION(value));
     break;
   case OBJ_STRING:
     printf("%s", AS_CSTRING(value));

@@ -159,14 +159,14 @@ void FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
 
       str() << params[index]->name.getString();
     }
-  /*
+/*
     if (_function.isUserClass()) {
       if (arity)
         str() << ", ";
 
       str() << "ReturnHandler_";
     }
-  */
+*/
       str() << ") ";
   }
 
@@ -192,50 +192,56 @@ void GetExpr::toCode(Parser &parser, ObjFunction *function) {
   str() << "). " << name.getString();
 }
 
-void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
-  if (_compiler.enclosing)
-    startBlock();
-
-  if (function->expr->body == this) {
-    bool classFlag = function->isClass();
-    bool arityFlag = false;
-
-    for (int index = 0; !arityFlag && index < function->expr->arity; index++)
-      arityFlag = function->compiler->declarations[index].isField;
-
-//    for (int index = 0; !classFlag && index < function->upvalueCount; index++)
-//      classFlag = function->upvalues[index].isField;
-
-    for (int index = 0; index < function->expr->arity; index++) {
-      Declaration &declaration = function->compiler->declarations[index];
-
-      if (declaration.isField) {
-        std::string name = declaration.name.getString();
-
-        line() << "this." << name << " = " << name << ";\n";
-      }
-    }
-/*
-    if (function->isUserClass())
-        line() << "this.ReturnHandler_ = ReturnHandler_;\n";
-*/
-    if (classFlag)
-      line() << "const " << function->getThisVariableName() << " = this;\n";
-  }
-
-  if (body) {
-    line();
+void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {/*
+  if (name.type == TOKEN_LEFT_PAREN) {
+    str() << "";
     body->toCode(parser, function);
+    str() << ")";
+  } else {*/
+    if (_compiler.enclosing)
+      startBlock();
 
-    if (!isGroup(body, TOKEN_SEPARATOR) && needsSemicolon(body))
-      str() << ";\n";
-  }
+    if (function->expr->body == this) {
+      bool classFlag = function->isClass();
+      bool arityFlag = false;
 
-  if (function->expr->body == this && function->expr->ui)
-    function->expr->ui->toCode(parser, function);
+      for (int index = 0; !arityFlag && index < function->expr->arity; index++)
+        arityFlag = function->compiler->declarations[index].isField;
 
-  if (_compiler.enclosing)
-    endBlock();
+  //    for (int index = 0; !classFlag && index < function->upvalueCount; index++)
+  //      classFlag = function->upvalues[index].isField;
+
+      for (int index = 0; index < function->expr->arity; index++) {
+        Declaration &declaration = function->compiler->declarations[index];
+
+        if (declaration.isField) {
+          std::string name = declaration.name.getString();
+
+          line() << "this." << name << " = " << name << ";\n";
+        }
+      }
+  /*
+      if (function->isUserClass())
+          line() << "this.ReturnHandler_ = ReturnHandler_;\n";
+  */
+      if (classFlag)
+        line() << "const " << function->getThisVariableName() << " = this;\n";
+    }
+
+    if (body) {
+      line();
+      body->toCode(parser, function);
+
+      if (!isGroup(body, TOKEN_SEPARATOR) && needsSemicolon(body))
+        str() << ";\n";
+    }
+
+    if (function->expr->body == this && function->expr->ui)
+      function->expr->ui->toCode(parser, function);
+
+    if (_compiler.enclosing)
+      endBlock();
+//  }
 }
 
 void IfExpr::toCode(Parser &parser, ObjFunction *function) {
