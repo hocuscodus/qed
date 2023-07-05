@@ -107,7 +107,8 @@ struct Token {
   virtual void declareError(const char *message);
 };
 
-Token buildToken(TokenType type, const char *start, int length, int line);
+Token buildToken(TokenType type, const char *start, int length, int line = -1);
+Token buildToken(TokenType type, const char *start);
 
 class Scanner {
   const char *start;

@@ -80,7 +80,6 @@ void BinaryExpr::toCode(Parser &parser, ObjFunction *function) {
       right->toCode(parser, function);
       break;
     default:
-      str() << "(";
       left->toCode(parser, function);
       str() << " ";
 
@@ -98,7 +97,6 @@ void BinaryExpr::toCode(Parser &parser, ObjFunction *function) {
 
       str() << " ";
       right->toCode(parser, function);
-      str() << ")";
       break;
   }
 }
@@ -150,8 +148,10 @@ void FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
     function2 = function;
 
   if (!body || body->_compiler.enclosing) {
-    str() << (_declaration->isField ? "this." : "let ");
-    str() << _declaration->getRealName() << " = function(";
+    if (body->_compiler.enclosing->function->expr->body->name.type != TOKEN_LEFT_PAREN)
+      str() << "this." << _declaration->getRealName() << " = ";
+
+    str() << "function " << _declaration->getRealName() << "(";
 
     for (int index = 0; index < arity; index++) {
       if (index)
@@ -187,12 +187,13 @@ void FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 void GetExpr::toCode(Parser &parser, ObjFunction *function) {
-  str() << "(";
   object->toCode(parser, function);
-  str() << "). " << name.getString();
+  str() << "." << name.getString();
 }
 
 void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
+  _compiler.pushScope();
+
   if (name.type == TOKEN_LEFT_PAREN) {
     str() << "(";
     body->toCode(parser, function);
@@ -242,6 +243,8 @@ void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
     if (_compiler.enclosing)
       endBlock();
   }
+
+  _compiler.popScope();
 }
 
 void IfExpr::toCode(Parser &parser, ObjFunction *function) {
@@ -317,11 +320,9 @@ void LiteralExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 void LogicalExpr::toCode(Parser &parser, ObjFunction *function) {
-  str() << "(";
   left->toCode(parser, function);
   str() << " " << op.getString() << " ";
   right->toCode(parser, function);
-  str() << ")";
 }
 
 void ReturnExpr::toCode(Parser &parser, ObjFunction *function) {
@@ -345,20 +346,17 @@ void ReturnExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 void SetExpr::toCode(Parser &parser, ObjFunction *function) {
-  str() << "(";
   object->toCode(parser, function);
-  str() << "). " << name.getString() << " = ";
+  str() << "." << name.getString() << " = ";
   value->toCode(parser, function);
 }
 
 void TernaryExpr::toCode(Parser &parser, ObjFunction *function) {
-  str() << "(";
   left->toCode(parser, function);
   str() << " ? ";
   middle->toCode(parser, function);
   str() << " : ";
   right->toCode(parser, function);
-  str() << ")";
 }
 
 void ThisExpr::toCode(Parser &parser, ObjFunction *function) {
@@ -397,9 +395,8 @@ void UnaryExpr::toCode(Parser &parser, ObjFunction *function) {
       break;
 
     default:
-      str() << op.getString() << "(";
+      str() << op.getString();
       right->toCode(parser, function);
-      str() << ")";
       break;
   }
 }

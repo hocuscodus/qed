@@ -91,23 +91,23 @@ Expr *BinaryExpr::toCps(K k) {
 }
 
 Expr *CallExpr::toCps(K k) {
-  if (!newFlag && handler) {
+  bool userClassCall = !newFlag && handler;
+
+  if (userClassCall) {
     FunctionExpr *func = (FunctionExpr *) handler;
 
-    func->body->body = new BinaryExpr(k(func->params[0]), buildToken(TOKEN_SEPARATOR, ";", 1, -1), func->body->body);
+    func->body->body = newExpr(new BinaryExpr(k(func->params[0]), buildToken(TOKEN_SEPARATOR, ";"), func->body->body));
   }
 
-  auto genCall = [this, k](bool same, Expr *callee, Expr *&params) {
-    bool userClass = this->newFlag || this->handler;
-
+  auto genCall = [this, userClassCall, k](bool same, Expr *callee, Expr *&params) {
     if (this->handler) {
-      addExpr(same ? &this->params : &params, this->handler, buildToken(TOKEN_COMMA, ",", -1, 1));
+      addExpr(same ? &this->params : &params, this->handler, buildToken(TOKEN_COMMA, ","));
       this->handler = NULL;
     }
 
     Expr *call = same ? this : newExpr(new CallExpr(this->newFlag, callee, this->paren, params, NULL));
 
-    return userClass ? call : k(call);
+    return userClassCall ? call : k(call);
   };
 
   return callee->toCps([this, genCall](Expr *callee) {
@@ -133,15 +133,16 @@ Expr *FunctionExpr::toCps(K k) {
   if (!_function.isClass() || endsWith1(name.getString(), "_"))
     return k(this);
 
+  body->_compiler.pushScope();
   const char *type = getHandlerType(typeExpr ? ((ReferenceExpr *) typeExpr)->returnType : VOID_TYPE);
-  Token name = buildToken(TOKEN_IDENTIFIER, "HandlerFn_", strlen("HandlerFn_"), -1);
-  ReferenceExpr *paramTypeExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, type, strlen(type), -1), UNKNOWN_TYPE);
+  Token name = buildToken(TOKEN_IDENTIFIER, "HandlerFn_");
+  ReferenceExpr *paramTypeExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, type), UNKNOWN_TYPE);
 
   if (_function.type.valueType != VAL_VOID) {
     if (typeExpr)
       delete typeExpr;
 
-    typeExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "void", 4, -1), VOID_TYPE);
+    typeExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "void"), VOID_TYPE);
   }
 
   params = RESIZE_ARRAY(DeclarationExpr *, params, arity, arity + 1);
@@ -156,6 +157,8 @@ Expr *FunctionExpr::toCps(K k) {
   else
     arity++;
 
+  body->_compiler.popScope();
+
   Expr *currentBody = body;
   Expr *newBodyExpr = body->toCps([this](Expr *body) {return body;});
   body = (GroupingExpr *) newBodyExpr;// && newBodyExpr->type == EXPR_GROUPING ? (GroupingExpr *) newBodyExpr : NULL;
@@ -163,7 +166,7 @@ Expr *FunctionExpr::toCps(K k) {
   Expr *lastExpr = *getLastBodyExpr(&body->body, TOKEN_SEPARATOR);
 
   if (!lastExpr || lastExpr->type != EXPR_RETURN)
-    addExpr(&body->body, new ReturnExpr(buildToken(TOKEN_IDENTIFIER, "return", 6, -1), NULL, NULL), buildToken(TOKEN_SEPARATOR, ";", 1, -1));
+    addExpr(&body->body, new ReturnExpr(buildToken(TOKEN_IDENTIFIER, "return"), NULL, NULL), buildToken(TOKEN_SEPARATOR, ";"));
 
   return k(this);//compareExpr(body, bodyExpr) ? this : newExpr(new FunctionExpr(typeExpr, name, arity + 1, newParams, newBody, NULL)));
 /*
@@ -250,18 +253,18 @@ Expr *WhileExpr::toCps(K k) {
 Expr *ReturnExpr::toCps(K k) {
   auto retCall = [this, k](Expr *value) {
     bool same = compareExpr(this->value, value);
-    ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "post_", 5, -1), UNKNOWN_TYPE);
-    Expr *param = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "HandlerFn_", 10, -1), UNKNOWN_TYPE);
+    ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "post_"), UNKNOWN_TYPE);
+    Expr *param = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "HandlerFn_"), UNKNOWN_TYPE);
 
     if (value) {
-      Token name = buildToken(TOKEN_IDENTIFIER, "Lambda", 6, -1);
-      CallExpr *call = new CallExpr(false, param, buildToken(TOKEN_LEFT_PAREN, "(", 1, -1), value, NULL);
-      ReturnExpr *ret = new ReturnExpr(buildToken(TOKEN_IDENTIFIER, "return", 6, -1), NULL, NULL);
-      BinaryExpr *code = new BinaryExpr(call, buildToken(TOKEN_SEPARATOR, ";", 1, -1), ret);
-      GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{", 1, -1), code);
-      ReferenceExpr *voidType = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "void", 4, -1), VOID_TYPE);
+      Token name = buildToken(TOKEN_IDENTIFIER, "Lambda");
+      CallExpr *call = new CallExpr(false, param, buildToken(TOKEN_LEFT_PAREN, "("), value, NULL);
+      ReturnExpr *ret = new ReturnExpr(buildToken(TOKEN_IDENTIFIER, "return"), NULL, NULL);
+      BinaryExpr *code = new BinaryExpr(call, buildToken(TOKEN_SEPARATOR, ";"), ret);
+      GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), code);
+      ReferenceExpr *voidType = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "void"), VOID_TYPE);
       FunctionExpr *wrapperFunc = new FunctionExpr(voidType, name, 0, NULL, group, NULL);
-      GroupingExpr *mainGroup = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "(", 1, -1), wrapperFunc);
+      GroupingExpr *mainGroup = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "("), wrapperFunc);
 
       mainGroup->_compiler.pushScope(mainGroup);
       group->_compiler.pushScope(&wrapperFunc->_function, NULL);
@@ -273,7 +276,7 @@ Expr *ReturnExpr::toCps(K k) {
       this->value = NULL;
     }
 
-    postExpr = newExpr(new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "(", 1, -1), param, NULL));
+    postExpr = newExpr(new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), param, NULL));
     postExpr->resolve(*((Parser *) NULL));
     return k(same ? this : newExpr(new ReturnExpr(this->keyword, postExpr, value)));
   };

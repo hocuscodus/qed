@@ -334,7 +334,7 @@ Type BinaryExpr::resolve(Parser &parser) {
   }
 }
 
-static Token tok = buildToken(TOKEN_IDENTIFIER, "Capital", 7, -1);
+static Token tok = buildToken(TOKEN_IDENTIFIER, "Capital");
 Type CallExpr::resolve(Parser &parser) {
   Compiler compiler;
   ObjFunction signature;
@@ -361,7 +361,7 @@ Type CallExpr::resolve(Parser &parser) {
       char buffer[256];
       bool parmFlag = !IS_VOID(callable->type);
       char parm[128] = "";
-      GroupingExpr group(buildToken(TOKEN_EOF, "", 0, -1), NULL);
+      GroupingExpr group(buildToken(TOKEN_EOF, ""), NULL);
 
       // create an empty function handler for now
       if (parmFlag)
@@ -677,12 +677,12 @@ Type ArrayExpr::resolve(Parser &parser) {
   Type type = OBJ_TYPE(objArray);
 //  Compiler compiler;
 
-//  compiler.beginScope(newFunction(VOID_TYPE, NULL, 0));
+//  compiler.pushScope(newFunction(VOID_TYPE, NULL, 0));
 
   for (int index = 0; index < count; index++)
     objArray->elementType = expressions[index]->resolve(parser);
 
-//  compiler.endScope();
+//  compiler.popScope();
 //  compiler.function->type = type;
 //  function = compiler.function;
   return type;
@@ -1191,7 +1191,7 @@ void pushAreas(UIDirectiveExpr *expr, Parser &parser) {
     const char *name = getValueVariableName(expr, ATTRIBUTE_OUT);
 
     if (name != NULL) {
-      Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
+      Token token = buildToken(TOKEN_IDENTIFIER, name);
       Type outType = getCurrent()->getDeclaration(getCurrent()->resolveReference2(&token, &parser)).type;
       char *callee = NULL;
 
@@ -1408,7 +1408,7 @@ void paint(UIDirectiveExpr *expr, Parser &parser) {
       (*ss) << "saveContext()\n";
     }
 
-    Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
+    Token token = buildToken(TOKEN_IDENTIFIER, name);
     Type outType = getCurrent()->enclosing->getDeclaration(getCurrent()->enclosing->resolveReference2(&token, &parser)).type;
     switch (AS_OBJ_TYPE(outType)) {
       case OBJ_INSTANCE:
@@ -1518,7 +1518,7 @@ void onEvent(UIDirectiveExpr *expr, Parser &parser) {
     }
     else {
       const char *name = getValueVariableName(expr, ATTRIBUTE_OUT);
-      Token token = buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1);
+      Token token = buildToken(TOKEN_IDENTIFIER, name);
       int index = getCurrent()->enclosing->resolveReference2(&token, &parser);
       Type outType = getCurrent()->enclosing->getDeclaration(index).type;
 

@@ -138,8 +138,8 @@ FunctionExpr *Parser::parse() {
       if (token.type == TOKEN_EOF) break;
     }
   */
-  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_EOF, "", 0, -1), NULL);
-  FunctionExpr *functionExpr = new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, "Main", 4, -1), 0, NULL, group, NULL);
+  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_EOF, ""), NULL);
+  FunctionExpr *functionExpr = new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, "Main"), 0, NULL, group, NULL);
 
   group->_compiler.groupingExpr = group;
   functionExpr->_function.expr = functionExpr;
@@ -156,11 +156,11 @@ FunctionExpr *Parser::parse() {
 /*  Compiler *compiler = new Compiler;
 
   compiler->parser = this;
-  compiler->beginScope(newFunction(VOID_TYPE, NULL, 0));
+  compiler->pushScope(newFunction(VOID_TYPE, NULL, 0));
 
   Expr *expr = grouping(TOKEN_EOF, compiler, "Expect end of file.");
 
-  compiler->endScope();
+  compiler->popScope();
 */
   return hadError ? NULL : functionExpr;
 }
@@ -455,7 +455,7 @@ Expr *Parser::grouping() {
 
   if (op.type == TOKEN_LEFT_PAREN && group->body && isGroup(group->body, TOKEN_SEPARATOR)) {
     getCurrent()->hasSuperCalls |= group->_compiler.hasSuperCalls;
-    return new CallExpr(false, new GroupingExpr(op, new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, group->_compiler.hasSuperCalls ? "L" : "l", 1, -1), 0, NULL, group, NULL)), op, NULL, NULL);
+    return new CallExpr(false, new GroupingExpr(op, new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, group->_compiler.hasSuperCalls ? "L" : "l"), 0, NULL, group, NULL)), op, NULL, NULL);
   }
 
   return group;
@@ -539,7 +539,7 @@ void Parser::expList(GroupingExpr *groupingExpr, TokenType endGroupType) {
     if (endGroupType != TOKEN_RIGHT_PAREN && check(TOKEN_LESS))
       break;
     else {
-      Token op = !count++ ? buildToken(TOKEN_SEPARATOR, ";", 1, -1) : previous;
+      Token op = !count++ ? buildToken(TOKEN_SEPARATOR, ";") : previous;
       Expr *exp = declaration(endGroupType);
 
       if (groupingExpr->body && op.type != TOKEN_SEPARATOR)
@@ -681,7 +681,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
       if(match(TOKEN_LEFT_PAREN)) {
         exp->resolve(*this);
 
-        GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{", 1, -1), NULL);
+        GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL);
         FunctionExpr *functionExpr = new FunctionExpr(exp, name, 0, NULL, group, NULL);
 
         functionExpr->_function.expr = functionExpr;
@@ -792,14 +792,14 @@ Expr *Parser::forStatement(TokenType endGroupType) {
   Expr *body = statement(endGroupType);
 
   if (increment != NULL) {
-    body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{", 1, -1), new BinaryExpr(new UnaryExpr(buildToken(TOKEN_PRINT, "print", 5, -1), body), buildToken(TOKEN_SEPARATOR, ";", 1, -1), new UnaryExpr(buildToken(TOKEN_PRINT, "print", 5, -1), increment)));
+    body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), new BinaryExpr(new UnaryExpr(buildToken(TOKEN_PRINT, "print"), body), buildToken(TOKEN_SEPARATOR, ";"), new UnaryExpr(buildToken(TOKEN_PRINT, "print"), increment)));
     ((GroupingExpr *) body)->_compiler.groupingExpr = (GroupingExpr *) body;
   }
 
   body = new WhileExpr(condition, body);
 
   if (initializer != NULL) {
-    body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{", 1, -1), new BinaryExpr(initializer, buildToken(TOKEN_SEPARATOR, ";", 1, -1), body));
+    body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), new BinaryExpr(initializer, buildToken(TOKEN_SEPARATOR, ";"), body));
     ((GroupingExpr *) body)->_compiler.groupingExpr = (GroupingExpr *) body;
   }
 
@@ -856,7 +856,7 @@ Expr *Parser::printStatement(TokenType endGroupType) {
   if (!check(endGroupType))
     consume(TOKEN_SEPARATOR, "Expect ';' after value.");
 
-  return new UnaryExpr(buildToken(TOKEN_PRINT, "print", 5, -1), value);
+  return new UnaryExpr(buildToken(TOKEN_PRINT, "print"), value);
 }
 
 Expr *Parser::returnStatement(TokenType endGroupType) {

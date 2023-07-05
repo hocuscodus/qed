@@ -23,7 +23,7 @@ static bool isHexLetter(char c) {
   return c >= 'A' && c <= 'F';
 }
 
-Token buildToken(TokenType type, const char *start, int length, int line = -1) {
+Token buildToken(TokenType type, const char *start, int length, int line) {
   Token token;
 
   token.type = type;
@@ -31,6 +31,10 @@ Token buildToken(TokenType type, const char *start, int length, int line = -1) {
   token.length = length;
   token.line = line;
   return token;
+}
+
+Token buildToken(TokenType type, const char *start) {
+  return buildToken(type, start, strlen(start));
 }
 
 std::string Token::getString() {

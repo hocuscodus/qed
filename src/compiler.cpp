@@ -66,13 +66,13 @@ ObjFunction *Compiler::compile(FunctionExpr *expr, Parser *parser) {
   }
   printf("\n");
 #endif
-/*
+
   Expr *cpsExpr = expr->toCps([](Expr *expr) {
     return expr;
-  });*/
+  });
 #ifdef DEBUG_PRINT_CODE
   printf("CPS parse: ");
-//  cpsExpr->astPrint();
+  cpsExpr->astPrint();
   printf("\n");
 #endif
   line() << "const canvas = document.getElementById(\"canvas\");\n";
@@ -84,7 +84,7 @@ ObjFunction *Compiler::compile(FunctionExpr *expr, Parser *parser) {
   line() << "  return attributeStacks[index][attributeStacks[index].length - 1];\n";
   line() << "}\n";
 
-  expr->toCode(*parser, function);
+  cpsExpr->toCode(*parser, function);
 
   line() << "this.pushAttribute(4, 20);\n";
   line() << "this.pushAttribute(10, 0);\n";
@@ -146,25 +146,7 @@ void Compiler::pushScope(GroupingExpr *groupingExpr) {
 void Compiler::popScope() {
   current = enclosing;
 }
-/*
-void Compiler::pushType(ValueType type) {
-  pushType({type, NULL});
-}
 
-void Compiler::pushType(Type type) {
-  typeStack.push(type);
-}
-
-Type Compiler::popType() {
-  if (typeStack.empty())
-    printf("toto");
-
-  Type type = typeStack.top();
-
-  typeStack.pop();
-  return type;
-}
-*/
 Declaration *Compiler::addDeclaration(Type type, Token &name, Declaration *previous, bool parentFlag, Parser *parser) {
   if (declarationCount == UINT8_COUNT) {
     parser->error("Too many declarations in function.");
