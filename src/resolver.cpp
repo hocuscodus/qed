@@ -491,19 +491,6 @@ Type DeclarationExpr::resolve(Parser &parser) {
 Type FunctionExpr::resolve(Parser &parser) {
   if (body) {
     body->_compiler.pushScope();
-/*
-    if (_function.isUserClass()) {
-      char buffer[256] = "";
-      char buf[512];
-
-      if (!IS_VOID(_function.type))
-        sprintf(buffer, "%s _ret", _function.type.toString());
-
-      sprintf(buf, "void ReturnHandler_(%s) {};", buffer);
-      parse(getCurrent()->groupingExpr, buf, 0, 0, NULL);
-      getCurrent()->groupingExpr->expressions[getCurrent()->groupingExpr->count - 1]->resolve(parser);
-    }
-*/
     acceptGroupingExprUnits(body, parser);
 
     if (ui != NULL) {
@@ -726,21 +713,7 @@ Type WhileExpr::resolve(Parser &parser) {
   return VOID_TYPE;
 }
 
-Type ReturnExpr::resolve(Parser &parser) {/*
-  if (getCurrent()->function->isClass()) {
-    char buf[128] = "{post_(ReturnHandler_)}";
-
-    if (value) {
-      uiExprs.push_back(value);
-      uiTypes.push_back({(ValueType)-1});
-      strcpy(buf, "{void Ret_() {ReturnHandler_($EXPR)}; post_(Ret_)}");
-    }
-
-    parse(getCurrent()->groupingExpr, buf, 0, 0, NULL);
-
-    getCurrent()->groupingExpr->expressions[getCurrent()->groupingExpr->count - 1]->resolve(parser);
-  }
-*/
+Type ReturnExpr::resolve(Parser &parser) {
   // sync processing below
 
   if (value) {

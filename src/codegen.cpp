@@ -115,8 +115,7 @@ void CallExpr::toCode(Parser &parser, ObjFunction *function) {
     if (params)
       str() << ", ";
 
-    if (handler)
-      handler->toCode(parser, &((FunctionExpr *) handler)->_function);
+    handler->toCode(parser, &((FunctionExpr *) handler)->_function);
 
     if (parser.hadError)
       return;
@@ -148,7 +147,7 @@ void FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
     function2 = function;
 
   if (!body || body->_compiler.enclosing) {
-    if (body->_compiler.enclosing->function->expr->body->name.type != TOKEN_LEFT_PAREN)
+    if (body->_compiler.enclosing->function->expr->body->name.type == TOKEN_LEFT_BRACE)
       str() << "this." << _declaration->getRealName() << " = ";
 
     str() << "function " << _declaration->getRealName() << "(";
@@ -159,14 +158,7 @@ void FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
 
       str() << params[index]->name.getString();
     }
-/*
-    if (_function.isUserClass()) {
-      if (arity)
-        str() << ", ";
 
-      str() << "ReturnHandler_";
-    }
-*/
       str() << ") ";
   }
 
@@ -174,9 +166,6 @@ void FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
 //      generator.accept<int>(child->bodyExpr);
   if (body)
     body->toCode(parser, &_function);
-
-  if (parser.hadError)
-    return;
 
 //    emitBytes(OP_CLOSURE, makeConstant(OBJ_VAL(this->function)));
 
@@ -212,7 +201,7 @@ void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
   //    for (int index = 0; !classFlag && index < function->upvalueCount; index++)
   //      classFlag = function->upvalues[index].isField;
 
-      for (int index = 0; index < function->expr->arity; index++) {
+      for (int index = 0; index < function->expr->arity - (classFlag ? 1 : 0); index++) {
         Declaration &declaration = function->compiler->declarations[index];
 
         if (declaration.isField) {
@@ -221,10 +210,7 @@ void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
           line() << "this." << name << " = " << name << ";\n";
         }
       }
-  /*
-      if (function->isUserClass())
-          line() << "this.ReturnHandler_ = ReturnHandler_;\n";
-  */
+
       if (classFlag)
         line() << "const " << function->getThisVariableName() << " = this;\n";
     }

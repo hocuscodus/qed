@@ -64,7 +64,7 @@ Expr *AssignExpr::toCps(K k) {
 
 Expr *CastExpr::toCps(K k) {
   return expr->toCps([this, k](Expr *expr) {
-    return compareExpr(this->expr, expr) ? this : k(newExpr(new CastExpr(typeExpr, expr)));
+    return k(compareExpr(this->expr, expr) ? this : newExpr(new CastExpr(typeExpr, expr)));
   });
 }
 
@@ -94,7 +94,10 @@ Expr *CallExpr::toCps(K k) {
   bool userClassCall = !newFlag && handler;
 
   if (userClassCall) {
-    FunctionExpr *func = (FunctionExpr *) handler;
+    if (handler->type != EXPR_GROUPING)
+      handler = NULL;
+
+    FunctionExpr *func = (FunctionExpr *) ((GroupingExpr *) handler)->body;
 
     func->body->body = newExpr(new BinaryExpr(k(func->params[0]), buildToken(TOKEN_SEPARATOR, ";"), func->body->body));
   }
@@ -199,7 +202,13 @@ Expr *GroupingExpr::toCps(K k) {
     : k(this);
 
   _compiler.popScope();
-  return cpsExpr->type == EXPR_GROUPING ? cpsExpr : newExpr(new GroupingExpr(this->name, cpsExpr));
+
+  GroupingExpr *group = cpsExpr == body ? this : (GroupingExpr *) newExpr(new GroupingExpr(this->name, cpsExpr));
+
+  if (group != this)
+    group->_compiler = _compiler;
+
+  return group;
 }
 
 Expr *ArrayExpr::toCps(K k) {
@@ -335,7 +344,7 @@ Expr *TypeExpr::toCps(K k) {
 
 Expr *UnaryExpr::toCps(K k) {
   return right->toCps([this, k](Expr *right) {
-    return compareExpr(this->right, right) ? this : k(newExpr(new UnaryExpr(this->op, right)));
+    return k(compareExpr(this->right, right) ? this : newExpr(new UnaryExpr(this->op, right)));
   });
 }
 
