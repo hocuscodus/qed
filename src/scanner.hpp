@@ -48,10 +48,10 @@
     KEY_DEF( TOKEN_STAR, NULL, &Parser::binary, PREC_FACTOR ),  \
     KEY_DEF( TOKEN_STAR_EQUAL, NULL, &Parser::assignment, PREC_ASSIGNMENT ),  \
     KEY_DEF( TOKEN_AND, NULL, &Parser::binary, PREC_BITWISE_AND ),  \
-    KEY_DEF( TOKEN_AND_AND, NULL, &Parser::binary, PREC_LOGICAL_AND ),  \
+    KEY_DEF( TOKEN_AND_AND, NULL, &Parser::logical, PREC_LOGICAL_AND ),  \
     KEY_DEF( TOKEN_AND_EQUAL, NULL, &Parser::assignment, PREC_ASSIGNMENT ),  \
     KEY_DEF( TOKEN_OR, NULL, &Parser::binary, PREC_BITWISE_OR ),  \
-    KEY_DEF( TOKEN_OR_OR, NULL, &Parser::binary, PREC_LOGICAL_OR ),  \
+    KEY_DEF( TOKEN_OR_OR, NULL, &Parser::logical, PREC_LOGICAL_OR ),  \
     KEY_DEF( TOKEN_OR_EQUAL, NULL, &Parser::assignment, PREC_ASSIGNMENT ),  \
     KEY_DEF( TOKEN_XOR, NULL, NULL, PREC_BITWISE_XOR ),  \
     KEY_DEF( TOKEN_XOR_EQUAL, NULL, &Parser::assignment, PREC_ASSIGNMENT ),  \

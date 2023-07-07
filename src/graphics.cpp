@@ -76,9 +76,10 @@ void initDisplay() {
 void uninitDisplay() {
 }
 
+CoThread *coThread = NULL;//(CoThread *) AS_OBJ(args[0]);
+
 typedef struct {
-    CoThread *coThread = (CoThread *) AS_OBJ(args[0]);
- fn;
+  void (*fn)(void *);
   void *data;
 } QEDMessage;
 
@@ -86,7 +87,7 @@ void messageHandler(void *data) {
   QEDMessage *message = (QEDMessage *) data;
 
   (*message->fn)(message->data);
-  coThread->runHandler((ObjClosure *) event.user.data1);
+//  coThread->runHandler((ObjClosure *) event.user.data1);
   FREE_ARRAY(void *, data, 1);
   repaint2(eventThread);
 }

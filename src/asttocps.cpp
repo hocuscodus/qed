@@ -230,21 +230,26 @@ Expr *LiteralExpr::toCps(K k) {
 }
 
 Expr *LogicalExpr::toCps(K k) {
-  printf("(%.*s ", op.length, op.start);
-  left->toCps(k);
-  printf(" ");
-  right->toCps(k);
-  printf(")");
-  return this;
+  return this->left->toCps([this, k](Expr *left) -> Expr* {
+    Expr *right = this->right->toCps([this, k](Expr *right) {
+      return k(compareExpr(this->right, right) ? this->right : right);
+    });
+
+    if (compareExpr(this->left, left) && right == this->right)
+      return this;
+    else {
+      Expr *notExpr = this->op.type == TOKEN_OR_OR ? new UnaryExpr(buildToken(TOKEN_BANG, "!"), left) : left;
+
+      return new IfExpr(notExpr, right, k(new LiteralExpr(VAL_BOOL, {.boolean = false})));
+    }
+  });
 /*
 function cps_if(exp, k) {
   return cps(exp.cond, function(cond){
-    return {
-      type: "if",
-      cond: cond,
-      then: cps(exp.then, k),
-      else: cps(exp.else || FALSE, k),
-    };
+    const then = cps(exp.then, k);
+    const else = cps(exp.else || FALSE, k)
+
+    return {type: "if", cond: cond, then: then, else: else};
   });
 }
 function cps_if(exp, k) {
@@ -361,6 +366,44 @@ Expr *SetExpr::toCps(K k) {
 Expr *IfExpr::toCps(K k) {
 //  parenthesize2("super", 1, method);
   return k(this);
+/*
+function cps_if(exp, k) {
+  return cps(exp.cond, function(cond){
+    return {
+      type: "if",
+      cond: cond,
+      then: cps(exp.then, k),
+      else: cps(exp.else || FALSE, k),
+    };
+  });
+}
+function cps_if(exp, k) {
+    return cps(exp.cond, function(cond){
+        var cvar = gensym("I");
+        var cast = make_continuation(k);
+        k = function(ifresult) {
+            return {
+                type: "call",
+                func: { type: "var", value: cvar },
+                args: [ ifresult ]
+            };
+        };
+        return {
+            type: "call",
+            func: {
+                type: "lambda",
+                vars: [ cvar ],
+                body: {
+                    type: "if",
+                    cond: cond,
+                    then: cps(exp.then, k),
+                    else: cps(exp.else || FALSE, k)
+                }
+            },
+            args: [ cast ]
+        };
+    });
+}*/
 }
 
 Expr *TernaryExpr::toCps(K k) {
