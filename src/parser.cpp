@@ -139,11 +139,9 @@ FunctionExpr *Parser::parse() {
     }
   */
   GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_EOF, ""), NULL);
-  FunctionExpr *functionExpr = new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, "Main"), 0, NULL, group, NULL);
+  FunctionExpr *functionExpr = new FunctionExpr(VOID_TYPE, buildToken(TOKEN_IDENTIFIER, "Main"), 0, NULL, group, NULL);
 
-  group->_compiler.groupingExpr = group;
   functionExpr->_function.expr = functionExpr;
-  functionExpr->_function.type = VOID_TYPE;
   group->_compiler.pushScope(&functionExpr->_function, this);
   expList(group, TOKEN_EOF);
 
@@ -455,7 +453,7 @@ Expr *Parser::grouping() {
 
   if (op.type == TOKEN_LEFT_PAREN && group->body && isGroup(group->body, TOKEN_SEPARATOR)) {
     getCurrent()->hasSuperCalls |= group->_compiler.hasSuperCalls;
-    return new CallExpr(false, new GroupingExpr(op, new FunctionExpr(NULL, buildToken(TOKEN_IDENTIFIER, group->_compiler.hasSuperCalls ? "L" : "l"), 0, NULL, group, NULL)), op, NULL, NULL);
+    return new CallExpr(false, new GroupingExpr(op, new FunctionExpr(VOID_TYPE, buildToken(TOKEN_IDENTIFIER, group->_compiler.hasSuperCalls ? "L" : "l"), 0, NULL, group, NULL)), op, NULL, NULL);
   }
 
   return group;
@@ -679,14 +677,11 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
       Token name = previous;
 
       if(match(TOKEN_LEFT_PAREN)) {
-        exp->resolve(*this);
-
+        Type returnType = exp->resolve(*this);
         GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL);
-        FunctionExpr *functionExpr = new FunctionExpr(exp, name, 0, NULL, group, NULL);
+        FunctionExpr *functionExpr = new FunctionExpr(returnType, name, 0, NULL, group, NULL);
 
         functionExpr->_function.expr = functionExpr;
-        functionExpr->_function.type = ((ReferenceExpr *) exp)->returnType;
-        group->_compiler.groupingExpr = group;
         group->_compiler.pushScope(&functionExpr->_function, this);
   //      bindFunction(compiler.prefix, function);
         passSeparator();

@@ -365,7 +365,7 @@ InterpretResult run(CoThread *current) {
         return INTERPRET_OK;
       }
       else */{
-        ValueType type = frame->closure->function->type.valueType;
+        ValueType type = frame->closure->function->expr->returnType.valueType;
         Value result = type != VAL_VOID ? POP : VOID_VAL;
 
         current->onReturn(result);
@@ -514,7 +514,6 @@ std::string Declaration::getRealName() {
 
 ObjFunction::ObjFunction() {
   obj.type = OBJ_FUNCTION;
-  type = UNKNOWN_TYPE;
   upvalueCount = 0;
 //  name = NULL;
   chunk.init();
@@ -698,7 +697,7 @@ bool CoThread::callValue(Value callee, int argCount) {
 
       stackTop -= argCount + 1;
 
-      if (AS_CLOSURE(callee)->function->type.valueType != VAL_VOID)
+      if (AS_CLOSURE(callee)->function->expr->returnType.valueType != VAL_VOID)
         PUSH(result);
 
       break;
@@ -831,7 +830,7 @@ void CoThread::onReturn(Value &returnValue) {
   closeUpvalues(frame->slots); // objectify the stack frame
   stackTop = frame->slots;
 
-  if (frame->closure->function->type.valueType != VAL_VOID)
+  if (frame->closure->function->expr->returnType.valueType != VAL_VOID)
     PUSH(returnValue);
 }
 

@@ -217,7 +217,7 @@ struct DeclarationExpr : public Expr {
 };
 
 struct FunctionExpr : public Expr {
-  Expr* typeExpr;
+  Type returnType;
   Token name;
   int arity;
   DeclarationExpr** params;
@@ -226,7 +226,7 @@ struct FunctionExpr : public Expr {
   ObjFunction _function;
   Declaration* _declaration;
 
-  FunctionExpr(Expr* typeExpr, Token name, int arity, DeclarationExpr** params, GroupingExpr* body, Expr* ui);
+  FunctionExpr(Type returnType, Token name, int arity, DeclarationExpr** params, GroupingExpr* body, Expr* ui);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);

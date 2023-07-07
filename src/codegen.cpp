@@ -366,10 +366,13 @@ void CastExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 void WhileExpr::toCode(Parser &parser, ObjFunction *function) {
-  str() << "while(" << condition << ") ";
-  startBlock();
+  str() << "while(";
+  condition->toCode(parser, function);
+  str() << ") ";
   body->toCode(parser, function);
-  endBlock();
+
+  if (needsSemicolon(body))
+    str() << ";\n";
 }
 
 void UnaryExpr::toCode(Parser &parser, ObjFunction *function) {

@@ -88,7 +88,6 @@ struct Compiler;
 
 struct ObjCallable {
   Obj obj;
-  Type type;
   Compiler *compiler;
 };
 

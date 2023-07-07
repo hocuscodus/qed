@@ -359,13 +359,13 @@ Type CallExpr::resolve(Parser &parser) {
 
     if (callable->isUserClass()) {
       char buffer[256];
-      bool parmFlag = !IS_VOID(callable->type);
+      bool parmFlag = !IS_VOID(callable->expr->returnType);
       char parm[128] = "";
       GroupingExpr group(buildToken(TOKEN_EOF, ""), NULL);
 
       // create an empty function handler for now
       if (parmFlag)
-        sprintf(parm, "%s _ret", callable->type.toString());
+        sprintf(parm, "%s _ret", callable->expr->returnType.toString());
 
       if (handler) {
         uiExprs.push_back(handler);
@@ -378,7 +378,7 @@ Type CallExpr::resolve(Parser &parser) {
       handler->resolve(parser);
     }
 
-    return newFlag ? OBJ_TYPE(newInstance(callable)) : callable->type;
+    return newFlag ? OBJ_TYPE(newInstance(callable)) : callable->expr->returnType;
   } else {
     parser.error("Non-callable object type");
     return VOID_TYPE;
@@ -1513,7 +1513,7 @@ void onEvent(UIDirectiveExpr *expr, Parser &parser) {
                 nTabs++;
 
                 insertTabs();
-                (*ss) << "{void Ret_() {$EXPR}; post_(Ret_)}\n";
+                (*ss) << "post_((void Lambda() {$EXPR}))\n";
                 uiExprs.push_back(attExpr->handler);
                 uiTypes.push_back(UNKNOWN_TYPE);
                 attExpr->handler = NULL;

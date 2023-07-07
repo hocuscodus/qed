@@ -89,8 +89,8 @@ DeclarationExpr::DeclarationExpr(Expr* typeExpr, Token name, Expr* initExpr) : E
   this->initExpr = initExpr;
 }
 
-FunctionExpr::FunctionExpr(Expr* typeExpr, Token name, int arity, DeclarationExpr** params, GroupingExpr* body, Expr* ui) : Expr(EXPR_FUNCTION) {
-  this->typeExpr = typeExpr;
+FunctionExpr::FunctionExpr(Type returnType, Token name, int arity, DeclarationExpr** params, GroupingExpr* body, Expr* ui) : Expr(EXPR_FUNCTION) {
+  this->returnType = returnType;
   this->name = name;
   this->arity = arity;
   this->params = params;

@@ -90,7 +90,7 @@ ObjFunction *Compiler::compile(FunctionExpr *expr, Parser *parser) {
   line() << "this.pushAttribute(10, 0);\n";
   line() << "this.pushAttribute(11, 1.0);\n";
   line() << "function _refresh() {\n";
-  line() << "  if (--postCount == 0) {\n";
+  line() << "  if (globalThis$.ui_ != undefined && --postCount == 0) {\n";
   line() << "    globalThis$.ui_ = new globalThis$.UI_();\n";
   line() << "    globalThis$.layout_ = new globalThis$.ui_.Layout_();\n";
   line() << "    ctx.globalAlpha = 1.0;\n";
@@ -124,6 +124,7 @@ void Compiler::pushScope() {
 }
 
 void Compiler::pushScope(ObjFunction *function, Parser *parser) {
+  this->groupingExpr = function->expr->body;
   this->enclosing = current;
   pushScope();
   declarationCount = 0;
