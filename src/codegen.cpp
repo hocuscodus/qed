@@ -240,13 +240,21 @@ void IfExpr::toCode(Parser &parser, ObjFunction *function) {
   startBlock();
   line();
   thenBranch->toCode(parser, function);
+
+  if (needsSemicolon(thenBranch))
+    str() << ";\n";
+
   endBlock();
 
   if (elseBranch) {
-    str() << " else ";
+    line() << "else ";
     startBlock();
     line();
     elseBranch->toCode(parser, function);
+
+    if (needsSemicolon(elseBranch))
+      str() << ";\n";
+
     endBlock();
   }
 }
