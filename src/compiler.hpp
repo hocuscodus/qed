@@ -15,6 +15,7 @@
 class Parser;
 struct ReferenceExpr;
 struct GroupingExpr;
+struct Expr;
 
 struct Compiler {
   Compiler *enclosing;
@@ -24,6 +25,7 @@ struct Compiler {
   int vCount;
   int declarationCount;
   Declaration declarations[UINT8_COUNT];
+  Expr *funcs = NULL;
 
   Compiler();
 
@@ -72,6 +74,7 @@ struct Expr;
 typedef std::function<Expr *(Expr *)> K;
 
 void addExpr(Expr **body, Expr *exp, Token op);
+Expr *removeExpr(Expr *body, TokenType tokenType);
 Expr **getLastBodyExpr(Expr **body, TokenType tokenType);
 bool isGroup(Expr *exp, TokenType tokenType);
 Expr *car(Expr *exp, TokenType tokenType);

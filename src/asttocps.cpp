@@ -25,9 +25,9 @@ char *genSymbol(std::string name) {
     return str;
 }
 
-GroupingExpr *makeWrapperLambda(const char *name, int arity, DeclarationExpr **params, Expr *body) {
+GroupingExpr *makeWrapperLambda(const char *name, int arity, DeclarationExpr **params, std::function<Expr*()> bodyFn) {
   Token nameToken = buildToken(TOKEN_IDENTIFIER, name);
-  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), body);
+  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL);
   FunctionExpr *wrapperFunc = new FunctionExpr(VOID_TYPE, nameToken, arity, params, group, NULL);
   GroupingExpr *mainGroup = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "("), wrapperFunc);
 
@@ -35,22 +35,28 @@ GroupingExpr *makeWrapperLambda(const char *name, int arity, DeclarationExpr **p
   mainGroup->_compiler.pushScope(mainGroup);
   group->_compiler.pushScope(&wrapperFunc->_function, NULL);
   wrapperFunc->_declaration = getCurrent()->enclosing->checkDeclaration(OBJ_TYPE(&wrapperFunc->_function), nameToken, &wrapperFunc->_function, NULL);
+  group->body = bodyFn();
   group->_compiler.popScope();
   mainGroup->_compiler.popScope();
   return mainGroup;
 }
 
+GroupingExpr *makeWrapperLambda(const char *name, int arity, DeclarationExpr **params, Expr *body) {
+  return makeWrapperLambda(name, arity, params, [body]() -> Expr* {return body;});
+}
+
 GroupingExpr *makeWrapperLambda(int arity, DeclarationExpr **params, Expr *body) {
-  return makeWrapperLambda(genSymbol("C"), arity, params, body);
+  return makeWrapperLambda(genSymbol("W"), arity, params, [body]() -> Expr* {return body;});
 }
 
 GroupingExpr *makeContinuation(K k) {
   Token var = buildToken(TOKEN_IDENTIFIER, genSymbol("R"));
   DeclarationExpr *param = new DeclarationExpr(NULL, var, NULL);
   DeclarationExpr **params = RESIZE_ARRAY(DeclarationExpr *, NULL, 0, 1);
+  auto bodyFn = [k, var]() -> Expr* {return k(new ReferenceExpr(var, UNKNOWN_TYPE));};
 
   params[0] = param;
-  return makeWrapperLambda(1, params, k(new ReferenceExpr(var, UNKNOWN_TYPE)));
+  return makeWrapperLambda(genSymbol("C"), 1, params, bodyFn);
 }
 
 bool compareExpr(Expr *origExpr, Expr *newExpr) {
@@ -111,31 +117,68 @@ Expr *UIDirectiveExpr::toCps(K k) {
 
 Expr *BinaryExpr::toCps(K k) {
   auto genBinary = [this](Expr *left, Expr *right) {
-    return compareExpr(this->left, left) && compareExpr(this->right, right) ? this : newExpr(new BinaryExpr(left, this->op, right));
+    return !left ? right : compareExpr(this->left, left) && compareExpr(this->right, right) ? this : newExpr(new BinaryExpr(left, this->op, right));
   };
 
-  return left->toCps([this, genBinary, k](Expr *left) {
-    return this->op.type == TOKEN_SEPARATOR 
-             ? genBinary(left, this->right->toCps(k))
-             : this->right->toCps([this, genBinary, k, left](Expr *right) {
-                 return k(genBinary(left, right));
-               });
-  });
+  if (op.type == TOKEN_SEPARATOR) {
+    Expr *exp = left->toCps([this, genBinary, k](Expr *left) {
+      while (this->right) {
+        Expr *next = car(this->right, TOKEN_SEPARATOR);
+        FunctionExpr *func = next->type == EXPR_FUNCTION ? (FunctionExpr *) next : NULL;
+
+        if (func && getCurrent() != func->body->_compiler.enclosing) {
+          addExpr(&func->body->_compiler.enclosing->funcs, func, buildToken(TOKEN_SEPARATOR, ";"));
+          this->right = removeExpr(this->right, TOKEN_SEPARATOR);
+        }
+        else
+          break;
+      }
+
+      return this->right ? genBinary(left, this->right->toCps(k)) : getCompareExpr(this->left, left);
+    });
+
+    if (exp->type != EXPR_BINARY) {
+      if (getCurrent()->funcs) {
+        exp = new BinaryExpr(exp, op, getCurrent()->funcs->toCps([](Expr *expr) {
+          return expr;
+        }));
+        getCurrent()->funcs = NULL;
+      }
+
+      delete this;
+    }
+
+    return exp;
+  }
+  else
+    return left->toCps([this, genBinary, k](Expr *left) {
+      return this->right->toCps([this, genBinary, k, left](Expr *right) {
+        return k(genBinary(left, right));
+      });
+    });
 }
 
 Expr *CallExpr::toCps(K k) {
   bool userClassCall = !newFlag && handler;
 
-  if (userClassCall) {
-    if (handler->type != EXPR_GROUPING)
-      handler = NULL;
-
-    FunctionExpr *func = (FunctionExpr *) ((GroupingExpr *) handler)->body;
-
-    func->body->body = newExpr(new BinaryExpr(k(func->params[0]), buildToken(TOKEN_SEPARATOR, ";"), func->body->body));
-  }
-
   auto genCall = [this, userClassCall, k](bool same, Expr *callee, Expr *&params) {
+    if (userClassCall) {
+      if (handler->type != EXPR_GROUPING)
+        handler = NULL;
+
+      GroupingExpr *group = (GroupingExpr *) handler;
+      FunctionExpr *func = (FunctionExpr *) group->body;
+
+      group->_compiler.pushScope(group);
+      func->body->_compiler.pushScope(&func->_function, NULL);
+
+      Expr *newBody = newExpr(k(func->arity ? func->params[0] : NULL));
+
+      func->body->body = func->body->body ? new BinaryExpr(newBody, buildToken(TOKEN_SEPARATOR, ";"), func->body->body) : newBody;
+      func->body->_compiler.popScope();
+      group->_compiler.popScope();
+    }
+
     if (this->handler) {
       addExpr(same && !userClassCall ? &this->params : &params, this->handler, buildToken(TOKEN_COMMA, ","));
       this->handler = NULL;
@@ -166,37 +209,36 @@ Expr *DeclarationExpr::toCps(K k) {
 }
 
 Expr *FunctionExpr::toCps(K k) {
-  if (!_function.isClass() || endsWith1(name.getString(), "_"))
-    return k(this);
+  if (_function.isClass() && !endsWith1(name.getString(), "_")) {
+    body->_compiler.pushScope();
+    const char *type = getHandlerType(returnType);
+    Token name = buildToken(TOKEN_IDENTIFIER, "HandlerFn_");
+    ReferenceExpr *paramTypeExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, type), UNKNOWN_TYPE);
 
-  body->_compiler.pushScope();
-  const char *type = getHandlerType(returnType);
-  Token name = buildToken(TOKEN_IDENTIFIER, "HandlerFn_");
-  ReferenceExpr *paramTypeExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, type), UNKNOWN_TYPE);
+    returnType = VOID_TYPE;
+    params = RESIZE_ARRAY(DeclarationExpr *, params, arity, arity + 1);
+    params[arity] = new DeclarationExpr(paramTypeExpr, name, NULL);
 
-  returnType = VOID_TYPE;
-  params = RESIZE_ARRAY(DeclarationExpr *, params, arity, arity + 1);
-  params[arity] = new DeclarationExpr(paramTypeExpr, name, NULL);
+    if (getCurrent()) {
+      params[arity++]->resolve(*((Parser *) NULL));
 
-  if (getCurrent()) {
-     params[arity++]->resolve(*((Parser *) NULL));
+      if (!IS_UNKNOWN(((ReferenceExpr *) paramTypeExpr)->returnType))
+        body->_compiler.addDeclaration(((ReferenceExpr *) paramTypeExpr)->returnType, name, NULL, false, NULL);
+    }
+    else
+      arity++;
 
-    if (!IS_UNKNOWN(((ReferenceExpr *) paramTypeExpr)->returnType))
-      body->_compiler.addDeclaration(((ReferenceExpr *) paramTypeExpr)->returnType, name, NULL, false, NULL);
-  }
-  else
-    arity++;
+    body->_compiler.popScope();
 
-  body->_compiler.popScope();
+    Expr *currentBody = body;
+    Expr *newBodyExpr = body->toCps([this](Expr *body) {return body;});
+    body = (GroupingExpr *) newBodyExpr;// && newBodyExpr->type == EXPR_GROUPING ? (GroupingExpr *) newBodyExpr : NULL;
 
-  Expr *currentBody = body;
-  Expr *newBodyExpr = body->toCps([this](Expr *body) {return body;});
-  body = (GroupingExpr *) newBodyExpr;// && newBodyExpr->type == EXPR_GROUPING ? (GroupingExpr *) newBodyExpr : NULL;
-
-  Expr *lastExpr = *getLastBodyExpr(&body->body, TOKEN_SEPARATOR);
+    Expr *lastExpr = *getLastBodyExpr(&body->body, TOKEN_SEPARATOR);
 
 //  if (!lastExpr || lastExpr->type != EXPR_RETURN)
 //    addExpr(&body->body, new ReturnExpr(buildToken(TOKEN_IDENTIFIER, "return"), NULL, NULL), buildToken(TOKEN_SEPARATOR, ";"));
+  }
 
   return k(this);//compareExpr(body, bodyExpr) ? this : newExpr(new FunctionExpr(typeExpr, name, arity + 1, newParams, newBody, NULL)));
 /*
@@ -274,7 +316,7 @@ Expr *LogicalExpr::toCps(K k) {
     if (this->right == right) {
       // delete continuation
       // delete middle and right
-      return k(compareExpr(this->left, left) ? this : new LogicalExpr(left, this->op, this->right));
+      return k(compareExpr(this->left, left) ? this : newExpr(new LogicalExpr(left, this->op, this->right)));
     } else {
       // delete this->middle, this->right
       DeclarationExpr *param = new DeclarationExpr(NULL, buildToken(TOKEN_IDENTIFIER, cvar), NULL);
@@ -286,7 +328,7 @@ Expr *LogicalExpr::toCps(K k) {
       GroupingExpr *cast = makeContinuation(k);
 
       params[0] = param;
-      return new CallExpr(false, makeWrapperLambda(1, params, body), buildToken(TOKEN_LEFT_PAREN, "("), cast, NULL);
+      return newExpr(new CallExpr(false, makeWrapperLambda(1, params, body), buildToken(TOKEN_LEFT_PAREN, "("), cast, NULL));
     }
   });/*
   return left->toCps([this, k](Expr *left) -> Expr* {
@@ -349,12 +391,12 @@ Expr *WhileExpr::toCps(K k) {
       return body;
     });
 
-    return this->body == body ? this->condition : new IfExpr(condition, body, k(new LiteralExpr(VAL_INT, {.integer = 1111})));
+    return this->body == body ? this->condition : new IfExpr(condition, body, k(NULL));
   });
 
   return this->condition == condition
            ? k(this)
-           : new CallExpr(false, makeWrapperLambda(newSymbol, 0, NULL, condition), buildToken(TOKEN_LEFT_PAREN, "("), NULL, NULL);
+           : newExpr(new CallExpr(false, makeWrapperLambda(newSymbol, 0, NULL, condition), buildToken(TOKEN_LEFT_PAREN, "("), NULL, NULL));
 }
 
 Expr *ReturnExpr::toCps(K k) {
@@ -465,7 +507,7 @@ Expr *TernaryExpr::toCps(K k) {
     if (bothEqual) {
       // delete continuation
       // delete middle and right
-      return compareExpr(this->left, left) ? this : new TernaryExpr(this->op, left, this->middle, this->right);
+      return compareExpr(this->left, left) ? this : newExpr(new TernaryExpr(this->op, left, this->middle, this->right));
     } else {
       // delete this->middle, this->right
       DeclarationExpr *param = new DeclarationExpr(NULL, buildToken(TOKEN_IDENTIFIER, cvar), NULL);
@@ -474,7 +516,7 @@ Expr *TernaryExpr::toCps(K k) {
       GroupingExpr *cast = makeContinuation(k);
 
       params[0] = param;
-      return new CallExpr(false, makeWrapperLambda(1, params, body), buildToken(TOKEN_LEFT_PAREN, "("), cast, NULL);
+      return newExpr(new CallExpr(false, makeWrapperLambda(1, params, body), buildToken(TOKEN_LEFT_PAREN, "("), cast, NULL));
     }
   });
 }

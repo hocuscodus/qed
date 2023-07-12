@@ -346,6 +346,44 @@ bool Compiler::inBlock() {
   return enclosing && enclosing->function == function;
 }
 
+Expr **cdrAddress(Expr *body, TokenType tokenType) {
+  return isGroup(body, tokenType) ? &((BinaryExpr *) body)->right : NULL;
+}
+/*
+Expr *cutExpr(Expr **body, Expr *exp, TokenType tokenType) {
+  bool groupFlag = isGroup(*body, tokenType);
+  Expr **bodyExp = groupFlag && ((BinaryExpr *)*body)->left != exp ? &((BinaryExpr *)*body)->right : NULL;
+
+  if (bodyExp)
+    return cutExpr(bodyExp, exp, tokenType);
+  else {
+    Expr *rest = NULL;
+
+    if (groupFlag) {
+      Expr **right = cdrAddress(*body, tokenType);
+      Expr *params = *right;
+
+      for (*right = NULL; params; params = removeExpr(params, tokenType)) {
+        Expr *unit = car(params, tokenType);
+
+        addExpr(unit->type != EXPR_FUNCTION ? &rest : right, unit, buildToken(tokenType, tokenType == TOKEN_SEPARATOR ? ";" : ","));
+      }
+    }
+
+    return rest;
+  }
+}*/
+
+Expr **getLastBodyExpr(Expr **body, TokenType tokenType) {
+  Expr **exp = cdrAddress(*body, tokenType);
+
+  return exp ? getLastBodyExpr(exp, tokenType) : body;
+}
+
+bool isGroup(Expr *exp, TokenType tokenType) {
+  return exp->type == EXPR_BINARY && ((BinaryExpr *) exp)->op.type == tokenType;
+}
+
 void addExpr(Expr **body, Expr *exp, Token op) {
   if (!*body)
     *body = exp;
@@ -356,14 +394,14 @@ void addExpr(Expr **body, Expr *exp, Token op) {
   }
 }
 
-Expr **getLastBodyExpr(Expr **body, TokenType tokenType) {
-  Expr **exp = isGroup(*body, tokenType) ? &((BinaryExpr *) *body)->right : NULL;
+Expr *removeExpr(Expr *body, TokenType tokenType) {
+  BinaryExpr *group = isGroup(body, tokenType) ? (BinaryExpr *) body : NULL;
+  Expr *right = group ? group->right : NULL;
 
-  return exp ? getLastBodyExpr(exp, tokenType) : body;
-}
+  if (group)
+    delete group;
 
-bool isGroup(Expr *exp, TokenType tokenType) {
-  return exp->type == EXPR_BINARY && ((BinaryExpr *) exp)->op.type == tokenType;
+  return right;
 }
 
 Expr *car(Expr *exp, TokenType tokenType) {
@@ -371,5 +409,5 @@ Expr *car(Expr *exp, TokenType tokenType) {
 }
 
 Expr *cdr(Expr *exp, TokenType tokenType) {
-  return isGroup(exp, tokenType) ? ((BinaryExpr *) exp)->right : NULL;
+  return *cdrAddress(exp, tokenType);
 }

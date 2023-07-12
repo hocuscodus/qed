@@ -11,7 +11,12 @@
 #include "vm.hpp"
 #include "qni.hpp"
 
-const char *qedLib =//"";const char *toto=
+const char *qedLib =
+"void VoidHandler_() {}\n";const char *toto=
+"void IntHandler_(int value) {}\n"
+"void FloatHandler_(float value) {}\n"
+"void BoolHandler_(bool value) {}\n"
+"void StringHandler_(String value) {}\n"
 "var WIDTH = 1;"
 "var HEIGHT = 2;"
 "var OBLIQUE = 3;"
@@ -21,11 +26,6 @@ const char *qedLib =//"";const char *toto=
 "int COLOR_BLUE = 0x0000FF;"
 "int COLOR_BLACK = 0x000000;"
 "\n"
-"void VoidHandler_() {}\n"
-"void IntHandler_(int value) {}\n"
-"void FloatHandler_(float value) {}\n"
-"void BoolHandler_(bool value) {}\n"
-"void StringHandler_(String value) {}\n"
 "void println(String str) {\n"
 "/$console.log(str)"
 "$/\n}\n"
