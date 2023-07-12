@@ -409,5 +409,7 @@ Expr *car(Expr *exp, TokenType tokenType) {
 }
 
 Expr *cdr(Expr *exp, TokenType tokenType) {
-  return *cdrAddress(exp, tokenType);
+  Expr **ptr = cdrAddress(exp, tokenType);
+
+  return ptr ? *ptr : NULL;
 }

@@ -12,7 +12,7 @@
 #include "qni.hpp"
 
 const char *qedLib =
-"void VoidHandler_() {}\n";const char *toto=
+"void VoidHandler_() {}\n"//;const char *toto=
 "void IntHandler_(int value) {}\n"
 "void FloatHandler_(float value) {}\n"
 "void BoolHandler_(bool value) {}\n"
