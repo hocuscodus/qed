@@ -141,11 +141,6 @@ void DeclarationExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 void FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
-  ObjFunction *function2 = (ObjFunction *) (_declaration ? _declaration->type.objType : NULL);
-
-  if (function2 && function != function2)
-    function2 = function;
-
   if (!body || body->_compiler.enclosing) {
     if (body->_compiler.enclosing->function->expr->body->name.type == TOKEN_LEFT_BRACE)
       str() << "this." << _declaration->getRealName() << " = ";
@@ -159,20 +154,11 @@ void FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
       str() << params[index]->name.getString();
     }
 
-      str() << ") ";
+    str() << ") ";
   }
 
-//    for (ObjFunction *child = this->function->firstChild; this->function; child = child->next)
-//      generator.accept<int>(child->bodyExpr);
   if (body)
     body->toCode(parser, &_function);
-
-//    emitBytes(OP_CLOSURE, makeConstant(OBJ_VAL(this->function)));
-
-  for (int i = 0; i < _function.upvalueCount; i++) {
-//      emitByte(this->function->upvalues[i].isField ? 1 : 0);
-//      emitByte(this->function->upvalues[i].index);
-  }
 }
 
 void GetExpr::toCode(Parser &parser, ObjFunction *function) {

@@ -18,7 +18,7 @@ Expr *newExpr(Expr *newExp) {
 }
 
 char *genSymbol(std::string name) {
-    std::string s = "$_" + name + std::to_string(++GENSYM);
+    std::string s = name + std::to_string(++GENSYM) + "$_";
     char *str = new char[s.size() + 1];
 
     strcpy(str, s.c_str());
@@ -172,7 +172,8 @@ Expr *CallExpr::toCps(K k) {
       group->_compiler.pushScope(group);
       func->body->_compiler.pushScope(&func->_function, NULL);
 
-      Expr *newBody = newExpr(k(func->arity ? func->params[0] : NULL));
+      Expr *param = func->arity ? new ReferenceExpr(func->params[0]->name, UNKNOWN_TYPE) : NULL;
+      Expr *newBody = newExpr(k(param));
 
       func->body->body = func->body->body ? new BinaryExpr(newBody, buildToken(TOKEN_SEPARATOR, ";"), func->body->body) : newBody;
       func->body->_compiler.popScope();
@@ -382,8 +383,9 @@ Expr *WhileExpr::toCps(K k) {
     Expr *body = this->body->toCps([this, &newSymbol, sameCondition](Expr *body) {
       if (!compareExpr(this->body, body) || !sameCondition) {
         newSymbol = genSymbol("While");
-        ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, newSymbol), VOID_TYPE);
-        CallExpr *call = new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), NULL, NULL);
+        ReferenceExpr *arg = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, newSymbol), VOID_TYPE);
+        ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "post_"), VOID_TYPE);
+        CallExpr *call = new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), arg, NULL);
 
         addExpr(&body, call, buildToken(TOKEN_SEPARATOR, ";"));
       }

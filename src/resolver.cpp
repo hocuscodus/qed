@@ -52,7 +52,7 @@ Type popType1();
 bool resolve(Compiler *compiler);
 void acceptGroupingExprUnits(GroupingExpr *expr);
 void acceptSubExpr(Expr *expr);
-void parse(GroupingExpr *groupingExpr, const char *source, int index, int replace, Expr *body);
+void parse(GroupingExpr *groupingExpr, const char *source);
 
 void processAttrs(UIDirectiveExpr *expr, Parser &parser);
 void pushAreas(UIDirectiveExpr *expr, Parser &parser);
@@ -373,7 +373,7 @@ Type CallExpr::resolve(Parser &parser) {
       }
 
       sprintf(buffer, "(void Lambda(%s) {%s; return})", parm, handler ? "$EXPR" : "");
-      parse(&group, buffer, 0, 0, NULL);
+      parse(&group, buffer);
       handler = group.body;
       handler->resolve(parser);
     }
@@ -511,7 +511,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         insertTabs();
         (*ss) << "}\n";
         printf(ss->str().c_str());
-        parse(body, ss->str().c_str(), 0, 0, NULL);
+        parse(body, ss->str().c_str());
 
         FunctionExpr *uiFunctionExpr = (FunctionExpr *) *getLastBodyExpr(&body->body, TOKEN_SEPARATOR);
 
@@ -519,10 +519,12 @@ Type FunctionExpr::resolve(Parser &parser) {
         uiFunctionExpr->_function.eventFlags = exprUI->_eventFlags;
 
         ObjFunction *uiFunction = (ObjFunction *) uiFunctionExpr->_declaration->type.objType;
+        GroupingExpr group(body->name, NULL);
 
         getCurrent()->function->uiFunction = uiFunction;
-        parse(body, "UI_ *ui_;\n", 0, 0, NULL);
-        (*getLastBodyExpr(&body->body, TOKEN_SEPARATOR))->resolve(parser);
+        parse(&group, "UI_ *ui_;\n");
+        (*getLastBodyExpr(&group.body, TOKEN_SEPARATOR))->resolve(parser);
+        body->body = new BinaryExpr(group.body, buildToken(TOKEN_SEPARATOR, ";"), body->body);
 
         uiFunction->compiler->pushScope();
         ss->str("");
@@ -539,7 +541,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         insertTabs();
         (*ss) << "}\n";
         printf(ss->str().c_str());
-        parse(uiFunctionExpr->body, ss->str().c_str(), 0, 0, NULL);
+        parse(uiFunctionExpr->body, ss->str().c_str());
 
         FunctionExpr *layoutFunctionExpr = (FunctionExpr *) *getLastBodyExpr(&uiFunctionExpr->body->body, TOKEN_SEPARATOR);
 
@@ -558,7 +560,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         insertTabs();
         (*ss) << "}\n";
         printf(ss->str().c_str());
-        parse(layoutFunctionExpr->body, ss->str().c_str(), 0, 0, NULL);
+        parse(layoutFunctionExpr->body, ss->str().c_str());
 
         FunctionExpr *paintFunctionExpr = (FunctionExpr *) *getLastBodyExpr(&layoutFunctionExpr->body->body, TOKEN_SEPARATOR);
 
@@ -575,7 +577,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         insertTabs();
         (*ss) << "}\n";
         printf(ss->str().c_str());
-        parse(layoutFunctionExpr->body, ss->str().c_str(), 0, 0, NULL);
+        parse(layoutFunctionExpr->body, ss->str().c_str());
 
         FunctionExpr *eventFunctionExpr = (FunctionExpr *) *getLastBodyExpr(&layoutFunctionExpr->body->body, TOKEN_SEPARATOR);
 
@@ -936,44 +938,12 @@ void acceptSubExpr(Expr *expr) {
   }
 }*/
 
-void parse(GroupingExpr *groupingExpr, const char *source, int index, int replace, Expr *body) {
+void parse(GroupingExpr *groupingExpr, const char *source) {
   Scanner scanner((new std::string(source))->c_str());
   Parser parser(scanner);
 
   parser.expList(groupingExpr, TOKEN_EOF);
   parser.consume(TOKEN_EOF, "Expect end of file.");
-/*
-  if (body == NULL)
-    body = group;
-  else
-    if (group) {
-      if (replace || group->count) {
-        if (body->type != EXPR_GROUPING) {
-          Expr **newExprList = RESIZE_ARRAY(Expr *, NULL, 0, 1);
-
-          newExprList[0] = body;
-          body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{", 1, -1), 1, newExprList, NULL, new Compiler);
-          index = 0;
-          replace = 0;
-        }
-
-        GroupingExpr *bodyGroup = (GroupingExpr *) body;
-
-        bodyGroup->expressions = RESIZE_ARRAY(Expr *, bodyGroup->expressions, bodyGroup->count, bodyGroup->count + group->count - replace);
-        bodyGroup->count -= replace;
-
-        if (index < bodyGroup->count)
-          memmove(&bodyGroup->expressions[index + group->count], &bodyGroup->expressions[index + replace], (bodyGroup->count - index) * sizeof(Expr *));
-
-        memcpy(&bodyGroup->expressions[index], group->expressions, group->count * sizeof(Expr *));
-        group->expressions = RESIZE_ARRAY(Expr *, group->expressions, group->count, 0);
-        bodyGroup->count += group->count;
-      }
-
-      delete group;
-    }
-
-  return groupingExpr;*/
 }
 
 #define UI_ATTRIBUTE_DEF( identifier, text, conversionFunction )  text
