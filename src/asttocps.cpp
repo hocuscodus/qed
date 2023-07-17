@@ -419,27 +419,35 @@ function cps_if(exp, k) {
 // (function Lambda_() {if (condition) {body; post_(Lambda_)} else {k}})();
 Expr *WhileExpr::toCps(K k) {
   char *newSymbol = NULL;
-  Expr *condition = this->condition->toCps([this, &newSymbol, k](Expr *condition) {
-    bool sameCondition = compareExpr(this->condition, condition);
-    Expr *body = this->body->toCps([this, &newSymbol, sameCondition](Expr *body) {
-      if (!compareExpr(this->body, body) || !sameCondition) {
+  Expr *condition = this->condition->toCps([this, k, &newSymbol](Expr *condition) {
+    return this->body->toCps([this, k, &newSymbol, condition](Expr *body) -> Expr* {
+      if (compareExpr(this->condition, condition) & compareExpr(this->body, body))
+        return condition;
+      else {
         newSymbol = genSymbol("While");
         ReferenceExpr *arg = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, newSymbol), UNKNOWN_TYPE);
         ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "post_"), UNKNOWN_TYPE);
         CallExpr *call = new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), arg, NULL);
 
         addExpr(&body, call, buildToken(TOKEN_SEPARATOR, ";"));
+        return new IfExpr(condition, body, k(NULL));
       }
-
-      return body;
     });
-
-    return this->body == body ? this->condition : new IfExpr(condition, body, k(NULL));
   });
 
-  return this->condition == condition
-           ? k(this)
-           : newExpr(new CallExpr(false, makeWrapperLambda(newSymbol, NULL, UNKNOWN_TYPE, condition), buildToken(TOKEN_LEFT_PAREN, "("), NULL, NULL));
+  if (this->condition == condition)
+    // delete newSymbol, body
+    return k(this);
+  else {
+    // delete this->thenBranch, this->body
+    std::function<Expr*()> bodyFn = [condition]() {
+      condition->resolve(*((Parser *) NULL));
+      return condition;
+    };
+    Expr *wrapperLambda = makeWrapperLambda(newSymbol, NULL, UNKNOWN_TYPE, bodyFn);
+
+    return newExpr(new CallExpr(false, wrapperLambda, buildToken(TOKEN_LEFT_PAREN, "("), NULL, NULL));
+  }
 }
 
 Expr *ReturnExpr::toCps(K k) {
@@ -479,30 +487,32 @@ Expr *SetExpr::toCps(K k) {
 Expr *IfExpr::toCps(K k) {
   return condition->toCps([this, k](Expr *condition) -> Expr* {
     const char *cvar = genSymbol("I");
-    bool thenEqual = true;
-    bool elseEqual = true;
+    bool bothEqual = true;
 
-    Expr *thenBranch = this->thenBranch->toCps([this, &thenEqual, cvar](Expr *thenBranch) {
+    Expr *thenBranch = this->thenBranch->toCps([this, &bothEqual, cvar](Expr *thenBranch) {
       ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cvar), UNKNOWN_TYPE);
 
-      thenEqual = compareExpr(this->thenBranch, thenBranch);
-      return new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), NULL, NULL);
+      bothEqual &= compareExpr(this->thenBranch, thenBranch);
+      addExpr(&thenBranch, new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), NULL, NULL), buildToken(TOKEN_SEPARATOR, ";"));
+      return thenBranch;
     });
-    Expr *elseBranch = this->elseBranch ? this->elseBranch->toCps([this, &elseEqual, cvar](Expr *elseBranch) {
-      ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cvar), UNKNOWN_TYPE);
+    ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cvar), UNKNOWN_TYPE);
+    CallExpr *elseExpr = new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), NULL, NULL);
+    Expr *elseBranch = this->elseBranch ? this->elseBranch->toCps([this, &bothEqual, elseExpr](Expr *elseBranch) {
 
-      elseEqual = compareExpr(this->elseBranch, elseBranch);
-      return new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), NULL, NULL);
-    }) : NULL;
+      bothEqual &= compareExpr(this->elseBranch, elseBranch);
+      addExpr(&elseBranch, elseExpr, buildToken(TOKEN_SEPARATOR, ";"));
+      return elseBranch;
+    }) : elseExpr;
 
-    if (thenEqual && elseEqual) {
+    if (bothEqual) {
       // delete cvar, thenBranch and elseBranch
       return k(compareExpr(this->condition, condition) ? this : newExpr(new IfExpr(condition, this->thenBranch, this->elseBranch)));
     } else {
       // delete this->thenBranch, this->elseBranch
       DeclarationExpr *param = new DeclarationExpr(NULL, buildToken(TOKEN_IDENTIFIER, cvar), NULL);
-      std::function<Expr*()> bodyFn = [this, condition, thenEqual, elseEqual, thenBranch, elseBranch]() -> Expr* {
-        Expr *expr = new IfExpr(condition, thenEqual ? this->thenBranch : thenBranch, elseEqual ? this->elseBranch : elseBranch);
+      std::function<Expr*()> bodyFn = [condition, thenBranch, elseBranch]() -> Expr* {
+        Expr *expr = new IfExpr(condition, thenBranch, elseBranch);
 
         expr->resolve(*((Parser *) NULL));
         return expr;
