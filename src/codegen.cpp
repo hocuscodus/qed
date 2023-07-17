@@ -111,15 +111,8 @@ void CallExpr::toCode(Parser &parser, ObjFunction *function) {
   if (params)
     params->toCode(parser, function);
 
-  if (handler) {
-    if (params)
-      str() << ", ";
-
-    handler->toCode(parser, &((FunctionExpr *) handler)->_function);
-
-    if (parser.hadError)
-      return;
-  }
+  if (handler)
+    handler = NULL;
 
   str() << ")";
 }
@@ -306,11 +299,15 @@ void LogicalExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 void ReturnExpr::toCode(Parser &parser, ObjFunction *function) {
+  if (postExpr) {
+    postExpr->toCode(parser, function);
+  }
+
   if (function->isClass()) {
     if (value)
       value->toCode(parser, function);
 
-    line() << "return;\n";
+    str() << "return;\n";
   }
   else {
     str() << "return";

@@ -120,6 +120,7 @@ ObjFunction *Compiler::compile(FunctionExpr *expr, Parser *parser) {
 }
 
 void Compiler::pushScope() {
+  this->enclosing = current;
   current = this;
 }
 
@@ -347,7 +348,7 @@ bool Compiler::inBlock() {
 }
 
 Expr **cdrAddress(Expr *body, TokenType tokenType) {
-  return isGroup(body, tokenType) ? &((BinaryExpr *) body)->right : NULL;
+  return body && isGroup(body, tokenType) ? &((BinaryExpr *) body)->right : NULL;
 }
 /*
 Expr *cutExpr(Expr **body, Expr *exp, TokenType tokenType) {

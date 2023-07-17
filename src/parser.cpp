@@ -95,6 +95,8 @@ void Parser::errorAtCurrent(const char *fmt, ...) {
 }
 
 void Parser::error(const char *fmt, ...) {
+  if (this == NULL)
+    return;
   FORMAT_MESSAGE(fmt);
   errorAt(&previous, message);
 }
@@ -689,13 +691,12 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
         if (!check(TOKEN_RIGHT_PAREN))
           do {
             DeclarationExpr *param = parseVariable(endGroupTypes, "Expect parameter name.");
+            Type paramType = param->typeExpr->resolve(*this);
 
-            param->typeExpr->resolve(*this);
-
-            if (param->typeExpr->type == EXPR_REFERENCE && !IS_UNKNOWN(((ReferenceExpr *) param->typeExpr)->returnType)) {
+            if (!IS_UNKNOWN(paramType)) {
               functionExpr->params = RESIZE_ARRAY(DeclarationExpr *, functionExpr->params, functionExpr->arity, functionExpr->arity + 1);
               functionExpr->params[functionExpr->arity++] = param;
-              param->_declaration = group->_compiler.addDeclaration(((ReferenceExpr *) param->typeExpr)->returnType, param->name, NULL, false, this);
+              param->_declaration = group->_compiler.addDeclaration(paramType, param->name, NULL, false, this);
             }
             else
               error("Parameter %d not typed correctly", functionExpr->arity + 1);
