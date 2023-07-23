@@ -57,12 +57,14 @@ struct ObjFunction;
 struct Declaration {
   Type type;
   Token name;
-  bool isField;
+  bool isExternalField;
+  bool isInternalField;
   ObjFunction *function;
   Declaration *previous;
   int parentFlag;
 
   std::string getRealName();
+  bool isField() {return isExternalField || isInternalField;}
 };
 
 typedef struct {

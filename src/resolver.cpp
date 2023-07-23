@@ -372,7 +372,7 @@ Type CallExpr::resolve(Parser &parser) {
         uiTypes.push_back(UNKNOWN_TYPE);
       }
 
-      sprintf(buffer, "(void Lambda_(%s) {%s; return})", parm, handler ? "$EXPR" : "");
+      sprintf(buffer, "(void Lambda_(%s) {%sreturn})", parm, handler ? "$EXPR; " : "");
       parse(&group, buffer);
       handler = group.body;
       handler->resolve(parser);
@@ -609,7 +609,7 @@ Type GetExpr::resolve(Parser &parser) {
     for (int count = 0, i = 0; i < type->callable->compiler->declarationCount; i++) {
       Declaration *dec = &type->callable->compiler->declarations[i];
 
-      if (dec->isField) {
+      if (dec->isField()) {
         if (identifiersEqual(&name, &dec->name)) {
           index = count;
           return dec->type;
@@ -742,7 +742,7 @@ Type SetExpr::resolve(Parser &parser) {
     for (int count = 0, i = 0; i < type->callable->compiler->declarationCount; i++) {
       Declaration *dec = &type->callable->compiler->declarations[i];
 
-      if (dec->isField) {
+      if (dec->isField()) {
         if (identifiersEqual(&name, &dec->name)) {
           index = count;
           return dec->type;

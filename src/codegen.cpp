@@ -19,6 +19,29 @@ bool needsSemicolon(Expr *expr) {
   return !isGroup(expr, TOKEN_SEPARATOR) && expr->type != EXPR_GROUPING && expr->type != EXPR_IF && expr->type != EXPR_RETURN && expr->type != EXPR_WHILE && expr->type != EXPR_FUNCTION && !(expr->type == EXPR_SWAP && !needsSemicolon(((SwapExpr *) expr)->_expr));
 }
 
+static ObjFunction *getFunction(Expr *callee) {
+  switch(callee->type) {
+    case EXPR_REFERENCE: {
+        ReferenceExpr *reference = (ReferenceExpr *) callee;
+
+        return reference->_declaration && IS_FUNCTION(reference->_declaration->type) ? AS_FUNCTION_TYPE(reference->_declaration->type) : NULL;
+      }
+    case EXPR_FUNCTION: return &((FunctionExpr *) callee)->_function;
+    case EXPR_GROUPING: {
+        GroupingExpr *group = (GroupingExpr *) callee;
+
+        if(group->name.type == TOKEN_LEFT_PAREN) {
+          Expr *lastExpr = *getLastBodyExpr(&group->body, TOKEN_SEPARATOR);
+
+          return lastExpr ? getFunction(lastExpr) : NULL;
+        }
+
+        return NULL;
+      }
+    default: return NULL;
+  }
+}
+
 static std::stringstream &str() {
   return s;
 }
@@ -102,7 +125,9 @@ void BinaryExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 void CallExpr::toCode(Parser &parser, ObjFunction *function) {
-  if (newFlag)
+  ObjFunction *calleeFunction = getFunction(callee);
+
+  if (calleeFunction && calleeFunction->isUserClass())
     str() << "new ";
 
   callee->toCode(parser, function);
@@ -125,7 +150,7 @@ void ArrayElementExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 void DeclarationExpr::toCode(Parser &parser, ObjFunction *function) {
-  str() << (_declaration->isField ? "this." : _declaration->function->isClass() ? "const." : "let ") << _declaration->getRealName() << " = ";
+  str() << (_declaration->isExternalField ? "this." : /*_declaration->function->isClass() ? "const " : */"let ") << _declaration->getRealName() << " = ";
 
   if (initExpr)
     initExpr->toCode(parser, function);
@@ -134,8 +159,8 @@ void DeclarationExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 void FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
-  if (!body || body->_compiler.enclosing) {
-    if (body->_compiler.enclosing->function->expr->body->name.type == TOKEN_LEFT_BRACE)
+  if (body->_compiler.enclosing) {
+    if (body->_compiler.enclosing->isInRegularFunction())
       str() << "this." << _declaration->getRealName() << " = ";
 
     str() << "function " << _declaration->getRealName() << "(";
@@ -172,18 +197,11 @@ void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
 
     if (function->expr->body == this) {
       bool classFlag = function->isClass();
-      bool arityFlag = false;
-
-      for (int index = 0; !arityFlag && index < function->expr->arity; index++)
-        arityFlag = function->compiler->declarations[index].isField;
-
-  //    for (int index = 0; !classFlag && index < function->upvalueCount; index++)
-  //      classFlag = function->upvalues[index].isField;
 
       for (int index = 0; index < function->expr->arity - (classFlag ? 1 : 0); index++) {
         Declaration &declaration = function->compiler->declarations[index];
 
-        if (declaration.isField) {
+        if (declaration.isField()) {
           std::string name = declaration.name.getString();
 
           line() << "this." << name << " = " << name << ";\n";
@@ -191,7 +209,11 @@ void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
       }
 
       if (classFlag)
-        line() << "const " << function->getThisVariableName() << " = this;\n";
+        for (int index = 0; index < function->compiler->declarationCount; index++)
+          if (function->compiler->declarations[index].isInternalField) {
+            line() << "const " << function->getThisVariableName() << " = this;\n";
+            break;
+          }
     }
 
     if (body) {
@@ -301,6 +323,8 @@ void LogicalExpr::toCode(Parser &parser, ObjFunction *function) {
 void ReturnExpr::toCode(Parser &parser, ObjFunction *function) {
   if (postExpr) {
     postExpr->toCode(parser, function);
+    str() << ";\n";
+    line();
   }
 
   if (function->isClass()) {
@@ -383,7 +407,7 @@ void UnaryExpr::toCode(Parser &parser, ObjFunction *function) {
 
 void ReferenceExpr::toCode(Parser &parser, ObjFunction *function) {
   if (_declaration)
-    if (_declaration->function->isClass())
+    if (_declaration->isExternalField)
       if (_declaration->function == function)
         str() << "this." << _declaration->getRealName();
       else

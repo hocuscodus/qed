@@ -45,6 +45,7 @@ struct Compiler {
   void checkDeclaration(Type returnType, ReferenceExpr *expr, ObjFunction *signature, Parser *parser);
   Declaration *checkDeclaration(Type returnType, Token &name, ObjFunction *signature, Parser *parser);
   bool inBlock();
+  bool isInRegularFunction();
 
   static inline Compiler *getCurrent() {
     return current;

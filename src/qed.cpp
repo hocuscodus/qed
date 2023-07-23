@@ -12,7 +12,8 @@
 #include "qni.hpp"
 
 const char *qedLib =
-"void VoidHandler_() {}\n"//;const char *toto=
+//"/$'use strict';\n$/"//;const char *toto=
+"void VoidHandler_() {}\n"
 "void IntHandler_(int value) {}\n"
 "void FloatHandler_(float value) {}\n"
 "void BoolHandler_(bool value) {}\n"

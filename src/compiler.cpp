@@ -86,30 +86,30 @@ ObjFunction *Compiler::compile(FunctionExpr *expr, Parser *parser) {
 
   cpsExpr->toCode(*parser, function);
 
-  line() << "this.pushAttribute(4, 20);\n";
-  line() << "this.pushAttribute(10, 0);\n";
-  line() << "this.pushAttribute(11, 1.0);\n";
+  line() << "pushAttribute(4, 20);\n";
+  line() << "pushAttribute(10, 0);\n";
+  line() << "pushAttribute(11, 1.0);\n";
   line() << "function _refresh() {\n";
-  line() << "//  if (globalThis$.ui_ != undefined && --postCount == 0) {\n";
-  line() << "    globalThis$.ui_ = new globalThis$.UI_();\n";
-  line() << "    globalThis$.layout_ = new globalThis$.ui_.Layout_();\n";
+  line() << "//  if (ui_ != undefined && --postCount == 0) {\n";
+  line() << "    ui_ = new UI_();\n";
+  line() << "    layout_ = new ui_.Layout_();\n";
   line() << "    ctx.globalAlpha = 1.0;\n";
   line() << "    ctx.clearRect(0, 0, canvas.width, canvas.height);\n";
-  line() << "    globalThis$.layout_.paint(0, 0, globalThis$.layout_.size >> 16, globalThis$.layout_.size & 65535);\n";
+  line() << "    layout_.paint(0, 0, layout_.size >> 16, layout_.size & 65535);\n";
   line() << "//  }\n";
   line() << "}\n";
   line() << "_refresh();\n";
   line() << "canvas.addEventListener(\"mousedown\", function(ev) {\n";
   line() << "  postCount++;\n";
   line() << "  var rect = canvas.getBoundingClientRect();\n";
-  line() << "  globalThis$.layout_.onEvent(0, ev.clientX - rect.left, ev.clientY - rect.top, globalThis$.layout_.size >> 16, globalThis$.layout_.size & 65535);\n";
-  line() << "  globalThis$._refresh();\n";
+  line() << "  layout_.onEvent(0, ev.clientX - rect.left, ev.clientY - rect.top, layout_.size >> 16, layout_.size & 65535);\n";
+  line() << "  _refresh();\n";
   line() << "  });\n";
   line() << "canvas.addEventListener(\"mouseup\", function(ev) {\n";
   line() << "  postCount++;\n";
   line() << "  var rect = canvas.getBoundingClientRect();\n";
-  line() << "  globalThis$.layout_.onEvent(1, ev.clientX - rect.left, ev.clientY - rect.top, globalThis$.layout_.size >> 16, globalThis$.layout_.size & 65535);\n";
-  line() << "  globalThis$._refresh();\n";
+  line() << "  layout_.onEvent(1, ev.clientX - rect.left, ev.clientY - rect.top, layout_.size >> 16, layout_.size & 65535);\n";
+  line() << "  _refresh();\n";
   line() << "});\n";
   line() << "canvas.onselectstart = function () { return false; }\n";
 
@@ -128,7 +128,6 @@ void Compiler::pushScope(ObjFunction *function, Parser *parser) {
   this->groupingExpr = function->expr->body;
   this->enclosing = current;
   pushScope();
-  declarationCount = 0;
   this->function = function;
   function->compiler = this;
   vCount = 1;
@@ -141,7 +140,6 @@ void Compiler::pushScope(GroupingExpr *groupingExpr) {
   this->groupingExpr = groupingExpr;
   this->enclosing = current;
   pushScope();
-  declarationCount = 0;
   function = enclosing->function;
 }
 
@@ -160,7 +158,8 @@ Declaration *Compiler::addDeclaration(Type type, Token &name, Declaration *previ
   if (dec) {
     dec->type = type;
     dec->name = name;
-    dec->isField = function && function->expr && function->isClass();
+    dec->isExternalField = function && function->expr && function->isClass() && isInRegularFunction();
+    dec->isInternalField = false;
     dec->function = function;
     dec->previous = previous;
     dec->parentFlag = parentFlag;
@@ -248,7 +247,6 @@ int Compiler::resolveReference2(Token *name, Parser *parser) {
 int Compiler::resolveUpvalue(Token *name, Parser *parser) {
   if (enclosing != NULL) {
     int decIndex = -1;
-
     Compiler *current = enclosing;
 
     while (true) {
@@ -268,7 +266,7 @@ int Compiler::resolveUpvalue(Token *name, Parser *parser) {
     }
     else
       if (decIndex >= 0) {
-        current->getDeclaration(decIndex).isField = true;
+        current->getDeclaration(decIndex).isInternalField = true;
         return addUpvalue((uint8_t) decIndex, &current->getDeclaration(decIndex), true, parser);
       }
   }
@@ -345,6 +343,10 @@ Declaration *Compiler::checkDeclaration(Type returnType, Token &name, ObjFunctio
 
 bool Compiler::inBlock() {
   return enclosing && enclosing->function == function;
+}
+
+bool Compiler::isInRegularFunction() {
+  return function->expr->body->name.type == TOKEN_LEFT_BRACE;
 }
 
 Expr **cdrAddress(Expr *body, TokenType tokenType) {
