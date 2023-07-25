@@ -26,6 +26,11 @@ static ObjFunction *getFunction(Expr *callee) {
 
         return reference->_declaration && IS_FUNCTION(reference->_declaration->type) ? AS_FUNCTION_TYPE(reference->_declaration->type) : NULL;
       }
+    case EXPR_GET: {
+        GetExpr *getExpr = (GetExpr *) callee;
+
+        return getExpr->_declaration && IS_FUNCTION(getExpr->_declaration->type) ? AS_FUNCTION_TYPE(getExpr->_declaration->type) : NULL;
+      }
     case EXPR_FUNCTION: return &((FunctionExpr *) callee)->_function;
     case EXPR_GROUPING: {
         GroupingExpr *group = (GroupingExpr *) callee;
@@ -127,7 +132,7 @@ void BinaryExpr::toCode(Parser &parser, ObjFunction *function) {
 void CallExpr::toCode(Parser &parser, ObjFunction *function) {
   ObjFunction *calleeFunction = getFunction(callee);
 
-  if (calleeFunction && calleeFunction->isUserClass())
+  if (calleeFunction && calleeFunction->isClass())
     str() << "new ";
 
   callee->toCode(parser, function);
@@ -195,26 +200,23 @@ void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
     if (_compiler.enclosing)
       startBlock();
 
-    if (function->expr->body == this) {
-      bool classFlag = function->isClass();
+    if (function->expr->body == this && function->isClass()) {
+        for (int index = 0; index < function->expr->arity - 1; index++) {
+          Declaration &declaration = function->compiler->declarations[index];
 
-      for (int index = 0; index < function->expr->arity - (classFlag ? 1 : 0); index++) {
-        Declaration &declaration = function->compiler->declarations[index];
+          if (declaration.isField()) {
+            std::string name = declaration.name.getString();
 
-        if (declaration.isField()) {
-          std::string name = declaration.name.getString();
-
-          line() << "this." << name << " = " << name << ";\n";
+            line() << "this." << name << " = " << name << ";\n";
+          }
         }
-      }
 
-      if (classFlag)
         for (int index = 0; index < function->compiler->declarationCount; index++)
           if (function->compiler->declarations[index].isInternalField) {
             line() << "const " << function->getThisVariableName() << " = this;\n";
             break;
           }
-    }
+      }
 
     if (body) {
       line();
@@ -321,17 +323,10 @@ void LogicalExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 void ReturnExpr::toCode(Parser &parser, ObjFunction *function) {
-  if (postExpr) {
-    postExpr->toCode(parser, function);
+  if (isUserClass) {
+    value->toCode(parser, function);
     str() << ";\n";
-    line();
-  }
-
-  if (function->isClass()) {
-    if (value)
-      value->toCode(parser, function);
-
-    str() << "return;\n";
+    line() << "return;\n";
   }
   else {
     str() << "return";

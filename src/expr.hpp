@@ -238,6 +238,7 @@ struct GetExpr : public Expr {
   Expr* object;
   Token name;
   int index;
+  Declaration* _declaration;
 
   GetExpr(Expr* object, Token name, int index);
   void cleanExprs();
@@ -312,10 +313,10 @@ struct ReferenceExpr : public Expr {
 
 struct ReturnExpr : public Expr {
   Token keyword;
-  Expr* postExpr;
+  bool isUserClass;
   Expr* value;
 
-  ReturnExpr(Token keyword, Expr* postExpr, Expr* value);
+  ReturnExpr(Token keyword, bool isUserClass, Expr* value);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);

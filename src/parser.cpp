@@ -855,6 +855,7 @@ Expr *Parser::printStatement(TokenType endGroupType) {
   return new UnaryExpr(buildToken(TOKEN_PRINT, "print"), value);
 }
 
+GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, Type paramType, std::function<Expr*()> bodyFn);
 Expr *Parser::returnStatement(TokenType endGroupType) {
   TokenType tokens[] = {TOKEN_SEPARATOR, endGroupType, TOKEN_ELSE, TOKEN_EOF};
   Token keyword = previous;
@@ -866,7 +867,20 @@ Expr *Parser::returnStatement(TokenType endGroupType) {
   if (!check(endGroupType))
     consume(TOKEN_SEPARATOR, "Expect ';' after return value.");
 
-  return new ReturnExpr(keyword, NULL, value);
+  if (getCurrent()->function->isUserClass()) {
+    ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "post_"), UNKNOWN_TYPE);
+    Expr *param = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "handlerFn_"), UNKNOWN_TYPE);
+
+    if (value) {
+      CallExpr *call = new CallExpr(false, param, buildToken(TOKEN_LEFT_PAREN, "("), value, NULL);
+
+      param = makeWrapperLambda("lambda_", NULL, UNKNOWN_TYPE, [call]() {return call;});
+    }
+
+    value = new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), param, NULL);
+  }
+
+  return new ReturnExpr(keyword, getCurrent()->function->isUserClass(), value);
 }
 
 Expr *Parser::statement(TokenType endGroupType) {

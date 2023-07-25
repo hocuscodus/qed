@@ -47,6 +47,12 @@ bool Token::equal(const char *string) {
   return !memcmp(start, string, length) && string[length] == '\0';
 }
 
+bool Token::endsWith(const char *suffix) {
+  int suffixLength = strlen(suffix);
+
+  return length >= suffixLength && !strcmp(&start[length - suffixLength], suffix);
+}
+
 void Token::declareError(const char *message) {
   fprintf(stderr, "[line %d] Error", line);
 

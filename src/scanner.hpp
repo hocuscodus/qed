@@ -103,6 +103,8 @@ struct Token {
 
   std::string getString();
   bool equal(const char *string);
+  bool endsWith(const char *suffix);
+  inline bool isInternal() {return endsWith("_");}
 
   virtual void declareError(const char *message);
 };

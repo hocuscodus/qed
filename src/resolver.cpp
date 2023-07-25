@@ -249,6 +249,10 @@ Type UIDirectiveExpr::resolve(Parser &parser) {
 
 Type BinaryExpr::resolve(Parser &parser) {
   Type type1 = left->resolve(parser);
+
+//  if (IS_FUNCTION(type1))
+//    return OBJ_TYPE(newInstance(AS_FUNCTION_TYPE(type1)));
+
   Type type2 = right->resolve(parser);
   Type type = type1;
   bool boolVal = false;
@@ -356,27 +360,6 @@ Type CallExpr::resolve(Parser &parser) {
 
   if (IS_FUNCTION(type)) {
     ObjFunction *callable = AS_FUNCTION_TYPE(type);
-
-    if (callable->isUserClass()) {
-      char buffer[256];
-      bool parmFlag = !IS_VOID(callable->expr->returnType);
-      char parm[128] = "";
-      GroupingExpr group(buildToken(TOKEN_EOF, ""), NULL);
-
-      // create an empty function handler for now
-      if (parmFlag)
-        sprintf(parm, "%s _ret", callable->expr->returnType.toString());
-
-      if (handler) {
-        uiExprs.push_back(handler);
-        uiTypes.push_back(UNKNOWN_TYPE);
-      }
-
-      sprintf(buffer, "(void Lambda_(%s) {%sreturn})", parm, handler ? "$EXPR; " : "");
-      parse(&group, buffer);
-      handler = group.body;
-      handler->resolve(parser);
-    }
 
     return newFlag ? OBJ_TYPE(newInstance(callable)) : callable->expr->returnType;
   } else {
@@ -579,9 +562,12 @@ Type FunctionExpr::resolve(Parser &parser) {
         printf(ss->str().c_str());
         parse(layoutFunctionExpr->body, ss->str().c_str());
 
-        FunctionExpr *eventFunctionExpr = (FunctionExpr *) *getLastBodyExpr(&layoutFunctionExpr->body->body, TOKEN_SEPARATOR);
-
-        eventFunctionExpr->resolve(parser);
+        FunctionExpr **eventFunctionExpr = (FunctionExpr **) getLastBodyExpr(&layoutFunctionExpr->body->body, TOKEN_SEPARATOR);
+/*
+        *eventFunctionExpr = (FunctionExpr *) eventFunctionExpr[0]->toCps([](Expr *expr) {
+          return expr;
+        });*/
+        eventFunctionExpr[0]->resolve(parser);
 
         getCurrent()->popScope();
         getCurrent()->popScope();
@@ -601,25 +587,52 @@ Type GetExpr::resolve(Parser &parser) {
   Type objectType = object->resolve(parser);
   popSignature();
 
-  if (AS_OBJ_TYPE(objectType) != OBJ_INSTANCE)
-    parser.errorAt(&name, "Only instances have properties.");
-  else {
-    ObjInstance *type = AS_INSTANCE_TYPE(objectType);
+  switch (AS_OBJ_TYPE(objectType)) {
+    case OBJ_FUNCTION: {
+        ObjFunction *type = AS_FUNCTION_TYPE(objectType);
 
-    for (int count = 0, i = 0; i < type->callable->compiler->declarationCount; i++) {
-      Declaration *dec = &type->callable->compiler->declarations[i];
+        for (int count = 0, i = 0; i < type->compiler->declarationCount; i++) {
+          Declaration *dec = &type->compiler->declarations[i];
 
-      if (dec->isField()) {
-        if (identifiersEqual(&name, &dec->name)) {
-          index = count;
-          return dec->type;
+          if (dec->isField()) {
+            if (identifiersEqual(&name, &dec->name)) {
+              index = count;
+              _declaration = dec;
+              return dec->type;
+            }
+
+            count++;
+          }
         }
 
-        count++;
+        parser.errorAt(&name, "Field '%.*s' not found.", name.length, name.start);
       }
-    }
+      break;
 
-    parser.errorAt(&name, "Field '%.*s' not found.", name.length, name.start);
+    case OBJ_INSTANCE: {
+        ObjInstance *type = AS_INSTANCE_TYPE(objectType);
+
+        for (int count = 0, i = 0; i < type->callable->compiler->declarationCount; i++) {
+          Declaration *dec = &type->callable->compiler->declarations[i];
+
+          if (dec->isField()) {
+            if (identifiersEqual(&name, &dec->name)) {
+              index = count;
+              _declaration = dec;
+              return dec->type;
+            }
+
+            count++;
+          }
+        }
+
+        parser.errorAt(&name, "Field '%.*s' not found.", name.length, name.start);
+      }
+      break;
+
+    default:
+      parser.errorAt(&name, "Only instances have properties.");
+      break;
   }
 
   return VOID_TYPE;

@@ -563,15 +563,8 @@ bool ObjFunction::isClass() {
   return expr->name.start[0] >= 'A' && expr->name.start[0] <= 'Z';
 }
 
-bool endsWith(std::string const &str, std::string const &suffix) {
-    if (str.length() < suffix.length()) {
-        return false;
-    }
-    return str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0;
-}
-
 bool ObjFunction::isUserClass() {
-  return isClass() && !endsWith(std::string(expr->name.start, expr->name.length), "_");
+  return isClass() && !expr->name.isInternal();
 }
 
 std::string ObjFunction::getThisVariableName() {

@@ -284,12 +284,12 @@ void LogicalExpr::astPrint() {
 }
 
 void ReturnExpr::astPrint() {
-  if (postExpr != NULL) {
-    postExpr->astPrint();
+  if (isUserClass) {
+    value->astPrint();
     printf("; ");
   }
   printf("return");
-  if (value != NULL) {
+  if (!isUserClass && value) {
     printf(" ");
     value->astPrint();
   }

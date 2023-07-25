@@ -47,14 +47,23 @@ ObjFunction *Compiler::compile(FunctionExpr *expr, Parser *parser) {
   expr->astPrint();
   printf("\n");
 #endif
-  expr->resolve(*parser);
+
+  Expr *cpsExpr = expr->toCps([](Expr *expr) {
+    return expr;
+  });
+#ifdef DEBUG_PRINT_CODE
+  printf("CPS parse: ");
+  cpsExpr->astPrint();
+  printf("\n");
+#endif
+  cpsExpr->resolve(*parser);
 
   if (parser->hadError)
     return NULL;
 
 #ifdef DEBUG_PRINT_CODE
   printf("Adapted parse: ");
-  expr->astPrint();
+  cpsExpr->astPrint();
   printf("\n          ");
   for (int i = 0; i < declarationCount; i++) {
     Token *token = &declarations[i].name;
@@ -66,15 +75,7 @@ ObjFunction *Compiler::compile(FunctionExpr *expr, Parser *parser) {
   }
   printf("\n");
 #endif
-
-  Expr *cpsExpr = expr->toCps([](Expr *expr) {
-    return expr;
-  });
-#ifdef DEBUG_PRINT_CODE
-  printf("CPS parse: ");
-  cpsExpr->astPrint();
-  printf("\n");
-#endif
+  line() << "\"use strict\";\n";
   line() << "const canvas = document.getElementById(\"canvas\");\n";
   line() << "let postCount = 1;\n";
   line() << "let attributeStacks = [];\n";
@@ -89,6 +90,7 @@ ObjFunction *Compiler::compile(FunctionExpr *expr, Parser *parser) {
   line() << "pushAttribute(4, 20);\n";
   line() << "pushAttribute(10, 0);\n";
   line() << "pushAttribute(11, 1.0);\n";
+  line() << "let layout_ = null;\n";
   line() << "function _refresh() {\n";
   line() << "//  if (ui_ != undefined && --postCount == 0) {\n";
   line() << "    ui_ = new UI_();\n";
@@ -158,7 +160,7 @@ Declaration *Compiler::addDeclaration(Type type, Token &name, Declaration *previ
   if (dec) {
     dec->type = type;
     dec->name = name;
-    dec->isExternalField = function && function->expr && function->isClass() && isInRegularFunction();
+    dec->isExternalField = function && function->expr && function->isClass() && isInRegularFunction() && !name.isInternal();
     dec->isInternalField = false;
     dec->function = function;
     dec->previous = previous;
