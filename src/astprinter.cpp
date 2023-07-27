@@ -13,24 +13,24 @@ void ASTPrinter::parenthesize(char *name, int numArgs, ...) {
   va_list ap;
 
   va_start(ap, numArgs);
-  printf("(&s", name);
+  fprintf(stderr, "(&s", name);
 
   while(numArgs--) {
     Expr *expr = va_arg(ap, Expr *);
-    printf(" ");
+    fprintf(stderr, " ");
     astPrint();
   }
 
-  printf(")");
+  fprintf(stderr, ")");
 }
 
 void ASTPrinter::parenthesize2(char *name, int numArgs, ...) {
   va_list ap;
 
   va_start(ap, numArgs);
-  printf("(&s", name);
+  fprintf(stderr, "(&s", name);
   transform(numArgs, ap);
-  printf(")");
+  fprintf(stderr, ")");
 }
 
 void ASTPrinter::transform(int numArgs, ...) {
@@ -39,7 +39,7 @@ void ASTPrinter::transform(int numArgs, ...) {
   va_start(ap, numArgs);
   while(numArgs--) {
     Expr *part = va_arg(ap, Expr *);
-    printf(" ");
+    fprintf(stderr, " ");
     if (part instanceof Expr) {
       builder.append(((Expr)part).astPrint());
     } else if (part instanceof Token) {
@@ -54,21 +54,21 @@ void ASTPrinter::transform(int numArgs, ...) {
 
 static void print(Expr *expr) {
   astPrint();
-  printf("\n");
+  fprintf(stderr, "\n");
 }
 */
 static void printObjType(Obj *obj) {
   switch(obj->type) {
-    case OBJ_STRING: printf("String"); return;
+    case OBJ_STRING: fprintf(stderr, "String"); return;
     case OBJ_FUNCTION: {
       Token name = ((ObjFunction *) obj)->expr->name;
 
-      printf("%.s", name.length, name.start);
+      fprintf(stderr, "%.s", name.length, name.start);
       return;
     }
     case OBJ_INSTANCE:
       printObjType(&((ObjInstance *) obj)->callable->obj);
-      printf(" *");
+      fprintf(stderr, " *");
       return;
   }
 }
@@ -79,45 +79,45 @@ static void printType(Type *type) {
       if (type->objType != NULL) {
         Token *token = &((ReferenceExpr *) type->objType)->name;
 
-        printf("%.*s", token->length, token->start);
+        fprintf(stderr, "%.*s", token->length, token->start);
       }
       else
-        printf("void");
+        fprintf(stderr, "void");
       return;
-    case VAL_BOOL: printf("bool"); return;
-    case VAL_INT: printf("int"); return;
-    case VAL_FLOAT: printf("float"); return;
+    case VAL_BOOL: fprintf(stderr, "bool"); return;
+    case VAL_INT: fprintf(stderr, "int"); return;
+    case VAL_FLOAT: fprintf(stderr, "float"); return;
     case VAL_OBJ: printObjType(type->objType); return;
   }
 }
 
 void AssignExpr::astPrint() {
-  printf("(%.*s ", op.length, op.start);
+  fprintf(stderr, "(%.*s ", op.length, op.start);
 
   if (varExp)
     varExp->astPrint();
 
-  printf(" ");
+  fprintf(stderr, " ");
 
   if (value)
     value->astPrint();
 
-  printf(")");
+  fprintf(stderr, ")");
 }
 
 void UIAttributeExpr::astPrint() {
-  printf("%.*s=(", name.length, name.start);
+  fprintf(stderr, "%.*s=(", name.length, name.start);
   if (handler)
     handler->astPrint();
-  printf(")");
+  fprintf(stderr, ")");
 }
 
 void UIDirectiveExpr::astPrint() {
-  printf("(Directive(");
+  fprintf(stderr, "(Directive(");
   for (int index = 0; index < attCount; index++)
     attributes[index]->astPrint();
 
-  printf(")(");
+  fprintf(stderr, ")(");
 
   if (previous)
     previous->astPrint();
@@ -125,7 +125,7 @@ void UIDirectiveExpr::astPrint() {
   if (lastChild)
     lastChild->astPrint();
 
-  printf("))");
+  fprintf(stderr, "))");
 }
 
 void BinaryExpr::astPrint() {
@@ -133,59 +133,59 @@ void BinaryExpr::astPrint() {
     case TOKEN_SEPARATOR:
     case TOKEN_COMMA:
       left->astPrint();
-      printf(op.type == TOKEN_SEPARATOR ? " " : ", ");
+      fprintf(stderr, op.type == TOKEN_SEPARATOR ? " " : ", ");
       right->astPrint();
       break;
 
     default:
-      printf("(%.*s ", op.length, op.start);
+      fprintf(stderr, "(%.*s ", op.length, op.start);
       left->astPrint();
-      printf(" ");
+      fprintf(stderr, " ");
       right->astPrint();
-      printf(")");
+      fprintf(stderr, ")");
       break;
   }
 }
 
 void CallExpr::astPrint() {
 //  parenthesize2("call", 2, callee, arguments);
-  printf("(call ");
+  fprintf(stderr, "(call ");
   callee->astPrint();
 
   if (params) {
-    printf(" ");
+    fprintf(stderr, " ");
     params->astPrint();
   }
 
-  printf(")");
+  fprintf(stderr, ")");
 }
 
 void ArrayElementExpr::astPrint() {
-  printf("[index ");
+  fprintf(stderr, "[index ");
   callee->astPrint();
   for (int index = 0; index < count; index++) {
-    printf(" ");
+    fprintf(stderr, " ");
     indexes[index]->astPrint();
   }
-  printf("]");
+  fprintf(stderr, "]");
 }
 
 void DeclarationExpr::astPrint() {
-  printf("(var %.*s", name.length, name.start);
+  fprintf(stderr, "(var %.*s", name.length, name.start);
 
   if (initExpr)
     initExpr->astPrint();
 
-  printf(")");
+  fprintf(stderr, ")");
 }
 
 void FunctionExpr::astPrint() {
-  printf("fun %.*s(", name.length, name.start);
+  fprintf(stderr, "fun %.*s(", name.length, name.start);
   for (int index = 0; index < arity; index++) {
-    printf(", ");
+    fprintf(stderr, ", ");
     params[index]->astPrint();
   }
-  printf(") {");
+  fprintf(stderr, ") {");
 
   if (body)
     body->astPrint();
@@ -193,165 +193,165 @@ void FunctionExpr::astPrint() {
   if (ui)
     ui->astPrint();
 
-  printf("}");
+  fprintf(stderr, "}");
 }
 
 void GetExpr::astPrint() {
 //  return parenthesize2(".", expr.object, expr.name.lexeme);
-  printf("(. ");
+  fprintf(stderr, "(. ");
   object->astPrint();
-  printf(" %.*s)", name.length, name.start);
+  fprintf(stderr, " %.*s)", name.length, name.start);
 }
 
 void GroupingExpr::astPrint() {
-  printf("(group'%.*s' ", name.length, name.start);
+  fprintf(stderr, "(group'%.*s' ", name.length, name.start);
 
   if (body)
     body->astPrint();
 
-  printf(")");
+  fprintf(stderr, ")");
 }
 
 void IfExpr::astPrint() {
-  printf("(if ");
+  fprintf(stderr, "(if ");
   condition->astPrint();
-  printf(" ");
+  fprintf(stderr, " ");
   thenBranch->astPrint();
 
   if (elseBranch) {
-    printf(" else ");
+    fprintf(stderr, " else ");
     elseBranch->astPrint();
   }
-  printf(")");
+  fprintf(stderr, ")");
 }
 
 void ArrayExpr::astPrint() {
-  printf("[");
+  fprintf(stderr, "[");
   for (int index = 0; index < count; index++) {
-    if (index) printf(", ");
+    if (index) fprintf(stderr, ", ");
     expressions[index]->astPrint();
   }
-  printf("]");
+  fprintf(stderr, "]");
 }
 
 void ListExpr::astPrint() {
-  printf("(list ");
+  fprintf(stderr, "(list ");
   for (int index = 0; index < count; index++) {
-    printf(", ");
+    fprintf(stderr, ", ");
     expressions[index]->astPrint();
   }
-  printf(")");
+  fprintf(stderr, ")");
 }
 
 void LiteralExpr::astPrint() {
   switch (type) {
     case VAL_BOOL:
-      printf("%s", as.boolean ? "true" : "false");
+      fprintf(stderr, "%s", as.boolean ? "true" : "false");
       break;
 
     case VAL_FLOAT:
-      printf("%f", as.floating);
+      fprintf(stderr, "%f", as.floating);
       break;
 
     case VAL_INT:
-      printf("%ld", as.integer);
+      fprintf(stderr, "%ld", as.integer);
       break;
 
     case VAL_OBJ:
       switch (as.obj->type) {
         case OBJ_STRING:
-          printf("%.*s", ((ObjString *) as.obj)->length, ((ObjString *) as.obj)->chars);
+          fprintf(stderr, "%.*s", ((ObjString *) as.obj)->length, ((ObjString *) as.obj)->chars);
           break;
 
         default:
-          printf("NULL");
+          fprintf(stderr, "NULL");
           break;
       }
       break;
 
     default:
-      printf("NULL");
+      fprintf(stderr, "NULL");
       break;
   }
 }
 
 void LogicalExpr::astPrint() {
-  printf("(%.*s ", op.length, op.start);
+  fprintf(stderr, "(%.*s ", op.length, op.start);
   left->astPrint();
-  printf(" ");
+  fprintf(stderr, " ");
   right->astPrint();
-  printf(")");
+  fprintf(stderr, ")");
 }
 
 void ReturnExpr::astPrint() {
   if (isUserClass) {
     value->astPrint();
-    printf("; ");
+    fprintf(stderr, "; ");
   }
-  printf("return");
+  fprintf(stderr, "return");
   if (!isUserClass && value) {
-    printf(" ");
+    fprintf(stderr, " ");
     value->astPrint();
   }
-  printf(";");
+  fprintf(stderr, ";");
 }
 
 void CastExpr::astPrint() {
 }
 
 void SetExpr::astPrint() {
-  printf("(%.*s (. ", op.length, op.start);
+  fprintf(stderr, "(%.*s (. ", op.length, op.start);
   object->astPrint();
-  printf(" %.*s) ", name.length, name.start);
+  fprintf(stderr, " %.*s) ", name.length, name.start);
   value->astPrint();
-  printf(")");
+  fprintf(stderr, ")");
 }
 
 void TernaryExpr::astPrint() {
-  printf("(%.*s ", op.length, op.start);
+  fprintf(stderr, "(%.*s ", op.length, op.start);
   left->astPrint();
-  printf(" ");
+  fprintf(stderr, " ");
   middle->astPrint();
-  printf(" ");
+  fprintf(stderr, " ");
   if (right)
     right->astPrint();
   else
-    printf("NULL");
-  printf(")");
+    fprintf(stderr, "NULL");
+  fprintf(stderr, ")");
 }
 
 void ThisExpr::astPrint() {
-  printf("this");
+  fprintf(stderr, "this");
 }
 
 void TypeExpr::astPrint() {
-  printf("(type %.*s)", name.length, name.start);
+  fprintf(stderr, "(type %.*s)", name.length, name.start);
 }
 
 void UnaryExpr::astPrint() {
-  printf("(%.*s ", op.length, op.start);
+  fprintf(stderr, "(%.*s ", op.length, op.start);
   right->astPrint();
-  printf(")");
+  fprintf(stderr, ")");
 }
 
 void ReferenceExpr::astPrint() {
-  printf("(%s %.*s)", returnType.toString(), name.length, name.start);
+  fprintf(stderr, "(%s %.*s)", returnType.toString(), name.length, name.start);
 }
 
 void WhileExpr::astPrint() {
-  printf("(while ");
+  fprintf(stderr, "(while ");
   condition->astPrint();
-  printf(" ");
+  fprintf(stderr, " ");
   body->astPrint();
-  printf(")");
+  fprintf(stderr, ")");
 }
 
 void SwapExpr::astPrint() {
-  printf("(swap)");
+  fprintf(stderr, "(swap)");
 }
 
 void NativeExpr::astPrint() {
-  printf("<native>");
+  fprintf(stderr, "<native>");
 }
 //< omit
 /* Representing Code printer-main < Representing Code omit

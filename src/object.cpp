@@ -555,10 +555,6 @@ void ObjFunction::add(ObjFunction *function) {
   lastChild = function;
 }
 
-void ObjFunction::print() {
-//  std::cout << s.str();
-}
-
 bool ObjFunction::isClass() {
   return expr->name.start[0] >= 'A' && expr->name.start[0] <= 'Z';
 }

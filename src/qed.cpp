@@ -93,7 +93,7 @@ const char *qedLib =
 "bool Timer(int timeoutMillis) {\n"
 "/$setTimeout(function() {\n"
 "    handlerFn_(true);\n"
-"    refresh();\n"
+"    _refresh();\n"
 "  }, timeoutMillis)$/"
 "\n"
 "  void reset() {}\n"
@@ -183,8 +183,7 @@ static char *readFile(const char *path) {
 
 extern std::stringstream s;
 
-extern "C" {
-void runSource(const char *source) {
+std::string runSrc(const char *source) {
   int qedLibLength = strlen(qedLib);
   int sourceLength = strlen(source);
   char *buffer = (char *) malloc(qedLibLength + sourceLength + 1);
@@ -198,30 +197,14 @@ void runSource(const char *source) {
   strcpy(&buffer[qedLibLength], source);
 
   buffer[qedLibLength + sourceLength] = '\0';
+  s.str("");
+  s.clear();
 
   Scanner scanner(buffer);
   Parser parser(scanner);
   ObjFunction *function = parser.compile();
 
-  if (!function)
-    return;
-/*
-  CoThread *coThread = newThread(NULL);
-  VM vm(coThread, true);
-  ObjClosure *closure = coThread->pushClosure(function);
-
-  if (function == NULL)
-    exit(65);
-
-  InterpretResult result = vm.interpret(closure);
-
-//  freeObjects();
-
-  if (result == INTERPRET_COMPILE_ERROR) exit(65);
-  if (result == INTERPRET_RUNTIME_ERROR) exit(70);*/
-  function->print();
-  std::cout << s.str();
-}
+  return s.str();
 }
 
 int main(int argc, const char *argv[]) {
@@ -230,7 +213,7 @@ int main(int argc, const char *argv[]) {
   else if (argc == 2) {
     char *source = readFile(argv[1]);
 
-    runSource(source);
+    std::cout << runSrc(source);
     free(source);
   }
   else {
@@ -240,3 +223,17 @@ int main(int argc, const char *argv[]) {
 
   return 0;
 }
+
+#ifdef __EMSCRIPTEN__
+#include <emscripten/bind.h>
+
+using namespace emscripten;
+
+std::string runSource(std::string source) {
+  return runSrc(source.c_str());
+}
+
+EMSCRIPTEN_BINDINGS(module) {
+  function("runSource", &runSource);
+}
+#endif

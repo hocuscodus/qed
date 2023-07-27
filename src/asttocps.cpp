@@ -309,22 +309,22 @@ Expr *GroupingExpr::toCps(K k) {
 }
 
 Expr *ArrayExpr::toCps(K k) {
-  printf("[");
+  fprintf(stderr, "[");
   for (int index = 0; index < count; index++) {
-    if (index) printf(", ");
+    if (index) fprintf(stderr, ", ");
     expressions[index]->toCps(k);
   }
-  printf("]");
+  fprintf(stderr, "]");
   return this;
 }
 
 Expr *ListExpr::toCps(K k) {
-  printf("(list ");
+  fprintf(stderr, "(list ");
   for (int index = 0; index < count; index++) {
-    printf(", ");
+    fprintf(stderr, ", ");
     expressions[index]->toCps(k);
   }
-  printf(")");
+  fprintf(stderr, ")");
   return this;
 }
 

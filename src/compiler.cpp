@@ -43,18 +43,18 @@ Compiler::Compiler() {
 
 ObjFunction *Compiler::compile(FunctionExpr *expr, Parser *parser) {
 #ifdef DEBUG_PRINT_CODE
-  printf("Original parse: ");
+  fprintf(stderr, "Original parse: ");
   expr->astPrint();
-  printf("\n");
+  fprintf(stderr, "\n");
 #endif
 
   Expr *cpsExpr = expr->toCps([](Expr *expr) {
     return expr;
   });
 #ifdef DEBUG_PRINT_CODE
-  printf("CPS parse: ");
+  fprintf(stderr, "CPS parse: ");
   cpsExpr->astPrint();
-  printf("\n");
+  fprintf(stderr, "\n");
 #endif
   cpsExpr->resolve(*parser);
 
@@ -62,18 +62,18 @@ ObjFunction *Compiler::compile(FunctionExpr *expr, Parser *parser) {
     return NULL;
 
 #ifdef DEBUG_PRINT_CODE
-  printf("Adapted parse: ");
+  fprintf(stderr, "Adapted parse: ");
   cpsExpr->astPrint();
-  printf("\n          ");
+  fprintf(stderr, "\n          ");
   for (int i = 0; i < declarationCount; i++) {
     Token *token = &declarations[i].name;
 
     if (token != NULL)
-      printf("[ %.*s ]", token->length, token->start);
+      fprintf(stderr, "[ %.*s ]", token->length, token->start);
     else
-      printf("[ N/A ]");
+      fprintf(stderr, "[ N/A ]");
   }
-  printf("\n");
+  fprintf(stderr, "\n");
 #endif
   line() << "\"use strict\";\n";
   line() << "const canvas = document.getElementById(\"canvas\");\n";

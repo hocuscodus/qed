@@ -113,7 +113,6 @@ struct ObjFunction : ObjCallable {
 
   int addUpvalue(uint8_t index, bool isField, Declaration *declaration, Parser &parser);
   void add(ObjFunction *function);
-  void print();
   bool isClass();
   bool isUserClass();
   std::string getThisVariableName();

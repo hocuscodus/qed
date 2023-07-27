@@ -493,7 +493,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         nTabs--;
         insertTabs();
         (*ss) << "}\n";
-        printf(ss->str().c_str());
+        fprintf(stderr, ss->str().c_str());
         parse(body, ss->str().c_str());
 
         FunctionExpr *uiFunctionExpr = (FunctionExpr *) *getLastBodyExpr(&body->body, TOKEN_SEPARATOR);
@@ -523,7 +523,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         nTabs--;
         insertTabs();
         (*ss) << "}\n";
-        printf(ss->str().c_str());
+        fprintf(stderr, ss->str().c_str());
         parse(uiFunctionExpr->body, ss->str().c_str());
 
         FunctionExpr *layoutFunctionExpr = (FunctionExpr *) *getLastBodyExpr(&uiFunctionExpr->body->body, TOKEN_SEPARATOR);
@@ -542,7 +542,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         nTabs--;
         insertTabs();
         (*ss) << "}\n";
-        printf(ss->str().c_str());
+        fprintf(stderr, ss->str().c_str());
         parse(layoutFunctionExpr->body, ss->str().c_str());
 
         FunctionExpr *paintFunctionExpr = (FunctionExpr *) *getLastBodyExpr(&layoutFunctionExpr->body->body, TOKEN_SEPARATOR);
@@ -559,7 +559,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         nTabs--;
         insertTabs();
         (*ss) << "}\n";
-        printf(ss->str().c_str());
+        fprintf(stderr, ss->str().c_str());
         parse(layoutFunctionExpr->body, ss->str().c_str());
 
         FunctionExpr **eventFunctionExpr = (FunctionExpr **) getLastBodyExpr(&layoutFunctionExpr->body->body, TOKEN_SEPARATOR);
