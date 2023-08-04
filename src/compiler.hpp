@@ -80,6 +80,7 @@ Expr **getLastBodyExpr(Expr **body, TokenType tokenType);
 bool isGroup(Expr *exp, TokenType tokenType);
 Expr *car(Expr *exp, TokenType tokenType);
 Expr *cdr(Expr *exp, TokenType tokenType);
+int getSize(Expr *exp, TokenType tokenType);
 
 #endif
 

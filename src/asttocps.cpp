@@ -319,13 +319,13 @@ Expr *ArrayExpr::toCps(K k) {
 }
 
 Expr *ListExpr::toCps(K k) {
-  fprintf(stderr, "(list ");
-  for (int index = 0; index < count; index++) {
-    fprintf(stderr, ", ");
-    expressions[index]->toCps(k);
-  }
-  fprintf(stderr, ")");
-  return this;
+  Expr *expressions = this->expressions 
+    ? this->expressions->toCps([this, k](Expr *expressions) {
+        return expressions;
+      })
+    : NULL;
+
+  return k(compareExpr(this->expressions, expressions) ? this : (ListExpr *) newExpr(new ListExpr(expressions)));
 }
 
 Expr *LiteralExpr::toCps(K k) {

@@ -685,7 +685,6 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
 
         functionExpr->_function.expr = functionExpr;
         group->_compiler.pushScope(&functionExpr->_function, this);
-  //      bindFunction(compiler.prefix, function);
         passSeparator();
 
         if (!check(TOKEN_RIGHT_PAREN))
@@ -722,29 +721,28 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
         return functionExpr;
       }
       else
-        exp = declareVariable(exp, endGroupTypes);
+        return declareVariable(exp, endGroupTypes);
     }
   }
+  else
+    if (!check(endGroupTypes) && !check(TOKEN_EOF)) {
+      ListExpr *listExpr = new ListExpr(NULL);
 
-  int count = 0;
-  Expr **expList = NULL;
+      addExpr(&listExpr->expressions, exp, buildToken(TOKEN_COMMA, ","));
 
-  while (!check(endGroupTypes) && !check(TOKEN_EOF)) {
-    Expr *exp2 = parsePrecedence((Precedence)(PREC_NONE + 1));
+      do {
+        exp = parsePrecedence((Precedence)(PREC_NONE + 1));
 
-    if (!exp2)
-      error("Expect expression.");
+        if (!exp)
+          error("Expect expression.");
 
-    if (!expList) {
-      expList = RESIZE_ARRAY(Expr *, expList, count, count + 1);
-      expList[count++] = exp;
+        addExpr(&listExpr->expressions, exp, buildToken(TOKEN_COMMA, ","));
+      } while (!check(endGroupTypes) && !check(TOKEN_EOF));
+
+      return listExpr;
     }
 
-    expList = RESIZE_ARRAY(Expr *, expList, count, count + 1);
-    expList[count++] = exp2;
-  }
-
-  return expList ? new ListExpr(count, expList) : exp;
+  return exp;
 }
 
 Expr *Parser::varDeclaration(TokenType endGroupType) {
@@ -788,7 +786,7 @@ Expr *Parser::forStatement(TokenType endGroupType) {
   Expr *body = statement(endGroupType);
 
   if (increment != NULL) {
-    body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), new BinaryExpr(new UnaryExpr(buildToken(TOKEN_PRINT, "print"), body), buildToken(TOKEN_SEPARATOR, ";"), new UnaryExpr(buildToken(TOKEN_PRINT, "print"), increment)));
+//    body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), new BinaryExpr(new UnaryExpr(buildToken(TOKEN_PRINT, "print"), body), buildToken(TOKEN_SEPARATOR, ";"), new UnaryExpr(buildToken(TOKEN_PRINT, "print"), increment)));
     ((GroupingExpr *) body)->_compiler.groupingExpr = (GroupingExpr *) body;
   }
 
@@ -845,16 +843,6 @@ Expr *Parser::declaration(TokenType endGroupType) {
   return exp;
 }
 
-Expr *Parser::printStatement(TokenType endGroupType) {
-  TokenType tokens[] = {TOKEN_SEPARATOR, endGroupType, TOKEN_ELSE, TOKEN_EOF};
-  Expr *value = expression(tokens);
-
-  if (!check(endGroupType))
-    consume(TOKEN_SEPARATOR, "Expect ';' after value.");
-
-  return new UnaryExpr(buildToken(TOKEN_PRINT, "print"), value);
-}
-
 GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, Type paramType, std::function<Expr*()> bodyFn);
 Expr *Parser::returnStatement(TokenType endGroupType) {
   TokenType tokens[] = {TOKEN_SEPARATOR, endGroupType, TOKEN_ELSE, TOKEN_EOF};
@@ -887,9 +875,7 @@ Expr *Parser::statement(TokenType endGroupType) {
   // ignore optional separator before second operand
   passSeparator();
 
-  if (match(TOKEN_PRINT))
-    return printStatement(endGroupType);
-  else if (match(TOKEN_RETURN))
+  if (match(TOKEN_RETURN))
     return returnStatement(endGroupType);
   else if (match(TOKEN_IF))
     return ifStatement(endGroupType);
@@ -908,13 +894,10 @@ void Parser::synchronize() {
     if (previous.type == TOKEN_SEPARATOR)
       return;
     switch (current.type) {
-      //      case TOKEN_CLASS:
-      //      case TOKEN_FUN:
     case TOKEN_TYPE_LITERAL:
-      //      case TOKEN_FOR:
     case TOKEN_IF:
     case TOKEN_WHILE:
-    case TOKEN_PRINT:
+    case TOKEN_FOR:
     case TOKEN_RETURN:
       return;
 

@@ -11,7 +11,6 @@
 #include <sstream>
 #include "parser.hpp"
 #include "memory.h"
-#include "qni.hpp"
 #include <stack>
 
 struct ValueStack3 {
@@ -372,12 +371,8 @@ Type ArrayElementExpr::resolve(Parser &parser) {
   Type type = callee->resolve(parser);
 
   if (!count)
-    if (isType(type)) {
-      ObjArray *array = newArray();
-
-      array->elementType = type;
-      return OBJ_TYPE(array);
-    }
+    if (isType(type))
+      return OBJ_TYPE(newArray(type));
     else {
       parser.error("No index defined.");
       return VOID_TYPE;
@@ -675,7 +670,7 @@ Type IfExpr::resolve(Parser &parser) {
 }
 
 Type ArrayExpr::resolve(Parser &parser) {
-  ObjArray *objArray = newArray();
+  ObjArray *objArray = newArray(VOID_TYPE);
   Type type = OBJ_TYPE(objArray);
 //  Compiler compiler;
 
@@ -690,18 +685,38 @@ Type ArrayExpr::resolve(Parser &parser) {
   return type;
 }
 
-Type ListExpr::resolve(Parser &parser) {
-  Type type = expressions[0]->resolve(parser);
+static Type resolveListExpr(Expr *expr, Parser &parser) {
+  Type type = car(expr, TOKEN_COMMA)->resolve(parser);
+  Expr *nextExpr = cdr(expr, TOKEN_COMMA);
 
-  for (int index = 1; index < count; index++) {
-    Expr *subExpr = expressions[index];
-    Type type = subExpr->resolve(parser);
+  if (nextExpr) {
+    if (IS_VOID(type))
+      parser.error("Cannot have a void expression as array dimension");
 
-    if (IS_VOID(getCurrent()->peekDeclaration()))
-      return type;
+    Type subType = resolveListExpr(nextExpr, parser);
+
+    return IS_VOID(subType) ? VOID_TYPE : OBJ_TYPE(newArray(subType));
   }
+  else
+    return type;
+}
 
-  return VOID_TYPE;
+Type ListExpr::resolve(Parser &parser) {
+  return resolveListExpr(expressions, parser);/*
+  Expr *nextExpr;
+
+  for (Expr *expr = this->expressions; expr; expr = nextExpr) {
+    Type type = car(expr, TOKEN_COMMA)->resolve(parser);
+
+    nextExpr = cdr(expr, TOKEN_COMMA);
+
+    if (nextExpr) {
+      if (IS_VOID(type))
+        parser.error("Cannot have a void expression as array dimension");
+    }
+    else
+      return type;
+  }*/
 }
 
 Type LiteralExpr::resolve(Parser &parser) {
@@ -807,10 +822,6 @@ Type UnaryExpr::resolve(Parser &parser) {
     parser.error("Value must not be void");
 
   switch (op.type) {
-  case TOKEN_PRINT:
-    right = convertToString(right, type, parser);
-    return VOID_TYPE;
-
   case TOKEN_NEW: {
     bool errorFlag = true;
 

@@ -236,10 +236,10 @@ void ArrayExpr::astPrint() {
 
 void ListExpr::astPrint() {
   fprintf(stderr, "(list ");
-  for (int index = 0; index < count; index++) {
-    fprintf(stderr, ", ");
-    expressions[index]->astPrint();
-  }
+
+  if (expressions)
+    expressions->astPrint();
+
   fprintf(stderr, ")");
 }
 

@@ -262,10 +262,9 @@ struct IfExpr : public Expr {
 };
 
 struct ListExpr : public Expr {
-  int count;
-  Expr** expressions;
+  Expr* expressions;
 
-  ListExpr(int count, Expr** expressions);
+  ListExpr(Expr* expressions);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);

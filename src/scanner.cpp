@@ -376,13 +376,7 @@ TokenType Scanner::identifierType() {
       break;
     case 'm': return checkKeyword(1, 2, "od", TOKEN_MOD);
     case 'n': return checkKeyword(1, 2, "ew", TOKEN_NEW);
-    case 'p':
-      if (current - start > 1)
-        switch (start[1]) {
-          case 'a': return checkKeyword(2, 5, "ckage", TOKEN_PACKAGE);
-          case 'r': return checkKeyword(2, 3, "int", TOKEN_PRINT);
-        }
-      break;
+    case 'p': return checkKeyword(1, 6, "ackage", TOKEN_PACKAGE);
     case 'r': return checkKeyword(1, 5, "eturn", TOKEN_RETURN);
     case 'S': return checkKeyword(1, 5, "tring", TOKEN_TYPE_LITERAL);
     case 's': return checkKeyword(1, 4, "uper", TOKEN_SUPER);

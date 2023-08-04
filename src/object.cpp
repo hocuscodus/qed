@@ -1112,9 +1112,9 @@ ObjUpvalue *newUpvalue(Value *slot) {
   return upvalue;
 }
 
-ObjArray *newArray() {
+ObjArray *newArray(Type elementType) {
   ObjArray *array = ALLOCATE_OBJ(ObjArray, OBJ_ARRAY);
-  array->elementType = VOID_TYPE;
+  array->elementType = elementType;
   return array;
 }
 

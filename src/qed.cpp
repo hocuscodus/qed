@@ -9,7 +9,6 @@
 #include <string.h>
 #include "parser.hpp"
 #include "vm.hpp"
-#include "qni.hpp"
 
 const char *qedLib =
 //"/$'use strict';\n$/"//;const char *toto=
@@ -97,6 +96,26 @@ const char *qedLib =
 "  }, timeoutMillis)$/"
 "\n"
 "  void reset() {}\n"
+"}\n"
+"void Time(voidHandler_ Func) {\n"
+"/$  console.time(\"Time\");\n"
+"  new Func(() => {\n"
+"    console.timeEnd(\"Time\");\n"
+"    handlerFn_();\n"
+"  });\n"
+"$/\n"
+"}\n"
+"void time(voidHandler_ func) {\n"
+"/$  console.time(\"time\");\n"
+"  func();\n"
+"  console.timeEnd(\"time\");\n"
+"$/\n"
+"}\n"
+"float Animation() {\n"
+"/$requestAnimationFrame((millis) => {\n"
+"  handlerFn_(millis);\n"
+"  _refresh();\n"
+"});$/\n"
 "}\n"
 ;
 

@@ -106,7 +106,6 @@ public:
   Expr *forStatement(TokenType endGroupType);
   Expr *ifStatement(TokenType endGroupType);
   Expr *whileStatement(TokenType endGroupType);
-  Expr *printStatement(TokenType endGroupType);
   Expr *declaration(TokenType endGroupType);
   Expr *returnStatement(TokenType endGroupType);
   Expr *statement(TokenType endGroupType);

@@ -253,7 +253,7 @@ ObjNative *newNative(NativeFn function);
 ObjString *takeString(char *chars, int length);
 ObjString *copyString(const char *chars, int length);
 ObjUpvalue *newUpvalue(Value *slot);
-ObjArray *newArray();
+ObjArray *newArray(Type elementType);
 void printObject(Value value);
 void freeObjects();
 

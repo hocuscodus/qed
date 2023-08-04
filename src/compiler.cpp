@@ -418,3 +418,12 @@ Expr *cdr(Expr *exp, TokenType tokenType) {
 
   return ptr ? *ptr : NULL;
 }
+
+int getSize(Expr *exp, TokenType tokenType) {
+  int size = 0;
+
+  for (Expr *element = exp; element; element = cdr(element, tokenType))
+    size++;
+
+  return size;
+}

@@ -110,8 +110,7 @@ IfExpr::IfExpr(Expr* condition, Expr* thenBranch, Expr* elseBranch) : Expr(EXPR_
   this->elseBranch = elseBranch;
 }
 
-ListExpr::ListExpr(int count, Expr** expressions) : Expr(EXPR_LIST) {
-  this->count = count;
+ListExpr::ListExpr(Expr* expressions) : Expr(EXPR_LIST) {
   this->expressions = expressions;
 }
 

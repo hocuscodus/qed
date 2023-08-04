@@ -276,12 +276,24 @@ void ArrayExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 void ListExpr::toCode(Parser &parser, ObjFunction *function) {
-  for (int index = 0; index < count; index++) {
+  int index = 0;
+
+  str() << "new (() => {\n";
+  startBlock();
+  line() << "const size = " << getSize(expressions, TOKEN_COMMA) << ";\n";
+  line() << "const dims = [];\n\n";
+
+  for (Expr *dimension = expressions; dimension; dimension = cdr(dimension, TOKEN_COMMA))
+    line() << "dims[" << index++ << "] = " << getSize(expressions, TOKEN_COMMA) << ";\n";
+
+  endBlock();
+  str() << "})()";
+/*  for (int index = 0; index < count; index++) {
     if (index)
       str() << " ";
 
     expressions[index]->toCode(parser, function);
-  }
+  }*/
 }
 
 void LiteralExpr::toCode(Parser &parser, ObjFunction *function) {

@@ -10,12 +10,12 @@
 #include <array>
 #include "common.h"
 
-#define UNKNOWN_TYPE      (Type) {VAL_UNKNOWN}
-#define VOID_TYPE         (Type) {VAL_VOID}
-#define BOOL_TYPE         (Type) {VAL_BOOL}
-#define INT_TYPE          (Type) {VAL_INT}
-#define FLOAT_TYPE        (Type) {VAL_FLOAT}
-#define OBJ_TYPE(objType) (Type) {VAL_OBJ, &(objType)->obj}
+#define UNKNOWN_TYPE        (Type) {VAL_UNKNOWN}
+#define VOID_TYPE           (Type) {VAL_VOID}
+#define BOOL_TYPE           (Type) {VAL_BOOL}
+#define INT_TYPE            (Type) {VAL_INT}
+#define FLOAT_TYPE          (Type) {VAL_FLOAT}
+#define OBJ_TYPE(objType)   (Type) {VAL_OBJ, &(objType)->obj}
 
 #define IS_UNKNOWN(type)  ((type).valueType == VAL_UNKNOWN)
 #define IS_VOID(type)     ((type).valueType == VAL_VOID)
