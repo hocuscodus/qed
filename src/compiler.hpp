@@ -71,13 +71,16 @@ static inline Compiler *getCurrent() {
 }
 
 struct Expr;
+struct IteratorExpr;
 
 typedef std::function<Expr *(Expr *)> K;
 
-void addExpr(Expr **body, Expr *exp, Token op);
+Expr **addExpr(Expr **body, Expr *exp, Token op);
+Expr **addIteratorExpr(Expr **body, Expr *exp, Token op);
 Expr *removeExpr(Expr *body, TokenType tokenType);
 Expr **getLastBodyExpr(Expr **body, TokenType tokenType);
 bool isGroup(Expr *exp, TokenType tokenType);
+bool isIteratorList(Expr *exp);
 Expr *car(Expr *exp, TokenType tokenType);
 Expr *cdr(Expr *exp, TokenType tokenType);
 int getSize(Expr *exp, TokenType tokenType);

@@ -6,6 +6,7 @@
  */
 #include <string.h>
 #include "attrset.hpp"
+#include "expr.hpp"
 
 long ctz0(long *n) {
   if (n[0] == 0)
@@ -78,8 +79,8 @@ Attr::Attr(int flags, void *returnType, int localIndex) {
   this->returnType = returnType;
   this->localIndex = localIndex;
 }
-/*
-AttrSet::AttrSet(int *offset, Point &zoneOffsets, std::array<long, NUM_DIRS> &arrayDirFlags, ValueStack<ValueStackElement> &valueStack, UIDirectiveExpr *listExpr, int parentRefreshFlags, ObjFunction *function) {
+
+void AttrSet::init(int *offset, Point &zoneOffsets, std::array<long, NUM_DIRS> &arrayDirFlags, ValueStack<ValueStackElement> &valueStack, UIDirectiveExpr *listExpr, int parentRefreshFlags, ObjFunction *function) {
 //  / *arrayDirs = * /inputStream.read();
   int childDir = 0;//inputStream.read();
   int numAttrs = listExpr->attCount;
@@ -92,7 +93,7 @@ AttrSet::AttrSet(int *offset, Point &zoneOffsets, std::array<long, NUM_DIRS> &ar
       Token prop = listExpr->attributes[index]->name;
       std::string property = prop.getString();
       int dimFlags = 0;//inputStream.read();
-      ExprType *returnType = NULL;//inputStream.read() != 0 ? listExpr->attributes[index]->type : NULL;
+      ExprType *returnType;// = /*inputStream.read() != 0 ? */listExpr->attributes[index]->type;// : NULL;
 
 //      str = str + " @" + prop + "(" + handler->name + ")";
       initAttr(property, dimFlags, returnType, listExpr->attributes[index]->_index);
@@ -106,9 +107,8 @@ AttrSet::AttrSet(int *offset, Point &zoneOffsets, std::array<long, NUM_DIRS> &ar
   }
 
   int parseFlags2 = 0;
-  int numAttrSets = listExpr->childrenCount;
 
-  if (numAttrSets != 0) {
+  if (listExpr->lastChild) {
     children = new ChildAttrSets(offset, zoneOffsets, childDir, arrayDirFlags, valueStack, listExpr, refreshFlags | parentRefreshFlags, function);
     parseFlags = children->parseFlags;
     areaParseFlags = children->areaParseFlags;
@@ -120,7 +120,8 @@ AttrSet::AttrSet(int *offset, Point &zoneOffsets, std::array<long, NUM_DIRS> &ar
 
     for(auto& it: valueStack.map) {
       ValueStackElement &element = it.second.top();
-      Type &type = function->fields[element.localIndex].type;
+//      Type &type = function->fields[element.localIndex].type;
+      Type type;
 
       parseFlags2 |= element.parseFlags;
       areaParseFlags |= 1 << element.parseFlags;
@@ -156,7 +157,7 @@ AttrSet::AttrSet(int *offset, Point &zoneOffsets, std::array<long, NUM_DIRS> &ar
 
 //  print("restore " + str);
 }
-*/
+
 void AttrSet::initAttr(std::string property, int flags, void*returnType, int index) {
   attrs.insert(std::pair<std::string, Attr *>(property, new Attr(flags, returnType, index)));
 }
@@ -186,6 +187,38 @@ int AttrSet::getZones(Point &zoneOffset, int dir, int childDir, std::array<long,
 
     return zones;
   }
+}
+/*
+0^0=1
+0^1=0
+1^0=0
+1^1=1
+
+0^0=true
+0^1=false
+1^0=false
+1^1=true
+*/
+int AttrSet::getChildZones(int dir) {
+  return children != NULL ? children->zones[dir] : 0;
+}
+
+int AttrSet::getZones(int &zoneOffset, long arrayDirFlags) {
+  int parseFlags = areaParseFlags;
+
+  while (parseFlags) {
+    if (parseFlags & 1)
+      if (zoneOffset == -1)
+        return 1 << (zoneOffset = arrayDirFlags & 1);
+      else
+        if ((arrayDirFlags & 1) != (zoneOffset & 1))
+          return 1 << ++zoneOffset;
+
+    arrayDirFlags >>= 1;
+    parseFlags >>= 1;
+  }
+
+  return 0;
 }
 
 int AttrSet::getNumAreas() {
@@ -487,8 +520,10 @@ class AttrSet {
 		return str;
 	}*/
 }
-#endif/*
-ChildAttrSets::ChildAttrSets(int *offset, Point &zoneOffsets, int childDir, std::array<long, NUM_DIRS> &arrayDirFlags, ValueStack<ValueStackElement> &valueStack, UIDirectiveExpr *listExpr, int parentRefreshFlags, ObjFunction *function) : std::vector<AttrSet *>() {
+#endif
+ChildAttrSets::ChildAttrSets(int *offset, Point &zoneOffsets, int childDir, std::array<long, NUM_DIRS> &arrayDirFlags,
+                             ValueStack<ValueStackElement> &valueStack, UIDirectiveExpr *listExpr, int parentRefreshFlags,
+                             ObjFunction *function) : std::vector<AttrSet *>() {
   Point maxZoneOffsets;
   bool zBoolFlags[NUM_DIRS]{true};
 
@@ -497,8 +532,10 @@ ChildAttrSets::ChildAttrSets(int *offset, Point &zoneOffsets, int childDir, std:
   areaParseFlags = 0;
   numAreas = 0;
 
-  for (int index = 0; index < listExpr->childrenCount; index++) {
-    AttrSet *attrSet = new AttrSet(offset, zoneOffsets, arrayDirFlags, valueStack, listExpr->children[index], parentRefreshFlags, function);
+  for (int index = 0; index < (listExpr->lastChild ? 1 : 0); index++) {
+    AttrSet *attrSet = new AttrSet();
+
+    attrSet->init(offset, zoneOffsets, arrayDirFlags, valueStack, NULL/*listExpr->children[index]*/, parentRefreshFlags, function);
 
     if (attrSet->areaParseFlags != 0) {
       push_back(attrSet);
@@ -507,11 +544,12 @@ ChildAttrSets::ChildAttrSets(int *offset, Point &zoneOffsets, int childDir, std:
       numAreas += attrSet->getNumAreas();
 
       for (int dir = 0; dir < NUM_DIRS; dir++) {
-        zBoolFlags[dir] &= attrSet->zFlags[dir] > 0;
-
         int currentZoneOffset = zoneOffsets[dir];
 
-        zones[dir] |= attrSet->getZones(zoneOffsets, dir, childDir, arrayDirFlags);
+        zBoolFlags[dir] &= attrSet->zFlags[dir] > 0;
+//        zones[dir] |= attrSet->getZones(zoneOffsets, dir, childDir, arrayDirFlags);
+        zones[dir] |= attrSet->getChildZones(dir);
+        zones[dir] |= childDir & (1 << dir) ? attrSet->getZones(zoneOffsets[dir], arrayDirFlags[dir]) : 0;
 
         if ((childDir & (1 << dir)) == 0) {
           maxZoneOffsets[dir] = std::max(zoneOffsets[dir], maxZoneOffsets[dir]);
@@ -547,7 +585,7 @@ ChildAttrSets::ChildAttrSets(int *offset, Point &zoneOffsets, int childDir, std:
       zoneOffsets[dir] = maxZoneOffsets[dir];
   }
 }
-*/
+
 SizerType ChildAttrSets::getSizerType(int dir, int *zone) {
   return (childDir & (1 << dir)) != 0 ? SizerType::adder : /*zone[0] & 1 != 0 ? SizerType.zoneMaxer : */SizerType::maxer;
 }

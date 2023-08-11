@@ -7,6 +7,7 @@
 #include "parser.hpp"
 #include "memory.h"
 #include "object.hpp"
+#include "listunitareas.hpp"
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -147,8 +148,19 @@ FunctionExpr *Parser::parse() {
   group->_compiler.pushScope(&functionExpr->_function, this);
   expList(group, TOKEN_EOF);
 
-  if (check(TOKEN_LESS))
+  if (check(TOKEN_LESS)) {
+    int offset = 0;
+    Point zoneOffsets;
+    std::array<long, NUM_DIRS> arrayDirFlags;
+    ValueStack<ValueStackElement> valueStack;
+
     functionExpr->ui = directive(TOKEN_EOF, NULL);
+//		attrSets = numAttrSets != 0 ? new ChildAttrSets([0], numZones, 0, [2, 1], new ValueStack(), numAttrSets, mainFunc, this, inputStream, 0) : NULL;
+//ChildAttrSets::ChildAttrSets(int *offset, Point &zoneOffsets, int childDir, std::array<long, NUM_DIRS> &arrayDirFlags,
+//                             ValueStack<ValueStackElement> &valueStack, UIDirectiveExpr *listExpr, int parentRefreshFlags,
+//                             ObjFunction *function) : std::vector<AttrSet *>() {
+    ((UIDirectiveExpr *) functionExpr->ui)->_attrSet.init(&offset, zoneOffsets, arrayDirFlags, valueStack, (UIDirectiveExpr *) functionExpr->ui, 0, &functionExpr->_function);
+  }
 
   consume(TOKEN_EOF, "Expect end of file.");
   group->_compiler.popScope();
@@ -167,6 +179,32 @@ FunctionExpr *Parser::parse() {
 
 void Parser::passSeparator() {
   match(TOKEN_SEPARATOR);
+}
+
+Expr *Parser::anonymousIterator() {
+  return iterator(NULL);
+}
+
+Expr *Parser::iterator(Expr *left) {
+  Token op = previous;
+  ParseExpRule *rule = getExpRule(op.type);
+
+  // ignore optional separator before second operand
+  passSeparator();
+
+  Expr *right = parsePrecedence((Precedence)(rule->precedence + 1));
+
+  if (right == NULL)
+    error("Expect expression.");
+
+  if (left && left->type == EXPR_REFERENCE)
+    return new IteratorExpr(((ReferenceExpr *) left)->name, op, right);
+  else {
+    if (!isIteratorList(left))
+      left = new IteratorExpr(buildToken(TOKEN_IDENTIFIER, ""), buildToken(TOKEN_ITERATOR, "::"), left);
+
+    return *addIteratorExpr(&left, right, op);
+  }
 }
 
 Expr *Parser::assignment(Expr *left) {
@@ -713,8 +751,15 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
         functionExpr->_declaration = getCurrent()->enclosing->checkDeclaration(OBJ_TYPE(&functionExpr->_function), name, &functionExpr->_function, this);
         expList(group, endGroupType);
 
-        if (check(TOKEN_LESS))
+        if (check(TOKEN_LESS)) {
+          int offset = 0;
+          Point zoneOffsets;
+          std::array<long, NUM_DIRS> arrayDirFlags;
+          ValueStack<ValueStackElement> valueStack;
+
           functionExpr->ui = directive(parenFlag ? TOKEN_RIGHT_PAREN : TOKEN_RIGHT_BRACE, NULL);
+          ((UIDirectiveExpr *) functionExpr->ui)->_attrSet.init(&offset, zoneOffsets, arrayDirFlags, valueStack, (UIDirectiveExpr *) functionExpr->ui, 0, &functionExpr->_function);
+        }
 
         consume(endGroupType, "Expect '%c' after expression.", parenFlag ? ')' : '}');
         group->_compiler.popScope();
@@ -724,25 +769,22 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
         return declareVariable(exp, endGroupTypes);
     }
   }
-  else
-    if (!check(endGroupTypes) && !check(TOKEN_EOF)) {
-      ListExpr *listExpr = new ListExpr(NULL);
+  else {
+    Expr *iteratorExprs = NULL;
 
-      addExpr(&listExpr->expressions, exp, buildToken(TOKEN_COMMA, ","));
+    while (!check(endGroupTypes) && !check(TOKEN_EOF)) {
+      addIteratorExpr(&iteratorExprs, exp, buildToken(TOKEN_ITERATOR, "::"));
+      exp = parsePrecedence((Precedence)(PREC_NONE + 1));
 
-      do {
-        exp = parsePrecedence((Precedence)(PREC_NONE + 1));
-
-        if (!exp)
-          error("Expect expression.");
-
-        addExpr(&listExpr->expressions, exp, buildToken(TOKEN_COMMA, ","));
-      } while (!check(endGroupTypes) && !check(TOKEN_EOF));
-
-      return listExpr;
+      if (!exp)
+        error("Expect expression.");
     }
 
-  return exp;
+    if (isIteratorList(exp))
+      error("Cannot define an iterator list without a body expression.");
+
+    return iteratorExprs ? new ListExpr(*addExpr(&iteratorExprs, exp, buildToken(TOKEN_COMMA, ","))) : exp;
+  }
 }
 
 Expr *Parser::varDeclaration(TokenType endGroupType) {

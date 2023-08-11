@@ -175,7 +175,7 @@ Token Scanner::scanToken() {
           : TOKEN_GREATER);
 
     case ':':
-      return makeToken(match(':') ? TOKEN_COLON_COLON : TOKEN_COLON);
+      return makeToken(match(':') || match('_') || match('|') || match('\\') ? TOKEN_ITERATOR : TOKEN_COLON);
 
     case '&':
       return makeToken(match('=') ? TOKEN_AND_EQUAL : match('&') ? TOKEN_AND_AND : TOKEN_AND);

@@ -11,6 +11,8 @@
 #include "chunk.hpp"
 #include "compiler.hpp"
 
+#include "attrset.hpp"
+
 struct ObjFunction;
 
 struct ObjCallable;
@@ -19,6 +21,7 @@ typedef enum {
   EXPR_TYPE,
   EXPR_UIATTRIBUTE,
   EXPR_UIDIRECTIVE,
+  EXPR_ITERATOR,
   EXPR_ASSIGN,
   EXPR_BINARY,
   EXPR_CAST,
@@ -98,8 +101,22 @@ struct UIDirectiveExpr : public Expr {
   bool childrenViewFlag;
   int _layoutIndexes[NUM_DIRS];
   long _eventFlags;
+  AttrSet _attrSet;
 
   UIDirectiveExpr(int childDir, int attCount, UIAttributeExpr** attributes, UIDirectiveExpr* previous, UIDirectiveExpr* lastChild, int viewIndex, bool childrenViewFlag);
+  void cleanExprs();
+  void astPrint();
+  Expr *toCps(K k);
+  Type resolve(Parser &parser);
+  void toCode(Parser &parser, ObjFunction *function);
+};
+
+struct IteratorExpr : public Expr {
+  Token name;
+  Token op;
+  Expr* value;
+
+  IteratorExpr(Token name, Token op, Expr* value);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);

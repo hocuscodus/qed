@@ -8,7 +8,6 @@
 #define qed_object_h
 
 #include <sstream>
-#include "common.h"
 #include "chunk.hpp"
 #include "value.h"
 #include "scanner.hpp"

@@ -40,6 +40,12 @@ UIDirectiveExpr::UIDirectiveExpr(int childDir, int attCount, UIAttributeExpr** a
   this->childrenViewFlag = childrenViewFlag;
 }
 
+IteratorExpr::IteratorExpr(Token name, Token op, Expr* value) : Expr(EXPR_ITERATOR) {
+  this->name = name;
+  this->op = op;
+  this->value = value;
+}
+
 AssignExpr::AssignExpr(Expr* varExp, Token op, Expr* value) : Expr(EXPR_ASSIGN) {
   this->varExp = varExp;
   this->op = op;

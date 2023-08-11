@@ -89,6 +89,9 @@ const char *getHandlerType(Type type) {
   }
 }
 
+Expr *IteratorExpr::toCps(K k) {
+}
+
 Expr *AssignExpr::toCps(K k) {
   Expr *cpsExpr = varExp->toCps([this, k](Expr *varExp) {
     return this->value
@@ -490,16 +493,14 @@ Expr *IfExpr::toCps(K k) {
       ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cvar), UNKNOWN_TYPE);
 
       bothEqual &= compareExpr(this->thenBranch, thenBranch);
-      addExpr(&thenBranch, new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), NULL, NULL), buildToken(TOKEN_SEPARATOR, ";"));
-      return thenBranch;
+      return *addExpr(&thenBranch, new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), NULL, NULL), buildToken(TOKEN_SEPARATOR, ";"));
     });
     ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cvar), UNKNOWN_TYPE);
     CallExpr *elseExpr = new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), NULL, NULL);
     Expr *elseBranch = this->elseBranch ? this->elseBranch->toCps([this, &bothEqual, elseExpr](Expr *elseBranch) {
 
       bothEqual &= compareExpr(this->elseBranch, elseBranch);
-      addExpr(&elseBranch, elseExpr, buildToken(TOKEN_SEPARATOR, ";"));
-      return elseBranch;
+      return *addExpr(&elseBranch, elseExpr, buildToken(TOKEN_SEPARATOR, ";"));
     }) : elseExpr;
 
     if (bothEqual) {

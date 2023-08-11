@@ -91,6 +91,9 @@ static void printType(Type *type) {
   }
 }
 
+void IteratorExpr::astPrint() {
+}
+
 void AssignExpr::astPrint() {
   fprintf(stderr, "(%.*s ", op.length, op.start);
 

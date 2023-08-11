@@ -12,18 +12,19 @@
 
 typedef enum {
   PREC_NONE,
+  PREC_ITERATOR,    // :\ :: :_ :|
   PREC_ASSIGNMENT,  // =
-  PREC_TERNARY,     // or
-  PREC_LOGICAL_OR,  // or
-  PREC_LOGICAL_AND, // and
-  PREC_BITWISE_OR,  // or
-  PREC_BITWISE_XOR, // xor
-  PREC_BITWISE_AND, // and
+  PREC_TERNARY,     // ?:
+  PREC_LOGICAL_OR,  // ||
+  PREC_LOGICAL_AND, // &&
   PREC_EQUALITY,    // == !=
   PREC_COMPARISON,  // < > <= >=
-  PREC_SHIFT,       // >> << >>>
   PREC_TERM,        // + -
   PREC_FACTOR,      // * /
+  PREC_BITWISE_XOR, // ^             akin to !=, A^~(B) akin to ==
+  PREC_BITWISE_OR,  // |             akin to +
+  PREC_BITWISE_AND, // &             akin to *
+  PREC_SHIFT,       // >> << >>>     akin to powered base
   PREC_UNARY,       // ! - ~
   PREC_CALL,        // ()
   PREC_MEMBER,      // .
@@ -74,6 +75,8 @@ public:
   FunctionExpr *parse();
   void passSeparator();
 
+  Expr *anonymousIterator();
+  Expr *iterator(Expr *left);
   Expr *suffix(Expr *left);
   Expr *assignment(Expr *left);
   Expr *binary(Expr *left);

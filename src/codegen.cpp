@@ -68,6 +68,9 @@ static void endBlock() {
     line() << "}\n";
 }
 
+void IteratorExpr::toCode(Parser &parser, ObjFunction *function) {
+}
+
 void AssignExpr::toCode(Parser &parser, ObjFunction *function) {
   if (varExp)
     varExp->toCode(parser, function);
@@ -275,25 +278,75 @@ void ArrayExpr::toCode(Parser &parser, ObjFunction *function) {
   str() << "]";
 }
 
+void dimensionToCode(Expr *dimension, int index, const char *parmString, Parser &parser, ObjFunction *function) {
+  Expr *dim = car(dimension, TOKEN_COMMA);
+  Expr *next = cdr(dimension, TOKEN_COMMA);
+  char newParmString[256] = "";
+
+  if (next) {
+    char varName[16];
+
+    sprintf(varName, "x%d", index);
+    sprintf(newParmString, "%s[%s]", parmString, varName);
+    line() << "for (let " << varName << " = 0; " << varName << " < this.dims[" << index << "]; " << varName << "++) ";
+    startBlock();
+    dimensionToCode(next, index + 1, newParmString, parser, function);
+    endBlock();
+  }
+  else {
+    line() << "this.array" << parmString << " = ";
+    dim->toCode(parser, function);
+    str() << ";\n";
+  }
+}
+/*
+  this.size = 2;
+  this.dims = [];
+  this.array = [][];
+
+  this.dims[0] = 10;
+  this.dims[1] = 10;
+;
+  for (let x0 = 0; x0 < this.dims[0]; x0++) {
+    for (let x1 = 0; x1 < this.dims[1]; x1++) {
+      this.array = 11;
+    }
+  }
+10 {
+	{
+		10 {
+			{
+				; @out((&1 + 1) * (&0 + 1)) @size(16) @bgcol(0xDDDDDD)
+			} @out(&0 + 1) @cdir(1) @bgcol(0x0000FF) @textcol(0xFFFFFF) @size(14)
+		} @adir(2) @apack(0)
+	} @out(&0 + 1) @cdir(2) @bgcol(0x0000FF) @textcol(0xFFFFFF) @size(14)
+} @adir(1) @apack(0)
+*/
 void ListExpr::toCode(Parser &parser, ObjFunction *function) {
-  int index = 0;
+  Expr *dimension = expressions;
+  int numDim = getSize(expressions, TOKEN_COMMA) - 1;
 
-  str() << "new (() => {\n";
+  str() << "new (function() ";
   startBlock();
-  line() << "const size = " << getSize(expressions, TOKEN_COMMA) << ";\n";
-  line() << "const dims = [];\n\n";
+  line() << "this.size = " << numDim << ";\n";
+  line() << "this.dims = [];\n";
+  line() << "this.array = ";
 
-  for (Expr *dimension = expressions; dimension; dimension = cdr(dimension, TOKEN_COMMA))
-    line() << "dims[" << index++ << "] = " << getSize(expressions, TOKEN_COMMA) << ";\n";
+  for (int index = 0; index < numDim; index++)
+    str() << "[]";
 
+  str() << ";\n\n";
+
+  for (int index = 0; index < numDim; dimension = cdr(dimension, TOKEN_COMMA)) {
+    line() << "this.dims[" << index++ << "] = ";
+    car(dimension, TOKEN_COMMA)->toCode(parser, function);
+    str() << ";\n";
+  }
+
+  str() << "\n";
+  dimensionToCode(expressions, 0, "", parser, function);
   endBlock();
-  str() << "})()";
-/*  for (int index = 0; index < count; index++) {
-    if (index)
-      str() << " ";
-
-    expressions[index]->toCode(parser, function);
-  }*/
+  str() << ")()";
 }
 
 void LiteralExpr::toCode(Parser &parser, ObjFunction *function) {

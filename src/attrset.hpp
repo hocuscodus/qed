@@ -9,7 +9,6 @@
 
 #include <unordered_set>
 #include <vector>
-#include "expr.hpp"
 #include "sizer.hpp"
 #include "object.hpp"
 
@@ -23,6 +22,7 @@ struct Attr {
 
 struct ChildAttrSets;
 struct VM;
+struct UIDirectiveExpr;
 
 typedef DirType<long> DirFlags;
 
@@ -40,13 +40,14 @@ struct AttrSet {
   Path posPaths[NUM_DIRS];
 	int offset;
 
-//	AttrSet(int *offset, Point &zoneOffsets, std::array<long, NUM_DIRS> &arrayDirFlags, ValueStack<ValueStackElement> &valueStack, UIDirectiveExpr *listExpr, int parentRefreshFlags, ObjFunction *function);
-
+  void init(int *offset, Point &zoneOffsets, std::array<long, NUM_DIRS> &arrayDirFlags, ValueStack<ValueStackElement> &valueStack, UIDirectiveExpr *listExpr, int parentRefreshFlags, ObjFunction *function);
 	void parseCreateSizers(DirSizers &topSizers, int dir, int *zone, Path path, Path flagsPath);
 	void parseAdjustPaths(DirSizers &topSizers, int dir);
 	void initAttr(std::string propertys, int flags, void *returnType, int index);
 	int getNumAreas();
 	int getZones(Point &zoneOffset, int dir, int childDir, std::array<long, NUM_DIRS> arrayDirFlags);
+  int getChildZones(int dir);
+  int getZones(int &zoneOffset, long arrayDirFlags);
 	bool isEditable(VM &vm, Obj obj, Path path);
 	bool getEditableFlag(VM &vm, Obj obj, Path path);
 	int getNumChildren();
@@ -76,7 +77,7 @@ struct ChildAttrSets : std::vector<AttrSet *> {
   DirFlags flags;
   DirFlags zFlags;
 
-//	ChildAttrSets(int *offset, Point &zoneOffsets, int childDir, std::array<long, NUM_DIRS> &arrayDirFlags, ValueStack<ValueStackElement> &valueStack, UIDirectiveExpr *listExpr, int parentRefreshFlags, ObjFunction *function);
+	ChildAttrSets(int *offset, Point &zoneOffsets, int childDir, std::array<long, NUM_DIRS> &arrayDirFlags, ValueStack<ValueStackElement> &valueStack, UIDirectiveExpr *listExpr, int parentRefreshFlags, ObjFunction *function);
 
 	SizerType getSizerType(int dir, int *zone);
 	void parseCreateSizers(DirSizers &topSizers, int dir, int *zone, Path path, Path flagsPath);

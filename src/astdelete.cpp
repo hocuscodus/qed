@@ -9,6 +9,9 @@
 #include "expr.hpp"
 
 
+void IteratorExpr::cleanExprs() {
+}
+
 void AssignExpr::cleanExprs() {
 }
 

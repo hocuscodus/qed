@@ -219,6 +219,9 @@ Type acceptGroupingExprUnits(GroupingExpr *expr, Parser &parser) {
   return expr->name.type == TOKEN_LEFT_PAREN ? bodyType : VOID_TYPE;
 }
 
+Type IteratorExpr::resolve(Parser &parser) {
+}
+
 Type AssignExpr::resolve(Parser &parser) {
   Type type1 = varExp->resolve(parser);
   Type type2 = value ? value->resolve(parser) : type1;

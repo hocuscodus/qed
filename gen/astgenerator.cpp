@@ -124,6 +124,7 @@ public:
     fprintf(file, "#define %s_h\n\n", toLowerCase(baseName));
     fprintf(file, "#include \"chunk.hpp\"\n");
     fprintf(file, "#include \"compiler.hpp\"\n\n");
+    fprintf(file, "#include \"attrset.hpp\"\n\n");
     fprintf(file, "struct ObjFunction;\n\n");
     fprintf(file, "struct ObjCallable;\n\n");
 
@@ -263,7 +264,8 @@ int main(int argc, const char *argv[]) {
   const char *array[] = {
     "Type        : Token name, bool functionFlag, bool noneFlag, int numDim, int index, Declaration* declaration",
     "UIAttribute : Token name, Expr* handler, int _uiIndex, int _index",
-    "UIDirective : int childDir, int attCount, UIAttributeExpr** attributes, UIDirectiveExpr* previous, UIDirectiveExpr* lastChild, int viewIndex, bool childrenViewFlag, int _layoutIndexes[NUM_DIRS], long _eventFlags",
+    "UIDirective : int childDir, int attCount, UIAttributeExpr** attributes, UIDirectiveExpr* previous, UIDirectiveExpr* lastChild, int viewIndex, bool childrenViewFlag, int _layoutIndexes[NUM_DIRS], long _eventFlags, AttrSet _attrSet",
+    "Iterator    : Token name, Token op, Expr* value",
     "Assign      : Expr* varExp, Token op, Expr* value",
     "Binary      : Expr* left, Token op, Expr* right",
     "Cast        : Expr* typeExpr, Expr* expr, Type _srcType, Type _dstType",
@@ -275,7 +277,7 @@ int main(int argc, const char *argv[]) {
     "Function    : Type returnType, Token name, int arity, DeclarationExpr** params, GroupingExpr* body, Expr* ui, ObjFunction _function, Declaration* _declaration",
     "Get         : Expr* object, Token name, int index, Declaration* _declaration",
     "If          : Expr* condition, Expr* thenBranch, Expr* elseBranch",
-    "List        : int count, Expr** expressions",
+    "List        : Expr* expressions",
     "Literal     : ValueType type, As as",
     "Logical     : Expr* left, Token op, Expr* right",
     "Reference   : Token name, Type returnType, Declaration* _declaration",
