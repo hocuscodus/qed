@@ -80,6 +80,8 @@ void Scanner::reset(const char *source) {
 }
 
 Token Scanner::scanToken() {
+  start = current;
+
   Token token = skipWhitespace();
 
   switch (token.type) {
@@ -101,7 +103,7 @@ Token Scanner::scanToken() {
 
   switch (c) {
     case '(':
-      return makeToken(TOKEN_LEFT_PAREN);
+      return makeToken(token.length ? TOKEN_LEFT_PAREN : TOKEN_CALL);
 
     case ')':
       return makeToken(TOKEN_RIGHT_PAREN);

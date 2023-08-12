@@ -343,7 +343,7 @@ Expr *LogicalExpr::toCps(K k) {
       ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cvar), UNKNOWN_TYPE);
 
       rightEqual = compareExpr(this->right, right);
-      return new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), right, NULL);
+      return new CallExpr(false, callee, buildToken(TOKEN_CALL, "("), right, NULL);
     });
 
     if (rightEqual) {
@@ -355,7 +355,7 @@ Expr *LogicalExpr::toCps(K k) {
       Expr *left2 = getCompareExpr(this->left, left);
       Expr *notExpr = this->op.type == TOKEN_OR_OR ? new UnaryExpr(buildToken(TOKEN_BANG, "!"), left2) : left2;
       ReferenceExpr *callee2 = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cvar), UNKNOWN_TYPE);
-      Expr *elseExpr = newExpr(new CallExpr(false, callee2, buildToken(TOKEN_LEFT_PAREN, "("), new LiteralExpr(VAL_BOOL, {.boolean = false}), NULL));
+      Expr *elseExpr = newExpr(new CallExpr(false, callee2, buildToken(TOKEN_CALL, "("), new LiteralExpr(VAL_BOOL, {.boolean = false}), NULL));
       std::function<Expr*()> bodyFn = [notExpr, right, elseExpr]() -> Expr* {
         return new IfExpr(notExpr, right, elseExpr);
       };
@@ -364,7 +364,7 @@ Expr *LogicalExpr::toCps(K k) {
       Type contType = {VAL_OBJ, &((FunctionExpr *) cast->body)->_function.obj};
       Expr *wrapperLambda = makeWrapperLambda(param, contType, bodyFn);
 
-      return newExpr(new CallExpr(false, wrapperLambda, buildToken(TOKEN_LEFT_PAREN, "("), cast, NULL));
+      return newExpr(new CallExpr(false, wrapperLambda, buildToken(TOKEN_CALL, "("), cast, NULL));
     }
   });
 
@@ -445,7 +445,7 @@ Expr *WhileExpr::toCps(K k) {
         newSymbol = genSymbol("while");
         ReferenceExpr *arg = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, newSymbol), UNKNOWN_TYPE);
         ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "post_"), UNKNOWN_TYPE);
-        CallExpr *call = new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), arg, NULL);
+        CallExpr *call = new CallExpr(false, callee, buildToken(TOKEN_CALL, "("), arg, NULL);
 
         addExpr(&body, call, buildToken(TOKEN_SEPARATOR, ";"));
         return new IfExpr(condition, body, k(NULL));
@@ -462,7 +462,7 @@ Expr *WhileExpr::toCps(K k) {
       return cpsExpr;
     });
 
-    return newExpr(new CallExpr(false, wrapperLambda, buildToken(TOKEN_LEFT_PAREN, "("), NULL, NULL));
+    return newExpr(new CallExpr(false, wrapperLambda, buildToken(TOKEN_CALL, "("), NULL, NULL));
   }
 }
 
@@ -493,10 +493,10 @@ Expr *IfExpr::toCps(K k) {
       ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cvar), UNKNOWN_TYPE);
 
       bothEqual &= compareExpr(this->thenBranch, thenBranch);
-      return *addExpr(&thenBranch, new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), NULL, NULL), buildToken(TOKEN_SEPARATOR, ";"));
+      return *addExpr(&thenBranch, new CallExpr(false, callee, buildToken(TOKEN_CALL, "("), NULL, NULL), buildToken(TOKEN_SEPARATOR, ";"));
     });
     ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cvar), UNKNOWN_TYPE);
-    CallExpr *elseExpr = new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), NULL, NULL);
+    CallExpr *elseExpr = new CallExpr(false, callee, buildToken(TOKEN_CALL, "("), NULL, NULL);
     Expr *elseBranch = this->elseBranch ? this->elseBranch->toCps([this, &bothEqual, elseExpr](Expr *elseBranch) {
 
       bothEqual &= compareExpr(this->elseBranch, elseBranch);
@@ -517,7 +517,7 @@ Expr *IfExpr::toCps(K k) {
       Type contType = {VAL_OBJ, &((FunctionExpr *) cast->body)->_function.obj};
       Expr *wrapperLambda = makeWrapperLambda(param, contType, bodyFn);
 
-      return newExpr(new CallExpr(false, wrapperLambda, buildToken(TOKEN_LEFT_PAREN, "("), cast, NULL));
+      return newExpr(new CallExpr(false, wrapperLambda, buildToken(TOKEN_CALL, "("), cast, NULL));
     }
   });
 
@@ -529,12 +529,12 @@ Expr *IfExpr::toCps(K k) {
     K newK = [this, cvar](Expr *ifResult) {
       ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cvar), VOID_TYPE);
 
-      return new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), ifResult, NULL);
+      return new CallExpr(false, callee, buildToken(TOKEN_CALL, "("), ifResult, NULL);
     };
     DeclarationExpr *param = new DeclarationExpr(NULL, buildToken(TOKEN_IDENTIFIER, cvar), NULL);
     Expr *ifExpr = new IfExpr(cond, this->thenBranch->toCps(newK), this->elseBranch->toCps(newK));
 
-    return new CallExpr(false, makeWrapperLambda(param, paramType, ifExpr), buildToken(TOKEN_LEFT_PAREN, "("), cast, NULL);
+    return new CallExpr(false, makeWrapperLambda(param, paramType, ifExpr), buildToken(TOKEN_CALL, "("), cast, NULL);
   });*/
 //  return k(this);
 /*
@@ -570,7 +570,7 @@ Expr *TernaryExpr::toCps(K k) {
       ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cvar), UNKNOWN_TYPE);
 
       bothEqual &= compareExpr(testExpr, ifResult);
-      return new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), ifResult, NULL);
+      return new CallExpr(false, callee, buildToken(TOKEN_CALL, "("), ifResult, NULL);
     };
 
     Expr *middle = (testExpr = this->middle)->toCps(newK);
@@ -590,7 +590,7 @@ Expr *TernaryExpr::toCps(K k) {
       Type contType = {VAL_OBJ, &((FunctionExpr *) cast->body)->_function.obj};
       Expr *wrapperLambda = makeWrapperLambda(param, contType, bodyFn);
 
-      return newExpr(new CallExpr(false, wrapperLambda, buildToken(TOKEN_LEFT_PAREN, "("), cast, NULL));
+      return newExpr(new CallExpr(false, wrapperLambda, buildToken(TOKEN_CALL, "("), cast, NULL));
     }
   });
 

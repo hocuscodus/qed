@@ -476,6 +476,7 @@ Expr *Parser::grouping() {
 
   switch (op.type) {
   case TOKEN_LEFT_PAREN:
+  case TOKEN_CALL:
     closingChar = ')';
     endGroupType = TOKEN_RIGHT_PAREN;
     break;
@@ -491,7 +492,7 @@ Expr *Parser::grouping() {
   consume(endGroupType, "Expect '%c' after expression.", closingChar);
   group->_compiler.popScope();
 
-  if (op.type == TOKEN_LEFT_PAREN && group->body && isGroup(group->body, TOKEN_SEPARATOR)) {
+  if (op.type != TOKEN_LEFT_BRACE && group->body && isGroup(group->body, TOKEN_SEPARATOR)) {
     getCurrent()->hasSuperCalls |= group->_compiler.hasSuperCalls;
     return new CallExpr(false, new GroupingExpr(op, new FunctionExpr(VOID_TYPE, buildToken(TOKEN_IDENTIFIER, group->_compiler.hasSuperCalls ? "L" : "l"), 0, NULL, group, NULL)), op, NULL, NULL);
   }
@@ -710,64 +711,64 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
   if (exp == NULL)
     error("Expect expression.");
 
-  if (exp->type == EXPR_REFERENCE) {
-    if (check(TOKEN_IDENTIFIER) && (checkNext(TOKEN_EQUAL) || checkNext(TOKEN_LEFT_PAREN) || checkNext(TOKEN_SEPARATOR))) {
-      consume(TOKEN_IDENTIFIER, "Expect name identifier after type.");
+  if (exp->type == EXPR_REFERENCE &&//) {
+    /*if (*/check(TOKEN_IDENTIFIER) && (checkNext(TOKEN_EQUAL) || checkNext(TOKEN_CALL) || checkNext(TOKEN_SEPARATOR))) {
+    consume(TOKEN_IDENTIFIER, "Expect name identifier after type.");
 
-      Token name = previous;
+    Token name = previous;
 
-      if(match(TOKEN_LEFT_PAREN)) {
-        Type returnType = exp->resolve(*this);
-        GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL);
-        FunctionExpr *functionExpr = new FunctionExpr(returnType, name, 0, NULL, group, NULL);
+    if(match(TOKEN_CALL)) {
+      Type returnType = exp->resolve(*this);
+      GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL);
+      FunctionExpr *functionExpr = new FunctionExpr(returnType, name, 0, NULL, group, NULL);
 
-        functionExpr->_function.expr = functionExpr;
-        group->_compiler.pushScope(&functionExpr->_function, this);
-        passSeparator();
+      functionExpr->_function.expr = functionExpr;
+      group->_compiler.pushScope(&functionExpr->_function, this);
+      passSeparator();
 
-        if (!check(TOKEN_RIGHT_PAREN))
-          do {
-            DeclarationExpr *param = parseVariable(endGroupTypes, "Expect parameter name.");
-            Type paramType = param->typeExpr->resolve(*this);
+      if (!check(TOKEN_RIGHT_PAREN))
+        do {
+          DeclarationExpr *param = parseVariable(endGroupTypes, "Expect parameter name.");
+          Type paramType = param->typeExpr->resolve(*this);
 
-            if (!IS_UNKNOWN(paramType)) {
-              functionExpr->params = RESIZE_ARRAY(DeclarationExpr *, functionExpr->params, functionExpr->arity, functionExpr->arity + 1);
-              functionExpr->params[functionExpr->arity++] = param;
-              param->_declaration = group->_compiler.addDeclaration(paramType, param->name, NULL, false, this);
-            }
-            else
-              error("Parameter %d not typed correctly", functionExpr->arity + 1);
-          } while (match(TOKEN_COMMA));
+          if (!IS_UNKNOWN(paramType)) {
+            functionExpr->params = RESIZE_ARRAY(DeclarationExpr *, functionExpr->params, functionExpr->arity, functionExpr->arity + 1);
+            functionExpr->params[functionExpr->arity++] = param;
+            param->_declaration = group->_compiler.addDeclaration(paramType, param->name, NULL, false, this);
+          }
+          else
+            error("Parameter %d not typed correctly", functionExpr->arity + 1);
+        } while (match(TOKEN_COMMA));
 
-        consume(TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
+      consume(TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
 
-        bool parenFlag = match(TOKEN_LEFT_PAREN);
-        TokenType endGroupType = parenFlag ? TOKEN_RIGHT_PAREN : TOKEN_RIGHT_BRACE;
+      bool parenFlag = match(TOKEN_LEFT_PAREN) || match(TOKEN_CALL);
+      TokenType endGroupType = parenFlag ? TOKEN_RIGHT_PAREN : TOKEN_RIGHT_BRACE;
 
-        if (!parenFlag)
-          consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.");
+      if (!parenFlag)
+        consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.");
 
-        group->name = previous;
-        functionExpr->_declaration = getCurrent()->enclosing->checkDeclaration(OBJ_TYPE(&functionExpr->_function), name, &functionExpr->_function, this);
-        expList(group, endGroupType);
+      group->name = previous;
+      functionExpr->_declaration = getCurrent()->enclosing->checkDeclaration(OBJ_TYPE(&functionExpr->_function), name, &functionExpr->_function, this);
+      expList(group, endGroupType);
 
-        if (check(TOKEN_LESS)) {
-          int offset = 0;
-          Point zoneOffsets;
-          std::array<long, NUM_DIRS> arrayDirFlags;
-          ValueStack<ValueStackElement> valueStack;
+      if (check(TOKEN_LESS)) {
+        int offset = 0;
+        Point zoneOffsets;
+        std::array<long, NUM_DIRS> arrayDirFlags;
+        ValueStack<ValueStackElement> valueStack;
 
-          functionExpr->ui = directive(parenFlag ? TOKEN_RIGHT_PAREN : TOKEN_RIGHT_BRACE, NULL);
-          ((UIDirectiveExpr *) functionExpr->ui)->_attrSet.init(&offset, zoneOffsets, arrayDirFlags, valueStack, (UIDirectiveExpr *) functionExpr->ui, 0, &functionExpr->_function);
-        }
-
-        consume(endGroupType, "Expect '%c' after expression.", parenFlag ? ')' : '}');
-        group->_compiler.popScope();
-        return functionExpr;
+        functionExpr->ui = directive(parenFlag ? TOKEN_RIGHT_PAREN : TOKEN_RIGHT_BRACE, NULL);
+        ((UIDirectiveExpr *) functionExpr->ui)->_attrSet.init(&offset, zoneOffsets, arrayDirFlags, valueStack, (UIDirectiveExpr *) functionExpr->ui, 0, &functionExpr->_function);
       }
-      else
-        return declareVariable(exp, endGroupTypes);
+
+      consume(endGroupType, "Expect '%c' after expression.", parenFlag ? ')' : '}');
+      group->_compiler.popScope();
+      return functionExpr;
     }
+    else
+      return declareVariable(exp, endGroupTypes);
+//    }
   }
   else {
     Expr *iteratorExprs = NULL;
@@ -808,7 +809,8 @@ Expr *Parser::expressionStatement(TokenType endGroupType) {
 }
 
 Expr *Parser::forStatement(TokenType endGroupType) {
-  consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
+  if (!match(TOKEN_CALL))
+    consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
 
   Expr *initializer = NULL;
 
@@ -845,7 +847,8 @@ Expr *Parser::forStatement(TokenType endGroupType) {
 Expr *Parser::ifStatement(TokenType endGroupType) {
   Token name = previous;
 
-  consume(TOKEN_LEFT_PAREN, "Expect '(' after 'if'.");
+  if (!match(TOKEN_CALL))
+    consume(TOKEN_LEFT_PAREN, "Expect '(' after 'if'.");
 
   TokenType tokens[] = {TOKEN_RIGHT_PAREN, TOKEN_ELSE, TOKEN_EOF};
   Expr *condExp = expression(tokens);
@@ -859,7 +862,8 @@ Expr *Parser::ifStatement(TokenType endGroupType) {
 }
 
 Expr *Parser::whileStatement(TokenType endGroupType) {
-  consume(TOKEN_LEFT_PAREN, "Expect '(' after 'while'.");
+  if (!match(TOKEN_CALL))
+    consume(TOKEN_LEFT_PAREN, "Expect '(' after 'while'.");
 
   TokenType tokens[] = {TOKEN_RIGHT_PAREN, TOKEN_ELSE, TOKEN_EOF};
   Expr *exp = expression(tokens);
@@ -902,12 +906,12 @@ Expr *Parser::returnStatement(TokenType endGroupType) {
     Expr *param = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "handlerFn_"), UNKNOWN_TYPE);
 
     if (value) {
-      CallExpr *call = new CallExpr(false, param, buildToken(TOKEN_LEFT_PAREN, "("), value, NULL);
+      CallExpr *call = new CallExpr(false, param, buildToken(TOKEN_CALL, "("), value, NULL);
 
       param = makeWrapperLambda("lambda_", NULL, UNKNOWN_TYPE, [call]() {return call;});
     }
 
-    value = new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), param, NULL);
+    value = new CallExpr(false, callee, buildToken(TOKEN_CALL, "("), param, NULL);
   }
 
   return new ReturnExpr(keyword, getCurrent()->function->isUserClass(), value);

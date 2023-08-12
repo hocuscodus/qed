@@ -216,7 +216,7 @@ static const char *getGroupName(UIDirectiveExpr *expr, int dir);
 Type acceptGroupingExprUnits(GroupingExpr *expr, Parser &parser) {
   Type bodyType = expr->body ? expr->body->resolve(parser) : VOID_TYPE;
 
-  return expr->name.type == TOKEN_LEFT_PAREN ? bodyType : VOID_TYPE;
+  return expr->name.type != TOKEN_LEFT_BRACE ? bodyType : VOID_TYPE;
 }
 
 Type IteratorExpr::resolve(Parser &parser) {
@@ -638,7 +638,7 @@ Type GetExpr::resolve(Parser &parser) {
 
 Type GroupingExpr::resolve(Parser &parser) {
   TokenType type = name.type;
-  bool parenFlag = type == TOKEN_LEFT_PAREN;
+  bool parenFlag = type == TOKEN_LEFT_PAREN || type == TOKEN_CALL;
   bool groupFlag = type == TOKEN_LEFT_BRACE || parenFlag;
   Type parenType;
 

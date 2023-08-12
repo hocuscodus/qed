@@ -35,7 +35,7 @@ static ObjFunction *getFunction(Expr *callee) {
     case EXPR_GROUPING: {
         GroupingExpr *group = (GroupingExpr *) callee;
 
-        if(group->name.type == TOKEN_LEFT_PAREN) {
+        if(group->name.type != TOKEN_LEFT_BRACE) {
           Expr *lastExpr = *getLastBodyExpr(&group->body, TOKEN_SEPARATOR);
 
           return lastExpr ? getFunction(lastExpr) : NULL;
@@ -195,7 +195,7 @@ void GetExpr::toCode(Parser &parser, ObjFunction *function) {
 void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
   _compiler.pushScope();
 
-  if (name.type == TOKEN_LEFT_PAREN) {
+  if (name.type != TOKEN_LEFT_BRACE) {
     str() << "(";
     body->toCode(parser, function);
     str() << ")";

@@ -11,7 +11,8 @@
 
 #define KEYS_DEF \
     /* Single-character tokens. */ \
-    KEY_DEF( TOKEN_LEFT_PAREN, &Parser::grouping, &Parser::call, PREC_CALL ),  \
+    KEY_DEF( TOKEN_LEFT_PAREN, &Parser::grouping, NULL, PREC_NONE ),  \
+    KEY_DEF( TOKEN_CALL, &Parser::grouping, &Parser::call, PREC_CALL ),  \
     KEY_DEF( TOKEN_RIGHT_PAREN, NULL, NULL, PREC_NONE ),  \
     KEY_DEF( TOKEN_LEFT_BRACE, &Parser::grouping, NULL, PREC_NONE ),  \
     KEY_DEF( TOKEN_RIGHT_BRACE, NULL, NULL, PREC_NONE ),  \
