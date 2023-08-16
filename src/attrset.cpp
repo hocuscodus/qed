@@ -80,27 +80,27 @@ Attr::Attr(int flags, void *returnType, int localIndex) {
   this->localIndex = localIndex;
 }
 
-void AttrSet::init(int *offset, Point &zoneOffsets, std::array<long, NUM_DIRS> &arrayDirFlags, ValueStack<ValueStackElement> &valueStack, UIDirectiveExpr *listExpr, int parentRefreshFlags, ObjFunction *function) {
+void AttrSet::init(int *offset, Point &zoneOffsets, std::array<long, NUM_DIRS> &arrayDirFlags, ValueStack<ValueStackElement> &valueStack, UIDirectiveExpr *directiveExpr, int parentRefreshFlags, ObjFunction *function) {
 //  / *arrayDirs = * /inputStream.read();
   int childDir = 0;//inputStream.read();
-  int numAttrs = listExpr->attCount;
+  int numAttrs = directiveExpr->attCount;
   std::string str = "";
 
   refreshFlags = 0;
 
   if (numAttrs != 0) {
     for (int index = 0; index < numAttrs; index++) {
-      Token prop = listExpr->attributes[index]->name;
+      Token prop = directiveExpr->attributes[index]->name;
       std::string property = prop.getString();
       int dimFlags = 0;//inputStream.read();
-      ExprType *returnType;// = /*inputStream.read() != 0 ? */listExpr->attributes[index]->type;// : NULL;
+      ExprType *returnType;// = /*inputStream.read() != 0 ? */directiveExpr->attributes[index]->type;// : NULL;
 
 //      str = str + " @" + prop + "(" + handler->name + ")";
-      initAttr(property, dimFlags, returnType, listExpr->attributes[index]->_index);
+      initAttr(property, dimFlags, returnType, directiveExpr->attributes[index]->_index);
       refreshFlags |= dimFlags; // should not take into account useless attributes (make it two-pass in compiler)
 
       if (keys.find(property) != keys.end())
-        valueStack.push(property, {dimFlags, false, listExpr->attributes[index]->_index});
+        valueStack.push(property, {dimFlags, false, directiveExpr->attributes[index]->_index});
     }
 
     refreshFlags ^= refreshFlags & parentRefreshFlags; // remove parentRefreshFlags part
@@ -108,8 +108,8 @@ void AttrSet::init(int *offset, Point &zoneOffsets, std::array<long, NUM_DIRS> &
 
   int parseFlags2 = 0;
 
-  if (listExpr->lastChild) {
-    children = new ChildAttrSets(offset, zoneOffsets, childDir, arrayDirFlags, valueStack, listExpr, refreshFlags | parentRefreshFlags, function);
+  if (directiveExpr->lastChild) {
+    children = new ChildAttrSets(offset, zoneOffsets, childDir, arrayDirFlags, valueStack, directiveExpr, refreshFlags | parentRefreshFlags, function);
     parseFlags = children->parseFlags;
     areaParseFlags = children->areaParseFlags;
   }
@@ -522,7 +522,7 @@ class AttrSet {
 }
 #endif
 ChildAttrSets::ChildAttrSets(int *offset, Point &zoneOffsets, int childDir, std::array<long, NUM_DIRS> &arrayDirFlags,
-                             ValueStack<ValueStackElement> &valueStack, UIDirectiveExpr *listExpr, int parentRefreshFlags,
+                             ValueStack<ValueStackElement> &valueStack, UIDirectiveExpr *directiveExpr, int parentRefreshFlags,
                              ObjFunction *function) : std::vector<AttrSet *>() {
   Point maxZoneOffsets;
   bool zBoolFlags[NUM_DIRS]{true};
@@ -532,10 +532,10 @@ ChildAttrSets::ChildAttrSets(int *offset, Point &zoneOffsets, int childDir, std:
   areaParseFlags = 0;
   numAreas = 0;
 
-  for (int index = 0; index < (listExpr->lastChild ? 1 : 0); index++) {
+  for (int index = 0; index < (directiveExpr->lastChild ? 1 : 0); index++) {
     AttrSet *attrSet = new AttrSet();
 
-    attrSet->init(offset, zoneOffsets, arrayDirFlags, valueStack, NULL/*listExpr->children[index]*/, parentRefreshFlags, function);
+    attrSet->init(offset, zoneOffsets, arrayDirFlags, valueStack, NULL/*directiveExpr->children[index]*/, parentRefreshFlags, function);
 
     if (attrSet->areaParseFlags != 0) {
       push_back(attrSet);

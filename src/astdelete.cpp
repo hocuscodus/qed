@@ -48,9 +48,6 @@ void IfExpr::cleanExprs() {
 void ArrayExpr::cleanExprs() {
 }
 
-void ListExpr::cleanExprs() {
-}
-
 void LiteralExpr::cleanExprs() {
 }
 

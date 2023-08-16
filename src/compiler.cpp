@@ -389,10 +389,6 @@ bool isGroup(Expr *exp, TokenType tokenType) {
   return exp->type == EXPR_BINARY && ((BinaryExpr *) exp)->op.type == tokenType;
 }
 
-bool isIteratorList(Expr *exp) {
-  return !exp || exp->type == EXPR_ITERATOR || isGroup(exp, TOKEN_COMMA);
-}
-
 Expr **addExpr(Expr **body, Expr *exp, Token op) {
   if (!*body)
     *body = exp;
@@ -403,13 +399,6 @@ Expr **addExpr(Expr **body, Expr *exp, Token op) {
   }
 
   return body;
-}
-
-Expr **addIteratorExpr(Expr **body, Expr *exp, Token op) {
-  if (!isIteratorList(exp))
-    exp = new IteratorExpr(buildToken(TOKEN_IDENTIFIER, ""), op, exp);
-
-  return addExpr(body, exp, buildToken(TOKEN_COMMA, ","));
 }
 
 Expr *removeExpr(Expr *body, TokenType tokenType) {

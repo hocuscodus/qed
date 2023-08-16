@@ -90,6 +90,11 @@ const char *getHandlerType(Type type) {
 }
 
 Expr *IteratorExpr::toCps(K k) {
+  Expr *iteratorExpr = this->value->toCps([this, k](Expr *value) {
+    return compareExpr(this->value, value) ? this : k(newExpr(new IteratorExpr(this->name, this->op, value)));
+  });
+
+  return this == iteratorExpr ? k(this) : iteratorExpr;
 }
 
 Expr *AssignExpr::toCps(K k) {
@@ -319,16 +324,6 @@ Expr *ArrayExpr::toCps(K k) {
   }
   fprintf(stderr, "]");
   return this;
-}
-
-Expr *ListExpr::toCps(K k) {
-  Expr *expressions = this->expressions 
-    ? this->expressions->toCps([this, k](Expr *expressions) {
-        return expressions;
-      })
-    : NULL;
-
-  return k(compareExpr(this->expressions, expressions) ? this : (ListExpr *) newExpr(new ListExpr(expressions)));
 }
 
 Expr *LiteralExpr::toCps(K k) {

@@ -116,10 +116,6 @@ IfExpr::IfExpr(Expr* condition, Expr* thenBranch, Expr* elseBranch) : Expr(EXPR_
   this->elseBranch = elseBranch;
 }
 
-ListExpr::ListExpr(Expr* expressions) : Expr(EXPR_LIST) {
-  this->expressions = expressions;
-}
-
 LiteralExpr::LiteralExpr(ValueType type, As as) : Expr(EXPR_LITERAL) {
   this->type = type;
   this->as = as;

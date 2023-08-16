@@ -33,7 +33,6 @@ typedef enum {
   EXPR_FUNCTION,
   EXPR_GET,
   EXPR_IF,
-  EXPR_LIST,
   EXPR_LITERAL,
   EXPR_LOGICAL,
   EXPR_REFERENCE,
@@ -271,17 +270,6 @@ struct IfExpr : public Expr {
   Expr* elseBranch;
 
   IfExpr(Expr* condition, Expr* thenBranch, Expr* elseBranch);
-  void cleanExprs();
-  void astPrint();
-  Expr *toCps(K k);
-  Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
-};
-
-struct ListExpr : public Expr {
-  Expr* expressions;
-
-  ListExpr(Expr* expressions);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);

@@ -237,15 +237,6 @@ void ArrayExpr::astPrint() {
   fprintf(stderr, "]");
 }
 
-void ListExpr::astPrint() {
-  fprintf(stderr, "(list ");
-
-  if (expressions)
-    expressions->astPrint();
-
-  fprintf(stderr, ")");
-}
-
 void LiteralExpr::astPrint() {
   switch (type) {
     case VAL_BOOL:

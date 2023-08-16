@@ -220,6 +220,7 @@ Type acceptGroupingExprUnits(GroupingExpr *expr, Parser &parser) {
 }
 
 Type IteratorExpr::resolve(Parser &parser) {
+  return value->resolve(parser);
 }
 
 Type AssignExpr::resolve(Parser &parser) {
@@ -636,8 +637,27 @@ Type GetExpr::resolve(Parser &parser) {
   return VOID_TYPE;
 }
 
+static Type resolveArrayExpr(Expr *expr, Parser &parser) {
+  Expr *nextExpr = cdr(expr, TOKEN_COMMA);
+
+  if (nextExpr) {
+    if (IS_VOID(car(expr, TOKEN_COMMA)->resolve(parser)))
+      parser.error("Cannot have a void expression as array dimension");
+
+    Type subType = resolveArrayExpr(nextExpr, parser);
+
+    return IS_VOID(subType) ? VOID_TYPE : OBJ_TYPE(newArray(subType));
+  }
+  else
+    return expr->resolve(parser);
+}
+
 Type GroupingExpr::resolve(Parser &parser) {
   TokenType type = name.type;
+
+  if (type == TOKEN_COMMA)
+    return resolveArrayExpr(body, parser);
+
   bool parenFlag = type == TOKEN_LEFT_PAREN || type == TOKEN_CALL;
   bool groupFlag = type == TOKEN_LEFT_BRACE || parenFlag;
   Type parenType;
@@ -687,41 +707,41 @@ Type ArrayExpr::resolve(Parser &parser) {
 //  function = compiler.function;
   return type;
 }
+/*
+    Expr *iteratorExprs = NULL;
 
-static Type resolveListExpr(Expr *expr, Parser &parser) {
-  Type type = car(expr, TOKEN_COMMA)->resolve(parser);
-  Expr *nextExpr = cdr(expr, TOKEN_COMMA);
+    while (!check(endGroupTypes) && !check(TOKEN_EOF)) {
+//      if (isIteratorList(exp))
+      for (Expr *expr = exp; expr; expr = cdr(expr, TOKEN_COMMA))
+        if (expr->type == EXPR_ITERATOR) {
+          IteratorExpr *iteratorExpr = (IteratorExpr *) car(expr, TOKEN_COMMA);
+          // add expr with dimension and iterator name
+        }
+        else
+          ; // add expr with default dimensions 0 and generated iterator name
+  //      addIteratorExpr(&iteratorExprs, exp, buildToken(TOKEN_ITERATOR, "::"));
+//      else
+//        ; // add expr with default dimensions 0 and generated iterator name
+//      addIteratorExpr(&iteratorExprs, exp, buildToken(TOKEN_ITERATOR, "::"));
 
-  if (nextExpr) {
-    if (IS_VOID(type))
-      parser.error("Cannot have a void expression as array dimension");
+      exp = parsePrecedence((Precedence)(PREC_NONE + 1));
 
-    Type subType = resolveListExpr(nextExpr, parser);
-
-    return IS_VOID(subType) ? VOID_TYPE : OBJ_TYPE(newArray(subType));
-  }
-  else
-    return type;
-}
-
-Type ListExpr::resolve(Parser &parser) {
-  return resolveListExpr(expressions, parser);/*
-  Expr *nextExpr;
-
-  for (Expr *expr = this->expressions; expr; expr = nextExpr) {
-    Type type = car(expr, TOKEN_COMMA)->resolve(parser);
-
-    nextExpr = cdr(expr, TOKEN_COMMA);
-
-    if (nextExpr) {
-      if (IS_VOID(type))
-        parser.error("Cannot have a void expression as array dimension");
+      if (!exp)
+        error("Expect expression.");
     }
-    else
-      return type;
-  }*/
-}
 
+    if (isIteratorList(exp))
+      error("Cannot define an iterator list without a body expression.");
+
+    if (iteratorExprs) {
+      GroupingExpr *callee = makeWrapperLambda("L", NULL, UNKNOWN_TYPE, [iteratorExprs]() {return iteratorExprs;});
+
+      exp = new CallExpr(true, callee, buildToken(TOKEN_CALL, "("), NULL, NULL);
+//      exp = new GroupExpr(*addExpr(&iteratorExprs, exp, buildToken(TOKEN_COMMA, ",")));
+    }
+
+    return exp;
+*/
 Type LiteralExpr::resolve(Parser &parser) {
   if (type == VAL_OBJ)
     return stringType;

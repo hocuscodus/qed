@@ -277,7 +277,6 @@ int main(int argc, const char *argv[]) {
     "Function    : Type returnType, Token name, int arity, DeclarationExpr** params, GroupingExpr* body, Expr* ui, ObjFunction _function, Declaration* _declaration",
     "Get         : Expr* object, Token name, int index, Declaration* _declaration",
     "If          : Expr* condition, Expr* thenBranch, Expr* elseBranch",
-    "List        : Expr* expressions",
     "Literal     : ValueType type, As as",
     "Logical     : Expr* left, Token op, Expr* right",
     "Reference   : Token name, Type returnType, Declaration* _declaration",
