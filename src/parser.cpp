@@ -320,6 +320,17 @@ Expr *Parser::suffix(Expr *left) {
     case TOKEN_MINUS_MINUS:
       return new AssignExpr((ReferenceExpr *) left, op, NULL);
 
+    case TOKEN_PERCENT:
+      if (getExpRule(current.type)->prefix) {
+        Expr *right = parsePrecedence((Precedence)(getExpRule(TOKEN_PERCENT)->precedence + 1));
+
+        if (right != NULL)
+          return new BinaryExpr(left, op, right);
+        else
+          error("Expect expression.");
+      }
+      // no break statement, intended
+
     default:
       return new UnaryExpr(op, left);
   }
@@ -771,20 +782,19 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
 //    }
   }
   else {
-    Expr *iteratorExprs = NULL;
-
     while (!check(endGroupTypes) && !check(TOKEN_EOF)) {
-      addExpr(&iteratorExprs, exp, buildToken(TOKEN_COMMA, ","));
-      exp = parsePrecedence((Precedence)(PREC_NONE + 1));
+      Expr *elementExp = parsePrecedence((Precedence)(PREC_NONE + 1));
 
-      if (!exp)
+      if (!elementExp)
         error("Expect expression.");
+
+      addExpr(&exp, elementExp, buildToken(TOKEN_COMMA, ","));
     }
 
     if ((*getLastBodyExpr(&exp, TOKEN_COMMA))->type == EXPR_ITERATOR)
       error("Cannot define an iterator list without a body expression.");
 
-    return iteratorExprs ? new GroupingExpr(buildToken(TOKEN_COMMA, ","), *addExpr(&iteratorExprs, exp, buildToken(TOKEN_COMMA, ","))) : exp;
+    return exp;
   }
 }
 

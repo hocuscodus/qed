@@ -213,6 +213,21 @@ static void insertTabs() {
 
 static const char *getGroupName(UIDirectiveExpr *expr, int dir);
 
+static Type resolveArrayExpr(Expr *expr, Parser &parser) {
+  Expr *nextExpr = cdr(expr, TOKEN_COMMA);
+
+  if (nextExpr) {
+    if (IS_VOID(car(expr, TOKEN_COMMA)->resolve(parser)))
+      parser.error("Cannot have a void expression as array dimension");
+
+    Type subType = resolveArrayExpr(nextExpr, parser);
+
+    return IS_VOID(subType) ? VOID_TYPE : OBJ_TYPE(newArray(subType));
+  }
+  else
+    return expr->resolve(parser);
+}
+
 Type acceptGroupingExprUnits(GroupingExpr *expr, Parser &parser) {
   Type bodyType = expr->body ? expr->body->resolve(parser) : VOID_TYPE;
 
@@ -251,6 +266,9 @@ Type UIDirectiveExpr::resolve(Parser &parser) {
 }
 
 Type BinaryExpr::resolve(Parser &parser) {
+  if (op.type == TOKEN_COMMA)
+    return resolveArrayExpr(this, parser);
+
   Type type1 = left->resolve(parser);
 
 //  if (IS_FUNCTION(type1))
@@ -327,6 +345,7 @@ Type BinaryExpr::resolve(Parser &parser) {
   case TOKEN_GREATER_GREATER_GREATER:
   case TOKEN_GREATER_GREATER:
   case TOKEN_LESS_LESS:
+  case TOKEN_PERCENT:
     return INT_TYPE;
 
   case TOKEN_OR_OR:
@@ -637,40 +656,13 @@ Type GetExpr::resolve(Parser &parser) {
   return VOID_TYPE;
 }
 
-static Type resolveArrayExpr(Expr *expr, Parser &parser) {
-  Expr *nextExpr = cdr(expr, TOKEN_COMMA);
-
-  if (nextExpr) {
-    if (IS_VOID(car(expr, TOKEN_COMMA)->resolve(parser)))
-      parser.error("Cannot have a void expression as array dimension");
-
-    Type subType = resolveArrayExpr(nextExpr, parser);
-
-    return IS_VOID(subType) ? VOID_TYPE : OBJ_TYPE(newArray(subType));
-  }
-  else
-    return expr->resolve(parser);
-}
-
 Type GroupingExpr::resolve(Parser &parser) {
-  TokenType type = name.type;
+  _compiler.pushScope();
 
-  if (type == TOKEN_COMMA)
-    return resolveArrayExpr(body, parser);
+  Type type = acceptGroupingExprUnits(this, parser);
 
-  bool parenFlag = type == TOKEN_LEFT_PAREN || type == TOKEN_CALL;
-  bool groupFlag = type == TOKEN_LEFT_BRACE || parenFlag;
-  Type parenType;
-
-  if (groupFlag) {
-    _compiler.pushScope();
-    parenType = acceptGroupingExprUnits(this, parser);
-    _compiler.popScope();
-  }
-  else
-    parenType = acceptGroupingExprUnits(this, parser);
-
-  return parenType;
+  _compiler.popScope();
+  return type;
 }
 
 Type CastExpr::resolve(Parser &parser) {

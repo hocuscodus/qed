@@ -376,7 +376,6 @@ TokenType Scanner::identifierType() {
           case 'n': return checkKeyword(2, 1, "t", TOKEN_TYPE_LITERAL);
         }
       break;
-    case 'm': return checkKeyword(1, 2, "od", TOKEN_MOD);
     case 'n': return checkKeyword(1, 2, "ew", TOKEN_NEW);
     case 'p': return checkKeyword(1, 6, "ackage", TOKEN_PACKAGE);
     case 'r': return checkKeyword(1, 5, "eturn", TOKEN_RETURN);
