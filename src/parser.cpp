@@ -27,11 +27,91 @@ ParseExpRule expRules[] = { KEYS_DEF };
 Obj objString = {OBJ_STRING, NULL};
 Type stringType = {VAL_OBJ, &objString};
 
+GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, Type paramType, std::function<Expr*()> bodyFn);
+
+int getDir(char op) {
+  switch (op) {
+    case '_': return 1;
+    case '|': return 2;
+    case '\\': return 3;
+    default: return 0;
+  }
+}
+
+const char *newString(const char *str) {
+  char *newStr = new char[strlen(str) + 1];
+
+  strcpy(newStr, str);
+  return newStr;
+}
+
 ParseExpRule *getExpRule(TokenType type) {
   return &expRules[type];
 }
 
 static int scopeDepth = -1;
+
+static Expr *createForExpr(Expr *initializer, Expr *condition, Expr *increment, Expr *body) {
+  if (increment != NULL)
+    addExpr(&body, increment, buildToken(TOKEN_SEPARATOR, ";"));
+
+  body = new WhileExpr(condition, body);
+
+  if (initializer != NULL) {
+    body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), new BinaryExpr(initializer, buildToken(TOKEN_SEPARATOR, ";"), body));
+    ((GroupingExpr *) body)->_compiler.groupingExpr = (GroupingExpr *) body;
+  }
+
+  return body;
+}
+
+static Expr *createArrayLoops(int index, Point &dirs, Expr **iteratorExprs, Expr *body) {
+  if (iteratorExprs) {
+    char dimName[16];
+    char varName[256];
+    Expr *expr = car(*iteratorExprs, TOKEN_SEPARATOR);
+    IteratorExpr *iteratorExpr = expr->type == EXPR_ITERATOR ? (IteratorExpr *) expr : NULL;
+
+    sprintf(dimName, "_d%d", index);
+    sprintf(varName, iteratorExpr && iteratorExpr->name.length ? iteratorExpr->name.getString().c_str() : "_x%d", index);
+
+    if (iteratorExpr) {
+      int dir = getDir(iteratorExpr->op.start[1]);
+
+      for (int ndx = 0; ndx < NUM_DIRS; ndx++)
+        dirs[ndx] |= !!(dir & (1 << ndx)) << index;
+
+      expr = iteratorExpr->value;
+      delete iteratorExpr;
+    }
+
+    expr = new DeclarationExpr(new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "var"), UNKNOWN_TYPE), buildToken(TOKEN_IDENTIFIER, newString(dimName)), expr);
+
+    if (isGroup(*iteratorExprs, TOKEN_SEPARATOR))
+      ((BinaryExpr *) *iteratorExprs)->left = expr;
+    else
+      *iteratorExprs = expr;
+
+    Expr *initializer = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "int"), INT_TYPE);
+    Expr *condition = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, newString(varName)), UNKNOWN_TYPE);
+    Expr *increment = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, newString(varName)), UNKNOWN_TYPE);
+
+    initializer = new DeclarationExpr(initializer, buildToken(TOKEN_IDENTIFIER, newString(varName)), new LiteralExpr(VAL_INT, {.integer = 0}));
+    condition = new LogicalExpr(condition, buildToken(TOKEN_LESS, "<"), new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "sizes[index]"), UNKNOWN_TYPE));
+    increment = new UnaryExpr(buildToken(TOKEN_PLUS_PLUS, "++"), increment);
+    return createForExpr(initializer, condition, increment, createArrayLoops(index + 1, dirs, cdrAddress(*iteratorExprs, TOKEN_SEPARATOR), body));
+  }
+  else
+    return body;
+}
+
+static Expr *createArrayExpr(Expr *iteratorExprs, Expr *body) {
+  Point dirs{};
+  Expr *arrayExpr = *addExpr(&iteratorExprs, createArrayLoops(0, dirs, &iteratorExprs, body), buildToken(TOKEN_SEPARATOR, ";"));
+
+  arrayExpr = makeWrapperLambda("L", NULL, UNKNOWN_TYPE, [arrayExpr]() {return arrayExpr;});
+  return new CallExpr(false, arrayExpr, buildToken(TOKEN_LEFT_PAREN, "("), NULL, NULL);
+}
 
 Parser::Parser(Scanner &scanner) : scanner(scanner) {
   hadError = false;
@@ -203,7 +283,7 @@ Expr *Parser::iterator(Expr *left) {
     if (right->type != EXPR_ITERATOR && op.start[1] != ':')
       right = new IteratorExpr(buildToken(TOKEN_IDENTIFIER, ""), op, right);
 
-    return *addExpr(&left, right, buildToken(TOKEN_COMMA, ","));
+    return *addExpr(&left, right, buildToken(TOKEN_SEPARATOR, ","));
   }
 }
 
@@ -782,19 +862,20 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
 //    }
   }
   else {
+    Expr *iteratorExprs = NULL;
+
     while (!check(endGroupTypes) && !check(TOKEN_EOF)) {
-      Expr *elementExp = parsePrecedence((Precedence)(PREC_NONE + 1));
+      addExpr(&iteratorExprs, exp, buildToken(TOKEN_SEPARATOR, ","));
+      exp = parsePrecedence((Precedence)(PREC_NONE + 1));
 
-      if (!elementExp)
+      if (!exp)
         error("Expect expression.");
-
-      addExpr(&exp, elementExp, buildToken(TOKEN_COMMA, ","));
     }
 
-    if ((*getLastBodyExpr(&exp, TOKEN_COMMA))->type == EXPR_ITERATOR)
+    if ((*getLastBodyExpr(&exp, TOKEN_SEPARATOR))->type == EXPR_ITERATOR)
       error("Cannot define an iterator list without a body expression.");
 
-    return exp;
+    return iteratorExprs ? createArrayExpr(iteratorExprs, exp) : exp;
   }
 }
 
@@ -822,11 +903,7 @@ Expr *Parser::forStatement(TokenType endGroupType) {
   if (!match(TOKEN_CALL))
     consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
 
-  Expr *initializer = NULL;
-
-  if (!match(TOKEN_SEPARATOR))
-    initializer = match(TOKEN_VAR) ? varDeclaration(endGroupType) : expressionStatement(endGroupType);
-
+  Expr *initializer = match(TOKEN_SEPARATOR) ? match(TOKEN_VAR) ? varDeclaration(endGroupType) : expressionStatement(endGroupType) : NULL;
   TokenType tokens[] = {TOKEN_SEPARATOR, TOKEN_ELSE, TOKEN_EOF};
   Expr *condition = check(TOKEN_SEPARATOR) ? createBooleanExpr(true) : expression(tokens);
 
@@ -836,22 +913,7 @@ Expr *Parser::forStatement(TokenType endGroupType) {
   Expr *increment = check(TOKEN_RIGHT_PAREN) ? NULL : expression(tokens2);
 
   consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
-
-  Expr *body = statement(endGroupType);
-
-  if (increment != NULL) {
-//    body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), new BinaryExpr(new UnaryExpr(buildToken(TOKEN_PRINT, "print"), body), buildToken(TOKEN_SEPARATOR, ";"), new UnaryExpr(buildToken(TOKEN_PRINT, "print"), increment)));
-    ((GroupingExpr *) body)->_compiler.groupingExpr = (GroupingExpr *) body;
-  }
-
-  body = new WhileExpr(condition, body);
-
-  if (initializer != NULL) {
-    body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), new BinaryExpr(initializer, buildToken(TOKEN_SEPARATOR, ";"), body));
-    ((GroupingExpr *) body)->_compiler.groupingExpr = (GroupingExpr *) body;
-  }
-
-  return body;
+  return createForExpr(initializer, condition, increment, statement(endGroupType));
 }
 
 Expr *Parser::ifStatement(TokenType endGroupType) {
@@ -899,7 +961,6 @@ Expr *Parser::declaration(TokenType endGroupType) {
   return exp;
 }
 
-GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, Type paramType, std::function<Expr*()> bodyFn);
 Expr *Parser::returnStatement(TokenType endGroupType) {
   TokenType tokens[] = {TOKEN_SEPARATOR, endGroupType, TOKEN_ELSE, TOKEN_EOF};
   Token keyword = previous;

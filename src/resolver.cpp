@@ -213,21 +213,6 @@ static void insertTabs() {
 
 static const char *getGroupName(UIDirectiveExpr *expr, int dir);
 
-static Type resolveArrayExpr(Expr *expr, Parser &parser) {
-  Expr *nextExpr = cdr(expr, TOKEN_COMMA);
-
-  if (nextExpr) {
-    if (IS_VOID(car(expr, TOKEN_COMMA)->resolve(parser)))
-      parser.error("Cannot have a void expression as array dimension");
-
-    Type subType = resolveArrayExpr(nextExpr, parser);
-
-    return IS_VOID(subType) ? VOID_TYPE : OBJ_TYPE(newArray(subType));
-  }
-  else
-    return expr->resolve(parser);
-}
-
 Type acceptGroupingExprUnits(GroupingExpr *expr, Parser &parser) {
   Type bodyType = expr->body ? expr->body->resolve(parser) : VOID_TYPE;
 
@@ -266,9 +251,6 @@ Type UIDirectiveExpr::resolve(Parser &parser) {
 }
 
 Type BinaryExpr::resolve(Parser &parser) {
-  if (op.type == TOKEN_COMMA)
-    return resolveArrayExpr(this, parser);
-
   Type type1 = left->resolve(parser);
 
 //  if (IS_FUNCTION(type1))
@@ -704,9 +686,9 @@ Type ArrayExpr::resolve(Parser &parser) {
 
     while (!check(endGroupTypes) && !check(TOKEN_EOF)) {
 //      if (isIteratorList(exp))
-      for (Expr *expr = exp; expr; expr = cdr(expr, TOKEN_COMMA))
+      for (Expr *expr = exp; expr; expr = cdr(expr, TOKEN_SEPARATOR))
         if (expr->type == EXPR_ITERATOR) {
-          IteratorExpr *iteratorExpr = (IteratorExpr *) car(expr, TOKEN_COMMA);
+          IteratorExpr *iteratorExpr = (IteratorExpr *) car(expr, TOKEN_SEPARATOR);
           // add expr with dimension and iterator name
         }
         else
@@ -729,7 +711,7 @@ Type ArrayExpr::resolve(Parser &parser) {
       GroupingExpr *callee = makeWrapperLambda("L", NULL, UNKNOWN_TYPE, [iteratorExprs]() {return iteratorExprs;});
 
       exp = new CallExpr(true, callee, buildToken(TOKEN_CALL, "("), NULL, NULL);
-//      exp = new GroupExpr(*addExpr(&iteratorExprs, exp, buildToken(TOKEN_COMMA, ",")));
+//      exp = new GroupExpr(*addExpr(&iteratorExprs, exp, buildToken(TOKEN_SEPARATOR, ",")));
     }
 
     return exp;

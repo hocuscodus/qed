@@ -68,29 +68,6 @@ static void endBlock() {
     line() << "}\n";
 }
 
-static void dimensionToCode(Expr *dimension, int index, const char *parmString, Parser &parser, ObjFunction *function) {
-  Expr *next = cdr(dimension, TOKEN_COMMA);
-  char newParmString[256] = "";
-
-  if (next) {
-    Expr *expr = car(dimension, TOKEN_COMMA);
-    IteratorExpr *iteratorExpr = expr->type == EXPR_ITERATOR ? (IteratorExpr *) car(dimension, TOKEN_COMMA) : NULL;
-    char varName[256];
-
-    sprintf(varName, iteratorExpr && iteratorExpr->name.length ? iteratorExpr->name.getString().c_str() : "x%d", index);
-    sprintf(newParmString, "%s[%s]", parmString, varName);
-    line() << "for (let " << varName << " = 0; " << varName << " < this.dims[" << index << "]; " << varName << "++) ";
-    startBlock();
-    dimensionToCode(next, index + 1, newParmString, parser, function);
-    endBlock();
-  }
-  else {
-    line() << "this.array" << parmString << " = ";
-    dimension->toCode(parser, function);
-    str() << ";\n";
-  }
-}
-
 void IteratorExpr::toCode(Parser &parser, ObjFunction *function) {
   value->toCode(parser, function);
 }
@@ -130,36 +107,9 @@ void BinaryExpr::toCode(Parser &parser, ObjFunction *function) {
         str() << ";\n";
       break;
     case TOKEN_COMMA:
-      /*if (name.type == TOKEN_COMMA) */{
-        Expr *dimension = this;
-        int numDim = getSize(this, TOKEN_COMMA) - 1;
-
-        str() << "new (function() ";
-        startBlock();
-        line() << "this.size = " << numDim << ";\n";
-        line() << "this.dims = [];\n";
-        line() << "this.array = ";
-
-        for (int index = 0; index < numDim; index++)
-          str() << "[]";
-
-        str() << ";\n\n";
-
-        for (int index = 0; index < numDim; dimension = cdr(dimension, TOKEN_COMMA)) {
-          line() << "this.dims[" << index++ << "] = ";
-          car(dimension, TOKEN_COMMA)->toCode(parser, function);
-          str() << ";\n";
-        }
-
-        str() << "\n";
-        dimensionToCode(this, 0, "", parser, function);
-        endBlock();
-        str() << ")()";
-        return;
-      }
-//      left->toCode(parser, function);
-//      str() << ", ";
-//      right->toCode(parser, function);
+      left->toCode(parser, function);
+      str() << ", ";
+      right->toCode(parser, function);
       break;
     default:
       left->toCode(parser, function);
