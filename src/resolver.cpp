@@ -673,8 +673,7 @@ Type ArrayExpr::resolve(Parser &parser) {
 
 //  compiler.pushScope(newFunction(VOID_TYPE, NULL, 0));
 
-  for (int index = 0; index < count; index++)
-    objArray->elementType = expressions[index]->resolve(parser);
+  objArray->elementType = body ? body->resolve(parser) : UNKNOWN_TYPE;
 
 //  compiler.popScope();
 //  compiler.function->type = type;

@@ -31,7 +31,7 @@ struct Compiler {
 
   ObjFunction *compile(FunctionExpr *expr, Parser *parser);
   void pushScope();
-  void pushScope(ObjFunction *function, Parser *parser);
+  void pushScope(ObjFunction *function);
   void pushScope(GroupingExpr *groupingExpr);
   void popScope();
 

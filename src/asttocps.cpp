@@ -35,7 +35,7 @@ GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, Type p
 
   wrapperFunc->_function.expr = wrapperFunc;
   mainGroup->_compiler.pushScope(mainGroup);
-  group->_compiler.pushScope(&wrapperFunc->_function, NULL);
+  group->_compiler.pushScope(&wrapperFunc->_function);
 
   if (param) {
     params[0] = param;
@@ -317,13 +317,13 @@ Expr *GroupingExpr::toCps(K k) {
 }
 
 Expr *ArrayExpr::toCps(K k) {
-  fprintf(stderr, "[");
-  for (int index = 0; index < count; index++) {
-    if (index) fprintf(stderr, ", ");
-    expressions[index]->toCps(k);
-  }
-  fprintf(stderr, "]");
-  return this;
+  Expr *body = this->body 
+    ? this->body->toCps([this, k](Expr *body) {
+        return body;
+      })
+    : NULL;
+
+  return k(compareExpr(this->body, body) ? this : (ArrayExpr *) newExpr(new ArrayExpr(body)));
 }
 
 Expr *LiteralExpr::toCps(K k) {

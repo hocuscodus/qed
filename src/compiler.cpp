@@ -126,7 +126,7 @@ void Compiler::pushScope() {
   current = this;
 }
 
-void Compiler::pushScope(ObjFunction *function, Parser *parser) {
+void Compiler::pushScope(ObjFunction *function) {
   this->groupingExpr = function->expr->body;
   this->enclosing = current;
   pushScope();
@@ -298,7 +298,7 @@ Type Compiler::resolveReferenceExpr(ReferenceExpr *expr, Parser *parser) {
 
   if (index == -1)
     if ((index = current->resolveUpvalue(&expr->name, parser)) != -1)
-      expr->_declaration = function->upvalues[index].declaration;
+      expr->_declaration = current->function->upvalues[index].declaration;
     else {
       parser->error("Variable '%.*s' must be defined", expr->name.length, expr->name.start);
       expr->_declaration = NULL;

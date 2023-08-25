@@ -270,7 +270,7 @@ int main(int argc, const char *argv[]) {
     "Binary      : Expr* left, Token op, Expr* right",
     "Cast        : Expr* typeExpr, Expr* expr, Type _srcType, Type _dstType",
     "Grouping    : Token name, Expr* body, Compiler _compiler",
-    "Array       : int count, Expr** expressions, ObjFunction* function",
+    "Array       : Expr* body",
     "Call        : bool newFlag, Expr* callee, Token paren, Expr* params, Expr* handler",
     "ArrayElement: Expr* callee, Token bracket, int count, Expr** indexes",
     "Declaration : Expr* typeExpr, Token name, Expr* initExpr, Declaration* _declaration",

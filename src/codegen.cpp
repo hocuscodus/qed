@@ -269,12 +269,8 @@ void IfExpr::toCode(Parser &parser, ObjFunction *function) {
 void ArrayExpr::toCode(Parser &parser, ObjFunction *function) {
   str() << "[";
 
-  for (int index = 0; index < count; index++) {
-    if (index)
-      str() << ", ";
-
-    expressions[index]->toCode(parser, function);
-  }
+  if (body)
+    body->toCode(parser, function);
 
   str() << "]";
 }

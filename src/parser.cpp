@@ -51,18 +51,11 @@ ParseExpRule *getExpRule(TokenType type) {
 
 static int scopeDepth = -1;
 
-static Expr *createForExpr(Expr *initializer, Expr *condition, Expr *increment, Expr *body) {
+static Expr *createForExpr(Expr *condition, Expr *increment, Expr *body) {
   if (increment != NULL)
     addExpr(&body, increment, buildToken(TOKEN_SEPARATOR, ";"));
 
-  body = new WhileExpr(condition, body);
-
-  if (initializer != NULL) {
-    body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), new BinaryExpr(initializer, buildToken(TOKEN_SEPARATOR, ";"), body));
-    ((GroupingExpr *) body)->_compiler.groupingExpr = (GroupingExpr *) body;
-  }
-
-  return body;
+  return new WhileExpr(condition, body);
 }
 
 static Expr *createArrayLoops(int index, Point &dirs, Expr **iteratorExprs, Expr *body) {
@@ -92,14 +85,24 @@ static Expr *createArrayLoops(int index, Point &dirs, Expr **iteratorExprs, Expr
     else
       *iteratorExprs = expr;
 
+    GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL);
     Expr *initializer = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "int"), INT_TYPE);
+
+    initializer = new DeclarationExpr(initializer, buildToken(TOKEN_IDENTIFIER, newString(varName)), new LiteralExpr(VAL_INT, {.integer = 0}));
+    group->_compiler.pushScope(group);
+    addExpr(&group->body, initializer, buildToken(TOKEN_SEPARATOR, ";"));
+
     Expr *condition = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, newString(varName)), UNKNOWN_TYPE);
     Expr *increment = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, newString(varName)), UNKNOWN_TYPE);
 
-    initializer = new DeclarationExpr(initializer, buildToken(TOKEN_IDENTIFIER, newString(varName)), new LiteralExpr(VAL_INT, {.integer = 0}));
     condition = new LogicalExpr(condition, buildToken(TOKEN_LESS, "<"), new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "sizes[index]"), UNKNOWN_TYPE));
     increment = new UnaryExpr(buildToken(TOKEN_PLUS_PLUS, "++"), increment);
-    return createForExpr(initializer, condition, increment, createArrayLoops(index + 1, dirs, cdrAddress(*iteratorExprs, TOKEN_SEPARATOR), body));
+
+    Expr *forExp = createForExpr(condition, increment, createArrayLoops(index + 1, dirs, cdrAddress(*iteratorExprs, TOKEN_SEPARATOR), body));
+
+    addExpr(&group->body, forExp, buildToken(TOKEN_SEPARATOR, ";"));
+    group->_compiler.popScope();
+    return group;
   }
   else
     return body;
@@ -117,6 +120,7 @@ Parser::Parser(Scanner &scanner) : scanner(scanner) {
   hadError = false;
   panicMode = false;
   newFlag = false;
+  next = buildToken(TOKEN_SEPARATOR, ";");
 
   advance();
   advance();
@@ -205,27 +209,11 @@ ObjFunction *Parser::compile() {
 }
 
 FunctionExpr *Parser::parse() {
-  /*
-    int line = -1;
-
-    for (;;) {
-      Token token = scanner.scanToken();
-      if (token.line != line) {
-        printf("%4d ", token.line);
-        line = token.line;
-      } else {
-        printf("   | ");
-      }
-      printf("%2d '%.*s'\n", token.type, token.length, token.start);
-
-      if (token.type == TOKEN_EOF) break;
-    }
-  */
   GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_EOF, ""), NULL);
   FunctionExpr *functionExpr = new FunctionExpr(VOID_TYPE, buildToken(TOKEN_IDENTIFIER, "Main"), 0, NULL, group, NULL);
 
   functionExpr->_function.expr = functionExpr;
-  group->_compiler.pushScope(&functionExpr->_function, this);
+  group->_compiler.pushScope(&functionExpr->_function);
   expList(group, TOKEN_EOF);
 
   if (check(TOKEN_LESS)) {
@@ -625,17 +613,7 @@ UIDirectiveExpr *Parser::directive(TokenType endGroupType, UIDirectiveExpr *prev
   int attCount = 0;
   UIAttributeExpr **attributeList = NULL;
   UIDirectiveExpr *lastChild = NULL;
-  int childDir = 0;
-
-  if (!match(TOKEN_DOT))
-    if (match(TOKEN_UNDERLINE))
-      childDir = 1;
-    else
-      if (match(TOKEN_OR))
-        childDir = 2;
-      else
-        if (match(TOKEN_BACKSLASH))
-          childDir = 3;
+  int childDir = match(TOKEN_UNDERLINE) || match(TOKEN_OR) || match(TOKEN_BACKSLASH) ? getDir(this->previous.start[0]) : 0;
 
   passSeparator();
 
@@ -663,17 +641,15 @@ void Parser::expList(GroupingExpr *groupingExpr, TokenType endGroupType) {
   passSeparator();
   scopeDepth++;
 
-  int count = 0;
-
   while (!check(endGroupType) && !check(TOKEN_EOF)) {
     if (endGroupType != TOKEN_RIGHT_PAREN && check(TOKEN_LESS))
       break;
     else {
-      Token op = !count++ ? buildToken(TOKEN_SEPARATOR, ";") : previous;
+      Token op = previous;
       Expr *exp = declaration(endGroupType);
 
       if (groupingExpr->body && op.type != TOKEN_SEPARATOR)
-        op.type = TOKEN_SEPARATOR;
+        op = buildToken(TOKEN_SEPARATOR, ";");
 
       addExpr(&groupingExpr->body, exp, op);
     }
@@ -684,30 +660,21 @@ void Parser::expList(GroupingExpr *groupingExpr, TokenType endGroupType) {
 
 Expr *Parser::array() {
   TokenType tokens[] = {TOKEN_RIGHT_BRACKET, TOKEN_COMMA, TOKEN_ELSE, TOKEN_EOF};
-  int count = 0;
-  Expr **expList = NULL;
+  Expr *body = NULL;
 
-  do {
+  while (!check(TOKEN_RIGHT_BRACKET) && !check(TOKEN_EOF) && (!body || match(TOKEN_COMMA))) {
+    Token op = previous;
+
     passSeparator();
-
-    if (check(TOKEN_RIGHT_BRACKET))
-      break;
 
     Expr *exp = expression(tokens);
 
-    if (exp) {
-      if (count >= 255)
-        errorAtCurrent("Can't have more than 255 parameters.");
-
-      expList = RESIZE_ARRAY(Expr *, expList, count, count + 1);
-      expList[count++] = exp;
-    }
-
+    addExpr(&body, exp, op);
     passSeparator();
-  } while (match(TOKEN_COMMA));
+  }
 
   consume(TOKEN_RIGHT_BRACKET, "Expect ']' after expression.");
-  return new ArrayExpr(count, expList, NULL);
+  return new ArrayExpr(body);
 }
 
 Expr *Parser::floatNumber() {
@@ -814,7 +781,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
       FunctionExpr *functionExpr = new FunctionExpr(returnType, name, 0, NULL, group, NULL);
 
       functionExpr->_function.expr = functionExpr;
-      group->_compiler.pushScope(&functionExpr->_function, this);
+      group->_compiler.pushScope(&functionExpr->_function);
       passSeparator();
 
       if (!check(TOKEN_RIGHT_PAREN))
@@ -903,7 +870,13 @@ Expr *Parser::forStatement(TokenType endGroupType) {
   if (!match(TOKEN_CALL))
     consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
 
-  Expr *initializer = match(TOKEN_SEPARATOR) ? match(TOKEN_VAR) ? varDeclaration(endGroupType) : expressionStatement(endGroupType) : NULL;
+  GroupingExpr *group = match(TOKEN_SEPARATOR) ? NULL : new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL);
+
+  if (group) {
+    group->_compiler.pushScope(group);
+    addExpr(&group->body, match(TOKEN_VAR) ? varDeclaration(endGroupType) : expressionStatement(endGroupType), buildToken(TOKEN_SEPARATOR, ";"));
+  }
+
   TokenType tokens[] = {TOKEN_SEPARATOR, TOKEN_ELSE, TOKEN_EOF};
   Expr *condition = check(TOKEN_SEPARATOR) ? createBooleanExpr(true) : expression(tokens);
 
@@ -913,7 +886,15 @@ Expr *Parser::forStatement(TokenType endGroupType) {
   Expr *increment = check(TOKEN_RIGHT_PAREN) ? NULL : expression(tokens2);
 
   consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
-  return createForExpr(initializer, condition, increment, statement(endGroupType));
+
+  Expr *forExp = createForExpr(condition, increment, statement(endGroupType));
+
+  if (group) {
+    addExpr(&group->body, forExp, buildToken(TOKEN_SEPARATOR, ";"));
+    group->_compiler.popScope();
+  }
+
+  return group ? group : forExp;
 }
 
 Expr *Parser::ifStatement(TokenType endGroupType) {

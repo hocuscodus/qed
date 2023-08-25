@@ -68,10 +68,8 @@ GroupingExpr::GroupingExpr(Token name, Expr* body) : Expr(EXPR_GROUPING) {
   this->body = body;
 }
 
-ArrayExpr::ArrayExpr(int count, Expr** expressions, ObjFunction* function) : Expr(EXPR_ARRAY) {
-  this->count = count;
-  this->expressions = expressions;
-  this->function = function;
+ArrayExpr::ArrayExpr(Expr* body) : Expr(EXPR_ARRAY) {
+  this->body = body;
 }
 
 CallExpr::CallExpr(bool newFlag, Expr* callee, Token paren, Expr* params, Expr* handler) : Expr(EXPR_CALL) {

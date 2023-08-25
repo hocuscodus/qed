@@ -177,11 +177,9 @@ struct GroupingExpr : public Expr {
 };
 
 struct ArrayExpr : public Expr {
-  int count;
-  Expr** expressions;
-  ObjFunction* function;
+  Expr* body;
 
-  ArrayExpr(int count, Expr** expressions, ObjFunction* function);
+  ArrayExpr(Expr* body);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);

@@ -230,10 +230,10 @@ void IfExpr::astPrint() {
 
 void ArrayExpr::astPrint() {
   fprintf(stderr, "[");
-  for (int index = 0; index < count; index++) {
-    if (index) fprintf(stderr, ", ");
-    expressions[index]->astPrint();
-  }
+
+  if (body)
+    body->astPrint();
+
   fprintf(stderr, "]");
 }
 
