@@ -104,6 +104,8 @@ struct Token {
   bool equal(const char *string);
   bool endsWith(const char *suffix);
   inline bool isInternal() {return endsWith("_");}
+  inline bool isClass() {return start[0] >= 'A' && start[0] <= 'Z';}
+  inline bool isUserClass() {return isClass() && !isInternal();}
 
   virtual void declareError(const char *message);
 };

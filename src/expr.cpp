@@ -87,17 +87,16 @@ ArrayElementExpr::ArrayElementExpr(Expr* callee, Token bracket, int count, Expr*
   this->indexes = indexes;
 }
 
-DeclarationExpr::DeclarationExpr(Expr* typeExpr, Token name, Expr* initExpr) : Expr(EXPR_DECLARATION) {
-  this->typeExpr = typeExpr;
+DeclarationExpr::DeclarationExpr(Type decType, Token name, Expr* initExpr) : Expr(EXPR_DECLARATION) {
+  this->decType = decType;
   this->name = name;
   this->initExpr = initExpr;
 }
 
-FunctionExpr::FunctionExpr(Type returnType, Token name, int arity, DeclarationExpr** params, GroupingExpr* body, Expr* ui) : Expr(EXPR_FUNCTION) {
+FunctionExpr::FunctionExpr(Type returnType, Token name, int arity, GroupingExpr* body, Expr* ui) : Expr(EXPR_FUNCTION) {
   this->returnType = returnType;
   this->name = name;
   this->arity = arity;
-  this->params = params;
   this->body = body;
   this->ui = ui;
 }
@@ -125,9 +124,14 @@ LogicalExpr::LogicalExpr(Expr* left, Token op, Expr* right) : Expr(EXPR_LOGICAL)
   this->right = right;
 }
 
-ReferenceExpr::ReferenceExpr(Token name, Type returnType) : Expr(EXPR_REFERENCE) {
+PrimitiveExpr::PrimitiveExpr(Token name, Type primitiveType) : Expr(EXPR_PRIMITIVE) {
   this->name = name;
-  this->returnType = returnType;
+  this->primitiveType = primitiveType;
+}
+
+ReferenceExpr::ReferenceExpr(Token name, Expr* declaration) : Expr(EXPR_REFERENCE) {
+  this->name = name;
+  this->declaration = declaration;
 }
 
 ReturnExpr::ReturnExpr(Token keyword, bool isUserClass, Expr* value) : Expr(EXPR_RETURN) {

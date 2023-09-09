@@ -7,6 +7,7 @@
 #include <cstdarg>
 #include <stdio.h>
 #include "expr.hpp"
+#include "compiler.hpp"
 
 /*
 void ASTPrinter::parenthesize(char *name, int numArgs, ...) {
@@ -186,7 +187,7 @@ void FunctionExpr::astPrint() {
   fprintf(stderr, "fun %.*s(", name.length, name.start);
   for (int index = 0; index < arity; index++) {
     fprintf(stderr, ", ");
-    params[index]->astPrint();
+    getParam(this, index)->astPrint();
   }
   fprintf(stderr, ") {");
 
@@ -328,8 +329,12 @@ void UnaryExpr::astPrint() {
   fprintf(stderr, ")");
 }
 
+void PrimitiveExpr::astPrint() {
+  fprintf(stderr, "(%.*s)", name.length, name.start);
+}
+
 void ReferenceExpr::astPrint() {
-  fprintf(stderr, "(%s %.*s)", returnType.toString(), name.length, name.start);
+  fprintf(stderr, "(%.*s)", name.length, name.start);
 }
 
 void WhileExpr::astPrint() {

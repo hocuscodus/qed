@@ -556,11 +556,11 @@ void ObjFunction::add(ObjFunction *function) {
 }
 
 bool ObjFunction::isClass() {
-  return expr->name.start[0] >= 'A' && expr->name.start[0] <= 'Z';
+  return expr->name.isClass();
 }
 
 bool ObjFunction::isUserClass() {
-  return isClass() && !expr->name.isInternal();
+  return expr->name.isUserClass();
 }
 
 std::string ObjFunction::getThisVariableName() {
@@ -874,7 +874,7 @@ Point CoThread::recalculateLayout() {
     CoThread *valuesThread = frames[ndx].uiValuesInstance;
     CallFrame &valuesFrame = valuesThread->frames[0];
     ObjClosure *valuesClosure = AS_CLOSURE(valuesThread->stack[0]);
-    ObjClosure *layoutClosure = AS_CLOSURE(valuesThread->stack[valuesClosure->function->compiler->declarationCount - 1]);
+    ObjClosure *layoutClosure = NULL;//AS_CLOSURE(valuesThread->stack[valuesClosure->function->compiler->declarationCount - 1]);
 
     frames[ndx].uiLayoutInstance = newThread(NULL);
 
@@ -885,7 +885,7 @@ Point CoThread::recalculateLayout() {
     run(layoutThread);
     layoutThread->savedStackTop = stackTop;
 
-    long frameSize = AS_INT(layoutThread->stack[layoutClosure->function->compiler->declarationCount - 3]);
+    long frameSize = 0;//AS_INT(layoutThread->stack[layoutClosure->function->compiler->declarationCount - 3]);
 
     for (int dir = 0; dir < NUM_DIRS; dir++)
       size[dir] = std::max(size[dir], (int) (dir ? frameSize & 0xFFFF : frameSize >> 16));
@@ -916,7 +916,7 @@ void CoThread::paint(Point pos, Point size) {
     CoThread *layoutThread = frames[ndx].uiLayoutInstance;
     CallFrame &layoutFrame = layoutThread->frames[0];
     ObjClosure *layoutClosure = AS_CLOSURE(layoutThread->stack[0]);
-    ObjClosure *paintClosure = AS_CLOSURE(layoutThread->stack[layoutClosure->function->compiler->declarationCount - 2]);
+    ObjClosure *paintClosure = NULL;//AS_CLOSURE(layoutThread->stack[layoutClosure->function->compiler->declarationCount - 2]);
     Value value = {VOID_VAL};
 
     *layoutThread->savedStackTop++ = OBJ_VAL(paintClosure);
@@ -940,7 +940,7 @@ bool CoThread::onEvent(Event event, Point pos, Point size) {
     CoThread *layoutThread = frames[ndx].uiLayoutInstance;
     CallFrame &layoutFrame = layoutThread->frames[0];
     ObjClosure *layoutClosure = AS_CLOSURE(layoutThread->stack[0]);
-    ObjClosure *eventClosure = AS_CLOSURE(layoutThread->stack[layoutClosure->function->compiler->declarationCount - 1]);
+    ObjClosure *eventClosure = NULL;//AS_CLOSURE(layoutThread->stack[layoutClosure->function->compiler->declarationCount - 1]);
     Value value = {VOID_VAL};
     int frameCount = layoutThread->frameCount;
 

@@ -9,6 +9,7 @@
 #include <string.h>
 #include "memory.h"
 #include "expr.hpp"
+#include "compiler.hpp"
 
 
 int GENSYM = 0;
@@ -28,24 +29,17 @@ char *genSymbol(std::string name) {
 GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, Type paramType, std::function<Expr*()> bodyFn) {
   int arity = param ? 1 : 0;
   Token nameToken = buildToken(TOKEN_IDENTIFIER, name);
-  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL);
-  DeclarationExpr **params = RESIZE_ARRAY(DeclarationExpr *, NULL, 0, arity);
-  FunctionExpr *wrapperFunc = new FunctionExpr(VOID_TYPE, nameToken, arity, params, group, NULL);
+  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), param);
+  FunctionExpr *wrapperFunc = new FunctionExpr(VOID_TYPE, nameToken, arity, group, NULL);
   GroupingExpr *mainGroup = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "("), wrapperFunc);
 
   wrapperFunc->_function.expr = wrapperFunc;
-  mainGroup->_compiler.pushScope(mainGroup);
-  group->_compiler.pushScope(&wrapperFunc->_function);
-
-  if (param) {
-    params[0] = param;
-    param->_declaration = group->_compiler.addDeclaration(paramType, param->name, NULL, false, NULL);
-  }
-
-  wrapperFunc->_declaration = getCurrent()->enclosing->checkDeclaration(OBJ_TYPE(&wrapperFunc->_function), nameToken, &wrapperFunc->_function, NULL);
+  pushScope(mainGroup);
+  wrapperFunc->_declaration = checkDeclaration(OBJ_TYPE(&wrapperFunc->_function), nameToken, &wrapperFunc->_function, NULL);
+  pushScope(wrapperFunc);
   group->body = bodyFn();
-  group->_compiler.popScope();
-  mainGroup->_compiler.popScope();
+  popScope();
+  popScope();
   return mainGroup;
 }
 
@@ -58,8 +52,8 @@ GroupingExpr *makeWrapperLambda(DeclarationExpr *param, Type paramType, std::fun
 }
 
 GroupingExpr *makeBooleanContinuation(K k, bool boolParam) {
-  DeclarationExpr *param = boolParam ? new DeclarationExpr(NULL, buildToken(TOKEN_IDENTIFIER, "arg"), NULL) : NULL;
-  ReferenceExpr *arg = boolParam ? new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "arg"), BOOL_TYPE) : NULL;
+  DeclarationExpr *param = boolParam ? new DeclarationExpr(BOOL_TYPE, buildToken(TOKEN_IDENTIFIER, "arg"), NULL) : NULL;
+  ReferenceExpr *arg = boolParam ? new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "arg"), NULL) : NULL;
 
   return makeWrapperLambda(genSymbol("c"), param, BOOL_TYPE, [k, arg]() -> Expr* {return k(arg);});
 }
@@ -76,17 +70,6 @@ bool compareExpr(Expr *origExpr, Expr *newExpr) {
 Expr *getCompareExpr(Expr *origExpr, Expr *newExpr) {
   compareExpr(origExpr, newExpr);
   return newExpr;
-}
-
-const char *getHandlerType(Type type) {
-  switch (type.valueType) {
-    case VAL_VOID: return "voidHandler_";
-    case VAL_BOOL: return "boolHandler_";
-    case VAL_INT: return "intHandler_";
-    case VAL_FLOAT: return "floatHandler_";
-    case VAL_OBJ: return type.objType->type == OBJ_STRING ? "stringHandler_" : NULL;
-    default: return NULL;
-  }
 }
 
 Expr *IteratorExpr::toCps(K k) {
@@ -131,30 +114,30 @@ Expr *BinaryExpr::toCps(K k) {
   };
 
   if (op.type == TOKEN_SEPARATOR) {
-    Expr *exp = left->toCps([this, genBinary, k](Expr *left) {
+    Expr *exp = left->toCps([this, genBinary, k](Expr *left) {/*
       while (this->right) {
         Expr *next = car(this->right, TOKEN_SEPARATOR);
         FunctionExpr *func = next->type == EXPR_FUNCTION ? (FunctionExpr *) next : NULL;
 
-        if (func && getCurrent() != func->body->_compiler.enclosing) {
-          addExpr(&func->body->_compiler.enclosing->funcs, func, buildToken(TOKEN_SEPARATOR, ";"));
+        if (func && getCurrent() != func->body->enclosing) {
+          addExpr(&func->body->enclosing->funcs, func, buildToken(TOKEN_SEPARATOR, ";"));
           this->right = removeExpr(this->right, TOKEN_SEPARATOR);
         }
         else
           break;
       }
-
+*/
       return this->right ? genBinary(left, this->right->toCps(k)) : getCompareExpr(this->left, left);
     });
 
-    if (exp->type != EXPR_BINARY) {
+    if (exp->type != EXPR_BINARY) {/*
       if (getCurrent()->funcs) {
         exp = new BinaryExpr(exp, op, getCurrent()->funcs->toCps([](Expr *expr) {
           return expr;
         }));
         getCurrent()->funcs = NULL;
       }
-
+*/
 //      delete this;
     }
 
@@ -185,15 +168,19 @@ Expr *CallExpr::toCps(K k) {
       Type returnType = callable->expr->returnType;
 
       if (IS_VOID(returnType)) {
-        DeclarationExpr *lastParam = callable->expr->params[callable->expr->arity - 1];
+        DeclarationExpr *lastParam = getParam(callable->expr, callable->expr->arity - 1);
 
-        if (lastParam->name.equal("handlerFn_") && AS_FUNCTION_TYPE(lastParam->_declaration->type)->expr->arity)
-          returnType = AS_FUNCTION_TYPE(lastParam->_declaration->type)->expr->params[0]->_declaration->type;
+        if (lastParam->name.equal("handlerFn_")) {
+          FunctionExpr *handlerExpr = AS_FUNCTION_TYPE(lastParam->decType)->expr;
+
+          if (handlerExpr->arity)
+            returnType = getParam(handlerExpr, handlerExpr->arity - 1)->decType;
+        }
       }
 
       bool parmFlag = !IS_VOID(returnType);
-      DeclarationExpr *param = parmFlag ? new DeclarationExpr(NULL, buildToken(TOKEN_IDENTIFIER, "_ret"), NULL) : NULL;
-      ReferenceExpr *arg = parmFlag ? new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "_ret"), returnType) : NULL;
+      DeclarationExpr *param = parmFlag ? new DeclarationExpr(returnType, buildToken(TOKEN_IDENTIFIER, "_ret"), NULL) : NULL;
+      ReferenceExpr *arg = parmFlag ? new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "_ret"), NULL) : NULL;
       std::function<Expr*()> bodyFn = [this]() {return this->handler;};
 
       if (!newFlag)
@@ -218,7 +205,7 @@ Expr *CallExpr::toCps(K k) {
       : genCall(compareExpr(this->callee, callee), callee, this->params);
   });
 
-  return this == cpsExpr ? k(this) : userClassCall ? cpsExpr : k(cpsExpr);
+  return this != cpsExpr && userClassCall ? cpsExpr : k(cpsExpr);
 }
 
 Expr *ArrayElementExpr::toCps(K k) {
@@ -228,23 +215,20 @@ Expr *ArrayElementExpr::toCps(K k) {
 Expr *DeclarationExpr::toCps(K k) {
   Expr *cpsExpr = !initExpr ? this : initExpr->toCps([this, k](Expr *initExpr) {
     return compareExpr(this->initExpr, initExpr) ? this : k(newExpr([this, initExpr]() {
-      DeclarationExpr *expr = new DeclarationExpr(this->typeExpr, this->name, initExpr);
-
-      expr->_declaration = this->_declaration;
-      return expr;
+      return new DeclarationExpr(this->decType, this->name, initExpr);
     }()));
   });
 
   return this == cpsExpr ? k(this) : cpsExpr;
 }
 
-Expr *FunctionExpr::toCps(K k) {
+Expr *FunctionExpr::toCps(K k) {/*
   if (_function.isClass() && !name.isInternal()) {
-    body->_compiler.pushScope();
     const char *type = getHandlerType(returnType);
     Token name = buildToken(TOKEN_IDENTIFIER, "handlerFn_");
-    ReferenceExpr *paramTypeExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, type), UNKNOWN_TYPE);
+    ReferenceExpr *paramTypeExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, type), NULL);
 
+    pushScope(body);
     returnType = VOID_TYPE;
 
     if (getCurrent()) {
@@ -252,20 +236,21 @@ Expr *FunctionExpr::toCps(K k) {
 
       if (!IS_UNKNOWN(paramType)) {
         params = RESIZE_ARRAY(DeclarationExpr *, params, arity, arity + 1);
-        params[arity] = new DeclarationExpr(paramTypeExpr, name, NULL);
-        params[arity++]->_declaration = body->_compiler.addDeclaration(paramType, name, NULL, false, NULL);
+        params[arity++] = new DeclarationExpr(paramType, name, NULL);
+//        params[arity++]->_declaration = body->_compiler.addDeclaration(paramType, name, NULL, false, NULL);
       }
       else
         ;//error("Parameter %d not typed correctly", functionExpr->arity + 1);
     }
     else
       arity++;
+
+    popScope();
   }
-
-  body->_compiler.popScope();
-
+*/
   Expr *currentBody = body;
   Expr *newBodyExpr = body->toCps([this](Expr *body) {return body;});
+
   body = (GroupingExpr *) newBodyExpr;// && newBodyExpr->type == EXPR_GROUPING ? (GroupingExpr *) newBodyExpr : NULL;
 
   Expr *lastExpr = *getLastBodyExpr(&body->body, TOKEN_SEPARATOR);
@@ -298,7 +283,7 @@ Expr *GetExpr::toCps(K k) {
 }
 
 Expr *GroupingExpr::toCps(K k) {
-  _compiler.pushScope();
+  pushScope(this);
 
   Expr *body = this->body 
     ? this->body->toCps([this, k](Expr *body) {
@@ -306,14 +291,9 @@ Expr *GroupingExpr::toCps(K k) {
       })
     : NULL;
 
-  _compiler.popScope();
+  popScope();
 
-  GroupingExpr *group = compareExpr(this->body, body) ? this : (GroupingExpr *) newExpr(new GroupingExpr(this->name, body));
-
-  if (group != this)
-    group->_compiler = _compiler;
-
-  return k(group);
+  return k(compareExpr(this->body, body) ? this : (GroupingExpr *) newExpr(new GroupingExpr(this->name, body)));
 }
 
 Expr *ArrayExpr::toCps(K k) {
@@ -335,7 +315,7 @@ Expr *LogicalExpr::toCps(K k) {
     const char *cvar = genSymbol("i");
     bool rightEqual = true;
     Expr *right = this->right->toCps([this, &rightEqual, cvar](Expr *right) {
-      ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cvar), UNKNOWN_TYPE);
+      ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cvar), NULL);
 
       rightEqual = compareExpr(this->right, right);
       return new CallExpr(false, callee, buildToken(TOKEN_CALL, "("), right, NULL);
@@ -346,10 +326,10 @@ Expr *LogicalExpr::toCps(K k) {
       return compareExpr(this->left, left) ? this : k(newExpr(new LogicalExpr(left, this->op, this->right)));
     } else {
       // delete this->right
-      DeclarationExpr *param = new DeclarationExpr(NULL, buildToken(TOKEN_IDENTIFIER, cvar), NULL);
+      DeclarationExpr *param = new DeclarationExpr(UNKNOWN_TYPE, buildToken(TOKEN_IDENTIFIER, cvar), NULL);
       Expr *left2 = getCompareExpr(this->left, left);
       Expr *notExpr = this->op.type == TOKEN_OR_OR ? new UnaryExpr(buildToken(TOKEN_BANG, "!"), left2) : left2;
-      ReferenceExpr *callee2 = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cvar), UNKNOWN_TYPE);
+      ReferenceExpr *callee2 = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cvar), NULL);
       Expr *elseExpr = newExpr(new CallExpr(false, callee2, buildToken(TOKEN_CALL, "("), new LiteralExpr(VAL_BOOL, {.boolean = false}), NULL));
       std::function<Expr*()> bodyFn = [notExpr, right, elseExpr]() -> Expr* {
         return new IfExpr(notExpr, right, elseExpr);
@@ -438,8 +418,8 @@ Expr *WhileExpr::toCps(K k) {
         return this;
       else {
         newSymbol = genSymbol("while");
-        ReferenceExpr *arg = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, newSymbol), UNKNOWN_TYPE);
-        ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "post_"), UNKNOWN_TYPE);
+        ReferenceExpr *arg = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, newSymbol), NULL);
+        ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "post_"), NULL);
         CallExpr *call = new CallExpr(false, callee, buildToken(TOKEN_CALL, "("), arg, NULL);
 
         addExpr(&body, call, buildToken(TOKEN_SEPARATOR, ";"));
@@ -485,12 +465,12 @@ Expr *IfExpr::toCps(K k) {
     bool bothEqual = true;
 
     Expr *thenBranch = this->thenBranch->toCps([this, &bothEqual, cvar](Expr *thenBranch) {
-      ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cvar), UNKNOWN_TYPE);
+      ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cvar), NULL);
 
       bothEqual &= compareExpr(this->thenBranch, thenBranch);
       return *addExpr(&thenBranch, new CallExpr(false, callee, buildToken(TOKEN_CALL, "("), NULL, NULL), buildToken(TOKEN_SEPARATOR, ";"));
     });
-    ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cvar), UNKNOWN_TYPE);
+    ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cvar), NULL);
     CallExpr *elseExpr = new CallExpr(false, callee, buildToken(TOKEN_CALL, "("), NULL, NULL);
     Expr *elseBranch = this->elseBranch ? this->elseBranch->toCps([this, &bothEqual, elseExpr](Expr *elseBranch) {
 
@@ -503,7 +483,7 @@ Expr *IfExpr::toCps(K k) {
       return compareExpr(this->condition, condition) ? this : k(newExpr(new IfExpr(condition, this->thenBranch, this->elseBranch)));
     } else {
       // delete this->thenBranch, this->elseBranch
-      DeclarationExpr *param = new DeclarationExpr(NULL, buildToken(TOKEN_IDENTIFIER, cvar), NULL);
+      DeclarationExpr *param = new DeclarationExpr(UNKNOWN_TYPE, buildToken(TOKEN_IDENTIFIER, cvar), NULL);
       std::function<Expr*()> bodyFn = [condition, thenBranch, elseBranch]() -> Expr* {
         return new IfExpr(condition, thenBranch, elseBranch);
       };
@@ -522,11 +502,11 @@ Expr *IfExpr::toCps(K k) {
     const char *cvar = genSymbol("I");
     GroupingExpr *cast = makeContinuation(k);
     K newK = [this, cvar](Expr *ifResult) {
-      ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cvar), VOID_TYPE);
+      ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cvar), NULL);
 
       return new CallExpr(false, callee, buildToken(TOKEN_CALL, "("), ifResult, NULL);
     };
-    DeclarationExpr *param = new DeclarationExpr(NULL, buildToken(TOKEN_IDENTIFIER, cvar), NULL);
+    DeclarationExpr *param = new DeclarationExpr(UNKNOWN_TYPE, buildToken(TOKEN_IDENTIFIER, cvar), NULL);
     Expr *ifExpr = new IfExpr(cond, this->thenBranch->toCps(newK), this->elseBranch->toCps(newK));
 
     return new CallExpr(false, makeWrapperLambda(param, paramType, ifExpr), buildToken(TOKEN_CALL, "("), cast, NULL);
@@ -562,7 +542,7 @@ Expr *TernaryExpr::toCps(K k) {
     const char *cvar = genSymbol("i");
     bool bothEqual = true;
     K newK = [this, &testExpr, &bothEqual, cvar](Expr *ifResult) {
-      ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cvar), UNKNOWN_TYPE);
+      ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cvar), NULL);
 
       bothEqual &= compareExpr(testExpr, ifResult);
       return new CallExpr(false, callee, buildToken(TOKEN_CALL, "("), ifResult, NULL);
@@ -576,7 +556,7 @@ Expr *TernaryExpr::toCps(K k) {
       return compareExpr(this->left, left) ? this : k(newExpr(new TernaryExpr(this->op, left, this->middle, this->right)));
     } else {
       // delete this->middle, this->right
-      DeclarationExpr *param = new DeclarationExpr(NULL, buildToken(TOKEN_IDENTIFIER, cvar), NULL);
+      DeclarationExpr *param = new DeclarationExpr(UNKNOWN_TYPE, buildToken(TOKEN_IDENTIFIER, cvar), NULL);
       std::function<Expr*()> bodyFn = [left, middle, right]() -> Expr* {
         return new IfExpr(left, middle, right);
       };
@@ -606,6 +586,10 @@ Expr *UnaryExpr::toCps(K k) {
   });
 
   return this == cpsExpr ? k(this) : cpsExpr;
+}
+
+Expr *PrimitiveExpr::toCps(K k) {
+  return k(this);
 }
 
 Expr *ReferenceExpr::toCps(K k) {

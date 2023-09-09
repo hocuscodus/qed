@@ -8,13 +8,15 @@
 #ifndef expr_h
 #define expr_h
 
-#include "chunk.hpp"
-#include "compiler.hpp"
-
 #include "attrset.hpp"
+#include "object.hpp"
+#include <functional>
+
+struct Expr;
+
+typedef std::function<Expr *(Expr *)> K;
 
 struct ObjFunction;
-
 struct ObjCallable;
 
 typedef enum {
@@ -35,6 +37,7 @@ typedef enum {
   EXPR_IF,
   EXPR_LITERAL,
   EXPR_LOGICAL,
+  EXPR_PRIMITIVE,
   EXPR_REFERENCE,
   EXPR_RETURN,
   EXPR_SET,
@@ -166,7 +169,7 @@ struct CastExpr : public Expr {
 struct GroupingExpr : public Expr {
   Token name;
   Expr* body;
-  Compiler _compiler;
+  bool hasSuperCalls;
 
   GroupingExpr(Token name, Expr* body);
   void cleanExprs();
@@ -217,12 +220,12 @@ struct ArrayElementExpr : public Expr {
 };
 
 struct DeclarationExpr : public Expr {
-  Expr* typeExpr;
+  Type decType;
   Token name;
   Expr* initExpr;
-  Declaration* _declaration;
+  bool isInternalField;
 
-  DeclarationExpr(Expr* typeExpr, Token name, Expr* initExpr);
+  DeclarationExpr(Type decType, Token name, Expr* initExpr);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);
@@ -234,13 +237,12 @@ struct FunctionExpr : public Expr {
   Type returnType;
   Token name;
   int arity;
-  DeclarationExpr** params;
   GroupingExpr* body;
   Expr* ui;
   ObjFunction _function;
-  Declaration* _declaration;
+  DeclarationExpr* _declaration;
 
-  FunctionExpr(Type returnType, Token name, int arity, DeclarationExpr** params, GroupingExpr* body, Expr* ui);
+  FunctionExpr(Type returnType, Token name, int arity, GroupingExpr* body, Expr* ui);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);
@@ -300,12 +302,23 @@ struct LogicalExpr : public Expr {
   void toCode(Parser &parser, ObjFunction *function);
 };
 
+struct PrimitiveExpr : public Expr {
+  Token name;
+  Type primitiveType;
+
+  PrimitiveExpr(Token name, Type primitiveType);
+  void cleanExprs();
+  void astPrint();
+  Expr *toCps(K k);
+  Type resolve(Parser &parser);
+  void toCode(Parser &parser, ObjFunction *function);
+};
+
 struct ReferenceExpr : public Expr {
   Token name;
-  Type returnType;
-  Declaration* _declaration;
+  Expr* declaration;
 
-  ReferenceExpr(Token name, Type returnType);
+  ReferenceExpr(Token name, Expr* declaration);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);

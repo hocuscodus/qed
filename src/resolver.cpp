@@ -11,6 +11,7 @@
 #include <sstream>
 #include "parser.hpp"
 #include "memory.h"
+#include "compiler.hpp"
 #include <stack>
 
 struct ValueStack3 {
@@ -420,16 +421,14 @@ Type ArrayElementExpr::resolve(Parser &parser) {
 }
 
 Type DeclarationExpr::resolve(Parser &parser) {
-  Type type = typeExpr->resolve(parser);
-
   if (initExpr) {
     Type type1 = initExpr->resolve(parser);
     Type internalType = {VAL_OBJ, &objInternalType};
 
-    if (type.equals(internalType) || type.valueType == VAL_UNKNOWN)
-      type = type1;
-    else if (!type1.equals(type)) {
-      initExpr = convertToType(type, initExpr, type1, parser);
+    if (decType.equals(internalType) || decType.valueType == VAL_UNKNOWN)
+      decType = type1;
+    else if (!type1.equals(decType)) {
+      initExpr = convertToType(decType, initExpr, type1, parser);
 
       if (!initExpr) {
         parser.error("Value must match the variable type");
@@ -437,7 +436,7 @@ Type DeclarationExpr::resolve(Parser &parser) {
     }
   }
   else
-    switch (type.valueType) {
+    switch (decType.valueType) {
     case VAL_VOID:
       parser.error("Cannot declare a void variable.");
       break;
@@ -455,7 +454,7 @@ Type DeclarationExpr::resolve(Parser &parser) {
       break;
 
     case VAL_OBJ:
-      switch (AS_OBJ_TYPE(type)) {
+      switch (AS_OBJ_TYPE(decType)) {
       case OBJ_STRING:
         initExpr = new LiteralExpr(VAL_OBJ, {.obj = &copyString("", 0)->obj});
         break;
@@ -467,13 +466,13 @@ Type DeclarationExpr::resolve(Parser &parser) {
       break;
     }
 
-  _declaration = getCurrent()->checkDeclaration(type, name, NULL, &parser);
+  checkDeclaration(decType, name, NULL, &parser);
   return VOID_TYPE;
 }
 
 Type FunctionExpr::resolve(Parser &parser) {
   if (body) {
-    body->_compiler.pushScope();
+    pushScope(body);
     acceptGroupingExprUnits(body, parser);
 
     if (ui != NULL) {
@@ -487,7 +486,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         nTabs++;
         processAttrs(exprUI, parser);
 
-        for (int ndx2 = -1; (ndx2 = getCurrent()->function->instanceIndexes->getNext(ndx2)) != -1;)
+        for (int ndx2 = -1; (ndx2 = getFunction()->_function.instanceIndexes->getNext(ndx2)) != -1;)
           (*ss) << "v" << ndx2 << ".ui_ = new v" << ndx2 << ".UI_();\n";
 
         nTabs--;
@@ -501,15 +500,15 @@ Type FunctionExpr::resolve(Parser &parser) {
         uiFunctionExpr->resolve(parser);
         uiFunctionExpr->_function.eventFlags = exprUI->_eventFlags;
 
-        ObjFunction *uiFunction = (ObjFunction *) uiFunctionExpr->_declaration->type.objType;
+        ObjFunction *uiFunction = (ObjFunction *) uiFunctionExpr->_declaration->decType.objType;
         GroupingExpr group(body->name, NULL);
 
-        getCurrent()->function->uiFunction = uiFunction;
+//        getFunction()->uiFunction = uiFunction;
         parse(&group, "UI_ *ui_;\n");
         (*getLastBodyExpr(&group.body, TOKEN_SEPARATOR))->resolve(parser);
         body->body = new BinaryExpr(group.body, buildToken(TOKEN_SEPARATOR, ";"), body->body);
 
-        uiFunction->compiler->pushScope();
+        pushScope(uiFunctionExpr->body);
         ss->str("");
         insertTabs();
         (*ss) << "void Layout_() {\n";
@@ -530,9 +529,9 @@ Type FunctionExpr::resolve(Parser &parser) {
 
         layoutFunctionExpr->resolve(parser);
 
-        ObjFunction *layoutFunction = (ObjFunction *) layoutFunctionExpr->_declaration->type.objType;
+        ObjFunction *layoutFunction = (ObjFunction *) layoutFunctionExpr->_declaration->decType.objType;
 
-        layoutFunction->compiler->pushScope();
+        pushScope(layoutFunctionExpr->body);
 
         ss->str("");
         insertTabs();
@@ -569,14 +568,14 @@ Type FunctionExpr::resolve(Parser &parser) {
         });*/
         eventFunctionExpr[0]->resolve(parser);
 
-        getCurrent()->popScope();
-        getCurrent()->popScope();
+        popScope();
+        popScope();
       }
 
       delete exprUI;
       ui = NULL;
     }
-    body->_compiler.popScope();
+    popScope();
   }
 
   return OBJ_TYPE(&_function);
@@ -639,11 +638,11 @@ Type GetExpr::resolve(Parser &parser) {
 }
 
 Type GroupingExpr::resolve(Parser &parser) {
-  _compiler.pushScope();
+  pushScope(this);
 
   Type type = acceptGroupingExprUnits(this, parser);
 
-  _compiler.popScope();
+  popScope();
   return type;
 }
 
@@ -807,7 +806,7 @@ Type TypeExpr::resolve(Parser &parser) {/*
     return {VAL_OBJ, obj};
   }
 
-  return getCurrent()->resolveReferenceExpr(this);*/
+  return resolveReferenceExpr(this);*/
   return VOID_TYPE;
 }
 
@@ -842,11 +841,22 @@ Type UnaryExpr::resolve(Parser &parser) {
   }
 }
 
-Type ReferenceExpr::resolve(Parser &parser) {
-  if (returnType.valueType == VAL_UNKNOWN && !name.equal("var"))
-    returnType = getCurrent()->resolveReferenceExpr(this, &parser);
+Type PrimitiveExpr::resolve(Parser &parser) {
+  return UNKNOWN_TYPE;
+}
 
-  return returnType;
+Type ReferenceExpr::resolve(Parser &parser) {
+  declaration = resolveReferenceExpr(name, &parser);
+//  declaration->isInternalField = declaration->function != function;
+
+  if (declaration) 
+    switch(declaration->type) {
+      case EXPR_DECLARATION: return ((DeclarationExpr *) declaration)->decType;
+      case EXPR_FUNCTION: return OBJ_TYPE(&((FunctionExpr *) declaration)->_function);
+      default: parser.error("Variable '%.*s' is not a call.", name.length, name.start);
+    }
+
+  return UNKNOWN_TYPE;
 }
 
 Type SwapExpr::resolve(Parser &parser) {
@@ -1034,7 +1044,7 @@ void processAttrs(UIDirectiveExpr *expr, Parser &parser) {
                 break;
 
               case OBJ_INSTANCE: {
-                  getCurrent()->function->instanceIndexes->set(getCurrent()->vCount);
+                  getFunction()->_function.instanceIndexes->set(getCurrent()->vCount);
 
                   ObjFunction *function = (ObjFunction *) AS_INSTANCE_TYPE(type)->callable;
 
@@ -1155,7 +1165,7 @@ void pushAreas(UIDirectiveExpr *expr, Parser &parser) {
 
     if (name != NULL) {
       Token token = buildToken(TOKEN_IDENTIFIER, name);
-      Type outType = getCurrent()->getDeclaration(getCurrent()->resolveReference2(&token, &parser)).type;
+      Type outType = ((DeclarationExpr *) resolveReferenceExpr(token, &parser))->decType;
       char *callee = NULL;
 
       switch (AS_OBJ_TYPE(outType)) {
@@ -1372,7 +1382,9 @@ void paint(UIDirectiveExpr *expr, Parser &parser) {
     }
 
     Token token = buildToken(TOKEN_IDENTIFIER, name);
-    Type outType = getCurrent()->enclosing->getDeclaration(getCurrent()->enclosing->resolveReference2(&token, &parser)).type;
+    DeclarationExpr *dec = (DeclarationExpr *) resolveReferenceExpr(/*getCurrent()->enclosing, &*/token, &parser);
+//    Type outType = getCurrent()->enclosing->getDeclaration().type;
+    Type outType = dec->decType;
     switch (AS_OBJ_TYPE(outType)) {
       case OBJ_INSTANCE:
         insertTabs();
@@ -1482,8 +1494,8 @@ void onEvent(UIDirectiveExpr *expr, Parser &parser) {
     else {
       const char *name = getValueVariableName(expr, ATTRIBUTE_OUT);
       Token token = buildToken(TOKEN_IDENTIFIER, name);
-      int index = getCurrent()->enclosing->resolveReference2(&token, &parser);
-      Type outType = getCurrent()->enclosing->getDeclaration(index).type;
+      DeclarationExpr *dec = (DeclarationExpr *) resolveReferenceExpr(/*getCurrent()->enclosing, &*/token, &parser);
+      Type outType = dec->decType;
 
       switch (AS_OBJ_TYPE(outType)) {
         case OBJ_INSTANCE:

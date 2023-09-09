@@ -56,14 +56,15 @@ struct ObjFunction;
 struct Declaration {
   Type type;
   Token name;
-  bool isExternalField;
   bool isInternalField;
   ObjFunction *function;
   Declaration *previous;
   int parentFlag;
 
   std::string getRealName();
-  bool isField() {return isExternalField || isInternalField;}
+  bool isInRegularFunction() {return false;}//function->expr->body->name.type == TOKEN_LEFT_BRACE;}
+  bool isExternalField() {return false;}//ffunction && function->expr && function->isClass() && isInRegularFunction() && !name.isInternal();}
+  bool isField() {return isExternalField() || isInternalField;}
 };
 
 typedef struct {
@@ -107,6 +108,8 @@ struct ObjFunction : ObjCallable {
   ObjFunction *firstChild;
   ObjFunction *lastChild;
   ObjFunction *next;
+  FunctionExpr *peerDeclaration;
+  int parentFlag;
 
   ObjFunction();
 

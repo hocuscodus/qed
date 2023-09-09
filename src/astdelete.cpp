@@ -75,6 +75,9 @@ void TypeExpr::cleanExprs() {
 void UnaryExpr::cleanExprs() {
 }
 
+void PrimitiveExpr::cleanExprs() {
+}
+
 void ReferenceExpr::cleanExprs() {
 }
 

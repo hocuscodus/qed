@@ -60,6 +60,7 @@ public:
   Parser(Scanner &scanner);
 private:
   void advance();
+  Type resolveType(Expr *expr);
 public:
   void consume(TokenType type, const char *fmt, ...);
   bool check(TokenType type);

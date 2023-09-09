@@ -11,6 +11,7 @@
 #include "parser.hpp"
 #include "attrset.hpp"
 #include "debug.hpp"
+#include "compiler.hpp"
 
 static int nTabs = 0;
 std::stringstream s;
@@ -24,7 +25,7 @@ static ObjFunction *getFunction(Expr *callee) {
     case EXPR_REFERENCE: {
         ReferenceExpr *reference = (ReferenceExpr *) callee;
 
-        return reference->_declaration && IS_FUNCTION(reference->_declaration->type) ? AS_FUNCTION_TYPE(reference->_declaration->type) : NULL;
+        return reference->declaration && reference->declaration->type == EXPR_FUNCTION ? &(((FunctionExpr *) reference->declaration)->_function) : NULL;
       }
     case EXPR_GET: {
         GetExpr *getExpr = (GetExpr *) callee;
@@ -159,7 +160,7 @@ void ArrayElementExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 void DeclarationExpr::toCode(Parser &parser, ObjFunction *function) {
-  str() << (_declaration->isExternalField ? "this." : /*_declaration->function->isClass() ? "const " : */"let ") << _declaration->getRealName() << " = ";
+//  str() << (isExternalField(_declaration) ? "this." : /*_declaration->function->isClass() ? "const " : */"let ") << getRealName(_declaration) << " = ";
 
   if (initExpr)
     initExpr->toCode(parser, function);
@@ -167,23 +168,23 @@ void DeclarationExpr::toCode(Parser &parser, ObjFunction *function) {
     str() << "null";
 }
 
-void FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
+void FunctionExpr::toCode(Parser &parser, ObjFunction *function) {/*
   if (body->_compiler.enclosing) {
     if (body->_compiler.enclosing->isInRegularFunction())
-      str() << "this." << _declaration->getRealName() << " = ";
+      str() << "this." << getRealName(&_function) << " = ";
 
-    str() << "function " << _declaration->getRealName() << "(";
+    str() << "function " << getRealName(&_function) << "(";
 
     for (int index = 0; index < arity; index++) {
       if (index)
         str() << ", ";
 
-      str() << params[index]->name.getString();
+      str() << getParam(this, index)->name.getString();
     }
 
     str() << ") ";
   }
-
+*/
   if (body)
     body->toCode(parser, &_function);
 }
@@ -194,14 +195,14 @@ void GetExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
-  _compiler.pushScope();
+  pushScope(this);
 
   if (name.type != TOKEN_LEFT_BRACE) {
     str() << "(";
     body->toCode(parser, function);
     str() << ")";
   } else {
-    if (_compiler.enclosing)
+    if (false)//_compiler.enclosing)
       startBlock();
 
     if (function->expr->body == this && function->isClass()) {
@@ -233,11 +234,11 @@ void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
     if (function->expr->body == this && function->expr->ui)
       function->expr->ui->toCode(parser, function);
 
-    if (_compiler.enclosing)
+    if (false)//_compiler.enclosing)
       endBlock();
   }
 
-  _compiler.popScope();
+  popScope();
 }
 
 void IfExpr::toCode(Parser &parser, ObjFunction *function) {
@@ -413,17 +414,20 @@ void UnaryExpr::toCode(Parser &parser, ObjFunction *function) {
   }
 }
 
-void ReferenceExpr::toCode(Parser &parser, ObjFunction *function) {
-  if (_declaration)
-    if (_declaration->isExternalField)
-      if (_declaration->function == function)
-        str() << "this." << _declaration->getRealName();
+void PrimitiveExpr::toCode(Parser &parser, ObjFunction *function) {
+}
+
+void ReferenceExpr::toCode(Parser &parser, ObjFunction *function) {/*
+  if (declaration)
+    if (declaration->isExternalField())
+      if (declaration->function == function)
+        str() << "this." << getRealName(function);
       else
-        str() << _declaration->function->getThisVariableName() << "." << _declaration->getRealName();
+        str() << declaration->function->getThisVariableName() << "." << getRealName(function);
     else
-      str() << _declaration->getRealName();
+      str() << getRealName(function);
   else
-    str() << name.getString();
+    str() << name.getString();*/
 }
 
 void SwapExpr::toCode(Parser &parser, ObjFunction *function) {

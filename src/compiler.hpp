@@ -8,14 +8,32 @@
 #define qed_compiler_h
 
 #include <iostream>
-#include <stack>
 #include <functional>
-#include "object.hpp"
+#include "expr.hpp"
+
+struct Scope {
+  FunctionExpr *function;
+  GroupingExpr *group;
+  Scope *enclosing;
+  bool hasSuperCalls;
+  int vCount;
+
+  Scope(FunctionExpr *function, GroupingExpr *group, Scope *enclosing);
+};
 
 class Parser;
-struct ReferenceExpr;
-struct GroupingExpr;
-struct Expr;
+
+void pushScope(FunctionExpr *functionExpr);
+void pushScope(GroupingExpr *groupingExpr);
+void popScope();
+DeclarationExpr *getParam(FunctionExpr *expr, int index);
+Expr *resolveReferenceExpr(Token &name, Parser *parser);
+std::string getRealName(ObjFunction *function);
+bool isInRegularFunction(ObjFunction *function);
+bool isExternalField(ObjFunction *function);
+DeclarationExpr *checkDeclaration(Type returnType, Token &name, ObjFunction *signature, Parser *parser);
+
+ObjFunction *compile(FunctionExpr *expr, Parser *parser);
 
 struct Compiler {
   Compiler *enclosing;
@@ -37,13 +55,13 @@ struct Compiler {
 
   Declaration *addDeclaration(Type type, Token &name, Declaration *previous, bool parentFlag, Parser *parser);
   Type &peekDeclaration();
-  int resolveReference(Token *name, Parser *parser);
-  int resolveReference2(Token *name, Parser *parser);
-  int resolveUpvalue(Token *name, Parser *parser);
-  int addUpvalue(uint8_t index, Declaration *declaration, bool isDeclaration, Parser *parser);
-  Type resolveReferenceExpr(ReferenceExpr *expr, Parser *parser);
-  void checkDeclaration(Type returnType, ReferenceExpr *expr, ObjFunction *signature, Parser *parser);
-  Declaration *checkDeclaration(Type returnType, Token &name, ObjFunction *signature, Parser *parser);
+//  int resolveReference(Token *name, Parser *parser);
+//  int resolveReference2(Token *name, Parser *parser);
+//  int resolveUpvalue(Token *name, Parser *parser);
+//  int addUpvalue(uint8_t index, Declaration *declaration, bool isDeclaration, Parser *parser);
+//  Type resolveReferenceExpr(ReferenceExpr *expr, Parser *parser);
+//  void checkDeclaration(Type returnType, ReferenceExpr *expr, ObjFunction *signature, Parser *parser);
+//  Declaration *checkDeclaration(Type returnType, Token &name, ObjFunction *signature, Parser *parser);
   bool inBlock();
   bool isInRegularFunction();
 
@@ -66,14 +84,13 @@ bool identifiersEqual(Token *a, Token *b);
 void pushSignature(ObjFunction *signature);
 void popSignature();
 
-static inline Compiler *getCurrent() {
-  return Compiler::getCurrent();
+Scope *getCurrent();
+
+static inline FunctionExpr *getFunction() {
+  return NULL;
 }
 
 struct Expr;
-struct IteratorExpr;
-
-typedef std::function<Expr *(Expr *)> K;
 
 Expr **cdrAddress(Expr *body, TokenType tokenType);
 Expr **addExpr(Expr **body, Expr *exp, Token op);
