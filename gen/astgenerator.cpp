@@ -122,10 +122,13 @@ public:
     writeHeader(file);
     fprintf(file, "#ifndef %s_h\n", toLowerCase(baseName));
     fprintf(file, "#define %s_h\n\n", toLowerCase(baseName));
-    fprintf(file, "#include \"chunk.hpp\"\n");
-    fprintf(file, "#include \"compiler.hpp\"\n\n");
-    fprintf(file, "#include \"attrset.hpp\"\n\n");
-    fprintf(file, "struct ObjFunction;\n\n");
+    fprintf(file, "#include \"attrset.hpp\"\n");
+    fprintf(file, "#include \"object.hpp\"\n");
+    fprintf(file, "#include <functional>\n\n");
+
+    fprintf(file, "struct Expr;\n\n");
+    fprintf(file, "typedef std::function<Expr *(Expr *)> K;\n\n");
+    fprintf(file, "struct ObjFunction;\n");
     fprintf(file, "struct ObjCallable;\n\n");
 
     // The enum types for AST classes.
@@ -269,12 +272,12 @@ int main(int argc, const char *argv[]) {
     "Assign      : Expr* varExp, Token op, Expr* value",
     "Binary      : Expr* left, Token op, Expr* right",
     "Cast        : Expr* typeExpr, Expr* expr, Type _srcType, Type _dstType",
-    "Grouping    : Token name, Expr* body, Compiler _compiler",
+    "Grouping    : Token name, Expr* body",
     "Array       : Expr* body",
     "Call        : bool newFlag, Expr* callee, Token paren, Expr* params, Expr* handler",
     "ArrayElement: Expr* callee, Token bracket, int count, Expr** indexes",
     "Declaration : Expr* typeExpr, Token name, Expr* initExpr, Declaration* _declaration",
-    "Function    : Type returnType, Token name, int arity, DeclarationExpr** params, GroupingExpr* body, Expr* ui, ObjFunction _function, Declaration* _declaration",
+    "Function    : Type returnType, Token name, int arity, GroupingExpr* body, Expr* ui, ObjFunction _function, Declaration* _declaration",
     "Get         : Expr* object, Token name, int index, Declaration* _declaration",
     "If          : Expr* condition, Expr* thenBranch, Expr* elseBranch",
     "Literal     : ValueType type, As as",

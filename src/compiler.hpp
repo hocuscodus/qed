@@ -7,8 +7,7 @@
 #ifndef qed_compiler_h
 #define qed_compiler_h
 
-#include <iostream>
-#include <functional>
+#include <vector>
 #include "expr.hpp"
 
 struct Scope {
@@ -23,15 +22,22 @@ struct Scope {
 
 class Parser;
 
+typedef std::vector<Type> Signature;
+
 void pushScope(FunctionExpr *functionExpr);
 void pushScope(GroupingExpr *groupingExpr);
 void popScope();
+Expr *getStatement(GroupingExpr *expr, int index);
 DeclarationExpr *getParam(FunctionExpr *expr, int index);
 Expr *resolveReferenceExpr(Token &name, Parser *parser);
 std::string getRealName(ObjFunction *function);
+bool isInRegularFunction(FunctionExpr *function);
+bool isClass(FunctionExpr *function);
+bool isExternalField(FunctionExpr *function, DeclarationExpr *expr);
+bool isField(FunctionExpr *function, DeclarationExpr *expr);
 bool isInRegularFunction(ObjFunction *function);
 bool isExternalField(ObjFunction *function);
-DeclarationExpr *checkDeclaration(Type returnType, Token &name, ObjFunction *signature, Parser *parser);
+DeclarationExpr *checkDeclaration(Type returnType, Token &name, FunctionExpr *function, Parser *parser);
 
 ObjFunction *compile(FunctionExpr *expr, Parser *parser);
 
@@ -81,16 +87,13 @@ private:
 };
 
 bool identifiersEqual(Token *a, Token *b);
-void pushSignature(ObjFunction *signature);
+Token &getDeclarationName(Expr *expr);
+Type getDeclarationType(Expr *expr);
+void pushSignature(Signature *signature);
 void popSignature();
 
 Scope *getCurrent();
-
-static inline FunctionExpr *getFunction() {
-  return NULL;
-}
-
-struct Expr;
+FunctionExpr *getFunction();
 
 Expr **cdrAddress(Expr *body, TokenType tokenType);
 Expr **addExpr(Expr **body, Expr *exp, Token op);

@@ -90,7 +90,7 @@ struct Compiler;
 
 struct ObjCallable {
   Obj obj;
-  Compiler *compiler;
+//  Compiler *compiler;
 };
 
 struct FunctionExpr;

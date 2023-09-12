@@ -139,6 +139,7 @@ Type Parser::resolveType(Expr *expr) {
         Expr *dec = resolveReferenceExpr(((ReferenceExpr *) expr)->name, NULL);
 
         if (dec && dec->type == EXPR_FUNCTION) {
+          ((ReferenceExpr *) expr)->declaration = dec;
           type = OBJ_TYPE(&((FunctionExpr *) dec)->_function);
 
           if (check(TOKEN_STAR))
@@ -434,19 +435,6 @@ struct FakeParser : Parser {
 
 Expr *Parser::binary(Expr *left) {
   Token op = previous;
-/*
-  if (op.type == TOKEN_STAR && left->type == EXPR_REFERENCE && check(TOKEN_IDENTIFIER)) {
-    FakeParser tempParser;
-    ReferenceExpr *expr = (ReferenceExpr *) left;
-
-    resolveType(left);
-
-    if (!tempParser.hadError && IS_FUNCTION(expr->returnType)) {
-      expr->returnType = OBJ_TYPE(newInstance(AS_FUNCTION_TYPE(expr->returnType)));
-      return left;
-    }
-  }
-*/
   ParseExpRule *rule = getExpRule(op.type);
 
   // ignore optional separator before second operand
@@ -855,6 +843,15 @@ Expr *Parser::parsePrecedence(Precedence precedence) {
 
   Expr *left = (this->*prefixRule)();
 
+  if (check(TOKEN_STAR) && checkNext(TOKEN_IDENTIFIER)) {
+    Type type = resolveType(left);
+
+    if (IS_INSTANCE(type)) {
+      advance();
+      return left;
+    }
+  }
+
   while (precedence <= getExpRule(current.type)->precedence) {
     advance();
 
@@ -864,15 +861,13 @@ Expr *Parser::parsePrecedence(Precedence precedence) {
   return left;
 }
 
-bool identifiersEqual(Token *a, Token *b) {
-  return a->length != 0 && a->length == b->length && memcmp(a->start, b->start, a->length) == 0;
-}
-
 DeclarationExpr *Parser::declareVariable(Expr *typeExpr, TokenType *endGroupTypes) {
   Token name = previous;
   Expr *expr = match(TOKEN_EQUAL) ? expression(endGroupTypes) : NULL;
+  Type decType = resolveType(typeExpr);
 
-  return new DeclarationExpr(resolveType(typeExpr), name, expr);
+  checkDeclaration(decType, name, NULL, this);
+  return new DeclarationExpr(decType, name, expr);
 }
 
 DeclarationExpr *Parser::parseVariable(TokenType *endGroupTypes, const char *errorMessage) {
@@ -950,7 +945,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
 
       group->name = previous;
       popScope();
-      /*functionExpr->_declaration = */checkDeclaration(OBJ_TYPE(&functionExpr->_function), name, &functionExpr->_function, this);
+      /*functionExpr->_declaration = */checkDeclaration(OBJ_TYPE(&functionExpr->_function), name, functionExpr, this);
       pushScope(functionExpr);
       expList(group, endGroupType);
 

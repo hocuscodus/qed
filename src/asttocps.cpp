@@ -35,7 +35,7 @@ GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, Type p
 
   wrapperFunc->_function.expr = wrapperFunc;
   pushScope(mainGroup);
-  wrapperFunc->_declaration = checkDeclaration(OBJ_TYPE(&wrapperFunc->_function), nameToken, &wrapperFunc->_function, NULL);
+  checkDeclaration(OBJ_TYPE(&wrapperFunc->_function), nameToken, wrapperFunc, NULL);
   pushScope(wrapperFunc);
   group->body = bodyFn();
   popScope();

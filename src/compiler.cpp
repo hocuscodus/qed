@@ -15,7 +15,7 @@
 #include "debug.hpp"
 #endif
 
-static std::stack<ObjFunction *> signatures;
+static std::stack<Signature *> signatures;
 static Scope *current = NULL;
 
 Scope::Scope(FunctionExpr *function, GroupingExpr *group, Scope *enclosing) {
@@ -28,6 +28,14 @@ Scope::Scope(FunctionExpr *function, GroupingExpr *group, Scope *enclosing) {
 
 Scope *getCurrent() {
   return current;
+}
+
+FunctionExpr *getFunction() {
+  for (Scope *current = ::current; current; current = current->enclosing)
+    if (current->function)
+      return current->function;
+
+  return NULL;
 }
 
 void pushScope(FunctionExpr *functionExpr) {
@@ -49,7 +57,27 @@ void popScope() {
     current = NULL;
 }
 
-void pushSignature(ObjFunction *signature) {
+bool identifiersEqual(Token *a, Token *b) {
+  return a->length != 0 && a->length == b->length && memcmp(a->start, b->start, a->length) == 0;
+}
+
+Token &getDeclarationName(Expr *expr) {
+  switch(expr->type) {
+    case EXPR_DECLARATION: return ((DeclarationExpr *) expr)->name;
+    case EXPR_FUNCTION: return ((FunctionExpr *) expr)->name;
+    default: return *((Token *) NULL);
+  }
+}
+
+Type getDeclarationType(Expr *expr) {
+  switch(expr->type) {
+    case EXPR_DECLARATION: return ((DeclarationExpr *) expr)->decType;
+    case EXPR_FUNCTION: return OBJ_TYPE(&((FunctionExpr *) expr)->_function);
+    default: return UNKNOWN_TYPE;
+  }
+}
+
+void pushSignature(Signature *signature) {
   signatures.push(signature);
 }
 
@@ -57,7 +85,7 @@ void popSignature() {
   signatures.pop();
 }
 
-static ObjFunction *getSignature() {
+static Signature *getSignature() {
   return signatures.empty() ? NULL : signatures.top();
 }
 
@@ -163,7 +191,7 @@ void Compiler::pushScope(ObjFunction *function) {
   this->enclosing = current;
   pushScope();
   this->function = function;
-  function->compiler = this;
+//  function->compiler = this;
   vCount = 1;
 
   if (enclosing)
@@ -201,17 +229,17 @@ Declaration *Compiler::addDeclaration(Type type, Token &name, Declaration *previ
   return dec;
 }
 
-static DeclarationExpr *getDeclarationExpr(Expr *body) {
+static Expr *getDeclarationExpr(Expr *body) {
   Expr *expr = car(body, TOKEN_SEPARATOR);
 
-  return expr->type == EXPR_DECLARATION ? (DeclarationExpr *) expr : NULL;
+  return expr->type == EXPR_DECLARATION || expr->type == EXPR_FUNCTION ? expr : NULL;
 }
 
 static Expr *getDeclarationRef(Token name, Expr *body) {
   while (body) {
-    DeclarationExpr *dec = getDeclarationExpr(body);
+    Expr *dec = getDeclarationExpr(body);
 
-    if (dec && identifiersEqual(&name, &dec->name))
+    if (dec && identifiersEqual(&name, &getDeclarationName(dec)))
       break;
 
     body = cdr(body, TOKEN_SEPARATOR);
@@ -235,33 +263,40 @@ Expr *getNextDeclarationRef(Token &name, Expr *previous) {
   return getDeclarationRef(name, cdr(previous, TOKEN_SEPARATOR));
 }
 
-DeclarationExpr *getParam(FunctionExpr *expr, int index) {
-  for (Expr *body = expr->body->body; body; body = cdr(body, TOKEN_SEPARATOR))
+Expr *getStatement(GroupingExpr *expr, int index) {
+  for (Expr *body = expr ? expr->body : NULL; body; body = cdr(body, TOKEN_SEPARATOR))
     if (!index--)
-      return getDeclarationExpr(body);
+      return body;
 
   return NULL;
+}
+
+DeclarationExpr *getParam(FunctionExpr *expr, int index) {
+  Expr *statement = getStatement(expr->body, index);
+
+  return statement ? (DeclarationExpr *) getDeclarationExpr(statement) : NULL;
 }
 
 Type &Compiler::peekDeclaration() {
   return declarations[declarationCount - 1].type;
 }
 
-Expr *resolveReference(Expr *decRef, Token &name, ObjFunction *signature, Parser *parser) {
+Expr *resolveReference(Expr *decRef, Token &name, Signature *signature, Parser *parser) {
   char buf[2048] = "";
 
   while (decRef) {
-    DeclarationExpr *dec = getDeclarationExpr(decRef);
+    Expr *dec = getDeclarationExpr(decRef);
+    Type type = getDeclarationType(dec);
 
     // Remove these patches ASAP
-    if (signature && IS_OBJ(dec->decType) && name.getString().find("Instance") == std::string::npos && strcmp(name.getString().c_str(), "post"))
-      switch (AS_OBJ_TYPE(dec->decType)) {
+    if (signature && IS_OBJ(type) && name.getString().find("Instance") == std::string::npos && strcmp(name.getString().c_str(), "post"))
+      switch (AS_OBJ_TYPE(type)) {
       case OBJ_FUNCTION: {
-        ObjFunction *callable = AS_FUNCTION_TYPE(dec->decType);
-        bool isSignature = signature->compiler->declarationCount == callable->expr->arity;
+        ObjFunction *callable = AS_FUNCTION_TYPE(type);
+        bool isSignature = signature->size() == callable->expr->arity;
 
         for (int index = 0; isSignature && index < callable->expr->arity; index++)
-          isSignature = signature->compiler->declarations[index].type.equals(callable->compiler->declarations[index].type);
+          isSignature = signature->at(index).equals(getParam(callable->expr, index)->decType);
 
         if (isSignature)
           return dec;
@@ -270,14 +305,14 @@ Expr *resolveReference(Expr *decRef, Token &name, ObjFunction *signature, Parser
             if (buf[0])
               strcat(buf, ", ");
 
-            strcat(buf, dec->name.getString().c_str());
+            strcat(buf, getDeclarationName(dec).getString().c_str());
             strcat(buf, "(");
 
             for (int index = 0; index < callable->expr->arity; index++) {
               if (index)
                 strcat(buf, ", ");
 
-              strcat(buf, callable->compiler->declarations[index].type.toString());
+              strcat(buf, getParam(callable->expr, index)->decType.toString());
             }
 
             strcat(buf, ")'");
@@ -297,11 +332,11 @@ Expr *resolveReference(Expr *decRef, Token &name, ObjFunction *signature, Parser
     if (buf[0]) {
       char parms[512] = "";
 
-      for (int index = 0; index < signature->compiler->declarationCount; index++) {
+      for (int index = 0; index < signature->size(); index++) {
         if (index)
           strcat(parms, ", ");
 
-        strcat(parms, signature->compiler->declarations[index].type.toString());
+        strcat(parms, signature->at(index).toString());
       }
 
       parser->error("Call '%.*s(%s)' does not match %s.", name.length, name.start, parms, buf);
@@ -319,6 +354,22 @@ std::string getRealName(ObjFunction *function) {
   return function->peerDeclaration ? getRealName(&function->peerDeclaration->_function) + (function->parentFlag ? "$" : "$_") : std::string(function->expr->name.start, function->expr->name.length);
 }
 
+bool isInRegularFunction(FunctionExpr *function) {
+  function->body->name.type == TOKEN_LEFT_BRACE;
+}
+
+bool isClass(FunctionExpr *function) {
+  return function->name.isClass();
+}
+
+bool isExternalField(FunctionExpr *function, DeclarationExpr *expr) {
+  return function && isClass(function) && isInRegularFunction(function) && !expr->name.isInternal();
+}
+
+bool isField(FunctionExpr *function, DeclarationExpr *expr) {
+  return isExternalField(function, expr) || expr->isInternalField;
+}
+
 bool isInRegularFunction(ObjFunction *function) {
   return function->expr->body->name.type == TOKEN_LEFT_BRACE;
 }
@@ -331,24 +382,29 @@ void Compiler::checkDeclaration(Type returnType, ReferenceExpr *expr, ObjFunctio
   expr->_declaration = checkDeclaration(returnType, expr->name, signature, parser);
 }
 */
-DeclarationExpr *checkDeclaration(Type returnType, Token &name, ObjFunction *signature, Parser *parser) {
+DeclarationExpr *checkDeclaration(Type returnType, Token &name, FunctionExpr *function, Parser *parser) {
   DeclarationExpr *peerDeclaration = NULL;
   bool parentFlag = false;
+  Signature signature;
 
-  if (resolveReference(getDeclarationRef(name, getCurrent()->group->body), name, signature, NULL)) {
+  if (function)
+    for (int index = 0; index < function->arity; index++)
+      signature.push_back(getParam(function, index)->decType);
+
+  if (resolveReference(getDeclarationRef(name, getCurrent()->group->body), name, function ? &signature : NULL, NULL)) {
     parser->error("Identical identifier '%.*s' with this name in this scope.", name.length, name.start);
     return NULL;
   }
 
-  if (signature) {
+  if (function) {
     Expr *expr = resolveReference(getDeclarationRef(name, getCurrent()->group->body), name, NULL, NULL);
 
     if (!expr) {
       expr = resolveReference(getFirstDeclarationRef(getCurrent()->enclosing, name), name, NULL, NULL);
-      signature->expr->_function.parentFlag = !!expr;
+      function->_function.parentFlag = !!expr;
     }
 
-    signature->expr->_function.peerDeclaration = (FunctionExpr *) expr;
+    function->_function.peerDeclaration = (FunctionExpr *) expr;
   }
 
   return NULL;

@@ -240,7 +240,6 @@ struct FunctionExpr : public Expr {
   GroupingExpr* body;
   Expr* ui;
   ObjFunction _function;
-  DeclarationExpr* _declaration;
 
   FunctionExpr(Type returnType, Token name, int arity, GroupingExpr* body, Expr* ui);
   void cleanExprs();
@@ -254,7 +253,7 @@ struct GetExpr : public Expr {
   Expr* object;
   Token name;
   int index;
-  Declaration* _declaration;
+  DeclarationExpr* _declaration;
 
   GetExpr(Expr* object, Token name, int index);
   void cleanExprs();

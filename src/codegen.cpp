@@ -30,7 +30,7 @@ static ObjFunction *getFunction(Expr *callee) {
     case EXPR_GET: {
         GetExpr *getExpr = (GetExpr *) callee;
 
-        return getExpr->_declaration && IS_FUNCTION(getExpr->_declaration->type) ? AS_FUNCTION_TYPE(getExpr->_declaration->type) : NULL;
+        return getExpr->_declaration && IS_FUNCTION(getExpr->_declaration->decType) ? AS_FUNCTION_TYPE(getExpr->_declaration->decType) : NULL;
       }
     case EXPR_FUNCTION: return &((FunctionExpr *) callee)->_function;
     case EXPR_GROUPING: {
@@ -207,20 +207,23 @@ void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
 
     if (function->expr->body == this && function->isClass()) {
         for (int index = 0; index < function->expr->arity - 1; index++) {
-          Declaration &declaration = function->compiler->declarations[index];
+          DeclarationExpr *declaration = getParam(function->expr, index);
 
-          if (declaration.isField()) {
-            std::string name = declaration.name.getString();
+          if (isField(function->expr, declaration)) {
+            std::string name = declaration->name.getString();
 
             line() << "this." << name << " = " << name << ";\n";
           }
         }
 
-        for (int index = 0; index < function->compiler->declarationCount; index++)
-          if (function->compiler->declarations[index].isInternalField) {
+        for (Expr *body = function->expr->body->body; body; body = cdr(body, TOKEN_SEPARATOR)) {
+          Expr *expr = car(body, TOKEN_SEPARATOR);
+
+          if (expr->type == EXPR_DECLARATION && ((DeclarationExpr *) expr)->isInternalField) {
             line() << "const " << function->getThisVariableName() << " = this;\n";
             break;
           }
+        }
       }
 
     if (body) {

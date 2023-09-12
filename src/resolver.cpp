@@ -49,7 +49,6 @@ static std::list<Expr *> uiExprs;
 static std::list<Type> uiTypes;
 
 Type popType1();
-bool resolve(Compiler *compiler);
 void acceptGroupingExprUnits(GroupingExpr *expr);
 void acceptSubExpr(Expr *expr);
 void parse(GroupingExpr *groupingExpr, const char *source);
@@ -214,12 +213,6 @@ static void insertTabs() {
 
 static const char *getGroupName(UIDirectiveExpr *expr, int dir);
 
-Type acceptGroupingExprUnits(GroupingExpr *expr, Parser &parser) {
-  Type bodyType = expr->body ? expr->body->resolve(parser) : VOID_TYPE;
-
-  return expr->name.type != TOKEN_LEFT_BRACE ? bodyType : VOID_TYPE;
-}
-
 Type IteratorExpr::resolve(Parser &parser) {
   return value->resolve(parser);
 }
@@ -345,18 +338,12 @@ Type BinaryExpr::resolve(Parser &parser) {
 
 static Token tok = buildToken(TOKEN_IDENTIFIER, "Capital");
 Type CallExpr::resolve(Parser &parser) {
-  Compiler compiler;
-  ObjFunction signature;
-
-  signature.compiler = &compiler;
-  compiler.function = &signature;
-  compiler.function->expr = NULL;
-  compiler.declarationCount = 0;
+  Signature signature;
 
   for (Expr *params = this->params; params; params = cdr(params, TOKEN_COMMA)) {
     Type type = car(params, TOKEN_COMMA)->resolve(parser);
 
-    compiler.addDeclaration(type, tok, NULL, false, &parser);
+    signature.push_back(type);
   }
 
   pushSignature(&signature);
@@ -466,14 +453,17 @@ Type DeclarationExpr::resolve(Parser &parser) {
       break;
     }
 
-  checkDeclaration(decType, name, NULL, &parser);
   return VOID_TYPE;
 }
 
 Type FunctionExpr::resolve(Parser &parser) {
+  pushScope(this);
+
   if (body) {
-    pushScope(body);
-    acceptGroupingExprUnits(body, parser);
+    Expr *group = getStatement(body, arity);
+
+    if (group)
+      group->resolve(parser);
 
     if (ui != NULL) {
       UIDirectiveExpr *exprUI = (UIDirectiveExpr *) ui;
@@ -500,15 +490,14 @@ Type FunctionExpr::resolve(Parser &parser) {
         uiFunctionExpr->resolve(parser);
         uiFunctionExpr->_function.eventFlags = exprUI->_eventFlags;
 
-        ObjFunction *uiFunction = (ObjFunction *) uiFunctionExpr->_declaration->decType.objType;
+        ObjFunction *uiFunction = &uiFunctionExpr->_function;
         GroupingExpr group(body->name, NULL);
 
-//        getFunction()->uiFunction = uiFunction;
         parse(&group, "UI_ *ui_;\n");
         (*getLastBodyExpr(&group.body, TOKEN_SEPARATOR))->resolve(parser);
         body->body = new BinaryExpr(group.body, buildToken(TOKEN_SEPARATOR, ";"), body->body);
 
-        pushScope(uiFunctionExpr->body);
+        pushScope(uiFunctionExpr);
         ss->str("");
         insertTabs();
         (*ss) << "void Layout_() {\n";
@@ -529,9 +518,9 @@ Type FunctionExpr::resolve(Parser &parser) {
 
         layoutFunctionExpr->resolve(parser);
 
-        ObjFunction *layoutFunction = (ObjFunction *) layoutFunctionExpr->_declaration->decType.objType;
+        ObjFunction *layoutFunction = &layoutFunctionExpr->_function;
 
-        pushScope(layoutFunctionExpr->body);
+        pushScope(layoutFunctionExpr);
 
         ss->str("");
         insertTabs();
@@ -575,32 +564,30 @@ Type FunctionExpr::resolve(Parser &parser) {
       delete exprUI;
       ui = NULL;
     }
-    popScope();
   }
 
+  popScope();
   return OBJ_TYPE(&_function);
 }
 
 Type GetExpr::resolve(Parser &parser) {
   pushSignature(NULL);
+  int count = 0;
   Type objectType = object->resolve(parser);
   popSignature();
 
   switch (AS_OBJ_TYPE(objectType)) {
     case OBJ_FUNCTION: {
-        ObjFunction *type = AS_FUNCTION_TYPE(objectType);
+        FunctionExpr *function = AS_FUNCTION_TYPE(objectType)->expr;
 
-        for (int count = 0, i = 0; i < type->compiler->declarationCount; i++) {
-          Declaration *dec = &type->compiler->declarations[i];
+        for (Expr *body = function->body->body; body; body = cdr(body, TOKEN_SEPARATOR), count++) {
+          Expr *expr = car(body, TOKEN_SEPARATOR);
+          DeclarationExpr *dec = expr->type == EXPR_DECLARATION ? (DeclarationExpr *) expr : NULL;
 
-          if (dec->isField()) {
-            if (identifiersEqual(&name, &dec->name)) {
-              index = count;
-              _declaration = dec;
-              return dec->type;
-            }
-
-            count++;
+          if (dec && isField(function, dec) && identifiersEqual(&name, &dec->name)) {
+            index = count;
+            _declaration = dec;
+            return dec->decType;
           }
         }
 
@@ -610,18 +597,16 @@ Type GetExpr::resolve(Parser &parser) {
 
     case OBJ_INSTANCE: {
         ObjInstance *type = AS_INSTANCE_TYPE(objectType);
+        FunctionExpr *function = ((ObjFunction *) type->callable)->expr;
 
-        for (int count = 0, i = 0; i < type->callable->compiler->declarationCount; i++) {
-          Declaration *dec = &type->callable->compiler->declarations[i];
+        for (Expr *body = function->body->body; body; body = cdr(body, TOKEN_SEPARATOR), count++) {
+          Expr *expr = car(body, TOKEN_SEPARATOR);
+          DeclarationExpr *dec = expr->type == EXPR_DECLARATION ? (DeclarationExpr *) expr : NULL;
 
-          if (dec->isField()) {
-            if (identifiersEqual(&name, &dec->name)) {
-              index = count;
-              _declaration = dec;
-              return dec->type;
-            }
-
-            count++;
+          if (dec && isField(function, dec) && identifiersEqual(&name, &dec->name)) {
+            index = count;
+            _declaration = dec;
+            return dec->decType;
           }
         }
 
@@ -640,7 +625,8 @@ Type GetExpr::resolve(Parser &parser) {
 Type GroupingExpr::resolve(Parser &parser) {
   pushScope(this);
 
-  Type type = acceptGroupingExprUnits(this, parser);
+  Type bodyType = body ? body->resolve(parser) : VOID_TYPE;
+  Type type = name.type != TOKEN_LEFT_BRACE ? bodyType : VOID_TYPE;
 
   popScope();
   return type;
@@ -760,18 +746,17 @@ Type SetExpr::resolve(Parser &parser) {
   if (AS_OBJ_TYPE(objectType) != OBJ_INSTANCE)
     parser.errorAt(&name, "Only instances have properties.");
   else {
+    int count = 0;
     ObjInstance *type = AS_INSTANCE_TYPE(objectType);
+    FunctionExpr *function = ((ObjFunction *) type->callable)->expr;
 
-    for (int count = 0, i = 0; i < type->callable->compiler->declarationCount; i++) {
-      Declaration *dec = &type->callable->compiler->declarations[i];
+    for (Expr *body = function->body->body; body; body = cdr(body, TOKEN_SEPARATOR), count++) {
+      Expr *expr = car(body, TOKEN_SEPARATOR);
+      DeclarationExpr *dec = expr->type == EXPR_DECLARATION ? (DeclarationExpr *) expr : NULL;
 
-      if (dec->isField()) {
-        if (identifiersEqual(&name, &dec->name)) {
-          index = count;
-          return dec->type;
-        }
-
-        count++;
+      if (dec && isField(function, dec) && identifiersEqual(&name, &dec->name)) {
+        index = count;
+        return dec->decType;
       }
     }
 
