@@ -16,15 +16,6 @@ void Expr::destroy() {
   delete this;
 }
 
-TypeExpr::TypeExpr(Token name, bool functionFlag, bool noneFlag, int numDim, int index, Declaration* declaration) : Expr(EXPR_TYPE) {
-  this->name = name;
-  this->functionFlag = functionFlag;
-  this->noneFlag = noneFlag;
-  this->numDim = numDim;
-  this->index = index;
-  this->declaration = declaration;
-}
-
 UIAttributeExpr::UIAttributeExpr(Token name, Expr* handler) : Expr(EXPR_UIATTRIBUTE) {
   this->name = name;
   this->handler = handler;
@@ -87,15 +78,11 @@ ArrayElementExpr::ArrayElementExpr(Expr* callee, Token bracket, int count, Expr*
   this->indexes = indexes;
 }
 
-DeclarationExpr::DeclarationExpr(Type decType, Token name, Expr* initExpr) : Expr(EXPR_DECLARATION) {
-  this->decType = decType;
-  this->name = name;
+DeclarationExpr::DeclarationExpr(Expr* initExpr) : Expr(EXPR_DECLARATION) {
   this->initExpr = initExpr;
 }
 
-FunctionExpr::FunctionExpr(Type returnType, Token name, int arity, GroupingExpr* body, Expr* ui) : Expr(EXPR_FUNCTION) {
-  this->returnType = returnType;
-  this->name = name;
+FunctionExpr::FunctionExpr(int arity, GroupingExpr* body, Expr* ui) : Expr(EXPR_FUNCTION) {
   this->arity = arity;
   this->body = body;
   this->ui = ui;

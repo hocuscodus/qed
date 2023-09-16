@@ -63,22 +63,6 @@ struct Expr {
   virtual void toCode(Parser &parser, ObjFunction *function) = 0;
 };
 
-struct TypeExpr : public Expr {
-  Token name;
-  bool functionFlag;
-  bool noneFlag;
-  int numDim;
-  int index;
-  Declaration* declaration;
-
-  TypeExpr(Token name, bool functionFlag, bool noneFlag, int numDim, int index, Declaration* declaration);
-  void cleanExprs();
-  void astPrint();
-  Expr *toCps(K k);
-  Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
-};
-
 struct UIAttributeExpr : public Expr {
   Token name;
   Expr* handler;
@@ -220,12 +204,11 @@ struct ArrayElementExpr : public Expr {
 };
 
 struct DeclarationExpr : public Expr {
-  Type decType;
-  Token name;
   Expr* initExpr;
   bool isInternalField;
+  Declaration _declaration;
 
-  DeclarationExpr(Type decType, Token name, Expr* initExpr);
+  DeclarationExpr(Expr* initExpr);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);
@@ -234,14 +217,13 @@ struct DeclarationExpr : public Expr {
 };
 
 struct FunctionExpr : public Expr {
-  Type returnType;
-  Token name;
   int arity;
   GroupingExpr* body;
   Expr* ui;
+  Declaration _declaration;
   ObjFunction _function;
 
-  FunctionExpr(Type returnType, Token name, int arity, GroupingExpr* body, Expr* ui);
+  FunctionExpr(int arity, GroupingExpr* body, Expr* ui);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);
@@ -253,7 +235,7 @@ struct GetExpr : public Expr {
   Expr* object;
   Token name;
   int index;
-  DeclarationExpr* _declaration;
+  Declaration* _declaration;
 
   GetExpr(Expr* object, Token name, int index);
   void cleanExprs();

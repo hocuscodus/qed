@@ -12,6 +12,7 @@
 #include "memory.h"
 #include "parser.hpp"
 #include "attrset.hpp"
+#include "compiler.hpp"
 
 #ifdef DEBUG_TRACE_EXECUTION
 #include "debug.hpp"
@@ -76,7 +77,7 @@ InterpretResult run(CoThread *current) {
     case OP_CONSTANT: {
 //      Value constant = READ_CONSTANT();
       uint8_t byte = READ_BYTE();
-      Value value = frame->closure->function->chunk.constants.values[byte];
+      Value value;// = frame->closure->function->chunk.constants.values[byte];
 
       PUSH(value);//frame->closure->function->type.valueType == VAL_OBJ && AS_OBJ(value)->type == OBJ_INTERNAL ? OBJ_VAL(newInternal()) : value);
       break;
@@ -341,7 +342,7 @@ InterpretResult run(CoThread *current) {
       break;
     }
     case OP_CLOSURE: {
-      ObjFunction *function = AS_FUNCTION(READ_CONSTANT());
+      ObjFunction *function;// = AS_FUNCTION(READ_CONSTANT());
       ObjClosure *closure = newClosure(function, current);
 
       PUSH(OBJ_VAL(closure));
@@ -365,7 +366,7 @@ InterpretResult run(CoThread *current) {
         return INTERPRET_OK;
       }
       else */{
-        ValueType type = frame->closure->function->expr->returnType.valueType;
+        ValueType type = frame->closure->function->expr->_declaration.type.valueType;
         Value result = type != VAL_VOID ? POP : VOID_VAL;
 
         current->onReturn(result);
@@ -373,7 +374,7 @@ InterpretResult run(CoThread *current) {
       }
       break;
     case OP_HALT: {
-      Obj *native = frame->closure->function->native;
+      Obj *native;// = frame->closure->function->native;
 
       if (native && native->type == OBJ_NATIVE) {
         NativeFn nativeFn = ((ObjNative *) native)->function;
@@ -386,7 +387,7 @@ InterpretResult run(CoThread *current) {
         frame = &current->frames[current->frameCount - 1];
       }
       else {
-        Obj *native = frame->closure->function->native;
+        Obj *native;// = frame->closure->function->native;
 
         if (native && native->type == OBJ_NATIVE_CLASS) {
           int argCount = stackTop - frame->slots - 1;
@@ -437,15 +438,15 @@ bool CoThread::call(ObjClosure *closure, int argCount) {
   }
 
   CallFrame *frame = &frames[frameCount++];
-  ObjFunction *outFunction = closure->function->uiFunction;
+  ObjFunction *outFunction;// = closure->function->uiFunction;
 
   frame->closure = closure;
-  frame->ip = closure->function->chunk.code;
+  frame->ip;// = closure->function->chunk.code;
   frame->slots = savedStackTop - argCount - 1;
   frame->uiClosure = outFunction ? newClosure(outFunction, this) : NULL;
   frame->uiValuesInstance = NULL;
   frame->uiLayoutInstance = NULL;
-
+/*
   if (outFunction)
     for (int i = 0; i < outFunction->upvalueCount; i++) {
       uint8_t isField = outFunction->upvalues[i].isField;
@@ -453,7 +454,7 @@ bool CoThread::call(ObjClosure *closure, int argCount) {
 
       frame->uiClosure->upvalues[i] = isField ? captureUpvalue(frame->slots + index) : frame->closure->upvalues[index];
     }
-
+*/
   return true;
 }
 
@@ -488,7 +489,7 @@ const char *Obj::toString() {
       return buf;
     }
     case OBJ_FUNCTION: {
-      Token name = ((ObjFunction *) this)->expr->name;
+      Token name = ((ObjFunction *) this)->expr->_declaration.name;
 
       sprintf(buf, "%.*s", name.length, name.start);
       return buf;
@@ -508,25 +509,46 @@ const char *Obj::toString() {
   }
 }
 
+Declaration::Declaration() {
+  expr = NULL;
+  isInternalField = false;
+  previous = NULL;
+  parentFlag = false;
+}
+
 std::string Declaration::getRealName() {
+  Token &name = getDeclaration(expr)->name;
+
   return previous ? previous->getRealName() + (parentFlag ? "$" : "$_") : std::string(name.start, name.length);
 }
 
+bool Declaration::isInRegularFunction() {
+  return function->body->name.type == TOKEN_LEFT_BRACE;
+}
+
+bool Declaration::isExternalField() {
+  return function && isClass(function) && isInRegularFunction() && !getDeclaration(expr)->name.isInternal();
+}
+
+bool Declaration::isField() {
+  return isExternalField() || isInternalField;
+}
+
 ObjFunction::ObjFunction() {
-  obj.type = OBJ_FUNCTION;
+  obj.type = OBJ_FUNCTION;/*
   upvalueCount = 0;
 //  name = NULL;
   chunk.init();
   native = NULL;
+  firstChild = NULL;
+  lastChild = NULL;
+  next = NULL;*/
   instanceIndexes = new IndexList();
   eventFlags = 0L;
   uiFunction = NULL;
-  firstChild = NULL;
-  lastChild = NULL;
-  next = NULL;
 }
 
-int ObjFunction::addUpvalue(uint8_t index, bool isField, Declaration *declaration, Parser &parser) {
+int ObjFunction::addUpvalue(uint8_t index, bool isField, Declaration *declaration, Parser &parser) {/*
   for (int i = 0; i < upvalueCount; i++) {
     Upvalue *upvalue = &upvalues[i];
 
@@ -543,28 +565,28 @@ int ObjFunction::addUpvalue(uint8_t index, bool isField, Declaration *declaratio
   upvalues[upvalueCount].index = index;
   upvalues[upvalueCount].declaration = declaration;
 
-  return upvalueCount++;
+  return upvalueCount++;*/
 }
 
-void ObjFunction::add(ObjFunction *function) {
+void ObjFunction::add(ObjFunction *function) {/*
   if (firstChild)
     lastChild->next = function;
   else
     firstChild = function;
 
-  lastChild = function;
+  lastChild = function;*/
 }
 
 bool ObjFunction::isClass() {
-  return expr->name.isClass();
+  return expr->_declaration.name.isClass();
 }
 
 bool ObjFunction::isUserClass() {
-  return expr->name.isUserClass();
+  return expr->_declaration.name.isUserClass();
 }
 
 std::string ObjFunction::getThisVariableName() {
-  return strcmp(expr->name.start, "Main") ? std::string(expr->name.start, expr->name.length) + "$this" : "globalThis$";
+  return strcmp(expr->_declaration.name.start, "Main") ? std::string(expr->_declaration.name.start, expr->_declaration.name.length) + "$this" : "globalThis$";
 }
 
 IndexList::IndexList() {
@@ -686,7 +708,7 @@ bool CoThread::callValue(Value callee, int argCount) {
 
       stackTop -= argCount + 1;
 
-      if (AS_CLOSURE(callee)->function->expr->returnType.valueType != VAL_VOID)
+      if (AS_CLOSURE(callee)->function->expr->_declaration.type.valueType != VAL_VOID)
         PUSH(result);
 
       break;
@@ -747,7 +769,7 @@ void CoThread::runtimeError(const char *format, ...) {
   for (int i = frameCount - 1; i >= 0; i--) {
     CallFrame *frame = &frames[i];
     ObjFunction *function = frame->closure->function;
-    size_t instruction = frame->ip - function->chunk.code - 1;
+//    size_t instruction = frame->ip - function->chunk.code - 1;
 
 //    fprintf(stderr, "[line %d] in %s\n",
 //            function->chunk.lines[instruction],
@@ -799,10 +821,10 @@ void CoThread::printStack() {
   printf("\n");
 }
 #endif
-bool CoThread::isDone() {
+bool CoThread::isDone() {/*
   Chunk *chunk = &frames[0].closure->function->chunk;
 
-  return frames[0].ip >= chunk->code + chunk->count;
+  return frames[0].ip >= chunk->code + chunk->count;*/
 }
 
 bool CoThread::isInInstance() {
@@ -819,7 +841,7 @@ void CoThread::onReturn(Value &returnValue) {
   closeUpvalues(frame->slots); // objectify the stack frame
   stackTop = frame->slots;
 
-  if (frame->closure->function->expr->returnType.valueType != VAL_VOID)
+  if (frame->closure->function->expr->_declaration.type.valueType != VAL_VOID)
     PUSH(returnValue);
 }
 
@@ -846,8 +868,8 @@ void CoThread::initValues() {
     run(instanceThread);
     instanceThread->savedStackTop = stackTop;
 
-    for (int ndx2 = -1; (ndx2 = outClosure->function->instanceIndexes->getNext(ndx2)) != -1;)
-      ((CoThread *) AS_OBJ(instanceThread->stack[ndx2]))->initValues();
+//    for (int ndx2 = -1; (ndx2 = outClosure->function->instanceIndexes->getNext(ndx2)) != -1;)
+//      ((CoThread *) AS_OBJ(instanceThread->stack[ndx2]))->initValues();
   }
 }
 
@@ -857,8 +879,8 @@ void CoThread::uninitValues() {
       CallFrame &frame = frames[ndx].uiValuesInstance->frames[0];
       ObjClosure *outClosure = frame.closure;
 
-      for (int ndx2 = -1; (ndx2 = outClosure->function->instanceIndexes->getNext(ndx2)) != -1;)
-        ((CoThread *) AS_OBJ(frame.uiValuesInstance->stack[ndx2]))->uninitValues();
+//      for (int ndx2 = -1; (ndx2 = outClosure->function->instanceIndexes->getNext(ndx2)) != -1;)
+//        ((CoThread *) AS_OBJ(frame.uiValuesInstance->stack[ndx2]))->uninitValues();
 
       if (frame.uiValuesInstance) {
         FREE(OBJ_THREAD, frame.uiValuesInstance);
@@ -1061,7 +1083,7 @@ ObjObject *newObject(ObjClosure *closure) {
   return object;
 }
 
-ObjClosure *newClosure(ObjFunction *function, CoThread *parent) {
+ObjClosure *newClosure(ObjFunction *function, CoThread *parent) {/*
   ObjUpvalue **upvalues = ALLOCATE(ObjUpvalue *, function->upvalueCount);
 
   for (int i = 0; i < function->upvalueCount; i++) {
@@ -1074,7 +1096,7 @@ ObjClosure *newClosure(ObjFunction *function, CoThread *parent) {
   closure->function = function;
   closure->upvalues = upvalues;
   closure->upvalueCount = function->upvalueCount;
-  return closure;
+  return closure;*/
 }
 
 ObjNative *newNative(NativeFn function) {
@@ -1119,7 +1141,7 @@ ObjArray *newArray(Type elementType) {
 }
 
 static void printFunction(ObjFunction *function) {
-  printf("<fn %s>", function->expr->name.start);
+  printf("<fn %s>", function->expr->_declaration.name.start);
 }
 
 void printObject(Value value) {

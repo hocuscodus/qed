@@ -65,7 +65,7 @@ static void freeObject(Obj *object) {
     case OBJ_FUNCTION: {
       ObjFunction *function = (ObjFunction *)object;
 //      delete function->uiFunction;
-      function->chunk.uninit();
+//      function->chunk.uninit();
       delete function->instanceIndexes;
       FREE(ObjFunction, object);
       break;

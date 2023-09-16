@@ -78,7 +78,7 @@ static Expr *createArrayLoops(int index, Point &dirs, Expr **iteratorExprs, Expr
       delete iteratorExpr;
     }
 
-    expr = new DeclarationExpr(UNKNOWN_TYPE, buildToken(TOKEN_IDENTIFIER, newString(dimName)), expr);
+    expr = newDeclarationExpr(UNKNOWN_TYPE, buildToken(TOKEN_IDENTIFIER, newString(dimName)), expr);
 
     if (isGroup(*iteratorExprs, TOKEN_SEPARATOR))
       ((BinaryExpr *) *iteratorExprs)->left = expr;
@@ -86,7 +86,7 @@ static Expr *createArrayLoops(int index, Point &dirs, Expr **iteratorExprs, Expr
       *iteratorExprs = expr;
 
     GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL);
-    Expr *initializer = new DeclarationExpr(INT_TYPE, buildToken(TOKEN_IDENTIFIER, newString(varName)), new LiteralExpr(VAL_INT, {.integer = 0}));
+    Expr *initializer = newDeclarationExpr(INT_TYPE, buildToken(TOKEN_IDENTIFIER, newString(varName)), new LiteralExpr(VAL_INT, {.integer = 0}));
 
     pushScope(group);
     addExpr(&group->body, initializer, buildToken(TOKEN_SEPARATOR, ";"));
@@ -317,7 +317,7 @@ ObjFunction *compile(FunctionExpr *expr, Parser *parser) {
   line() << "canvas.onselectstart = function () { return false; }\n";
 
   if (parser->hadError)
-    expr->_function.chunk.reset();
+;//    expr->_function.chunk.reset();
 
   return parser->hadError ? NULL : &expr->_function;
 }
@@ -330,7 +330,7 @@ ObjFunction *Parser::compile() {
 
 FunctionExpr *Parser::parse() {
   GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_EOF, ""), NULL);
-  FunctionExpr *functionExpr = new FunctionExpr(VOID_TYPE, buildToken(TOKEN_IDENTIFIER, "Main"), 0, group, NULL);
+  FunctionExpr *functionExpr = newFunctionExpr(VOID_TYPE, buildToken(TOKEN_IDENTIFIER, "Main"), 0, group, NULL);
 
   functionExpr->_function.expr = functionExpr;
   pushScope(functionExpr);
@@ -680,7 +680,7 @@ Expr *Parser::grouping() {
 
   if (op.type != TOKEN_LEFT_BRACE && group->body && isGroup(group->body, TOKEN_SEPARATOR)) {
     getCurrent()->hasSuperCalls |= group->hasSuperCalls;
-    return new CallExpr(false, new GroupingExpr(op, new FunctionExpr(VOID_TYPE, buildToken(TOKEN_IDENTIFIER, group->hasSuperCalls ? "L" : "l"), 0, group, NULL)), op, NULL, NULL);
+    return new CallExpr(false, new GroupingExpr(op, newFunctionExpr(VOID_TYPE, buildToken(TOKEN_IDENTIFIER, group->hasSuperCalls ? "L" : "l"), 0, group, NULL)), op, NULL, NULL);
   }
 
   return group;
@@ -865,9 +865,10 @@ DeclarationExpr *Parser::declareVariable(Expr *typeExpr, TokenType *endGroupType
   Token name = previous;
   Expr *expr = match(TOKEN_EQUAL) ? expression(endGroupTypes) : NULL;
   Type decType = resolveType(typeExpr);
+  DeclarationExpr *dec = newDeclarationExpr(decType, name, expr);
 
-  checkDeclaration(decType, name, NULL, this);
-  return new DeclarationExpr(decType, name, expr);
+  checkDeclaration(dec->_declaration, name, NULL, this);
+  return dec;
 }
 
 DeclarationExpr *Parser::parseVariable(TokenType *endGroupTypes, const char *errorMessage) {
@@ -893,7 +894,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
 
     if(match(TOKEN_CALL)) {
       GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL);
-      FunctionExpr *functionExpr = new FunctionExpr(returnType, name, 0, group, NULL);
+      FunctionExpr *functionExpr = newFunctionExpr(returnType, name, 0, group, NULL);
 
       functionExpr->_function.expr = functionExpr;
       pushScope(functionExpr);
@@ -903,7 +904,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
         do {
           DeclarationExpr *param = parseVariable(endGroupTypes, "Expect parameter name.");
 
-          if (!IS_UNKNOWN(param->decType)) {
+          if (!IS_UNKNOWN(param->_declaration.type)) {
             addExpr(&group->body, param, buildToken(TOKEN_SEPARATOR, ";"));
             functionExpr->arity++;
 //            functionExpr->params = RESIZE_ARRAY(DeclarationExpr *, functionExpr->params, functionExpr->arity, functionExpr->arity + 1);
@@ -915,7 +916,32 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
         } while (match(TOKEN_COMMA));
 
       consume(TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
+/*
+  if (_function.isClass() && !name.isInternal()) {
+    const char *type = getHandlerType(returnType);
+    Token name = buildToken(TOKEN_IDENTIFIER, "handlerFn_");
+    ReferenceExpr *paramTypeExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, type), NULL);
 
+    pushScope(body);
+    returnType = VOID_TYPE;
+
+    if (getCurrent()) {
+      Type paramType = paramTypeExpr->resolve(*((Parser *) NULL));
+
+      if (!IS_UNKNOWN(paramType)) {
+        params = RESIZE_ARRAY(DeclarationExpr *, params, arity, arity + 1);
+        params[arity++] = new DeclarationExpr(paramType, name, NULL);
+//        params[arity++]->_declaration = body->_compiler.addDeclaration(paramType, name, NULL, false, NULL);
+      }
+      else
+        ;//error("Parameter %d not typed correctly", functionExpr->arity + 1);
+    }
+    else
+      arity++;
+
+    popScope();
+  }
+*/
       if (name.isUserClass()) {
         const char *type = getHandlerType(returnType);
         Token name = buildToken(TOKEN_IDENTIFIER, "handlerFn_");
@@ -927,7 +953,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
           Type paramType = resolveType(paramTypeExpr);
 
           if (!IS_UNKNOWN(paramType)) {
-            addExpr(&group->body, new DeclarationExpr(paramType, name, NULL), buildToken(TOKEN_SEPARATOR, ";"));
+            addExpr(&group->body, newDeclarationExpr(paramType, name, NULL), buildToken(TOKEN_SEPARATOR, ";"));
             functionExpr->arity++;
           }
           else
@@ -945,7 +971,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
 
       group->name = previous;
       popScope();
-      /*functionExpr->_declaration = */checkDeclaration(OBJ_TYPE(&functionExpr->_function), name, functionExpr, this);
+      /*functionExpr->_declaration = */checkDeclaration(functionExpr->_declaration, name, functionExpr, this);
       pushScope(functionExpr);
       expList(group, endGroupType);
 
@@ -1092,7 +1118,7 @@ Expr *Parser::returnStatement(TokenType endGroupType) {
   if (!check(endGroupType))
     consume(TOKEN_SEPARATOR, "Expect ';' after return value.");
 
-  if (getFunction()->name.isUserClass()) {
+  if (getFunction()->_declaration.name.isUserClass()) {
     ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "post_"), NULL);
     Expr *param = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "handlerFn_"), NULL);
 
@@ -1105,7 +1131,7 @@ Expr *Parser::returnStatement(TokenType endGroupType) {
     value = new CallExpr(false, callee, buildToken(TOKEN_CALL, "("), param, NULL);
   }
 
-  return new ReturnExpr(keyword, getFunction()->name.isUserClass(), value);
+  return new ReturnExpr(keyword, getFunction()->_declaration.name.isUserClass(), value);
 }
 
 Expr *Parser::statement(TokenType endGroupType) {

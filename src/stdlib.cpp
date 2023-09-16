@@ -170,7 +170,7 @@ QNI_CLASS(CoList_yield) {
 		main->previous->next = newUnit;
 		main->previous = newUnit;
     ObjNativeClass *endObj = newNativeClass(qni__CoListEnd);
-    closure1->function->native = &endObj->obj;
+//    closure1->function->native = &endObj->obj;
     endObj->arg = objInternal;
 	  return {INTERPRET_OK};//HALT};
   }

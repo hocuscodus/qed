@@ -70,7 +70,7 @@ static Obj objInternalType = {OBJ_INTERNAL};
 bool isType(Type &type) {
   switch (AS_OBJ_TYPE(type)) {
   case OBJ_FUNCTION: {
-    const char *name = AS_FUNCTION_TYPE(type)->expr->name.start;
+    const char *name = AS_FUNCTION_TYPE(type)->expr->_declaration.name.start;
 
     return memcmp(name, "Main", 4) && name[0] >= 'A' && name[0] <= 'Z';
   }
@@ -353,7 +353,7 @@ Type CallExpr::resolve(Parser &parser) {
   if (IS_FUNCTION(type)) {
     ObjFunction *callable = AS_FUNCTION_TYPE(type);
 
-    return newFlag ? OBJ_TYPE(newInstance(callable)) : callable->expr->returnType;
+    return newFlag ? OBJ_TYPE(newInstance(callable)) : callable->expr->_declaration.type;
   } else {
     parser.error("Non-callable object type");
     return VOID_TYPE;
@@ -412,10 +412,10 @@ Type DeclarationExpr::resolve(Parser &parser) {
     Type type1 = initExpr->resolve(parser);
     Type internalType = {VAL_OBJ, &objInternalType};
 
-    if (decType.equals(internalType) || decType.valueType == VAL_UNKNOWN)
-      decType = type1;
-    else if (!type1.equals(decType)) {
-      initExpr = convertToType(decType, initExpr, type1, parser);
+    if (_declaration.type.equals(internalType) || _declaration.type.valueType == VAL_UNKNOWN)
+      _declaration.type = type1;
+    else if (!type1.equals(_declaration.type)) {
+      initExpr = convertToType(_declaration.type, initExpr, type1, parser);
 
       if (!initExpr) {
         parser.error("Value must match the variable type");
@@ -423,7 +423,7 @@ Type DeclarationExpr::resolve(Parser &parser) {
     }
   }
   else
-    switch (decType.valueType) {
+    switch (_declaration.type.valueType) {
     case VAL_VOID:
       parser.error("Cannot declare a void variable.");
       break;
@@ -441,7 +441,7 @@ Type DeclarationExpr::resolve(Parser &parser) {
       break;
 
     case VAL_OBJ:
-      switch (AS_OBJ_TYPE(decType)) {
+      switch (AS_OBJ_TYPE(_declaration.type)) {
       case OBJ_STRING:
         initExpr = new LiteralExpr(VAL_OBJ, {.obj = &copyString("", 0)->obj});
         break;
@@ -584,10 +584,10 @@ Type GetExpr::resolve(Parser &parser) {
           Expr *expr = car(body, TOKEN_SEPARATOR);
           DeclarationExpr *dec = expr->type == EXPR_DECLARATION ? (DeclarationExpr *) expr : NULL;
 
-          if (dec && isField(function, dec) && identifiersEqual(&name, &dec->name)) {
+          if (dec && isField(function, dec) && identifiersEqual(&name, &dec->_declaration.name)) {
             index = count;
-            _declaration = dec;
-            return dec->decType;
+            _declaration = &dec->_declaration;
+            return dec->_declaration.type;
           }
         }
 
@@ -603,10 +603,10 @@ Type GetExpr::resolve(Parser &parser) {
           Expr *expr = car(body, TOKEN_SEPARATOR);
           DeclarationExpr *dec = expr->type == EXPR_DECLARATION ? (DeclarationExpr *) expr : NULL;
 
-          if (dec && isField(function, dec) && identifiersEqual(&name, &dec->name)) {
+          if (dec && isField(function, dec) && identifiersEqual(&name, &dec->_declaration.name)) {
             index = count;
-            _declaration = dec;
-            return dec->decType;
+            _declaration = &dec->_declaration;
+            return dec->_declaration.type;
           }
         }
 
@@ -754,9 +754,9 @@ Type SetExpr::resolve(Parser &parser) {
       Expr *expr = car(body, TOKEN_SEPARATOR);
       DeclarationExpr *dec = expr->type == EXPR_DECLARATION ? (DeclarationExpr *) expr : NULL;
 
-      if (dec && isField(function, dec) && identifiersEqual(&name, &dec->name)) {
+      if (dec && isField(function, dec) && identifiersEqual(&name, &dec->_declaration.name)) {
         index = count;
-        return dec->decType;
+        return dec->_declaration.type;
       }
     }
 
@@ -779,19 +779,6 @@ Type TernaryExpr::resolve(Parser &parser) {
 }
 
 Type ThisExpr::resolve(Parser &parser) {
-  return VOID_TYPE;
-}
-
-Type TypeExpr::resolve(Parser &parser) {/*
-  if (index != -1) {
-    Obj *obj = primitives[index];
-
-    index = -1;
-    _declaration = NULL;
-    return {VAL_OBJ, obj};
-  }
-
-  return resolveReferenceExpr(this);*/
   return VOID_TYPE;
 }
 
@@ -836,7 +823,7 @@ Type ReferenceExpr::resolve(Parser &parser) {
 
   if (declaration) 
     switch(declaration->type) {
-      case EXPR_DECLARATION: return ((DeclarationExpr *) declaration)->decType;
+      case EXPR_DECLARATION: return ((DeclarationExpr *) declaration)->_declaration.type;
       case EXPR_FUNCTION: return OBJ_TYPE(&((FunctionExpr *) declaration)->_function);
       default: parser.error("Variable '%.*s' is not a call.", name.length, name.start);
     }
@@ -1051,7 +1038,7 @@ void processAttrs(UIDirectiveExpr *expr, Parser &parser) {
             attExpr->handler = NULL;
 /*
           char *name = generateInternalVarName("v", getCurrent()->getDeclarationCount());
-          DeclarationExpr *decExpr = new DeclarationExpr(type, buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1), attExpr->handler);
+          DeclarationExpr *decExpr = newDeclarationExpr(type, buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1), attExpr->handler);
 
           attExpr->handler = NULL;
           attExpr->_index = getCurrent()->getDeclarationCount();
@@ -1150,7 +1137,7 @@ void pushAreas(UIDirectiveExpr *expr, Parser &parser) {
 
     if (name != NULL) {
       Token token = buildToken(TOKEN_IDENTIFIER, name);
-      Type outType = ((DeclarationExpr *) resolveReferenceExpr(token, &parser))->decType;
+      Type outType = ((DeclarationExpr *) resolveReferenceExpr(token, &parser))->_declaration.type;
       char *callee = NULL;
 
       switch (AS_OBJ_TYPE(outType)) {
@@ -1369,7 +1356,7 @@ void paint(UIDirectiveExpr *expr, Parser &parser) {
     Token token = buildToken(TOKEN_IDENTIFIER, name);
     DeclarationExpr *dec = (DeclarationExpr *) resolveReferenceExpr(/*getCurrent()->enclosing, &*/token, &parser);
 //    Type outType = getCurrent()->enclosing->getDeclaration().type;
-    Type outType = dec->decType;
+    Type outType = dec->_declaration.type;
     switch (AS_OBJ_TYPE(outType)) {
       case OBJ_INSTANCE:
         insertTabs();
@@ -1381,7 +1368,7 @@ void paint(UIDirectiveExpr *expr, Parser &parser) {
         break;
 
       case OBJ_FUNCTION:
-        callee = AS_FUNCTION_TYPE(outType)->expr->name.getString().c_str();
+        callee = AS_FUNCTION_TYPE(outType)->expr->_declaration.name.getString().c_str();
         name[0] = 0;
         break;
 
@@ -1480,7 +1467,7 @@ void onEvent(UIDirectiveExpr *expr, Parser &parser) {
       const char *name = getValueVariableName(expr, ATTRIBUTE_OUT);
       Token token = buildToken(TOKEN_IDENTIFIER, name);
       DeclarationExpr *dec = (DeclarationExpr *) resolveReferenceExpr(/*getCurrent()->enclosing, &*/token, &parser);
-      Type outType = dec->decType;
+      Type outType = dec->_declaration.type;
 
       switch (AS_OBJ_TYPE(outType)) {
         case OBJ_INSTANCE:

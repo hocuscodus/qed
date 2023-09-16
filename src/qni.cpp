@@ -32,19 +32,19 @@ bool addNativeClassFn(const char *name, NativeClassFn nativeClassFn) {
 }
 
 bool bindFunction(std::string prefix, ObjFunction *function) {
-  std::string name = prefix + "_" + function->expr->name.getString();
+  std::string name = prefix + "_" + function->expr->_declaration.name.getString();
   std::map<std::string, NativeFn>::iterator i = getQniFnMap().find(name);
   bool rc = i != getQniFnMap().end();
 
   if (rc)
-    function->native = &newNative(i->second)->obj;
+;//    function->native = &newNative(i->second)->obj;
   else {
     std::map<std::string, NativeClassFn>::iterator i = getQniClassMap().find(name);
 
     rc = i != getQniClassMap().end();
 
     if (rc)
-      function->native = &newNativeClass(i->second)->obj;
+;//      function->native = &newNativeClass(i->second)->obj;
   }
 
   return rc;

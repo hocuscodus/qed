@@ -62,7 +62,7 @@ static void printObjType(Obj *obj) {
   switch(obj->type) {
     case OBJ_STRING: fprintf(stderr, "String"); return;
     case OBJ_FUNCTION: {
-      Token name = ((ObjFunction *) obj)->expr->name;
+      Token name = ((ObjFunction *) obj)->expr->_declaration.name;
 
       fprintf(stderr, "%.s", name.length, name.start);
       return;
@@ -175,7 +175,7 @@ void ArrayElementExpr::astPrint() {
 }
 
 void DeclarationExpr::astPrint() {
-  fprintf(stderr, "(var %.*s", name.length, name.start);
+  fprintf(stderr, "(var %.*s", _declaration.name.length, _declaration.name.start);
 
   if (initExpr)
     initExpr->astPrint();
@@ -184,7 +184,7 @@ void DeclarationExpr::astPrint() {
 }
 
 void FunctionExpr::astPrint() {
-  fprintf(stderr, "fun %.*s(", name.length, name.start);
+  fprintf(stderr, "fun %.*s(", _declaration.name.length, _declaration.name.start);
   for (int index = 0; index < arity; index++) {
     fprintf(stderr, ", ");
     getParam(this, index)->astPrint();
@@ -319,10 +319,6 @@ void ThisExpr::astPrint() {
   fprintf(stderr, "this");
 }
 
-void TypeExpr::astPrint() {
-  fprintf(stderr, "(type %.*s)", name.length, name.start);
-}
-
 void UnaryExpr::astPrint() {
   fprintf(stderr, "(%.*s ", op.length, op.start);
   right->astPrint();
@@ -334,7 +330,7 @@ void PrimitiveExpr::astPrint() {
 }
 
 void ReferenceExpr::astPrint() {
-  fprintf(stderr, "(%.*s)", name.length, name.start);
+  fprintf(stderr, "(%s %.*s)", declaration ? getDeclaration(declaration)->type.toString() : "var", name.length, name.start);
 }
 
 void WhileExpr::astPrint() {

@@ -9,7 +9,6 @@
 
 #include <sstream>
 #include "chunk.hpp"
-#include "value.h"
 #include "scanner.hpp"
 
 #define GET_OBJ_TYPE(value)        (AS_OBJ(value)->type)
@@ -51,20 +50,25 @@ struct Obj {
   const char *toString();
 };
 
-struct ObjFunction;
+struct Expr;
+struct FunctionExpr;
 
 struct Declaration {
   Type type;
   Token name;
+  Expr *expr;
+  FunctionExpr *function;
   bool isInternalField;
-  ObjFunction *function;
   Declaration *previous;
-  int parentFlag;
+  bool parentFlag;
+
+  Declaration();
 
   std::string getRealName();
-  bool isInRegularFunction() {return false;}//function->expr->body->name.type == TOKEN_LEFT_BRACE;}
-  bool isExternalField() {return false;}//ffunction && function->expr && function->isClass() && isInRegularFunction() && !name.isInternal();}
-  bool isField() {return isExternalField() || isInternalField;}
+  bool isInRegularFunction();
+  bool isExternalField();
+  bool isField();
+  const char *toString();
 };
 
 typedef struct {
@@ -98,19 +102,12 @@ class Parser;
 
 struct ObjFunction : ObjCallable {
   FunctionExpr *expr;
-  int upvalueCount;
-  Upvalue upvalues[UINT8_COUNT];
-  Chunk chunk;
-  Obj *native;
   IndexList *instanceIndexes;
   long eventFlags;
-  ObjFunction *uiFunction;
-  ObjFunction *firstChild;
-  ObjFunction *lastChild;
-  ObjFunction *next;
-  FunctionExpr *peerDeclaration;
+  ObjFunction *uiFunction;/*
+  Expr *peerDeclaration;
   int parentFlag;
-
+*/
   ObjFunction();
 
   int addUpvalue(uint8_t index, bool isField, Declaration *declaration, Parser &parser);

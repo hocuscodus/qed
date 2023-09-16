@@ -148,7 +148,7 @@ static void repl() {
         scanner.reset(&buffer[length]);
       }
 
-      function->chunk.reset();
+//      function->chunk.reset();
       coThread->reset();
     }
 

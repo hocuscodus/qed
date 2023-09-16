@@ -29,8 +29,9 @@ static ObjFunction *getFunction(Expr *callee) {
       }
     case EXPR_GET: {
         GetExpr *getExpr = (GetExpr *) callee;
+        Type decType = getDeclaration(getExpr->_declaration->expr)->type;
 
-        return getExpr->_declaration && IS_FUNCTION(getExpr->_declaration->decType) ? AS_FUNCTION_TYPE(getExpr->_declaration->decType) : NULL;
+        return getExpr->_declaration && IS_FUNCTION(decType) ? AS_FUNCTION_TYPE(decType) : NULL;
       }
     case EXPR_FUNCTION: return &((FunctionExpr *) callee)->_function;
     case EXPR_GROUPING: {
@@ -160,7 +161,7 @@ void ArrayElementExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 void DeclarationExpr::toCode(Parser &parser, ObjFunction *function) {
-//  str() << (isExternalField(_declaration) ? "this." : /*_declaration->function->isClass() ? "const " : */"let ") << getRealName(_declaration) << " = ";
+  str() << (_declaration.isExternalField() ? "this." : /*_declaration->function->isClass() ? "const " : */"let ") << _declaration.getRealName() << " = ";
 
   if (initExpr)
     initExpr->toCode(parser, function);
@@ -168,25 +169,29 @@ void DeclarationExpr::toCode(Parser &parser, ObjFunction *function) {
     str() << "null";
 }
 
-void FunctionExpr::toCode(Parser &parser, ObjFunction *function) {/*
-  if (body->_compiler.enclosing) {
-    if (body->_compiler.enclosing->isInRegularFunction())
-      str() << "this." << getRealName(&_function) << " = ";
+void FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
+  pushScope(this);
 
-    str() << "function " << getRealName(&_function) << "(";
+  if (getCurrent()->enclosing) {
+    if (getFunction(getCurrent()->enclosing)->_declaration.isInRegularFunction())
+      str() << "this." << _declaration.getRealName() << " = ";
+
+    str() << "function " << _declaration.getRealName() << "(";
 
     for (int index = 0; index < arity; index++) {
       if (index)
         str() << ", ";
 
-      str() << getParam(this, index)->name.getString();
+      str() << getParam(this, index)->_declaration.name.getString();
     }
 
     str() << ") ";
   }
-*/
+
   if (body)
     body->toCode(parser, &_function);
+
+  popScope();
 }
 
 void GetExpr::toCode(Parser &parser, ObjFunction *function) {
@@ -195,14 +200,17 @@ void GetExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
-  pushScope(this);
+  bool functionFlag = getCurrent()->group == this;
+
+  if (!functionFlag)
+    pushScope(this);
 
   if (name.type != TOKEN_LEFT_BRACE) {
     str() << "(";
     body->toCode(parser, function);
     str() << ")";
   } else {
-    if (false)//_compiler.enclosing)
+    if (getCurrent()->enclosing)
       startBlock();
 
     if (function->expr->body == this && function->isClass()) {
@@ -210,7 +218,7 @@ void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
           DeclarationExpr *declaration = getParam(function->expr, index);
 
           if (isField(function->expr, declaration)) {
-            std::string name = declaration->name.getString();
+            std::string name = declaration->_declaration.name.getString();
 
             line() << "this." << name << " = " << name << ";\n";
           }
@@ -237,11 +245,12 @@ void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
     if (function->expr->body == this && function->expr->ui)
       function->expr->ui->toCode(parser, function);
 
-    if (false)//_compiler.enclosing)
+    if (getCurrent()->enclosing)
       endBlock();
   }
 
-  popScope();
+  if (!functionFlag)
+    popScope();
 }
 
 void IfExpr::toCode(Parser &parser, ObjFunction *function) {
@@ -375,19 +384,6 @@ void TernaryExpr::toCode(Parser &parser, ObjFunction *function) {
 void ThisExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
-void TypeExpr::toCode(Parser &parser, ObjFunction *function) {
-  if (declaration)
-    if (declaration->function->isClass())
-      if (declaration->function == function)
-        str() << "this." << declaration->getRealName();
-      else
-        str() << declaration->function->getThisVariableName() << "." << declaration->getRealName();
-    else
-      str() << declaration->getRealName();
-  else
-    str() << name.getString();
-}
-
 void CastExpr::toCode(Parser &parser, ObjFunction *function) {
   expr->toCode(parser, function);
 }
@@ -420,17 +416,19 @@ void UnaryExpr::toCode(Parser &parser, ObjFunction *function) {
 void PrimitiveExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
-void ReferenceExpr::toCode(Parser &parser, ObjFunction *function) {/*
+void ReferenceExpr::toCode(Parser &parser, ObjFunction *function) {
+  Declaration *declaration = getDeclaration(this->declaration);
+
   if (declaration)
     if (declaration->isExternalField())
-      if (declaration->function == function)
-        str() << "this." << getRealName(function);
+      if (declaration->function == function->expr)
+        str() << "this." << declaration->getRealName();
       else
-        str() << declaration->function->getThisVariableName() << "." << getRealName(function);
+        str() << declaration->function->_function.getThisVariableName() << "." << declaration->getRealName();
     else
-      str() << getRealName(function);
+      str() << declaration->getRealName();
   else
-    str() << name.getString();*/
+    str() << name.getString();
 }
 
 void SwapExpr::toCode(Parser &parser, ObjFunction *function) {
