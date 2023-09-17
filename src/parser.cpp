@@ -930,7 +930,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
 
       if (!IS_UNKNOWN(paramType)) {
         params = RESIZE_ARRAY(DeclarationExpr *, params, arity, arity + 1);
-        params[arity++] = new DeclarationExpr(paramType, name, NULL);
+        params[arity++] = newDeclarationExpr(paramType, name, NULL);
 //        params[arity++]->_declaration = body->_compiler.addDeclaration(paramType, name, NULL, false, NULL);
       }
       else

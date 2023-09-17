@@ -22,8 +22,18 @@ Scope::Scope(FunctionExpr *function, GroupingExpr *group, Scope *enclosing) {
   this->function = function;
   this->group = group;
   this->enclosing = enclosing;
+  current = &group->declarations;
   hasSuperCalls = false;
   vCount = 1;
+}
+
+void Scope::add(Declaration *declaration) {
+  if (*current != declaration) {
+    declaration->next = *current;
+    *current = declaration;
+  }
+
+  current = &declaration->next;
 }
 
 Scope *getCurrent() {
@@ -78,6 +88,10 @@ FunctionExpr *newFunctionExpr(Type type, Token name, int arity, GroupingExpr* bo
   expr->_declaration.name = name;
   expr->_declaration.expr = expr;
   expr->_declaration.function = getFunction();
+
+  if (getCurrent())
+    getCurrent()->add(&expr->_declaration);
+
   return expr;
 }
 
@@ -246,7 +260,7 @@ Declaration *Compiler::addDeclaration(Type type, Token &name, Declaration *previ
 //    dec->name = name;
     dec->isInternalField = false;
 //    dec->function = function;
-    dec->previous = previous;
+    dec->peer = previous;
     dec->parentFlag = parentFlag;
   }
 
@@ -421,7 +435,7 @@ Expr *checkDeclaration(Declaration &declaration, Token &name, FunctionExpr *func
     declaration.parentFlag = !!expr;
   }
 
-  declaration.previous = getDeclaration(expr);
+  declaration.peer = getDeclaration(expr);
   return NULL;
 }
 

@@ -512,14 +512,15 @@ const char *Obj::toString() {
 Declaration::Declaration() {
   expr = NULL;
   isInternalField = false;
-  previous = NULL;
+  next = NULL;
+  peer = NULL;
   parentFlag = false;
 }
 
 std::string Declaration::getRealName() {
   Token &name = getDeclaration(expr)->name;
 
-  return previous ? previous->getRealName() + (parentFlag ? "$" : "$_") : std::string(name.start, name.length);
+  return peer ? peer->getRealName() + (parentFlag ? "$" : "$_") : std::string(name.start, name.length);
 }
 
 bool Declaration::isInRegularFunction() {

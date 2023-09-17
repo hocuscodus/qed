@@ -153,6 +153,7 @@ struct CastExpr : public Expr {
 struct GroupingExpr : public Expr {
   Token name;
   Expr* body;
+  Declaration* declarations;
   bool hasSuperCalls;
 
   GroupingExpr(Token name, Expr* body);

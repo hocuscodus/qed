@@ -59,7 +59,8 @@ struct Declaration {
   Expr *expr;
   FunctionExpr *function;
   bool isInternalField;
-  Declaration *previous;
+  Declaration *peer;
+  Declaration *next;
   bool parentFlag;
 
   Declaration();
@@ -68,7 +69,6 @@ struct Declaration {
   bool isInRegularFunction();
   bool isExternalField();
   bool isField();
-  const char *toString();
 };
 
 typedef struct {
@@ -94,7 +94,6 @@ struct Compiler;
 
 struct ObjCallable {
   Obj obj;
-//  Compiler *compiler;
 };
 
 struct FunctionExpr;
@@ -104,10 +103,7 @@ struct ObjFunction : ObjCallable {
   FunctionExpr *expr;
   IndexList *instanceIndexes;
   long eventFlags;
-  ObjFunction *uiFunction;/*
-  Expr *peerDeclaration;
-  int parentFlag;
-*/
+  ObjFunction *uiFunction;
   ObjFunction();
 
   int addUpvalue(uint8_t index, bool isField, Declaration *declaration, Parser &parser);

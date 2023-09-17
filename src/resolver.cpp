@@ -453,6 +453,7 @@ Type DeclarationExpr::resolve(Parser &parser) {
       break;
     }
 
+  getCurrent()->add(&_declaration);
   return VOID_TYPE;
 }
 

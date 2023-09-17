@@ -330,7 +330,7 @@ void PrimitiveExpr::astPrint() {
 }
 
 void ReferenceExpr::astPrint() {
-  fprintf(stderr, "(%s %.*s)", declaration ? getDeclaration(declaration)->type.toString() : "var", name.length, name.start);
+  fprintf(stderr, "(%s %.*s)", declaration ? getDeclarationType(declaration).toString() : "var", name.length, name.start);
 }
 
 void WhileExpr::astPrint() {

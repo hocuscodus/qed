@@ -29,7 +29,7 @@ static ObjFunction *getFunction(Expr *callee) {
       }
     case EXPR_GET: {
         GetExpr *getExpr = (GetExpr *) callee;
-        Type decType = getDeclaration(getExpr->_declaration->expr)->type;
+        Type decType = getDeclarationType(getExpr->_declaration->expr);
 
         return getExpr->_declaration && IS_FUNCTION(decType) ? AS_FUNCTION_TYPE(decType) : NULL;
       }

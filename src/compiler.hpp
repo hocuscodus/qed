@@ -13,11 +13,13 @@
 struct Scope {
   FunctionExpr *function;
   GroupingExpr *group;
+  Declaration **current;
   Scope *enclosing;
   bool hasSuperCalls;
   int vCount;
 
   Scope(FunctionExpr *function, GroupingExpr *group, Scope *enclosing);
+  void add(Declaration *declaration);
 };
 
 class Parser;

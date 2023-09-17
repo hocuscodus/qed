@@ -482,7 +482,7 @@ Expr *IfExpr::toCps(K k) {
 
       return new CallExpr(false, callee, buildToken(TOKEN_CALL, "("), ifResult, NULL);
     };
-    DeclarationExpr *param = new DeclarationExpr(UNKNOWN_TYPE, buildToken(TOKEN_IDENTIFIER, cvar), NULL);
+    DeclarationExpr *param = newDeclarationExpr(UNKNOWN_TYPE, buildToken(TOKEN_IDENTIFIER, cvar), NULL);
     Expr *ifExpr = new IfExpr(cond, this->thenBranch->toCps(newK), this->elseBranch->toCps(newK));
 
     return new CallExpr(false, makeWrapperLambda(param, paramType, ifExpr), buildToken(TOKEN_CALL, "("), cast, NULL);
