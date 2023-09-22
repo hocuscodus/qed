@@ -12,9 +12,6 @@
 #include <stdint.h>
 
 #define DEBUG_PRINT_CODE
-//#define DEBUG_TRACE_EXECUTION
-//#define NO_CLOSURE
-
 #define UINT8_COUNT (UINT8_MAX + 1)
 
 // put above ATTRIBUTE_COLOR all size-related attributes

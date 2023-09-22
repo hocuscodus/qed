@@ -12,7 +12,7 @@
 #include <unordered_map>
 #include <vector>
 #include "path.hpp"
-#include "value.h"
+#include "object.hpp"
 
 struct LocationUnit {
   virtual ~LocationUnit();

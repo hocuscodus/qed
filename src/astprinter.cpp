@@ -4,60 +4,8 @@
  *
  * All rights reserved.
  */
-#include <cstdarg>
-#include <stdio.h>
-#include "expr.hpp"
 #include "compiler.hpp"
 
-/*
-void ASTPrinter::parenthesize(char *name, int numArgs, ...) {
-  va_list ap;
-
-  va_start(ap, numArgs);
-  fprintf(stderr, "(&s", name);
-
-  while(numArgs--) {
-    Expr *expr = va_arg(ap, Expr *);
-    fprintf(stderr, " ");
-    astPrint();
-  }
-
-  fprintf(stderr, ")");
-}
-
-void ASTPrinter::parenthesize2(char *name, int numArgs, ...) {
-  va_list ap;
-
-  va_start(ap, numArgs);
-  fprintf(stderr, "(&s", name);
-  transform(numArgs, ap);
-  fprintf(stderr, ")");
-}
-
-void ASTPrinter::transform(int numArgs, ...) {
-  va_list ap;
-
-  va_start(ap, numArgs);
-  while(numArgs--) {
-    Expr *part = va_arg(ap, Expr *);
-    fprintf(stderr, " ");
-    if (part instanceof Expr) {
-      builder.append(((Expr)part).astPrint());
-    } else if (part instanceof Token) {
-      builder.append(((Token) part).lexeme);
-    } else if (part instanceof List) {
-      transform(builder, ((List) part).toArray());
-    } else {
-      builder.append(part);
-    }
-  }
-}
-
-static void print(Expr *expr) {
-  astPrint();
-  fprintf(stderr, "\n");
-}
-*/
 static void printObjType(Obj *obj) {
   switch(obj->type) {
     case OBJ_STRING: fprintf(stderr, "String"); return;

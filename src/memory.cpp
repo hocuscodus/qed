@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include "memory.h"
 #include "object.hpp"
-#include "compiler.hpp"
 
 void *reallocate(void *pointer, size_t oldSize, size_t newSize) {
   if (newSize == 0) {
@@ -22,50 +21,8 @@ void *reallocate(void *pointer, size_t oldSize, size_t newSize) {
 
 static void freeObject(Obj *object) {
   switch (object->type) {
-    case OBJ_INTERNAL: {
-      ObjInternal *internal = (ObjInternal *) object;
-
-      if (internal->object)
-        delete internal->object;
-
-      FREE(ObjInstance, object);
-      break;
-    }
-
-    case OBJ_THREAD: {
-      CoThread *coThread = (CoThread *) object;
-
-      if (coThread->getFormFlag())
-        for (int ndx = 0; ndx < coThread->frameCount; ndx++)
-          FREE(OBJ_THREAD, coThread->frames[ndx].uiValuesInstance);
-
-//      delete[] coThread->fields;
-      FREE_ARRAY(Value, coThread->stack, 64);
-      FREE(CoThread, object);
-      break;
-    }
-
-    case OBJ_OBJECT: {
-      ObjObject *qedObject = (ObjObject *) object;
-      int count = 0;//qedObject->getClosure()->function->compiler->fieldCount;
-
-      FREE_ARRAY(Value*, qedObject->fields, count);
-      FREE(ObjObject, object);
-      break;
-    }
-
-    case OBJ_CLOSURE: {
-      ObjClosure *closure = (ObjClosure *) object;
-//      delete closure->uiClosure;
-      FREE_ARRAY(ObjUpvalue*, closure->upvalues, closure->upvalueCount);
-      FREE(ObjClosure, object);
-      break;
-    }
-
     case OBJ_FUNCTION: {
       ObjFunction *function = (ObjFunction *)object;
-//      delete function->uiFunction;
-//      function->chunk.uninit();
       delete function->instanceIndexes;
       FREE(ObjFunction, object);
       break;
@@ -75,20 +32,12 @@ static void freeObject(Obj *object) {
       FREE(ObjInstance, object);
       break;
 
-    case OBJ_NATIVE:
-      FREE(ObjNative, object);
-      break;
-
     case OBJ_STRING: {
       ObjString *string = (ObjString *)object;
       FREE_ARRAY(char, string->chars, string->length + 1);
       FREE(ObjString, object);
       break;
     }
-
-    case OBJ_UPVALUE:
-      FREE(ObjUpvalue, object);
-      break;
 
     case OBJ_ARRAY:
       FREE(ObjArray, object);

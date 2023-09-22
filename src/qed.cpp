@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "parser.hpp"
-#include "vm.hpp"
 
 const char *qedLib =
 //"/$'use strict';\n$/"//;const char *toto=
@@ -132,13 +131,9 @@ static void repl() {
   if (!function)
     return;
 
-  CoThread *coThread = newThread(NULL);
-  VM vm(coThread, false);
-  ObjClosure *closure = coThread->pushClosure(function);
-
 //  strcpy(buffer, "");
 //  scanner.reset(buffer);
-
+/*
   for (;;) {
     if (function != NULL && coThread->call(closure, coThread->savedStackTop - coThread->stack - 1)) {
       if (vm.run() == INTERPRET_OK)
@@ -163,7 +158,7 @@ static void repl() {
 
     parser.compile();
   }
-
+*/
   freeObjects();
 }
 

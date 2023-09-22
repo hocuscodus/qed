@@ -4,11 +4,7 @@
  *
  * All rights reserved.
  */
-#include <cstdarg>
-#include <stdio.h>
 #include <string.h>
-#include "memory.h"
-#include "expr.hpp"
 #include "compiler.hpp"
 
 

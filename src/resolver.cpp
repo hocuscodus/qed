@@ -4,15 +4,10 @@
  *
  * All rights reserved.
  */
-#include <stdio.h>
-#include <string.h>
 #include <list>
-#include <set>
-#include <sstream>
+#include <string.h>
 #include "parser.hpp"
-#include "memory.h"
 #include "compiler.hpp"
-#include <stack>
 
 struct ValueStack3 {
   int max;
@@ -59,13 +54,6 @@ void recalcLayout(UIDirectiveExpr *expr, Parser &parser, int dir);
 int adjustLayout(UIDirectiveExpr *expr, Parser &parser);
 void paint(UIDirectiveExpr *expr, Parser &parser);
 void onEvent(UIDirectiveExpr *expr, Parser &parser);
-
-/*
-#ifdef DEBUG_PRINT_CODE
-#include "debug.hpp"
-#endif
-*/
-static Obj objInternalType = {OBJ_INTERNAL};
 
 bool isType(Type &type) {
   switch (AS_OBJ_TYPE(type)) {
@@ -410,9 +398,8 @@ Type ArrayElementExpr::resolve(Parser &parser) {
 Type DeclarationExpr::resolve(Parser &parser) {
   if (initExpr) {
     Type type1 = initExpr->resolve(parser);
-    Type internalType = {VAL_OBJ, &objInternalType};
 
-    if (_declaration.type.equals(internalType) || _declaration.type.valueType == VAL_UNKNOWN)
+    if (_declaration.type.valueType == VAL_UNKNOWN)
       _declaration.type = type1;
     else if (!type1.equals(_declaration.type)) {
       initExpr = convertToType(_declaration.type, initExpr, type1, parser);
@@ -444,10 +431,6 @@ Type DeclarationExpr::resolve(Parser &parser) {
       switch (AS_OBJ_TYPE(_declaration.type)) {
       case OBJ_STRING:
         initExpr = new LiteralExpr(VAL_OBJ, {.obj = &copyString("", 0)->obj});
-        break;
-
-      case OBJ_INTERNAL:
-        initExpr = new LiteralExpr(VAL_OBJ, {.obj = &newInternal()->obj});
         break;
       }
       break;

@@ -4,13 +4,7 @@
  *
  * All rights reserved.
  */
-#include <stdlib.h>
-#include <string.h>
-#include <array>
-#include <set>
 #include "parser.hpp"
-#include "attrset.hpp"
-#include "debug.hpp"
 #include "compiler.hpp"
 
 static int nTabs = 0;

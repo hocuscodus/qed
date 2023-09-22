@@ -45,51 +45,6 @@ Expr *checkDeclaration(Declaration &declaration, Token &name, FunctionExpr *func
 
 ObjFunction *compile(FunctionExpr *expr, Parser *parser);
 
-struct Compiler {
-  Compiler *enclosing;
-  GroupingExpr *groupingExpr;
-  ObjFunction *function = NULL;
-  bool hasSuperCalls;
-  int vCount;
-  int declarationCount;
-  Declaration declarations[UINT8_COUNT];
-  Expr *funcs = NULL;
-
-  Compiler();
-
-  ObjFunction *compile(FunctionExpr *expr, Parser *parser);
-  void pushScope();
-  void pushScope(ObjFunction *function);
-  void pushScope(GroupingExpr *groupingExpr);
-  void popScope();
-
-  Declaration *addDeclaration(Type type, Token &name, Declaration *previous, bool parentFlag, Parser *parser);
-  Type &peekDeclaration();
-//  int resolveReference(Token *name, Parser *parser);
-//  int resolveReference2(Token *name, Parser *parser);
-//  int resolveUpvalue(Token *name, Parser *parser);
-//  int addUpvalue(uint8_t index, Declaration *declaration, bool isDeclaration, Parser *parser);
-//  Type resolveReferenceExpr(ReferenceExpr *expr, Parser *parser);
-//  void checkDeclaration(Type returnType, ReferenceExpr *expr, ObjFunction *signature, Parser *parser);
-//  Declaration *checkDeclaration(Type returnType, Token &name, ObjFunction *signature, Parser *parser);
-  bool inBlock();
-  bool isInRegularFunction();
-
-  static inline Compiler *getCurrent() {
-    return current;
-  }
-
-  inline int getDeclarationCount() {
-    return declarationCount;
-  }
-
-  inline Declaration &getDeclaration(int index) {
-    return declarations[index];
-  }
-private:
-  static Compiler *current;
-};
-
 bool identifiersEqual(Token *a, Token *b);
 Type getDeclarationType(Expr *expr);
 Declaration *getDeclaration(Expr *expr);
@@ -110,5 +65,3 @@ Expr *cdr(Expr *exp, TokenType tokenType);
 int getSize(Expr *exp, TokenType tokenType);
 
 #endif
-
-

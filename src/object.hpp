@@ -8,19 +8,88 @@
 #define qed_object_h
 
 #include <sstream>
-#include "chunk.hpp"
 #include "scanner.hpp"
+
+#include <array>
+#include "common.h"
+
+#define UNKNOWN_TYPE        (Type) {VAL_UNKNOWN}
+#define VOID_TYPE           (Type) {VAL_VOID}
+#define BOOL_TYPE           (Type) {VAL_BOOL}
+#define INT_TYPE            (Type) {VAL_INT}
+#define FLOAT_TYPE          (Type) {VAL_FLOAT}
+#define OBJ_TYPE(objType)   (Type) {VAL_OBJ, &(objType)->obj}
+
+#define IS_UNKNOWN(type)  ((type).valueType == VAL_UNKNOWN)
+#define IS_VOID(type)     ((type).valueType == VAL_VOID)
+#define IS_BOOL(type)     ((type).valueType == VAL_BOOL)
+#define IS_INT(type)      ((type).valueType == VAL_INT)
+#define IS_FLOAT(type)    ((type).valueType == VAL_FLOAT)
+#define IS_OBJ(type)      ((type).valueType == VAL_OBJ)
+
+#define AS_OBJ_TYPE(type1)    (IS_OBJ(type1) && (type1).objType ? (type1).objType->type : (ObjType) -1)
+
+#define IS_INSTANCE(type)     isObjType(type, OBJ_INSTANCE)
+#define IS_FUNCTION(type)     isObjType(type, OBJ_FUNCTION)
+#define IS_STRING(type)       isObjType(type, OBJ_STRING)
+#define IS_ARRAY(type)        isObjType(type, OBJ_ARRAY)
+
+#define AS_INSTANCE_TYPE(type)  (IS_INSTANCE(type) ? (ObjInstance *) (type).objType : NULL)
+#define AS_FUNCTION_TYPE(type)  (IS_FUNCTION(type) ? (ObjFunction *) (type).objType : NULL)
+#define AS_ARRAY_TYPE(type)     (IS_ARRAY(type) ? (ObjArray *) (type).objType : NULL)
+#define AS_STRING_TYPE(type)    (IS_STRING(type) ? (ObjString *) (type).objType : NULL)
+
+#define NUM_DIRS 2
+
+template <typename type> using DirType = std::array<type, NUM_DIRS>;
+
+typedef DirType<int> Point;
+
+typedef struct Obj Obj;
+
+typedef enum {
+  VAL_UNKNOWN,
+  VAL_VOID,
+  VAL_BOOL,
+  VAL_INT,
+  VAL_FLOAT,
+  VAL_OBJ
+} ValueType;
+
+struct Type {
+  ValueType valueType;
+  Obj *objType;
+
+  bool equals(Type &type);
+  const char *toString();
+};
+
+typedef union {
+  bool boolean;
+  long integer;
+  double floating;
+  Obj *obj;
+} As;
+
+typedef As Value;
+
+#define AS_BOOL(value)  ((value).boolean)
+#define AS_INT(value)   ((value).integer)
+#define AS_FLOAT(value) ((value).floating)
+#define AS_OBJ(value)   ((value).obj)
+
+#define VOID_VAL         ((Value){.obj = NULL})
+#define BOOL_VAL(value)  ((Value){.boolean = value})
+#define INT_VAL(value)   ((Value){.integer = value})
+#define FLOAT_VAL(value) ((Value){.floating = value})
+#define OBJ_VAL(object)  ((Value){.obj = (Obj*)object})
+#define VALUE(type, value) (value)
 
 #define GET_OBJ_TYPE(value)        (AS_OBJ(value)->type)
 
-#define AS_THREAD(value)       ((CoThread*)AS_OBJ(value))
 #define AS_INSTANCE(value)     ((ObjInstance*)AS_OBJ(value))
-#define AS_OBJECT(value)       ((ObjObject*)AS_OBJ(value))
-#define AS_CLOSURE(value)      ((ObjClosure*)AS_OBJ(value))
 #define AS_CALLABLE(value)     ((ObjCallable*)AS_OBJ(value))
 #define AS_FUNCTION(value)     ((ObjFunction*)AS_OBJ(value))
-#define AS_NATIVE(value)       (((ObjNative*)AS_OBJ(value))->function)
-#define AS_NATIVE_CLASS(value) (((ObjNativeClass*)AS_OBJ(value))->classFn)
 #define AS_STRING(value)       ((ObjString*)AS_OBJ(value))
 #define AS_CSTRING(value)      (((ObjString*)AS_OBJ(value))->chars)
 #define AS_ARRAY(value)        ((ObjArray*)AS_OBJ(value))
@@ -32,14 +101,6 @@ typedef enum {
   OBJ_INSTANCE,
   OBJ_FUNCTION,
   OBJ_ARRAY,
-/////////////////////////////
-  OBJ_THREAD,
-  OBJ_OBJECT,
-  OBJ_CLOSURE,
-  OBJ_NATIVE,
-  OBJ_NATIVE_CLASS,
-  OBJ_UPVALUE,
-  OBJ_INTERNAL
 } ObjType;
 
 struct Obj {
@@ -106,8 +167,6 @@ struct ObjFunction : ObjCallable {
   ObjFunction *uiFunction;
   ObjFunction();
 
-  int addUpvalue(uint8_t index, bool isField, Declaration *declaration, Parser &parser);
-  void add(ObjFunction *function);
   bool isClass();
   bool isUserClass();
   std::string getThisVariableName();
@@ -143,79 +202,6 @@ typedef enum {
   INTERPRET_SUSPEND
 } InterpretResult;
 
-struct VM;
-struct CoThread;
-
-typedef InterpretResult (*NativeClassFn)(VM &vm, int argCount, Value *args);
-
-struct ObjNativeClass {
-  Obj obj;
-  NativeClassFn classFn;
-  void *arg;
-};
-
-struct ObjClosure {
-  Obj obj;
-  CoThread *parent;
-  ObjFunction *function;
-  ObjUpvalue **upvalues;
-  int upvalueCount;
-};
-
-struct ObjObject {
-  Obj obj;
-  Value *fields;
-
-  ObjClosure *getClosure() {return AS_CLOSURE(fields[0]);}
-};
-
-struct CallFrame {
-  ObjClosure *closure;
-  uint8_t *ip;
-  Value *slots;
-  ObjClosure *uiClosure;
-  CoThread *uiValuesInstance;
-  CoThread *uiLayoutInstance;
-};
-
-struct CoThread {
-  Obj obj;
-  CoThread *caller;
-  Value *stack;
-  int frameCount;
-  CallFrame frames[FRAMES_MAX];
-  ObjUpvalue *openUpvalues;
-  Value *savedStackTop;
-
-  bool call(ObjClosure *closure, int argCount);
-  bool callValue(Value callee, int argCount);
-  ObjUpvalue *captureUpvalue(Value *field);
-  void closeUpvalues(Value *last);
-
-  ObjClosure *pushClosure(ObjFunction *function);
-  void reset();
-
-  void resetStack();
-  void runtimeError(const char *format, ...);
-#ifdef DEBUG_TRACE_EXECUTION
-  void printStack();
-#endif
-  bool isDone();
-  bool isInInstance();
-  CallFrame *getFrame(int index = 0);
-  void onReturn(Value &returnValue);
-
-  bool getFormFlag();
-
-  void initValues();
-  void uninitValues();
-  Point recalculateLayout();
-  Point repaint();
-  void paint(Point pos, Point size);
-  bool onEvent(Event event, Point pos, Point size);
-  bool runHandler(ObjClosure *closure);
-};
-
 typedef struct {
   Obj obj;
   Type elementType;
@@ -226,25 +212,11 @@ struct ObjInstance {
   ObjCallable *callable;
 };
 
-struct Internal {
-  virtual ~Internal();
-};
-
-struct ObjInternal {
-  Obj obj;
-  Internal *object;
-};
-
 #define ALLOCATE_OBJ(type, objectType)                                         \
   (type *)allocateObject(sizeof(type), objectType)
 
 Obj *allocateObject(size_t size, ObjType type);
-ObjInternal *newInternal();
-CoThread *newThread(CoThread *caller);
 ObjInstance *newInstance(ObjCallable *callable);
-ObjObject *newObject(ObjClosure *closure);
-ObjClosure *newClosure(ObjFunction *function, CoThread *parent);
-ObjNative *newNative(NativeFn function);
 ObjString *takeString(char *chars, int length);
 ObjString *copyString(const char *chars, int length);
 ObjUpvalue *newUpvalue(Value *slot);

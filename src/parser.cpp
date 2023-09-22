@@ -4,14 +4,11 @@
  *
  * All rights reserved.
  */
+#include <stdarg.h>
+#include <string.h>
 #include "parser.hpp"
 #include "memory.h"
-#include "listunitareas.hpp"
 #include "compiler.hpp"
-#include <stdio.h>
-#include <stdarg.h>
-#include <stdlib.h>
-#include <string.h>
 
 #define FORMAT_MESSAGE(fmt) \
   char message[256]; \
@@ -315,9 +312,6 @@ ObjFunction *compile(FunctionExpr *expr, Parser *parser) {
   line() << "  _refresh();\n";
   line() << "});\n";
   line() << "canvas.onselectstart = function () { return false; }\n";
-
-  if (parser->hadError)
-;//    expr->_function.chunk.reset();
 
   return parser->hadError ? NULL : &expr->_function;
 }
@@ -915,32 +909,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
         } while (match(TOKEN_COMMA));
 
       consume(TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
-/*
-  if (_function.isClass() && !name.isInternal()) {
-    const char *type = getHandlerType(returnType);
-    Token name = buildToken(TOKEN_IDENTIFIER, "handlerFn_");
-    ReferenceExpr *paramTypeExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, type), NULL);
 
-    pushScope(body);
-    returnType = VOID_TYPE;
-
-    if (getCurrent()) {
-      Type paramType = paramTypeExpr->resolve(*((Parser *) NULL));
-
-      if (!IS_UNKNOWN(paramType)) {
-        params = RESIZE_ARRAY(DeclarationExpr *, params, arity, arity + 1);
-        params[arity++] = newDeclarationExpr(paramType, name, NULL);
-//        params[arity++]->_declaration = body->_compiler.addDeclaration(paramType, name, NULL, false, NULL);
-      }
-      else
-        ;//error("Parameter %d not typed correctly", functionExpr->arity + 1);
-    }
-    else
-      arity++;
-
-    popScope();
-  }
-*/
       if (name.isUserClass()) {
         const char *type = getHandlerType(returnType);
         Token name = buildToken(TOKEN_IDENTIFIER, "handlerFn_");
