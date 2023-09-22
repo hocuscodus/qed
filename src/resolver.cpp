@@ -453,7 +453,7 @@ Type DeclarationExpr::resolve(Parser &parser) {
       break;
     }
 
-  getCurrent()->add(&_declaration);
+  checkDeclaration(_declaration, _declaration.name, NULL, &parser);
   return VOID_TYPE;
 }
 
@@ -557,7 +557,6 @@ Type FunctionExpr::resolve(Parser &parser) {
           return expr;
         });*/
         eventFunctionExpr[0]->resolve(parser);
-
         popScope();
         popScope();
       }
@@ -568,6 +567,10 @@ Type FunctionExpr::resolve(Parser &parser) {
   }
 
   popScope();
+
+  if (getCurrent())
+    getCurrent()->add(&_declaration);
+
   return OBJ_TYPE(&_function);
 }
 

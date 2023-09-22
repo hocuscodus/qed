@@ -865,10 +865,8 @@ DeclarationExpr *Parser::declareVariable(Expr *typeExpr, TokenType *endGroupType
   Token name = previous;
   Expr *expr = match(TOKEN_EQUAL) ? expression(endGroupTypes) : NULL;
   Type decType = resolveType(typeExpr);
-  DeclarationExpr *dec = newDeclarationExpr(decType, name, expr);
 
-  checkDeclaration(dec->_declaration, name, NULL, this);
-  return dec;
+  return newDeclarationExpr(decType, name, expr);
 }
 
 DeclarationExpr *Parser::parseVariable(TokenType *endGroupTypes, const char *errorMessage) {
@@ -907,6 +905,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
           if (!IS_UNKNOWN(param->_declaration.type)) {
             addExpr(&group->body, param, buildToken(TOKEN_SEPARATOR, ";"));
             functionExpr->arity++;
+            checkDeclaration(param->_declaration, param->_declaration.name, NULL, this);
 //            functionExpr->params = RESIZE_ARRAY(DeclarationExpr *, functionExpr->params, functionExpr->arity, functionExpr->arity + 1);
 //            functionExpr->params[functionExpr->arity++] = param;
 //            param->_declaration = group->_compiler.addDeclaration(paramType, param->name, NULL, false, this);
@@ -953,8 +952,11 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
           Type paramType = resolveType(paramTypeExpr);
 
           if (!IS_UNKNOWN(paramType)) {
-            addExpr(&group->body, newDeclarationExpr(paramType, name, NULL), buildToken(TOKEN_SEPARATOR, ";"));
+            DeclarationExpr *dec = newDeclarationExpr(paramType, name, NULL);
+
+            addExpr(&group->body, dec, buildToken(TOKEN_SEPARATOR, ";"));
             functionExpr->arity++;
+            checkDeclaration(dec->_declaration, name, NULL, this);
           }
           else
             ;//error("Parameter %d not typed correctly", functionExpr->arity + 1);

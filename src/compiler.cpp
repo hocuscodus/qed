@@ -28,10 +28,15 @@ Scope::Scope(FunctionExpr *function, GroupingExpr *group, Scope *enclosing) {
 }
 
 void Scope::add(Declaration *declaration) {
+  if (declaration && current == &declaration->next)
+    return;
+
   if (*current != declaration) {
     declaration->next = *current;
     *current = declaration;
   }
+  else
+    current = current;
 
   current = &declaration->next;
 }
@@ -88,10 +93,6 @@ FunctionExpr *newFunctionExpr(Type type, Token name, int arity, GroupingExpr* bo
   expr->_declaration.name = name;
   expr->_declaration.expr = expr;
   expr->_declaration.function = getFunction();
-
-  if (getCurrent())
-    getCurrent()->add(&expr->_declaration);
-
   return expr;
 }
 
@@ -273,6 +274,17 @@ static Expr *getDeclarationExpr(Expr *body) {
   return expr->type == EXPR_DECLARATION || expr->type == EXPR_FUNCTION ? expr : NULL;
 }
 
+static Declaration *getDeclarationRef(Token name, Declaration *dec) {
+  while (dec) {
+    if (identifiersEqual(&name, &dec->name))
+      break;
+
+    dec = dec->next;
+  }
+
+  return dec;
+}
+/*
 static Expr *getDeclarationRef(Token name, Expr *body) {
   while (body) {
     Expr *dec = getDeclarationExpr(body);
@@ -285,22 +297,22 @@ static Expr *getDeclarationRef(Token name, Expr *body) {
 
   return body;
 }
+*/
+Declaration *getFirstDeclarationRef(Scope *current, Token &name) {
+  Declaration *dec = NULL;
 
-Expr *getFirstDeclarationRef(Scope *current, Token &name) {
-  Expr *expr = NULL;
-
-  while (!expr && current) {
-    expr = getDeclarationRef(name, current->group->body);
+  while (!dec && current) {
+    dec = getDeclarationRef(name, current->group->declarations);
     current = current->enclosing;
   }
 
-  return expr;
+  return dec;
 }
-
+/*
 Expr *getNextDeclarationRef(Token &name, Expr *previous) {
-  return getDeclarationRef(name, cdr(previous, TOKEN_SEPARATOR));
+  return getDeclarationRef(name, getDeclaration(previous)->next);//cdr(previous, TOKEN_SEPARATOR));
 }
-
+*/
 Expr *getStatement(GroupingExpr *expr, int index) {
   for (Expr *body = expr ? expr->body : NULL; body; body = cdr(body, TOKEN_SEPARATOR))
     if (!index--)
@@ -319,11 +331,11 @@ Type &Compiler::peekDeclaration() {
 //  return declarations[declarationCount - 1].type;
 }
 
-Expr *resolveReference(Expr *decRef, Token &name, Signature *signature, Parser *parser) {
+Expr *resolveReference(Declaration *decRef, Token &name, Signature *signature, Parser *parser) {
   char buf[2048] = "";
 
   while (decRef) {
-    Expr *dec = getDeclarationExpr(decRef);
+    Expr *dec = decRef->expr;
     Type type = getDeclarationType(dec);
 
     // Remove these patches ASAP
@@ -363,7 +375,7 @@ Expr *resolveReference(Expr *decRef, Token &name, Signature *signature, Parser *
     else
       return dec;
 
-    decRef = getNextDeclarationRef(name, decRef);
+    decRef = decRef->next;
   }
 
   if (parser)
@@ -423,12 +435,15 @@ Expr *checkDeclaration(Declaration &declaration, Token &name, FunctionExpr *func
     for (int index = 0; index < function->arity; index++)
       signature.push_back(getParam(function, index)->_declaration.type);
 
-  if (resolveReference(getDeclarationRef(name, getCurrent()->group->body), name, function ? &signature : NULL, NULL)) {
+  Expr *expr = resolveReference(getDeclarationRef(name, getCurrent()->group->declarations), name, function ? &signature : NULL, NULL);
+
+  if (expr) {
     parser->error("Identical identifier '%.*s' with this name in this scope.", name.length, name.start);
     return NULL;
   }
 
-  Expr *expr = resolveReference(getDeclarationRef(name, getCurrent()->group->body), name, NULL, NULL);
+  if (function)
+    expr = resolveReference(getDeclarationRef(name, getCurrent()->group->declarations), name, NULL, NULL);
 
   if (!expr) {
     expr = resolveReference(getFirstDeclarationRef(getCurrent()->enclosing, name), name, NULL, NULL);
@@ -436,6 +451,7 @@ Expr *checkDeclaration(Declaration &declaration, Token &name, FunctionExpr *func
   }
 
   declaration.peer = getDeclaration(expr);
+  getCurrent()->add(&declaration);
   return NULL;
 }
 
