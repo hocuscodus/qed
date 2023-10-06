@@ -6,6 +6,7 @@
  */
 #include <string.h>
 #include "compiler.hpp"
+#include "parser.hpp"
 
 
 int GENSYM = 0;
@@ -29,7 +30,6 @@ GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, Type p
   FunctionExpr *wrapperFunc = newFunctionExpr(VOID_TYPE, nameToken, arity, group, NULL);
   GroupingExpr *mainGroup = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "("), wrapperFunc);
 
-  wrapperFunc->_declaration.expr = wrapperFunc;
   pushScope(mainGroup);
   checkDeclaration(wrapperFunc->_declaration, nameToken, wrapperFunc, NULL);
   pushScope(wrapperFunc);
@@ -154,7 +154,7 @@ Expr *BinaryExpr::toCps(K k) {
 
 Expr *CallExpr::toCps(K k) {
   pushSignature(NULL);
-  Type type = callee->resolve(*((Parser *) NULL));
+  Type type = resolveType(callee);
   popSignature();
 
   ObjFunction *callable = AS_FUNCTION_TYPE(type);
@@ -167,7 +167,7 @@ Expr *CallExpr::toCps(K k) {
       if (IS_VOID(returnType)) {
         DeclarationExpr *lastParam = getParam(function, function->arity - 1);
 
-        if (lastParam->_declaration.name.equal("handlerFn_")) {
+        if (lastParam && lastParam->_declaration.name.equal("handlerFn_")) {
           FunctionExpr *handlerExpr = AS_FUNCTION_TYPE(lastParam->_declaration.type)->expr;
 
           if (handlerExpr->arity)

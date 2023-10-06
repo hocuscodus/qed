@@ -9,7 +9,7 @@
 #include <string.h>
 #include "parser.hpp"
 
-const char *qedLib =
+const char *qedLib;/* =
 //"/$'use strict';\n$/"//;const char *toto=
 "void voidHandler_() {}\n"
 "void intHandler_(int value) {}\n"
@@ -117,7 +117,7 @@ const char *qedLib =
 "});$/\n"
 "}\n"
 ;
-
+*/
 static void repl() {
   char line[1024] = "";
   char buffer[32768] = "";
@@ -198,6 +198,7 @@ static char *readFile(const char *path) {
 extern std::stringstream s;
 
 std::string runSrc(const char *source) {
+  qedLib = readFile("qedlib.qed");
   int qedLibLength = strlen(qedLib);
   int sourceLength = strlen(source);
   char *buffer = (char *) malloc(qedLibLength + sourceLength + 1);

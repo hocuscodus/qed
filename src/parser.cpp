@@ -48,67 +48,70 @@ ParseExpRule *getExpRule(TokenType type) {
 
 static int scopeDepth = -1;
 
-static Expr *createForExpr(Expr *condition, Expr *increment, Expr *body) {
-  if (increment != NULL)
-    addExpr(&body, increment, buildToken(TOKEN_SEPARATOR, ";"));
+static Expr *createWhileExpr(Expr *condition, Expr *increment, Expr *body) {
+  if (increment != NULL) {
+    if (body->type != EXPR_GROUPING)
+      body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), body);
+
+    addExpr(&((GroupingExpr *) body)->body, increment, buildToken(TOKEN_SEPARATOR, ";"));
+  }
 
   return new WhileExpr(condition, body);
 }
 
 static Expr *createArrayLoops(int index, Point &dirs, Expr **iteratorExprs, Expr *body) {
-  if (iteratorExprs) {
-    char dimName[16];
-    char varName[256];
-    Expr *expr = car(*iteratorExprs, TOKEN_SEPARATOR);
-    IteratorExpr *iteratorExpr = expr->type == EXPR_ITERATOR ? (IteratorExpr *) expr : NULL;
-
-    sprintf(dimName, "_d%d", index);
-    sprintf(varName, iteratorExpr && iteratorExpr->name.length ? iteratorExpr->name.getString().c_str() : "_x%d", index);
-
-    if (iteratorExpr) {
-      int dir = getDir(iteratorExpr->op.start[1]);
-
-      for (int ndx = 0; ndx < NUM_DIRS; ndx++)
-        dirs[ndx] |= !!(dir & (1 << ndx)) << index;
-
-      expr = iteratorExpr->value;
-      delete iteratorExpr;
-    }
-
-    expr = newDeclarationExpr(UNKNOWN_TYPE, buildToken(TOKEN_IDENTIFIER, newString(dimName)), expr);
-
-    if (isGroup(*iteratorExprs, TOKEN_SEPARATOR))
-      ((BinaryExpr *) *iteratorExprs)->left = expr;
-    else
-      *iteratorExprs = expr;
-
-    GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL);
-    Expr *initializer = newDeclarationExpr(INT_TYPE, buildToken(TOKEN_IDENTIFIER, newString(varName)), new LiteralExpr(VAL_INT, {.integer = 0}));
-
-    pushScope(group);
-    addExpr(&group->body, initializer, buildToken(TOKEN_SEPARATOR, ";"));
-
-    Expr *condition = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, newString(varName)), NULL);
-    Expr *increment = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, newString(varName)), NULL);
-
-    condition = new LogicalExpr(condition, buildToken(TOKEN_LESS, "<"), new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "sizes[index]"), NULL));
-    increment = new UnaryExpr(buildToken(TOKEN_PLUS_PLUS, "++"), increment);
-
-    Expr *forExp = createForExpr(condition, increment, createArrayLoops(index + 1, dirs, cdrAddress(*iteratorExprs, TOKEN_SEPARATOR), body));
-
-    addExpr(&group->body, forExp, buildToken(TOKEN_SEPARATOR, ";"));
-    popScope();
-    return group;
-  }
-  else
+  if (!iteratorExprs)
     return body;
+
+  char dimName[16];
+  char varName[256];
+  Expr *expr = car(*iteratorExprs, TOKEN_SEPARATOR);
+  IteratorExpr *iteratorExpr = expr->type == EXPR_ITERATOR ? (IteratorExpr *) expr : NULL;
+
+  sprintf(dimName, "_d%d", index);
+  sprintf(varName, iteratorExpr && iteratorExpr->name.length ? iteratorExpr->name.getString().c_str() : "_x%d", index);
+
+  if (iteratorExpr) {
+    int dir = getDir(iteratorExpr->op.start[1]);
+
+    for (int ndx = 0; ndx < NUM_DIRS; ndx++)
+      dirs[ndx] |= !!(dir & (1 << ndx)) << index;
+
+    expr = iteratorExpr->value;
+    delete iteratorExpr;
+  }
+
+  expr = newDeclarationExpr(UNKNOWN_TYPE, buildToken(TOKEN_IDENTIFIER, newString(dimName)), expr);
+
+  if (isGroup(*iteratorExprs, TOKEN_SEPARATOR))
+    ((BinaryExpr *) *iteratorExprs)->left = expr;
+  else
+    *iteratorExprs = expr;
+
+  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL);
+  Expr *initializer = newDeclarationExpr(INT_TYPE, buildToken(TOKEN_IDENTIFIER, newString(varName)), new LiteralExpr(VAL_INT, {.integer = 0}));
+
+  pushScope(group);
+  addExpr(&group->body, initializer, buildToken(TOKEN_SEPARATOR, ";"));
+
+  Expr *condition = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, newString(varName)), NULL);
+  Expr *increment = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, newString(varName)), NULL);
+
+  condition = new BinaryExpr(condition, buildToken(TOKEN_LESS, "<"), new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, newString(dimName)), NULL));
+  increment = new UnaryExpr(buildToken(TOKEN_PLUS_PLUS, "++"), increment);
+
+  Expr *whileExpr = createWhileExpr(condition, increment, createArrayLoops(index + 1, dirs, cdrAddress(*iteratorExprs, TOKEN_SEPARATOR), body));
+
+  addExpr(&group->body, whileExpr, buildToken(TOKEN_SEPARATOR, ";"));
+  popScope();
+  return group;
 }
 
 static Expr *createArrayExpr(Expr *iteratorExprs, Expr *body) {
   Point dirs{};
   Expr *arrayExpr = *addExpr(&iteratorExprs, createArrayLoops(0, dirs, &iteratorExprs, body), buildToken(TOKEN_SEPARATOR, ";"));
 
-  arrayExpr = makeWrapperLambda("L", NULL, UNKNOWN_TYPE, [arrayExpr]() {return arrayExpr;});
+  arrayExpr = makeWrapperLambda("l", NULL, UNKNOWN_TYPE, [arrayExpr]() {return arrayExpr;});
   return new CallExpr(false, arrayExpr, buildToken(TOKEN_LEFT_PAREN, "("), NULL, NULL);
 }
 
@@ -121,35 +124,6 @@ static const char *getHandlerType(Type type) {
     case VAL_OBJ: return type.objType->type == OBJ_STRING ? "stringHandler_" : NULL;
     default: return NULL;
   }
-}
-
-Type Parser::resolveType(Expr *expr) {
-  Type type = {(ValueType) -1, NULL};
-
-  if (expr)
-    switch (expr->type) {
-      case EXPR_PRIMITIVE:
-        type = ((PrimitiveExpr *) expr)->primitiveType;
-        break;
-
-      case EXPR_REFERENCE: {
-        Expr *dec = resolveReferenceExpr(((ReferenceExpr *) expr)->name, NULL);
-
-        if (dec && dec->type == EXPR_FUNCTION) {
-          ((ReferenceExpr *) expr)->declaration = dec;
-          type = OBJ_TYPE(&((FunctionExpr *) dec)->_function);
-
-          if (check(TOKEN_STAR))
-            type = OBJ_TYPE(newInstance(AS_FUNCTION_TYPE(type)));
-        }
-        break;
-      }
-    }
-
-  if (type.valueType != -1) {
-  }
-
-  return type;
 }
 
 Parser::Parser(Scanner &scanner) : scanner(scanner) {
@@ -326,7 +300,6 @@ FunctionExpr *Parser::parse() {
   GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_EOF, ""), NULL);
   FunctionExpr *functionExpr = newFunctionExpr(VOID_TYPE, buildToken(TOKEN_IDENTIFIER, "Main"), 0, group, NULL);
 
-  functionExpr->_function.expr = functionExpr;
   pushScope(functionExpr);
   expList(group, TOKEN_EOF);
 
@@ -840,7 +813,8 @@ Expr *Parser::parsePrecedence(Precedence precedence) {
   if (check(TOKEN_STAR) && checkNext(TOKEN_IDENTIFIER)) {
     Type type = resolveType(left);
 
-    if (IS_INSTANCE(type)) {
+    if (IS_FUNCTION(type)) {
+      type = OBJ_TYPE(newInstance(AS_FUNCTION_TYPE(type)));
       advance();
       return left;
     }
@@ -888,7 +862,6 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
       GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL);
       FunctionExpr *functionExpr = newFunctionExpr(returnType, name, 0, group, NULL);
 
-      functionExpr->_function.expr = functionExpr;
       pushScope(functionExpr);
       passSeparator();
 
@@ -1023,14 +996,14 @@ Expr *Parser::forStatement(TokenType endGroupType) {
 
   consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
 
-  Expr *forExp = createForExpr(condition, increment, statement(endGroupType));
+  Expr *whileExp = createWhileExpr(condition, increment, statement(endGroupType));
 
   if (group) {
-    addExpr(&group->body, forExp, buildToken(TOKEN_SEPARATOR, ";"));
+    addExpr(&group->body, whileExp, buildToken(TOKEN_SEPARATOR, ";"));
     popScope();
   }
 
-  return group ? group : forExp;
+  return group ? group : whileExp;
 }
 
 Expr *Parser::ifStatement(TokenType endGroupType) {

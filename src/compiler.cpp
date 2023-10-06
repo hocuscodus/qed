@@ -38,8 +38,8 @@ Scope *getCurrent() {
   return current;
 }
 
-FunctionExpr *getFunction(Scope *current) {
-  for (Scope *current = ::current; current; current = current->enclosing)
+FunctionExpr *getFunction(Scope *scope) {
+  for (Scope *current = scope; current; current = current->enclosing)
     if (current->function)
       return current->function;
 
@@ -48,6 +48,51 @@ FunctionExpr *getFunction(Scope *current) {
 
 FunctionExpr *getFunction() {
   return getFunction(current);
+}
+
+Type resolveType(Expr *expr) {
+  Type type = {(ValueType) -1, NULL};
+
+  if (expr)
+    switch (expr->type) {
+      case EXPR_GROUPING: {
+        Expr *lastExpr = *getLastBodyExpr(&((GroupingExpr *) expr)->body, TOKEN_SEPARATOR);
+
+        type = lastExpr ? resolveType(lastExpr) : UNKNOWN_TYPE;
+        break;
+      }
+      case EXPR_FUNCTION:
+        type = OBJ_TYPE(&((FunctionExpr *) expr)->_function);
+        break;
+
+      case EXPR_PRIMITIVE:
+        type = ((PrimitiveExpr *) expr)->primitiveType;
+        break;
+
+      case EXPR_REFERENCE: {
+        Expr *dec = resolveReferenceExpr(((ReferenceExpr *) expr)->name, NULL);
+
+        if (dec)
+          switch(dec->type) {
+            case EXPR_FUNCTION:
+              ((ReferenceExpr *) expr)->declaration = dec;
+              type = OBJ_TYPE(&((FunctionExpr *) dec)->_function);
+              break;
+
+            case EXPR_DECLARATION:
+              ((ReferenceExpr *) expr)->declaration = dec;
+//              type = OBJ_TYPE(&((FunctionExpr *) ((ObjFunction *) ((DeclarationExpr *) dec)->_declaration.type.objType)->expr)->_function);
+              type = OBJ_TYPE(((ObjFunction *) ((DeclarationExpr *) dec)->_declaration.type.objType));
+              break;
+          }
+        break;
+      }
+    }
+
+  if (type.valueType != -1) {
+  }
+
+  return type;
 }
 
 void pushScope(FunctionExpr *functionExpr) {
@@ -86,6 +131,7 @@ FunctionExpr *newFunctionExpr(Type type, Token name, int arity, GroupingExpr* bo
   expr->_declaration.name = name;
   expr->_declaration.expr = expr;
   expr->_declaration.function = getFunction();
+  expr->_function.expr = expr;
   return expr;
 }
 
@@ -152,9 +198,10 @@ Declaration *getFirstDeclarationRef(Scope *current, Token &name) {
 }
 
 Expr *getStatement(GroupingExpr *expr, int index) {
-  for (Expr *body = expr ? expr->body : NULL; body; body = cdr(body, TOKEN_SEPARATOR))
-    if (!index--)
-      return body;
+  if (index >= 0)
+    for (Expr *body = expr ? expr->body : NULL; body; body = cdr(body, TOKEN_SEPARATOR))
+      if (!index--)
+        return body;
 
   return NULL;
 }

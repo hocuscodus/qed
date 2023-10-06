@@ -89,7 +89,7 @@ std::string Declaration::getRealName() {
 }
 
 bool Declaration::isInRegularFunction() {
-  return function->body->name.type == TOKEN_LEFT_BRACE;
+  return !function || function->body->name.type == TOKEN_LEFT_BRACE;
 }
 
 bool Declaration::isExternalField() {

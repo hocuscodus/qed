@@ -1,0 +1,149 @@
+void voidHandler_() {}
+void intHandler_(int value) {}
+void floatHandler_(float value) {}
+void boolHandler_(bool value) {}
+void stringHandler_(String value) {}
+var WIDTH = 1;
+var HEIGHT = 2;
+var OBLIQUE = 3;
+int COLOR_RED = 0xFF0000;
+int COLOR_GREEN = 0x00FF00;
+int COLOR_YELLOW = 0xFFFF00;
+int COLOR_BLUE = 0x0000FF;
+int COLOR_BLACK = 0x000000;
+
+void println(String str) {
+/$console.log(str)
+$/}
+void post_(voidHandler_ handlerFn_) {
+/$postCount++;
+  setTimeout(function() {
+    handlerFn_();
+    _refresh();
+  })
+$/}
+int max(int a, int b) {
+/$return a > b ? a : b
+$/}
+float clock() {}
+void saveContext() {
+/$ctx.save()
+$/}
+void restoreContext() {
+/$ctx.restore()
+$/}
+void oval(int pos, int size) {
+/$ctx.fillStyle = toColor(getAttribute(10));
+  ctx.globalAlpha = \\ + getAttribute(11);
+  ctx.beginPath();
+  ctx.ellipse((pos >> 16) + (size >> 17), (pos & 65535) + ((size & 65535) >> 1), size >> 17, (size & 65535) >> 1, 0, 0, 2*Math.PI);
+  ctx.fill();
+  ctx.clip()
+$/}
+void rect(int pos, int size) {
+/$ctx.fillStyle = toColor(getAttribute(10));
+  ctx.globalAlpha = \\ + getAttribute(11);
+  ctx.beginPath();
+  ctx.fillRect((pos >> 16), (pos & 65535), size >> 16, size & 65535)
+$/}
+void pushAttribute(int index, int value) {
+/$if (attributeStacks[index] == undefined)
+    attributeStacks[index] = [];
+
+  attributeStacks[index].push(value)
+$/}
+void pushAttribute(int index, float value) {
+/$pushAttribute(index, value)
+$/}
+void popAttribute(int index) {
+/$attributeStacks[index].pop()
+$/}
+int getTextSize(String text) {
+/$ctx.font = getAttribute(4) + \px Arial\;
+
+  const textSize = ctx.measureText(text);
+  const height = textSize.fontBoundingBoxAscent + textSize.fontBoundingBoxDescent;
+  return (textSize.width << 16) | height
+$/}
+void displayText(String text, int pos, int size) {
+/$let pos1 = [(pos >> 16), (pos & 0xFFFF)];
+  let size1 = [(size >> 16), (size & 0xFFFF)];
+  ctx.font = getAttribute(4) + \px Arial\;
+  ctx.fillStyle = toColor(getAttribute(10));
+  ctx.globalAlpha = getAttribute(11);
+  ctx.textBaseline = \top\;
+  ctx.fillText(text, pos1[0], pos1[1])
+$/}
+
+bool Timer(int timeoutMillis) {
+/$setTimeout(function() {
+    handlerFn_(true);
+    _refresh();
+  }, timeoutMillis)$/
+
+  void reset() {}
+}
+void Time(voidHandler_ Func) {
+/$  console.time(\Time\);
+  new Func(() => {
+    console.timeEnd(\Time\);
+    handlerFn_();
+  });
+$/
+}
+void time(voidHandler_ func) {
+/$  console.time(\time\);
+  func();
+  console.timeEnd(\time\);
+$/
+}
+float Animation() {
+/$requestAnimationFrame((millis) => {
+  handlerFn_(millis);
+  _refresh();
+});$/
+}
+void InitZoneFn() {}
+void QEDArray(int dims, InitZoneFn InitZone, ArrayGetFn get) {
+  int array;
+
+/$  array = [];
+$/
+  InitZone();
+
+  void Resize(int[] start, int[] dims) {
+  }
+/*
+  void get(int index) {
+    /$return array[index];
+$/
+  }*/
+}
+/*
+let x = (this.l = function l() {
+  let _d0 = 10;
+  let _d1 = 11;
+  let _d2 = 12;
+  let _d3 = 13;
+  {
+    let _x0 = 0;
+    while(_x0 < _d0) {
+      let i = 0;
+      while(i < _d1) {
+        let _x2 = 0;
+        while(_x2 < _d2) {
+          let _x3 = 0;
+          while(_x3 < _d3) {
+            14;
+            ++_x3;
+          }
+          ++_x2;
+        }
+        ++i;
+      }
+      ++_x0;
+    }
+  }
+}
+)();
+*/

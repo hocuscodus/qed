@@ -26,6 +26,7 @@ class Parser;
 
 typedef std::vector<Type> Signature;
 
+Type resolveType(Expr *expr);
 void pushScope(FunctionExpr *functionExpr);
 void pushScope(GroupingExpr *groupingExpr);
 void popScope();
