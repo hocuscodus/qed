@@ -13,7 +13,6 @@
 struct Scope {
   FunctionExpr *function;
   GroupingExpr *group;
-  Declaration **current;
   Scope *enclosing;
   bool hasSuperCalls;
   int vCount;

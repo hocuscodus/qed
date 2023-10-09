@@ -46,12 +46,10 @@ ParseExpRule *getExpRule(TokenType type) {
   return &expRules[type];
 }
 
-static int scopeDepth = -1;
-
 static Expr *createWhileExpr(Expr *condition, Expr *increment, Expr *body) {
   if (increment != NULL) {
     if (body->type != EXPR_GROUPING)
-      body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), body);
+      body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), body, NULL);
 
     addExpr(&((GroupingExpr *) body)->body, increment, buildToken(TOKEN_SEPARATOR, ";"));
   }
@@ -88,7 +86,7 @@ static Expr *createArrayLoops(int index, Point &dirs, Expr **iteratorExprs, Expr
   else
     *iteratorExprs = expr;
 
-  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL);
+  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL, NULL);
   Expr *initializer = newDeclarationExpr(INT_TYPE, buildToken(TOKEN_IDENTIFIER, newString(varName)), new LiteralExpr(VAL_INT, {.integer = 0}));
 
   pushScope(group);
@@ -297,7 +295,7 @@ ObjFunction *Parser::compile() {
 }
 
 FunctionExpr *Parser::parse() {
-  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_EOF, ""), NULL);
+  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_EOF, ""), NULL, NULL);
   FunctionExpr *functionExpr = newFunctionExpr(VOID_TYPE, buildToken(TOKEN_IDENTIFIER, "Main"), 0, group, NULL);
 
   pushScope(functionExpr);
@@ -625,7 +623,7 @@ Expr *Parser::grouping() {
   char closingChar;
   TokenType endGroupType;
   Token op = previous;
-  GroupingExpr *group = new GroupingExpr(previous, NULL);
+  GroupingExpr *group = new GroupingExpr(previous, NULL, NULL);
 
   switch (op.type) {
   case TOKEN_LEFT_PAREN:
@@ -647,7 +645,7 @@ Expr *Parser::grouping() {
 
   if (op.type != TOKEN_LEFT_BRACE && group->body && isGroup(group->body, TOKEN_SEPARATOR)) {
     getCurrent()->hasSuperCalls |= group->hasSuperCalls;
-    return new CallExpr(false, new GroupingExpr(op, newFunctionExpr(VOID_TYPE, buildToken(TOKEN_IDENTIFIER, group->hasSuperCalls ? "L" : "l"), 0, group, NULL)), op, NULL, NULL);
+    return new CallExpr(false, new GroupingExpr(op, newFunctionExpr(VOID_TYPE, buildToken(TOKEN_IDENTIFIER, group->hasSuperCalls ? "L" : "l"), 0, group, NULL), NULL), op, NULL, NULL);
   }
 
   return group;
@@ -713,7 +711,6 @@ UIDirectiveExpr *Parser::directive(TokenType endGroupType, UIDirectiveExpr *prev
 
 void Parser::expList(GroupingExpr *groupingExpr, TokenType endGroupType) {
   passSeparator();
-  scopeDepth++;
 
   while (!check(endGroupType) && !check(TOKEN_EOF)) {
     if (endGroupType != TOKEN_RIGHT_PAREN && check(TOKEN_LESS))
@@ -728,8 +725,6 @@ void Parser::expList(GroupingExpr *groupingExpr, TokenType endGroupType) {
       addExpr(&groupingExpr->body, exp, op);
     }
   }
-
-  scopeDepth--;
 }
 
 Expr *Parser::array() {
@@ -859,7 +854,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
     Token name = previous;
 
     if(match(TOKEN_CALL)) {
-      GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL);
+      GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL, NULL);
       FunctionExpr *functionExpr = newFunctionExpr(returnType, name, 0, group, NULL);
 
       pushScope(functionExpr);
@@ -979,7 +974,7 @@ Expr *Parser::forStatement(TokenType endGroupType) {
   if (!match(TOKEN_CALL))
     consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
 
-  GroupingExpr *group = match(TOKEN_SEPARATOR) ? NULL : new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL);
+  GroupingExpr *group = match(TOKEN_SEPARATOR) ? NULL : new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL, NULL);
 
   if (group) {
     pushScope(group);

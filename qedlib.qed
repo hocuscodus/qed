@@ -105,10 +105,10 @@ float Animation() {
 }
 void InitZoneFn() {}
 void QEDArray(int dims, InitZoneFn InitZone, ArrayGetFn get) {
-  int array;
-
+  int array = 0;
+/*
 /$  array = [];
-$/
+$/*/
   InitZone();
 
   void Resize(int[] start, int[] dims) {

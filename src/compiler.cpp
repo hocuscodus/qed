@@ -9,33 +9,31 @@
 #include "parser.hpp"
 
 static std::stack<Signature *> signatures;
-static Scope *current = NULL;
+static Scope *currentScope = NULL;
 
 Scope::Scope(FunctionExpr *function, GroupingExpr *group, Scope *enclosing) {
   this->function = function;
   this->group = group;
   this->enclosing = enclosing;
-  current = &group->declarations;
   hasSuperCalls = false;
   vCount = 1;
 }
 
 void Scope::add(Declaration *declaration) {
-  if (declaration && current == &declaration->next)
-    return;
+  Declaration **current = &group->declarations;
 
-  if (*current != declaration) {
-    declaration->next = *current;
-    *current = declaration;
-  }
-  else
-    current = current;
+  while (*current)
+    if (*current != declaration)
+      current = &(*current)->next;
+    else
+      return;
 
-  current = &declaration->next;
+  declaration->next = NULL;
+  *current = declaration;
 }
 
 Scope *getCurrent() {
-  return current;
+  return currentScope;
 }
 
 FunctionExpr *getFunction(Scope *scope) {
@@ -47,7 +45,7 @@ FunctionExpr *getFunction(Scope *scope) {
 }
 
 FunctionExpr *getFunction() {
-  return getFunction(current);
+  return getFunction(currentScope);
 }
 
 Type resolveType(Expr *expr) {
@@ -81,7 +79,6 @@ Type resolveType(Expr *expr) {
 
             case EXPR_DECLARATION:
               ((ReferenceExpr *) expr)->declaration = dec;
-//              type = OBJ_TYPE(&((FunctionExpr *) ((ObjFunction *) ((DeclarationExpr *) dec)->_declaration.type.objType)->expr)->_function);
               type = OBJ_TYPE(((ObjFunction *) ((DeclarationExpr *) dec)->_declaration.type.objType));
               break;
           }
@@ -96,22 +93,22 @@ Type resolveType(Expr *expr) {
 }
 
 void pushScope(FunctionExpr *functionExpr) {
-  current = new Scope(functionExpr, functionExpr->body, current);
+  currentScope = new Scope(functionExpr, functionExpr->body, currentScope);
 }
 
 void pushScope(GroupingExpr *groupingExpr) {
-  current = new Scope(NULL, groupingExpr, current);
+  currentScope = new Scope(NULL, groupingExpr, currentScope);
 }
 
 void popScope() {
-  if (current) {
-    Scope *enclosing = current->enclosing;
+  if (currentScope) {
+    Scope *enclosing = currentScope->enclosing;
 
-    delete current;
-    current = enclosing;
+    delete currentScope;
+    currentScope = enclosing;
   }
   else
-    current = NULL;
+    currentScope = NULL;
 }
 
 DeclarationExpr *newDeclarationExpr(Type type, Token name, Expr* initExpr) {
@@ -278,7 +275,9 @@ Expr *resolveReference(Declaration *decRef, Token &name, Signature *signature, P
 }
 
 Expr *resolveReferenceExpr(Token &name, Parser *parser) {
-  return resolveReference(getFirstDeclarationRef(getCurrent(), name), name, getSignature(), parser);
+  Declaration *decRef = getFirstDeclarationRef(getCurrent(), name);
+
+  return resolveReference(decRef, name, getSignature(), parser);
 }
 
 bool isInRegularFunction(FunctionExpr *function) {

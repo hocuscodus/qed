@@ -156,7 +156,7 @@ struct GroupingExpr : public Expr {
   Declaration* declarations;
   bool hasSuperCalls;
 
-  GroupingExpr(Token name, Expr* body);
+  GroupingExpr(Token name, Expr* body, Declaration* declarations);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);

@@ -475,7 +475,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         uiFunctionExpr->_function.eventFlags = exprUI->_eventFlags;
 
         ObjFunction *uiFunction = &uiFunctionExpr->_function;
-        GroupingExpr group(body->name, NULL);
+        GroupingExpr group(body->name, NULL, NULL);
 
         parse(&group, "UI_ *ui_;\n");
         (*getLastBodyExpr(&group.body, TOKEN_SEPARATOR))->resolve(parser);

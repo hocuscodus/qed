@@ -54,10 +54,10 @@ CastExpr::CastExpr(Expr* typeExpr, Expr* expr) : Expr(EXPR_CAST) {
   this->expr = expr;
 }
 
-GroupingExpr::GroupingExpr(Token name, Expr* body) : Expr(EXPR_GROUPING) {
+GroupingExpr::GroupingExpr(Token name, Expr* body, Declaration* declarations) : Expr(EXPR_GROUPING) {
   this->name = name;
   this->body = body;
-  this->declarations = NULL;
+  this->declarations = declarations;
 }
 
 ArrayExpr::ArrayExpr(Expr* body) : Expr(EXPR_ARRAY) {

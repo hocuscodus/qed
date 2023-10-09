@@ -26,9 +26,9 @@ char *genSymbol(std::string name) {
 GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, Type paramType, std::function<Expr*()> bodyFn) {
   int arity = param ? 1 : 0;
   Token nameToken = buildToken(TOKEN_IDENTIFIER, name);
-  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), param);
+  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), param, NULL);
   FunctionExpr *wrapperFunc = newFunctionExpr(VOID_TYPE, nameToken, arity, group, NULL);
-  GroupingExpr *mainGroup = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "("), wrapperFunc);
+  GroupingExpr *mainGroup = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "("), wrapperFunc, NULL);
 
   pushScope(mainGroup);
   checkDeclaration(wrapperFunc->_declaration, nameToken, wrapperFunc, NULL);
@@ -123,7 +123,9 @@ Expr *BinaryExpr::toCps(K k) {
           break;
       }
 */
-      return this->right ? genBinary(left, this->right->toCps(k)) : getCompareExpr(this->left, left);
+      Expr *right = this->right ? this->right->toCps(k) : k(getCompareExpr(this->left, left));
+
+      return left && right ? genBinary(left, right) : right;
     });
 
     if (exp->type != EXPR_BINARY) {/*
@@ -220,6 +222,7 @@ Expr *DeclarationExpr::toCps(K k) {
 }
 
 Expr *FunctionExpr::toCps(K k) {
+  pushScope(this);
   Expr *currentBody = body;
   Expr *newBodyExpr = body->toCps([this](Expr *body) {return body;});
 
@@ -230,6 +233,7 @@ Expr *FunctionExpr::toCps(K k) {
 //  if (!lastExpr || lastExpr->type != EXPR_RETURN)
 //    addExpr(&body->body, new ReturnExpr(buildToken(TOKEN_IDENTIFIER, "return"), NULL, NULL), buildToken(TOKEN_SEPARATOR, ";"));
 
+  popScope();
   return k(this);//compareExpr(body, bodyExpr) ? this : newExpr(newFunctionExpr(typeExpr, name, arity + 1, newParams, newBody, NULL)));
 /*
 function cps_lambda(exp, k) {
@@ -255,7 +259,10 @@ Expr *GetExpr::toCps(K k) {
 }
 
 Expr *GroupingExpr::toCps(K k) {
-  pushScope(this);
+  bool functionFlag = getCurrent()->group == this;
+
+  if (!functionFlag)
+    pushScope(this);
 
   Expr *body = this->body 
     ? this->body->toCps([this, k](Expr *body) {
@@ -263,9 +270,10 @@ Expr *GroupingExpr::toCps(K k) {
       })
     : NULL;
 
-  popScope();
+  if (!functionFlag)
+    popScope();
 
-  return k(compareExpr(this->body, body) ? this : (GroupingExpr *) newExpr(new GroupingExpr(this->name, body)));
+  return k(compareExpr(this->body, body) ? this : (GroupingExpr *) newExpr(new GroupingExpr(this->name, body, declarations)));
 }
 
 Expr *ArrayExpr::toCps(K k) {
