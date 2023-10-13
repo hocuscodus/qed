@@ -1,4 +1,5 @@
 void voidHandler_() {}
+void anyHandler_(var value) {}
 void intHandler_(int value) {}
 void floatHandler_(float value) {}
 void boolHandler_(bool value) {}
@@ -103,21 +104,65 @@ float Animation() {
   _refresh();
 });$/
 }
+/*
 void InitZoneFn() {}
 void QEDArray(int dims, InitZoneFn InitZone, ArrayGetFn get) {
   int array = 0;
-/*
-/$  array = [];
-$/*/
+
   InitZone();
 
   void Resize(int[] start, int[] dims) {
   }
-/*
-  void get(int index) {
-    /$return array[index];
+*/
+void InitFn(int[] pos, int[] size, var array) {}
+void QEDArray(var[] init, int[] dims, int varDims, InitFn Init) {
+  var array
+
+  int size() {
+    int s = 1;
+
+//    d::dims {s *= d}
+    return s;
+  }
+
+  var get(int index) {
+    /$return array[index]
 $/
-  }*/
+  }
+
+  void set(int index, int value) {
+    /$array[index] = value
+$/
+  }
+
+  void InitArray() {
+    return Init(dims/*size() 0*/, dims, array);
+  }
+
+  void Change(int[] pos, int[] s) {
+  }
+
+  void Push() {
+    int size = size()
+//    int[] posArray = size 0
+//    int[] sizeArray = size 0
+
+//    posArray[0] = dins[0]
+//    sizeArray[0] = 1
+//    Change(posArray, sizeArray)
+    return
+  }
+
+  void Pop() {
+    int size = size()
+//    int[] posArray = size 0
+//    int[] sizeArray = size 0
+
+//    posArray[0] = dims[0] - 1
+//    sizeArray[0] = -1
+//    Change(posArray, sizeArray)
+    return
+  }
 }
 /*
 let x = (this.l = function l() {

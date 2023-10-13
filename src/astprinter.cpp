@@ -203,7 +203,7 @@ void LiteralExpr::astPrint() {
     case VAL_OBJ:
       switch (as.obj->type) {
         case OBJ_STRING:
-          fprintf(stderr, "%.*s", ((ObjString *) as.obj)->length, ((ObjString *) as.obj)->chars);
+          fprintf(stderr, "%s", ((ObjString *) as.obj)->str);
           break;
 
         default:

@@ -4,7 +4,7 @@
  *
  * All rights reserved.
  */
-#include <stdlib.h>
+#include <string.h>
 #include "memory.h"
 #include "object.hpp"
 
@@ -34,7 +34,7 @@ static void freeObject(Obj *object) {
 
     case OBJ_STRING: {
       ObjString *string = (ObjString *)object;
-      FREE_ARRAY(char, string->chars, string->length + 1);
+      reallocate(string->str, strlen(string->str) + 1, 0);
       FREE(ObjString, object);
       break;
     }
@@ -45,12 +45,12 @@ static void freeObject(Obj *object) {
   }
 }
 
-void freeObjects() {
+void freeObjects() {/*
   Obj *object = objects;
 
   while (object != NULL) {
     Obj *next = object->next;
     freeObject(object);
     object = next;
-  }
+  }*/
 }

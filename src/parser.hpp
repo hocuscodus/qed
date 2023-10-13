@@ -44,6 +44,7 @@ typedef struct {
 
 extern ParseExpRule expRules[];
 extern Type stringType;
+extern Type anyType;
 
 ParseExpRule *getExpRule(TokenType type);
 

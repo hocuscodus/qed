@@ -23,7 +23,7 @@ char *genSymbol(std::string name) {
     return str;
 }
 
-GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, Type paramType, std::function<Expr*()> bodyFn) {
+GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, std::function<Expr*()> bodyFn) {
   int arity = param ? 1 : 0;
   Token nameToken = buildToken(TOKEN_IDENTIFIER, name);
   GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), param, NULL);
@@ -39,19 +39,19 @@ GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, Type p
   return mainGroup;
 }
 
-GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, Type paramType, Expr *body) {
-  return makeWrapperLambda(name, param, paramType, [body]() -> Expr* {return body;});
+GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, Expr *body) {
+  return makeWrapperLambda(name, param, [body]() -> Expr* {return body;});
 }
 
-GroupingExpr *makeWrapperLambda(DeclarationExpr *param, Type paramType, std::function<Expr*()> bodyFn) {
-  return makeWrapperLambda(genSymbol("w"), param, paramType, bodyFn);
+GroupingExpr *makeWrapperLambda(DeclarationExpr *param, std::function<Expr*()> bodyFn) {
+  return makeWrapperLambda(genSymbol("w"), param, bodyFn);
 }
 
 GroupingExpr *makeBooleanContinuation(K k, bool boolParam) {
   DeclarationExpr *param = boolParam ? newDeclarationExpr(BOOL_TYPE, buildToken(TOKEN_IDENTIFIER, "arg"), NULL) : NULL;
   ReferenceExpr *arg = boolParam ? new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "arg"), NULL) : NULL;
 
-  return makeWrapperLambda(genSymbol("c"), param, BOOL_TYPE, [k, arg]() -> Expr* {return k(arg);});
+  return makeWrapperLambda(genSymbol("c"), param, [k, arg]() -> Expr* {return k(arg);});
 }
 
 bool compareExpr(Expr *origExpr, Expr *newExpr) {
@@ -185,7 +185,7 @@ Expr *CallExpr::toCps(K k) {
       if (!newFlag)
         bodyFn = [k, arg]() -> Expr* {return k(arg);};
 
-      this->handler = makeWrapperLambda("Lambda_", param, returnType, bodyFn);
+      this->handler = makeWrapperLambda("Lambda_", param, bodyFn);
     }
 
     if (this->handler) {
@@ -305,8 +305,10 @@ Expr *LogicalExpr::toCps(K k) {
       // delete right
       return compareExpr(this->left, left) ? this : k(newExpr(new LogicalExpr(left, this->op, this->right)));
     } else {
+      GroupingExpr *cast = makeBooleanContinuation(k, true);
+      Type contType = {VAL_OBJ, &((FunctionExpr *) cast->body)->_function.obj};
       // delete this->right
-      DeclarationExpr *param = newDeclarationExpr(UNKNOWN_TYPE, buildToken(TOKEN_IDENTIFIER, cvar), NULL);
+      DeclarationExpr *param = newDeclarationExpr(contType, buildToken(TOKEN_IDENTIFIER, cvar), NULL);
       Expr *left2 = getCompareExpr(this->left, left);
       Expr *notExpr = this->op.type == TOKEN_OR_OR ? new UnaryExpr(buildToken(TOKEN_BANG, "!"), left2) : left2;
       ReferenceExpr *callee2 = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cvar), NULL);
@@ -315,9 +317,7 @@ Expr *LogicalExpr::toCps(K k) {
         return new IfExpr(notExpr, right, elseExpr);
       };
 
-      GroupingExpr *cast = makeBooleanContinuation(k, true);
-      Type contType = {VAL_OBJ, &((FunctionExpr *) cast->body)->_function.obj};
-      Expr *wrapperLambda = makeWrapperLambda(param, contType, bodyFn);
+      Expr *wrapperLambda = makeWrapperLambda(param, bodyFn);
 
       return newExpr(new CallExpr(false, wrapperLambda, buildToken(TOKEN_CALL, "("), cast, NULL));
     }
@@ -413,7 +413,7 @@ Expr *WhileExpr::toCps(K k) {
     return k(this);
   else {
     // delete this->thenBranch, this->body
-    Expr *wrapperLambda = makeWrapperLambda(newSymbol, NULL, UNKNOWN_TYPE, [cpsExpr]() {
+    Expr *wrapperLambda = makeWrapperLambda(newSymbol, NULL, [cpsExpr]() {
       return cpsExpr;
     });
 
@@ -463,14 +463,14 @@ Expr *IfExpr::toCps(K k) {
       return compareExpr(this->condition, condition) ? this : k(newExpr(new IfExpr(condition, this->thenBranch, this->elseBranch)));
     } else {
       // delete this->thenBranch, this->elseBranch
-      DeclarationExpr *param = newDeclarationExpr(UNKNOWN_TYPE, buildToken(TOKEN_IDENTIFIER, cvar), NULL);
+      GroupingExpr *cast = makeBooleanContinuation(k, false);
+      Type contType = {VAL_OBJ, &((FunctionExpr *) cast->body)->_function.obj};
+      DeclarationExpr *param = newDeclarationExpr(contType, buildToken(TOKEN_IDENTIFIER, cvar), NULL);
       std::function<Expr*()> bodyFn = [condition, thenBranch, elseBranch]() -> Expr* {
         return new IfExpr(condition, thenBranch, elseBranch);
       };
 
-      GroupingExpr *cast = makeBooleanContinuation(k, false);
-      Type contType = {VAL_OBJ, &((FunctionExpr *) cast->body)->_function.obj};
-      Expr *wrapperLambda = makeWrapperLambda(param, contType, bodyFn);
+      Expr *wrapperLambda = makeWrapperLambda(param, bodyFn);
 
       return newExpr(new CallExpr(false, wrapperLambda, buildToken(TOKEN_CALL, "("), cast, NULL));
     }
@@ -486,10 +486,10 @@ Expr *IfExpr::toCps(K k) {
 
       return new CallExpr(false, callee, buildToken(TOKEN_CALL, "("), ifResult, NULL);
     };
-    DeclarationExpr *param = newDeclarationExpr(UNKNOWN_TYPE, buildToken(TOKEN_IDENTIFIER, cvar), NULL);
+    DeclarationExpr *param = newDeclarationExpr(paramType, buildToken(TOKEN_IDENTIFIER, cvar), NULL);
     Expr *ifExpr = new IfExpr(cond, this->thenBranch->toCps(newK), this->elseBranch->toCps(newK));
 
-    return new CallExpr(false, makeWrapperLambda(param, paramType, ifExpr), buildToken(TOKEN_CALL, "("), cast, NULL);
+    return new CallExpr(false, makeWrapperLambda(param, ifExpr), buildToken(TOKEN_CALL, "("), cast, NULL);
   });*/
 //  return k(this);
 /*
@@ -536,14 +536,14 @@ Expr *TernaryExpr::toCps(K k) {
       return compareExpr(this->left, left) ? this : k(newExpr(new TernaryExpr(this->op, left, this->middle, this->right)));
     } else {
       // delete this->middle, this->right
-      DeclarationExpr *param = newDeclarationExpr(UNKNOWN_TYPE, buildToken(TOKEN_IDENTIFIER, cvar), NULL);
+      GroupingExpr *cast = makeBooleanContinuation(k, true);
+      Type contType = {VAL_OBJ, &((FunctionExpr *) cast->body)->_function.obj};
+      DeclarationExpr *param = newDeclarationExpr(contType, buildToken(TOKEN_IDENTIFIER, cvar), NULL);
       std::function<Expr*()> bodyFn = [left, middle, right]() -> Expr* {
         return new IfExpr(left, middle, right);
       };
 
-      GroupingExpr *cast = makeBooleanContinuation(k, true);
-      Type contType = {VAL_OBJ, &((FunctionExpr *) cast->body)->_function.obj};
-      Expr *wrapperLambda = makeWrapperLambda(param, contType, bodyFn);
+      Expr *wrapperLambda = makeWrapperLambda(param, bodyFn);
 
       return newExpr(new CallExpr(false, wrapperLambda, buildToken(TOKEN_CALL, "("), cast, NULL));
     }

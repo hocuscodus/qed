@@ -321,7 +321,7 @@ void LiteralExpr::toCode(Parser &parser, ObjFunction *function) {
     case VAL_OBJ:
       switch (as.obj->type) {
         case OBJ_STRING:
-          str() << "\"" << std::string(((ObjString *) as.obj)->chars, ((ObjString *) as.obj)->length) << "\"";
+          str() << "\"" << std::string(((ObjString *) as.obj)->str) << "\"";
           break;
 
         default:

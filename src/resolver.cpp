@@ -70,6 +70,20 @@ bool isType(Type &type) {
   return false;
 }
 
+static Expr *convertToAny(Expr *expr, Type &type, Parser &parser) {
+  if (type.valueType == VAL_VOID)
+    parser.error("Value must not be void");
+  else {
+    CastExpr *castExpr = new CastExpr(NULL, expr);
+
+    castExpr->_srcType = type;
+    castExpr->_dstType = anyType;
+    expr = castExpr;
+  }
+
+  return expr;
+}
+
 static Expr *convertToString(Expr *expr, Type &type, Parser &parser) {
   if (type.valueType == VAL_VOID)
     parser.error("Value must not be void");
@@ -146,6 +160,10 @@ static Expr *convertToObj(Obj *srcObjType, Expr *expr, Type &type, Parser &parse
 */
   case OBJ_STRING:
     expr = convertToString(expr, type, parser);
+    break;
+
+  case OBJ_ANY:
+    expr = convertToAny(expr, type, parser);
     break;
 
   case OBJ_INSTANCE:
@@ -399,7 +417,7 @@ Type DeclarationExpr::resolve(Parser &parser) {
   if (initExpr) {
     Type type1 = initExpr->resolve(parser);
 
-    if (_declaration.type.valueType == VAL_UNKNOWN)
+    if (IS_ANY(_declaration.type))
       _declaration.type = type1;
     else if (!type1.equals(_declaration.type)) {
       initExpr = convertToType(_declaration.type, initExpr, type1, parser);
@@ -679,7 +697,7 @@ Type ArrayExpr::resolve(Parser &parser) {
       error("Cannot define an iterator list without a body expression.");
 
     if (iteratorExprs) {
-      GroupingExpr *callee = makeWrapperLambda("L", NULL, UNKNOWN_TYPE, [iteratorExprs]() {return iteratorExprs;});
+      GroupingExpr *callee = makeWrapperLambda("L", NULL, [iteratorExprs]() {return iteratorExprs;});
 
       exp = new CallExpr(true, callee, buildToken(TOKEN_CALL, "("), NULL, NULL);
 //      exp = new GroupExpr(*addExpr(&iteratorExprs, exp, buildToken(TOKEN_SEPARATOR, ",")));

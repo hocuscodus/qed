@@ -29,6 +29,7 @@
 
 #define AS_OBJ_TYPE(type1)    (IS_OBJ(type1) && (type1).objType ? (type1).objType->type : (ObjType) -1)
 
+#define IS_ANY(type)          isObjType(type, OBJ_ANY)
 #define IS_INSTANCE(type)     isObjType(type, OBJ_INSTANCE)
 #define IS_FUNCTION(type)     isObjType(type, OBJ_FUNCTION)
 #define IS_STRING(type)       isObjType(type, OBJ_STRING)
@@ -91,12 +92,13 @@ typedef As Value;
 #define AS_CALLABLE(value)     ((ObjCallable*)AS_OBJ(value))
 #define AS_FUNCTION(value)     ((ObjFunction*)AS_OBJ(value))
 #define AS_STRING(value)       ((ObjString*)AS_OBJ(value))
-#define AS_CSTRING(value)      (((ObjString*)AS_OBJ(value))->chars)
 #define AS_ARRAY(value)        ((ObjArray*)AS_OBJ(value))
+#define AS_CSTRING(value)      (AS_STRING(value)->str)
 
 typedef struct ObjString ObjString;
 
 typedef enum {
+  OBJ_ANY,
   OBJ_STRING,
   OBJ_INSTANCE,
   OBJ_FUNCTION,
@@ -105,7 +107,6 @@ typedef enum {
 
 struct Obj {
   ObjType type;
-  struct Obj *next;
 
   bool equals(Obj *obj);
   const char *toString();
@@ -181,8 +182,7 @@ struct ObjNative {
 
 struct ObjString {
   Obj obj;
-  int length;
-  char *chars;
+  char *str;
 };
 
 typedef struct ObjUpvalue {
@@ -217,7 +217,6 @@ struct ObjInstance {
 
 Obj *allocateObject(size_t size, ObjType type);
 ObjInstance *newInstance(ObjCallable *callable);
-ObjString *takeString(char *chars, int length);
 ObjString *copyString(const char *chars, int length);
 ObjUpvalue *newUpvalue(Value *slot);
 ObjArray *newArray(Type elementType);

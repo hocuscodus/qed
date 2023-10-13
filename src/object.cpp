@@ -23,7 +23,11 @@ const char *Type::toString() {
     case VAL_BOOL: return "bool";
     case VAL_INT: return "int";
     case VAL_FLOAT: return "float";
-    case VAL_OBJ: return objType ? objType->toString() : "!weird!";
+    case VAL_OBJ:
+      switch (objType->type) {
+        case OBJ_ANY: return "any";
+        default: return objType ? objType->toString() : "!weird!";
+      }
     default: return "!weird2!";
   }
 }
@@ -38,7 +42,7 @@ Obj *allocateObject(size_t size, ObjType type) {
   Obj *object = (Obj *)reallocate(NULL, 0, size);
 
   object->type = type;
-  object->next = objects;
+//  object->next = objects;
   objects = object;
   return object;
 }
@@ -51,6 +55,7 @@ const char *Obj::toString() {
   static char buf[256];
 
   switch (type) {
+    case OBJ_ANY: return "any";
     case OBJ_STRING: return "String";
     case OBJ_ARRAY: {
       char buf2[256] = "??";
@@ -266,23 +271,14 @@ ObjInstance *newInstance(ObjCallable *callable) {
   return instance;
 }
 
-static ObjString *allocateString(char *chars, int length) {
-  ObjString *string = ALLOCATE_OBJ(ObjString, OBJ_STRING);
-  string->length = length;
-  string->chars = chars;
-  return string;
-}
-
-ObjString *takeString(char *chars, int length) {
-  return allocateString(chars, length);
-}
-
 ObjString *copyString(const char *chars, int length) {
-  char *heapChars = ALLOCATE(char, length + 1);
+  char *heapChars = (char *) reallocate(NULL, 0, length + 1);
 
   memcpy(heapChars, chars, length);
   heapChars[length] = '\0';
-  return allocateString(heapChars, length);
+  ObjString *string = ALLOCATE_OBJ(ObjString, OBJ_STRING);
+  string->str = heapChars;
+  return string;
 }
 
 ObjArray *newArray(Type elementType) {
@@ -300,7 +296,7 @@ void printObject(Value value) {
   case OBJ_INSTANCE: {
     ObjString *name = NULL;//AS_INSTANCE(value)->callable->name;
 
-    printf("<%.*s instance>", name->length, name->chars);
+    printf("<%s instance>", name->str);
     break;
   }
   case OBJ_FUNCTION:

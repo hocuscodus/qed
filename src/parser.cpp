@@ -21,10 +21,12 @@
 #define KEY_DEF( identifier, unary, binary, prec )  { unary, binary, prec }
 ParseExpRule expRules[] = { KEYS_DEF };
 #undef KEY_DEF
-Obj objString = {OBJ_STRING, NULL};
+Obj objString = {OBJ_STRING};
 Type stringType = {VAL_OBJ, &objString};
+Obj objAny= {OBJ_ANY};
+Type anyType = {VAL_OBJ, &objAny};
 
-GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, Type paramType, std::function<Expr*()> bodyFn);
+GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, std::function<Expr*()> bodyFn);
 
 int getDir(char op) {
   switch (op) {
@@ -79,7 +81,7 @@ static Expr *createArrayLoops(int index, Point &dirs, Expr **iteratorExprs, Expr
     delete iteratorExpr;
   }
 
-  expr = newDeclarationExpr(UNKNOWN_TYPE, buildToken(TOKEN_IDENTIFIER, newString(dimName)), expr);
+  expr = newDeclarationExpr(anyType, buildToken(TOKEN_IDENTIFIER, newString(dimName)), expr);
 
   if (isGroup(*iteratorExprs, TOKEN_SEPARATOR))
     ((BinaryExpr *) *iteratorExprs)->left = expr;
@@ -109,7 +111,7 @@ static Expr *createArrayExpr(Expr *iteratorExprs, Expr *body) {
   Point dirs{};
   Expr *arrayExpr = *addExpr(&iteratorExprs, createArrayLoops(0, dirs, &iteratorExprs, body), buildToken(TOKEN_SEPARATOR, ";"));
 
-  arrayExpr = makeWrapperLambda("l", NULL, UNKNOWN_TYPE, [arrayExpr]() {return arrayExpr;});
+  arrayExpr = makeWrapperLambda("l", NULL, [arrayExpr]() {return arrayExpr;});
   return new CallExpr(false, arrayExpr, buildToken(TOKEN_LEFT_PAREN, "("), NULL, NULL);
 }
 
@@ -119,7 +121,12 @@ static const char *getHandlerType(Type type) {
     case VAL_BOOL: return "boolHandler_";
     case VAL_INT: return "intHandler_";
     case VAL_FLOAT: return "floatHandler_";
-    case VAL_OBJ: return type.objType->type == OBJ_STRING ? "stringHandler_" : NULL;
+    case VAL_OBJ:
+      switch (type.objType->type) {
+        case OBJ_STRING: return "stringHandler_";
+        case OBJ_ANY: return "anyHandler_";
+        default: return NULL;
+      }
     default: return NULL;
   }
 }
@@ -607,7 +614,7 @@ Expr *Parser::primitiveType() {
   case 'v':
     switch (previous.start[1]) {
     case 'a':
-      return new PrimitiveExpr(previous, UNKNOWN_TYPE);
+      return new PrimitiveExpr(previous, anyType);
     case 'o':
       return new PrimitiveExpr(previous, VOID_TYPE);
     }
@@ -896,7 +903,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
             checkDeclaration(dec->_declaration, name, NULL, this);
           }
           else
-            ;//error("Parameter %d not typed correctly", functionExpr->arity + 1);
+            error("Parameter %d not typed correctly", functionExpr->arity + 1);
         }
         else
           functionExpr->arity++;
@@ -961,6 +968,7 @@ Expr *Parser::varDeclaration(TokenType endGroupType) {
 }
 
 Expr *Parser::expressionStatement(TokenType endGroupType) {
+  Token cur = current;
   TokenType tokens[] = {TOKEN_SEPARATOR, endGroupType, TOKEN_ELSE, TOKEN_EOF};
   Expr *exp = expression(tokens);
 
@@ -1064,7 +1072,7 @@ Expr *Parser::returnStatement(TokenType endGroupType) {
     if (value) {
       CallExpr *call = new CallExpr(false, param, buildToken(TOKEN_CALL, "("), value, NULL);
 
-      param = makeWrapperLambda("lambda_", NULL, UNKNOWN_TYPE, [call]() {return call;});
+      param = makeWrapperLambda("lambda_", NULL, [call]() {return call;});
     }
 
     value = new CallExpr(false, callee, buildToken(TOKEN_CALL, "("), param, NULL);
