@@ -376,12 +376,12 @@ Type ArrayElementExpr::resolve(Parser &parser) {
       parser.error("No index defined.");
       return VOID_TYPE;
     }
-  else
+  else/*
     if (isType(type)) {
       parser.error("A type cannot have an index.");
       return VOID_TYPE;
     }
-    else
+    else*/
       switch (AS_OBJ_TYPE(type)) {
       case OBJ_ARRAY: {
         ObjArray *array = AS_ARRAY_TYPE(type);
@@ -389,7 +389,7 @@ Type ArrayElementExpr::resolve(Parser &parser) {
         for (int index = 0; index < count; index++)
           indexes[index]->resolve(parser);
 
-        return array->elementType;
+        return INT_TYPE;//array->elementType;
       }
       case OBJ_STRING: {/*
         ObjString *string = (ObjString *)type.objType;

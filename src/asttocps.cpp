@@ -208,7 +208,7 @@ Expr *CallExpr::toCps(K k) {
 }
 
 Expr *ArrayElementExpr::toCps(K k) {
-  return this;
+  return k(this);
 }
 
 Expr *DeclarationExpr::toCps(K k) {

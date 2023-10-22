@@ -104,18 +104,9 @@ float Animation() {
   _refresh();
 });$/
 }
-/*
-void InitZoneFn() {}
-void QEDArray(int dims, InitZoneFn InitZone, ArrayGetFn get) {
-  int array = 0;
 
-  InitZone();
-
-  void Resize(int[] start, int[] dims) {
-  }
-*/
 void InitFn(int[] pos, int[] size, var array) {}
-void QEDArray(var[] init, int[] dims, int varDims, InitFn Init) {
+void QEDArray_(var[] init, int[] dims, int varDims, InitFn Init) {
   var array
 
   int size() {

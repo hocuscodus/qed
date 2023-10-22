@@ -253,6 +253,56 @@ ObjFunction *compile(FunctionExpr *expr, Parser *parser) {
   fprintf(stderr, "\n");
 #endif
   line() << "\"use strict\";\n";
+/*
+void QEDArray(var[] init, int[] dims, int varDims, InitFn Init) {
+  var array
+
+  int size() {
+    int s = 1;
+
+//    d::dims {s *= d}
+    return s;
+  }
+
+  var get(int index) {
+    /$return array[index]
+$/
+  }
+
+  void set(int index, int value) {
+    /$array[index] = value
+$/
+  }
+
+  void InitArray() {
+    return Init(dims/ *size() 0* /, dims, array);
+  }
+
+  void Change(int[] pos, int[] s) {
+  }
+
+  void Push() {
+    int size = size()
+//    int[] posArray = size 0
+//    int[] sizeArray = size 0
+
+//    posArray[0] = dins[0]
+//    sizeArray[0] = 1
+//    Change(posArray, sizeArray)
+    return
+  }
+
+  void Pop() {
+    int size = size()
+//    int[] posArray = size 0
+//    int[] sizeArray = size 0
+
+//    posArray[0] = dims[0] - 1
+//    sizeArray[0] = -1
+//    Change(posArray, sizeArray)
+    return
+  }
+}*/
   line() << "const canvas = document.getElementById(\"canvas\");\n";
   line() << "let postCount = 1;\n";
   line() << "let attributeStacks = [];\n";
@@ -887,12 +937,12 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
 
       if (name.isUserClass()) {
         const char *type = getHandlerType(returnType);
-        Token name = buildToken(TOKEN_IDENTIFIER, "handlerFn_");
         ReferenceExpr *paramTypeExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, type), NULL);
 
         returnType = VOID_TYPE;
 
         if (getCurrent()) {
+          Token name = buildToken(TOKEN_IDENTIFIER, "handlerFn_");
           Type paramType = resolveType(paramTypeExpr);
 
           if (!IS_UNKNOWN(paramType)) {
@@ -953,7 +1003,20 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
     if ((*getLastBodyExpr(&exp, TOKEN_SEPARATOR))->type == EXPR_ITERATOR)
       error("Cannot define an iterator list without a body expression.");
 
-    return iteratorExprs ? createArrayExpr(iteratorExprs, exp) : exp;
+    if (iteratorExprs) {/*
+      Expr *body = NULL;
+      ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "QEDArray"), NULL);
+
+      addExpr(&body, createArrayExpr(iteratorExprs, exp), buildToken(TOKEN_COMMA, ","));
+      addExpr(&body, createArrayExpr(iteratorExprs, exp), buildToken(TOKEN_COMMA, ","));
+      addExpr(&body, new LiteralExpr(VAL_INT, {0}), buildToken(TOKEN_COMMA, ","));
+      addExpr(&body, createArrayExpr(iteratorExprs, exp), buildToken(TOKEN_COMMA, ","));
+      exp = new CallExpr(true, callee, buildToken(TOKEN_LEFT_PAREN, "("), body, NULL);
+*/
+      exp = createArrayExpr(iteratorExprs, exp);
+    }
+
+    return exp;
   }
 }
 
@@ -1070,12 +1133,12 @@ Expr *Parser::returnStatement(TokenType endGroupType) {
     Expr *param = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "handlerFn_"), NULL);
 
     if (value) {
-      CallExpr *call = new CallExpr(false, param, buildToken(TOKEN_CALL, "("), value, NULL);
+      CallExpr *call = new CallExpr(false, param, buildToken(TOKEN_LEFT_PAREN, "("), value, NULL);
 
       param = makeWrapperLambda("lambda_", NULL, [call]() {return call;});
     }
 
-    value = new CallExpr(false, callee, buildToken(TOKEN_CALL, "("), param, NULL);
+    value = new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), param, NULL);
   }
 
   return new ReturnExpr(keyword, getFunction()->_declaration.name.isUserClass(), value);

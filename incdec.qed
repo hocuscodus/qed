@@ -1,13 +1,93 @@
-//var vv = [1, 6]
 
-int getInt(int a) {
-  return a;
-}
+/*int fib(int n) {
+  return n < 2 ? n : fib(n - 1) + fib(n - 2);
+}*//*
+float counter = 0;
+bool stopped = false;
+
+while (!stopped)
+  counter = Animation();
+
+<out: counter; fontSize: 60; onPress: stopped = true;>
+*//*
+println("Hello")
+Timer(1000)
+println("Martin")
+Timer(2000)
+println("Savage")
+*//*
+string[] firstNames = new ["Martin", "Nathalie", "Audray", "Nathan", "Xavier"];
+string[] lastNames = new ["Landau", "Wood", "Hepburn", "Hawthorne", "Charles"];
+
+println("firstNames.size() = " + firstNames.size());/ *
+firstNames.remove(2, 2);
+lastNames.remove(2, 2);
+firstNames.add("John");
+lastNames.add("Connor");
+firstNames.add("Michael", 1);
+lastNames.add("Jackson", 1);
+firstNames.set("Firstasd jfka j");
+lastNames.set("Las jaslkfjlkdsjflkajfd lka jdft");* /
+firstNames.size() {
+	{
+		; @out(firstNames[&0])
+	} @out("First Name") @childdir(2)
+	{
+		; @out(lastNames[&0])
+	} @out("Last Name") @childdir(2)
+} @childdir(1) @mtxdir(2)
+*//*
+10 {
+	{
+		10 {
+			{
+				; @out((&1 + 1) * (&0 + 1)) @size(16) @bgcol(0xDDDDDD)
+			} @out(&0 + 1) @cdir(1) @bgcol(0x0000FF) @textcol(0xFFFFFF) @size(14)
+		} @adir(2) @apack(0)
+	} @out(&0 + 1) @cdir(2) @bgcol(0x0000FF) @textcol(0xFFFFFF) @size(14)
+} @adir(1) @apack(0)
+*/
+//<out: y :| 10 x :_ 10 (x + 1) * (y + 1);>
+//<out: y:|10 x:_10 (x+1)*(y+1);>
+var ar = ["Martin", "Savage"]/*
+println("" + ar[1]);
+for (int i = 0; i < 5; i++)
+  println("Count: " + i)
+*/
+var x = :|10 i:_11 12 :\13 14 // int array, continue, l
+//var x = new :|10 i:_11 12 :\13 14[ -> {handler}] // ERROR (l)
+//var x = :|10 i:_11 12 :\13 method() // r(method) array, continue, l
+//var x = new :|10 i:_11 12 :\13 method()[ -> {handler}] // ERROR (l)
+//var x = :|10 i:_11 12 :\13 Method() // r(Method) array, wait, L
+//var x = new :|10 i:_11 12 :\13 Method()[ -> {handler}] // r(Method) array, continue, L
+//var x = :|10 i:_11 12 :\13 new Method()[ -> {handler}] // Method array, continue, l
+//var x = new :|10 i:_11 12 :\13 new Method()[ -> {handler}][ -> {handler}] // ERROR (l)
+//
+//var x = :|10 i:_11 12 :\13 {...} // void array, continue, ll
+//var x = new :|10 i:_11 12 :\13 {...}[ -> {handler}] // ERROR (ll)
+//var x = :|10 i:_11 12 :\13 new {...} // ERROR (ll)
+//var x = new :|10 i:_11 12 :\13 new {...}[ -> {handler}] // ERROR (ll)
+//var x = :|10 i:_11 12 :\13 {Method()} // void array, wait, LL
+//var x = new :|10 i:_11 12 :\13 {Method()}[ -> {handler}] // void array, continue, LL
+//var x = :|10 i:_11 12 :\13 new {Method()}[ -> {handler}] // object array, continue, ll
+//var x = new :|10 i:_11 12 :\13 new {Method()}[ -> {handler}][ -> {handler}] // ERROR (ll)
+println("" + 20%)
+<out: "SS";>//x;>
+/*
+var x = i:|10 j:_10 new {
+  < out: i;>
+  < out: j;>
+  < out: i * j;>
+};
+
+<out: x;>
+*//*
+int getInt(int a) {return 2 * a;}
 
 void Button(String text) {
   float shade = 20%
 
-  <out: rect; opacity: shade; size: getInt(35)//[35, -1]
+  <out: rect; opacity: shade; size: getInt(17)//[35, -1]
    onPress: shade = 35%//{shade = 35%; captureMouse()}
    onRelease: {shade = 20%; return}>//if (hovering) return()}>
   <out: text; opacity: 60%; align: 50%; fontSize: 40;>
@@ -15,7 +95,8 @@ void Button(String text) {
 
 int count = 0
 var decButton = new Button("-") -> count--
-var incButton = new Button("+") -> count++
+Button *incButton = new Button("+") -> count++
+Button But = Button;
 
 <out: oval; color: count > 0 ? COLOR_GREEN : count < 0 ? COLOR_RED : COLOR_YELLOW;
   <_ color: COLOR_BLACK;
@@ -26,3 +107,60 @@ var incButton = new Button("+") -> count++
     <out: incButton;>
   >
 >
+*/
+/*
+Ball[] balls = 3 new Ball()
+CounterWidget counter = new CounterWidget()
+
+while (Animation())
+  balls.Yield();
+
+void Ball() {
+  int color = rand() * 0xFFFFFF
+  int size = rand() * 25 + 15
+  Vector[] vectors = 2 new Vector(rand(), (rand() * 0.15) + 0.01)
+
+  while (Yield())
+    v::vectors v.move()
+
+  void Vector(float pos, float delta) {
+    void move() {
+      pos += delta
+
+      if (delta > 0 ? pos > 1 : pos < 0) {
+        pos = delta > 0 ? 2 - pos : -pos
+        delta = -delta
+      }
+    }
+  }
+
+  <out: oval; color: color; size: size; align: [vectors[0].pos, vectors[1].pos]>
+}
+
+void CounterWidget() {
+  Button incButton = new Button("+") -> balls++
+  Button decButton = new Button("-") -> if (balls.size() > 0) balls--
+
+  void Button(String text) {
+    float shade = 20%
+
+    <out: rect; opacity: shade; size: [35, -1]; onPress: shade = 35%
+    onRelease: {shade = 20%; return}>
+    <out: text; opacity: 60%; align: 50%; fontSize: 40;>
+  }
+
+  <_ color: 0xFFFFFF;
+    <out: decButton;>
+    <
+      <out: ""; size: 60;>
+      <out: balls.size(); color: 0x80000000; align: 50%;>
+    >
+    <out: incButton;>
+  >
+}
+
+<out:"Bouncing"; size:130; color: 0x50FFFFFF; align: [50%, 10%]>
+<out:"Balls!!"; size:160; color: 0x30FFFFFF; align: [50%, 70%]>
+<out: balls>
+<out: counter; align: 95%>
+*/

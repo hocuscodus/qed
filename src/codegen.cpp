@@ -150,8 +150,11 @@ void CallExpr::toCode(Parser &parser, ObjFunction *function) {
 void ArrayElementExpr::toCode(Parser &parser, ObjFunction *function) {
   callee->toCode(parser, function);
 
-  for (int index = 0; index < count; index++)
+  for (int index = 0; index < count; index++) {
+    str() << "[";
     indexes[index]->toCode(parser, function);
+    str() << "]";
+  }
 }
 
 void DeclarationExpr::toCode(Parser &parser, ObjFunction *function) {
