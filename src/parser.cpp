@@ -438,6 +438,12 @@ Expr *Parser::assignment(Expr *left) {
 
     return new SetExpr(getExpr->object, getExpr->name, op, right, -1);
   }
+
+  case EXPR_ARRAYELEMENT: {
+//    GetExpr *getExpr = (GetExpr *) left;
+
+    return left;//new SetExpr(getExpr->object, getExpr->name, op, right, -1);
+  }
   default:
     errorAt(&op, "Invalid assignment target."); // [no-throw]
     return left;
@@ -454,6 +460,18 @@ struct FakeParser : Parser {
       hadError = true;
   }
 };
+
+Expr *Parser::as(Expr *left) {
+  // ignore optional separator before second operand
+  passSeparator();
+
+  Expr *right = parsePrecedence((Precedence)(getExpRule(TOKEN_AS)->precedence + 1));
+
+  if (right == NULL)
+    error("Expect expression.");
+
+  return new CastExpr(left, right);
+}
 
 Expr *Parser::binary(Expr *left) {
   Token op = previous;

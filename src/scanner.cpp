@@ -142,6 +142,17 @@ Token Scanner::scanToken() {
       return makeToken(match('=') ? TOKEN_PLUS_EQUAL : match('+') ? TOKEN_PLUS_PLUS : TOKEN_PLUS);
 
     case '/':
+      if (match('$')) {
+        start = current; // Skip header '/$'
+
+        if (!skipRecursiveComment('$'))
+          return makeToken(TOKEN_EOF);
+
+        current -= 2; // Skip footer '$/'
+        Token token = makeToken(TOKEN_NATIVE_CODE);
+        current += 2; // Skip footer '$/'
+        return token;
+      }
       return makeToken(match('=') ? TOKEN_SLASH_EQUAL : TOKEN_SLASH);
 
     case '\\':
@@ -278,7 +289,8 @@ Token Scanner::skipWhitespace() {
         switch (peekNext()) {
           case '/':
             // A comment goes until the end of the line.
-            while (peek() != '\n' && !isAtEnd()) advance();
+            while (peek() != '\n' && !isAtEnd())
+              advance();
             break;
 
           case '*':
@@ -288,18 +300,6 @@ Token Scanner::skipWhitespace() {
               return makeToken(TOKEN_EOF);
             break;
 
-          case '$': {
-            current += 2; // Skip header '/$'
-            start = current;
-            // A recursive comment goes until same level '*/'
-            if (!skipRecursiveComment('$'))
-              return makeToken(TOKEN_EOF);
-
-            current -= 2; // Skip footer '$/'
-            Token token = makeToken(TOKEN_NATIVE_CODE);
-            current += 2; // Skip footer '$/'
-            return token;
-          }
           default:
             return makeToken(TOKEN_SEPARATOR);
         }

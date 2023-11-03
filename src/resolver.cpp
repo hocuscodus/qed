@@ -65,6 +65,9 @@ bool isType(Type &type) {
 
   case OBJ_ARRAY:
     return true;
+
+  default:
+    return true;
   }
 
   return false;
@@ -312,6 +315,9 @@ Type BinaryExpr::resolve(Parser &parser) {
 
       return {boolVal ? VAL_BOOL : VAL_FLOAT};
 
+    case VAL_UNKNOWN:
+      return type2;
+
     default:
       parser.error("First operand must be numeric");
       return type1;
@@ -367,7 +373,7 @@ Type CallExpr::resolve(Parser &parser) {
 }
 
 Type ArrayElementExpr::resolve(Parser &parser) {
-  Type type = callee->resolve(parser);
+  Type type = resolveType(callee);
 
   if (!count)
     if (isType(type))
@@ -850,7 +856,7 @@ Type SwapExpr::resolve(Parser &parser) {
 }
 
 Type NativeExpr::resolve(Parser &parser) {
-  return VOID_TYPE;
+  return UNKNOWN_TYPE;
 }
 /*
 void AttrSet::parseCreateAreasTree(VM &vm, ValueStack<Value *> &valueStack, int dimFlags, const Path &path, Value *values, IndexList *instanceIndexes, LocationUnit **areaUnits) {

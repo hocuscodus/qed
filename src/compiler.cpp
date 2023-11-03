@@ -84,6 +84,13 @@ Type resolveType(Expr *expr) {
           }
         break;
       }
+      case EXPR_ARRAYELEMENT: {
+        ArrayElementExpr *arrayElementExpr = (ArrayElementExpr *) expr;
+
+        if (!arrayElementExpr->count && arrayElementExpr->callee)
+          type = OBJ_TYPE(newArray(resolveType(arrayElementExpr->callee)));
+        break;
+      }
     }
 
   if (type.valueType != -1) {
@@ -253,7 +260,7 @@ Expr *resolveReference(Declaration *decRef, Token &name, Signature *signature, P
     else
       return dec;
 
-    decRef = decRef->next;
+    decRef = getDeclarationRef(name, decRef->next);
   }
 
   if (parser)

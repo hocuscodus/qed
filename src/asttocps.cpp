@@ -33,7 +33,7 @@ GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, std::f
   pushScope(mainGroup);
   checkDeclaration(wrapperFunc->_declaration, nameToken, wrapperFunc, NULL);
   pushScope(wrapperFunc);
-  group->body = bodyFn();
+  addExpr(&group->body, bodyFn(), buildToken(TOKEN_SEPARATOR, ";"));
   popScope();
   popScope();
   return mainGroup;
@@ -44,7 +44,7 @@ GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, Expr *
 }
 
 GroupingExpr *makeWrapperLambda(DeclarationExpr *param, std::function<Expr*()> bodyFn) {
-  return makeWrapperLambda(genSymbol("w"), param, bodyFn);
+  return makeWrapperLambda(genSymbol("W"), param, bodyFn);
 }
 
 GroupingExpr *makeBooleanContinuation(K k, bool boolParam) {

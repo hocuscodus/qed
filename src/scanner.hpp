@@ -69,7 +69,7 @@
     KEY_DEF( TOKEN_VAR, NULL, NULL, PREC_NONE ),  \
     KEY_DEF( TOKEN_TYPE_LITERAL, &Parser::primitiveType, NULL, PREC_NONE ),  \
     /* Keywords. */ \
-    KEY_DEF( TOKEN_AS, NULL, NULL, PREC_NONE ),  \
+    KEY_DEF( TOKEN_AS, NULL, &Parser::as, PREC_UNARY ),  \
     KEY_DEF( TOKEN_DEF, NULL, NULL, PREC_NONE ),  \
     KEY_DEF( TOKEN_ELSE, NULL, NULL, PREC_NONE ),  \
     KEY_DEF( TOKEN_FALSE, &Parser::literal, NULL, PREC_NONE ),  \
