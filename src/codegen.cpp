@@ -224,7 +224,7 @@ void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
         for (Expr *body = function->expr->body->body; body; body = cdr(body, TOKEN_SEPARATOR)) {
           Expr *expr = car(body, TOKEN_SEPARATOR);
 
-          if (expr->type == EXPR_DECLARATION && ((DeclarationExpr *) expr)->isInternalField) {
+          if (expr->type == EXPR_DECLARATION && ((DeclarationExpr *) expr)->_isInternalField) {
             line() << "const " << function->getThisVariableName() << " = this;\n";
             break;
           }

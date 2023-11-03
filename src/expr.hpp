@@ -20,7 +20,6 @@ struct ObjFunction;
 struct ObjCallable;
 
 typedef enum {
-  EXPR_TYPE,
   EXPR_UIATTRIBUTE,
   EXPR_UIDIRECTIVE,
   EXPR_ITERATOR,
@@ -154,7 +153,7 @@ struct GroupingExpr : public Expr {
   Token name;
   Expr* body;
   Declaration* declarations;
-  bool hasSuperCalls;
+  bool _hasSuperCalls;
 
   GroupingExpr(Token name, Expr* body, Declaration* declarations);
   void cleanExprs();
@@ -206,7 +205,7 @@ struct ArrayElementExpr : public Expr {
 
 struct DeclarationExpr : public Expr {
   Expr* initExpr;
-  bool isInternalField;
+  bool _isInternalField;
   Declaration _declaration;
 
   DeclarationExpr(Expr* initExpr);

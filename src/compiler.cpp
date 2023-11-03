@@ -300,7 +300,7 @@ bool isExternalField(FunctionExpr *function, DeclarationExpr *expr) {
 }
 
 bool isField(FunctionExpr *function, DeclarationExpr *expr) {
-  return isExternalField(function, expr) || expr->isInternalField;
+  return isExternalField(function, expr) || expr->_isInternalField;
 }
 
 bool isInRegularFunction(ObjFunction *function) {

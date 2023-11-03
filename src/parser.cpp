@@ -719,8 +719,8 @@ Expr *Parser::grouping() {
   popScope();
 
   if (op.type != TOKEN_LEFT_BRACE && group->body && isGroup(group->body, TOKEN_SEPARATOR)) {
-    getCurrent()->hasSuperCalls |= group->hasSuperCalls;
-    return new CallExpr(false, new GroupingExpr(op, newFunctionExpr(VOID_TYPE, buildToken(TOKEN_IDENTIFIER, group->hasSuperCalls ? "L" : "l"), 0, group, NULL), NULL), op, NULL, NULL);
+    getCurrent()->hasSuperCalls |= group->_hasSuperCalls;
+    return new CallExpr(false, new GroupingExpr(op, newFunctionExpr(VOID_TYPE, buildToken(TOKEN_IDENTIFIER, group->_hasSuperCalls ? "L" : "l"), 0, group, NULL), NULL), op, NULL, NULL);
   }
 
   return group;
