@@ -136,12 +136,10 @@ struct BinaryExpr : public Expr {
 };
 
 struct CastExpr : public Expr {
-  Expr* typeExpr;
+  Type type;
   Expr* expr;
-  Type _srcType;
-  Type _dstType;
 
-  CastExpr(Expr* typeExpr, Expr* expr);
+  CastExpr(Type type, Expr* expr);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);

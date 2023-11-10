@@ -461,16 +461,17 @@ struct FakeParser : Parser {
   }
 };
 
-Expr *Parser::as(Expr *left) {
+Expr *Parser::as(Expr *expr) {
   // ignore optional separator before second operand
   passSeparator();
 
-  Expr *right = parsePrecedence((Precedence)(getExpRule(TOKEN_AS)->precedence + 1));
+  Expr *typeExpr = parsePrecedence((Precedence)(getExpRule(TOKEN_AS)->precedence + 1));
+  Type type = typeExpr ? resolveType(typeExpr) : UNKNOWN_TYPE;
 
-  if (right == NULL)
-    error("Expect expression.");
+  if (IS_UNKNOWN(type))
+    error("Expect type.");
 
-  return new CastExpr(left, right);
+  return new CastExpr(type, expr);
 }
 
 Expr *Parser::binary(Expr *left) {

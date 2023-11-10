@@ -8,7 +8,44 @@
 #include <string.h>
 #include "parser.hpp"
 #include "compiler.hpp"
-
+/*
+// usage: implicitConversionTable[exprType][dstType]
+Type implicitConversionTable[][6] = {
+  {VOID_TYPE, UNKNOWN_TYPE, UNKNOWN_TYPE, UNKNOWN_TYPE, UNKNOWN_TYPE, UNKNOWN_TYPE},
+  {UNKNOWN_TYPE, BOOL_TYPE, UNKNOWN_TYPE, UNKNOWN_TYPE, anyType, UNKNOWN_TYPE},
+  {UNKNOWN_TYPE, UNKNOWN_TYPE, INT_TYPE, FLOAT_TYPE, anyType, UNKNOWN_TYPE},
+  {UNKNOWN_TYPE, UNKNOWN_TYPE, UNKNOWN_TYPE, FLOAT_TYPE, anyType, UNKNOWN_TYPE},
+  {UNKNOWN_TYPE, BOOL_TYPE, INT_TYPE, FLOAT_TYPE, anyType, stringType},
+  {UNKNOWN_TYPE, UNKNOWN_TYPE, UNKNOWN_TYPE, UNKNOWN_TYPE, anyType, stringType}
+};
+//void, bool, int, float, any, string
+//src != void && dst != void && (src == dst || (dst == any || src == int && dst == float))
+bool implicitConversionTable2[][6] = {
+  {true, false, false, false, false, false},
+  {false, true, false, false, true, false},
+  {false, false, true, true, true, false},
+  {false, false, false, true, true, false},
+  {false, false, false, false, true, false},
+  {false, false, false, false, true, true}
+};
+//src != void && dst != void && (implicit || (dst == string || (dst == int && (src == bool || src == float)) || (dst == bool && src == int)))
+bool explicitConversionTable[][6] = {
+  {false, false, false, false, false, false},
+  {false, false, true, false, false, true},
+  {false, true, false, false, false, true},
+  {false, false, true, false, false, true},
+  {false, true, true, true, false, true},
+  {false, false, false, false, false, true}
+};
+bool totalConversionTable2[][6] = {
+  {true, false, false, false, false, false},
+  {false, true, true, false, true, true},
+  {false, true, true, true, true, true},
+  {false, false, true, true, true, true},
+  {false, true, true, true, true, true},
+  {false, false, false, false, true, true}
+};
+*/
 struct ValueStack3 {
   int max;
 	std::stack<int> *map;
@@ -55,6 +92,31 @@ int adjustLayout(UIDirectiveExpr *expr, Parser &parser);
 void paint(UIDirectiveExpr *expr, Parser &parser);
 void onEvent(UIDirectiveExpr *expr, Parser &parser);
 
+bool isImplicitConvert(Type srcType, Type dstType) {
+  return !IS_VOID(srcType) && !IS_VOID(dstType) && (
+    srcType.valueType == dstType.valueType ||
+    IS_ANY(dstType) ||
+    (IS_INT(srcType) && IS_FLOAT(dstType))
+  );
+}
+
+bool isExplicitConvert(Type srcType, Type dstType) {
+  return !IS_VOID(srcType) && !IS_VOID(dstType) && (
+    isImplicitConvert(srcType, dstType) ||
+    IS_STRING(dstType) ||
+    IS_ANY(srcType) ||
+    (IS_INT(dstType) && (IS_BOOL(srcType) || IS_FLOAT(srcType))) ||
+    (IS_BOOL(dstType) && IS_INT(srcType))
+  );
+}
+
+Expr *resolveImplicit(Type type, Expr *expr, Parser &parser) {
+  Type exprType = expr->resolve(parser);
+  bool convertFlag = isImplicitConvert(exprType, type);
+
+  return convertFlag ? type.valueType != exprType.valueType ? new CastExpr(type, expr) : expr : NULL;
+}
+
 bool isType(Type &type) {
   switch (AS_OBJ_TYPE(type)) {
   case OBJ_FUNCTION: {
@@ -76,13 +138,8 @@ bool isType(Type &type) {
 static Expr *convertToAny(Expr *expr, Type &type, Parser &parser) {
   if (type.valueType == VAL_VOID)
     parser.error("Value must not be void");
-  else {
-    CastExpr *castExpr = new CastExpr(NULL, expr);
-
-    castExpr->_srcType = type;
-    castExpr->_dstType = anyType;
-    expr = castExpr;
-  }
+  else
+    expr = new CastExpr(anyType, expr);
 
   return expr;
 }
@@ -91,13 +148,8 @@ static Expr *convertToString(Expr *expr, Type &type, Parser &parser) {
   if (type.valueType == VAL_VOID)
     parser.error("Value must not be void");
   else
-    if (!type.equals(stringType)) {
-      CastExpr *castExpr = new CastExpr(NULL, expr);
-
-      castExpr->_srcType = type;
-      castExpr->_dstType = stringType;
-      expr = castExpr;
-    }
+    if (!type.equals(stringType))
+      expr = new CastExpr(stringType, expr);
 
   return expr;
 }
@@ -108,18 +160,18 @@ static Expr *convertToInt(Expr *expr, Type &type, Parser &parser) {
     break;
 
   case VAL_VOID:
+    parser.error("Value must not be void");
+    break;
+
   case VAL_OBJ:
-    parser.error("Value cannot be cast to integer");
-    break;
-
-  default: {
-    CastExpr *castExpr = new CastExpr(NULL, expr);
-
-    castExpr->_srcType = type;
-    castExpr->_dstType = INT_TYPE;
-    expr = castExpr;
-    break;
+    if (AS_OBJ_TYPE(type) != OBJ_ANY) {
+      parser.error("Value cannot be cast to integer");
+      break;
     }
+
+  default:
+    expr = new CastExpr(INT_TYPE, expr);
+    break;
   }
 
   return expr;
@@ -131,18 +183,18 @@ static Expr *convertToFloat(Expr *expr, Type &type, Parser &parser) {
     break;
 
   case VAL_VOID:
+    parser.error("Value must not be void");
+    break;
+
   case VAL_OBJ:
-    parser.error("Value cannot be cast to float");
-    break;
-
-  default: {
-    CastExpr *castExpr = new CastExpr(NULL, expr);
-
-    castExpr->_srcType = type;
-    castExpr->_dstType = FLOAT_TYPE;
-    expr = castExpr;
-    break;
+    if (AS_OBJ_TYPE(type) != OBJ_ANY) {
+      parser.error("Value cannot be cast to float");
+      break;
     }
+
+  default:
+    expr = new CastExpr(FLOAT_TYPE, expr);
+    break;
   }
 
   return expr;
@@ -292,10 +344,15 @@ Type BinaryExpr::resolve(Parser &parser) {
     switch (type1.valueType) {
     case VAL_INT:
       if (!type1.equals(type2)) {
-        if (!IS_FLOAT(type2)) {
-          parser.error("Second operand must be numeric");
-          return VOID_TYPE;
-        }
+        if (!IS_FLOAT(type2))
+          if (IS_ANY(type2)) {
+            right = convertToInt(right, type2, parser);
+            return {boolVal ? VAL_BOOL : VAL_INT};
+          }
+          else {
+            parser.error("Second operand must be numeric");
+            return VOID_TYPE;
+          }
 
         left = convertToFloat(left, type1, parser);
         return {boolVal ? VAL_BOOL : VAL_FLOAT};
@@ -305,7 +362,7 @@ Type BinaryExpr::resolve(Parser &parser) {
 
     case VAL_FLOAT:
       if (!type1.equals(type2)) {
-        if (!IS_INT(type2)) {
+        if (!IS_INT(type2) && !IS_ANY(type2)) {
           parser.error("Second operand must be numeric");
           return VOID_TYPE;
         }
@@ -395,7 +452,7 @@ Type ArrayElementExpr::resolve(Parser &parser) {
         for (int index = 0; index < count; index++)
           indexes[index]->resolve(parser);
 
-        return INT_TYPE;//array->elementType;
+        return array->elementType;
       }
       case OBJ_STRING: {/*
         ObjString *string = (ObjString *)type.objType;
@@ -644,10 +701,9 @@ Type GroupingExpr::resolve(Parser &parser) {
 }
 
 Type CastExpr::resolve(Parser &parser) {
-  if (typeExpr)
-    _dstType = typeExpr->resolve(parser);
+  Type exprType = expr->resolve(parser);
 
-  return _dstType;
+  return isExplicitConvert(exprType, type) ? type : UNKNOWN_TYPE;
 }
 
 Type IfExpr::resolve(Parser &parser) {
@@ -856,7 +912,7 @@ Type SwapExpr::resolve(Parser &parser) {
 }
 
 Type NativeExpr::resolve(Parser &parser) {
-  return UNKNOWN_TYPE;
+  return anyType;
 }
 /*
 void AttrSet::parseCreateAreasTree(VM &vm, ValueStack<Value *> &valueStack, int dimFlags, const Path &path, Value *values, IndexList *instanceIndexes, LocationUnit **areaUnits) {

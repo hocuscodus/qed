@@ -80,7 +80,7 @@ public:
   Expr *iterator(Expr *left);
   Expr *suffix(Expr *left);
   Expr *assignment(Expr *left);
-  Expr *as(Expr *left);
+  Expr *as(Expr *expr);
   Expr *binary(Expr *left);
   Expr *binaryOrPostfix(Expr *left);
   Expr *ternary(Expr *left);

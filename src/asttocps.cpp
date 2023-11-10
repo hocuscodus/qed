@@ -33,6 +33,10 @@ GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, std::f
   pushScope(mainGroup);
   checkDeclaration(wrapperFunc->_declaration, nameToken, wrapperFunc, NULL);
   pushScope(wrapperFunc);
+
+  if (param)
+    checkDeclaration(param->_declaration, param->_declaration.name, NULL, NULL);
+
   addExpr(&group->body, bodyFn(), buildToken(TOKEN_SEPARATOR, ";"));
   popScope();
   popScope();
@@ -90,7 +94,7 @@ Expr *AssignExpr::toCps(K k) {
 
 Expr *CastExpr::toCps(K k) {
   Expr *cpsExpr = expr->toCps([this, k](Expr *expr) {
-    return compareExpr(this->expr, expr) ? this : k(newExpr(new CastExpr(typeExpr, expr)));
+    return compareExpr(this->expr, expr) ? this : k(newExpr(new CastExpr(type, expr)));
   });
 
   return this == cpsExpr ? k(this) : cpsExpr;

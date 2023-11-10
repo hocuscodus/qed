@@ -49,8 +49,8 @@ BinaryExpr::BinaryExpr(Expr* left, Token op, Expr* right) : Expr(EXPR_BINARY) {
   this->right = right;
 }
 
-CastExpr::CastExpr(Expr* typeExpr, Expr* expr) : Expr(EXPR_CAST) {
-  this->typeExpr = typeExpr;
+CastExpr::CastExpr(Type type, Expr* expr) : Expr(EXPR_CAST) {
+  this->type = type;
   this->expr = expr;
 }
 

@@ -14,58 +14,58 @@ int COLOR_BLUE = 0x0000FF;
 int COLOR_BLACK = 0x000000;
 
 void println(String str) {
-/$console.log(str)
-$/}
+/$console.log(str)$/
+}
 void post_(voidHandler_ handlerFn_) {
 /$postCount++;
   setTimeout(function() {
     handlerFn_();
     _refresh();
-  })
-$/}
+  })$/
+}
 int max(int a, int b) {
-/$return a > b ? a : b
-$/}
+/$return a > b ? a : b$/
+}
 float clock() {}
 void saveContext() {
-/$ctx.save()
-$/}
+/$ctx.save()$/
+}
 void restoreContext() {
-/$ctx.restore()
-$/}
+/$ctx.restore()$/
+}
 void oval(int pos, int size) {
 /$ctx.fillStyle = toColor(getAttribute(10));
   ctx.globalAlpha = \\ + getAttribute(11);
   ctx.beginPath();
   ctx.ellipse((pos >> 16) + (size >> 17), (pos & 65535) + ((size & 65535) >> 1), size >> 17, (size & 65535) >> 1, 0, 0, 2*Math.PI);
   ctx.fill();
-  ctx.clip()
-$/}
+  ctx.clip()$/
+}
 void rect(int pos, int size) {
 /$ctx.fillStyle = toColor(getAttribute(10));
   ctx.globalAlpha = \\ + getAttribute(11);
   ctx.beginPath();
-  ctx.fillRect((pos >> 16), (pos & 65535), size >> 16, size & 65535)
-$/}
+  ctx.fillRect((pos >> 16), (pos & 65535), size >> 16, size & 65535)$/
+}
 void pushAttribute(int index, int value) {
 /$if (attributeStacks[index] == undefined)
     attributeStacks[index] = [];
 
-  attributeStacks[index].push(value)
-$/}
+  attributeStacks[index].push(value)$/
+}
 void pushAttribute(int index, float value) {
-/$pushAttribute(index, value)
-$/}
+/$pushAttribute(index, value)$/
+}
 void popAttribute(int index) {
-/$attributeStacks[index].pop()
-$/}
+/$attributeStacks[index].pop()$/
+}
 int getTextSize(String text) {
 /$ctx.font = getAttribute(4) + \px Arial\;
 
   const textSize = ctx.measureText(text);
   const height = textSize.fontBoundingBoxAscent + textSize.fontBoundingBoxDescent;
-  return (textSize.width << 16) | height
-$/}
+  return (textSize.width << 16) | height$/
+}
 void displayText(String text, int pos, int size) {
 /$let pos1 = [(pos >> 16), (pos & 0xFFFF)];
   let size1 = [(size >> 16), (size & 0xFFFF)];
@@ -73,8 +73,8 @@ void displayText(String text, int pos, int size) {
   ctx.fillStyle = toColor(getAttribute(10));
   ctx.globalAlpha = getAttribute(11);
   ctx.textBaseline = \top\;
-  ctx.fillText(text, pos1[0], pos1[1])
-$/}
+  ctx.fillText(text, pos1[0], pos1[1])$/
+}
 
 bool Timer(int timeoutMillis) {
 /$setTimeout(function() {
@@ -89,14 +89,12 @@ void Time(voidHandler_ Func) {
   new Func(() => {
     console.timeEnd(\Time\);
     handlerFn_();
-  });
-$/
+  });$/
 }
 void time(voidHandler_ func) {
 /$  console.time(\time\);
   func();
-  console.timeEnd(\time\);
-$/
+  console.timeEnd(\time\);$/
 }
 float Animation() {
 /$requestAnimationFrame((millis) => {
@@ -104,7 +102,85 @@ float Animation() {
   _refresh();
 });$/
 }
+void InitFn(var array, int index, int[] pos) {}
 
+void QEDArray_(InitFn Init) {
+  int size() {
+    int s = 1
+
+    for (int index = /$this.dims.size() - 1$/; index >= 0; index--)
+      s *= /$this.dims[index]$/
+
+    return s
+  }
+
+  void InitArray(int[] size) {
+    /$this.dims = new Array(size.length).fill(0)$/
+    Insert(/$new Array(size.length).fill(0)$/ as int[], size)
+    return
+  }
+
+  void Insert(int[] pos, int[] size) {
+    int[] newSize = size
+
+    for (int index = /$this.dims.size() - 1$/; index >= 0; index--)
+      newSize[index] += /$this.dims[index]$/;
+
+    InsertLevel(/$this$/, /$this.dims$/, pos, size, newSize, /$new Array(size.length).fill(0)$/, 0)
+    /$this.dims = newSize $/
+    return
+  }
+
+  void InsertLevel(var array, var dims, int[] pos, int[] size, int[] newSize, var pp, int level) {
+    if (level < /$dims.length - 1$/) {
+      for (/$pp[level] = 0$/; /$pp[level] < pos[level]$/; /$pp[level]++$/)
+        InsertLevel(/$array[pp[level]]$/, dims, pos, size, newSize, pp, level + 1)
+
+      if (size[level] != 0)
+        for (/$pp[level] = dims[level] - 1$/; /$pp[level] >= pos[level]$/; /$pp[level]--$/)
+          /$array[pp[level] + size[level]] = array[pp[level]]$/
+
+      for (/$pp[level] = pos[level]$/; /$pp[level] < pos[level] + size[level]$/; /$pp[level]++$/) {
+        /$array[pp[level]] = []$/
+        InsertLevel(/$array[pp[level]]$/, /$new Array(size.length).fill(0)$/, /$new Array(size.length).fill(0)$/ as int[], newSize, newSize, pp, level + 1)
+      }
+
+      for (/$pp[level] = pos[level] + size[level]$/; /$pp[level] < newSize[level]$/; /$pp[level]++$/)
+        InsertLevel(/$array[pp[level]]$/, dims, pos, size, newSize, pp, level + 1)
+    }
+    else {
+      if (size[level] != 0)
+        for (/$pp[level] = dims[level] - 1$/; /$pp[level] >= pos[level]$/; /$pp[level]--$/)
+          /$array[pp[level] + size[level]] = array[pp[level]]$/
+
+      for (/$pp[level] = pos[level]$/; /$pp[level] < pos[level] + size[level]$/; /$pp[level]++$/)
+        Init(array, /$pp[level]$/ as int, pp as int[])
+    }
+    return;
+  }
+/*
+  void Push() {
+    let pos = new Array(QEDArray_$this.dims.length).fill(0);
+    let size = new Array(QEDArray_$this.dims.length).fill(0);
+
+    pos[0] = QEDArray_$this.dims[0];
+    size[0] = 1;
+    Insert(pos, size);
+    return;
+  }
+
+  void pop() {
+    let pos = new Array(QEDArray_$this.dims.length).fill(0);
+    let size = new Array(QEDArray_$this.dims.length).fill(0);
+
+    pos[0] = QEDArray_$this.dims[0] - 1;
+    size[0] = 1;
+    remove(pos, size);
+    return;
+  }*/
+}
+/$Object.setPrototypeOf(QEDArray_.prototype, Array.prototype)$/
+/*
 void InitFn(int[] pos, int[] size, var array) {}
 void QEDArray_(var[] init, int[] dims, int varDims, InitFn Init) {
   var array
@@ -155,7 +231,7 @@ $/
     return
   }
 }
-/*
+*//*
 let x = (this.l = function l() {
   let _d0 = 10;
   let _d1 = 11;
