@@ -59,7 +59,7 @@ struct Expr {
   virtual void astPrint() = 0;
   virtual Expr *toCps(K k) = 0;
   virtual Type resolve(Parser &parser) = 0;
-  virtual void toCode(Parser &parser, ObjFunction *function) = 0;
+  virtual std::string toCode(Parser &parser, ObjFunction *function) = 0;
 };
 
 struct UIAttributeExpr : public Expr {
@@ -73,7 +73,7 @@ struct UIAttributeExpr : public Expr {
   void astPrint();
   Expr *toCps(K k);
   Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
+  std::string toCode(Parser &parser, ObjFunction *function);
 };
 
 struct UIDirectiveExpr : public Expr {
@@ -93,7 +93,7 @@ struct UIDirectiveExpr : public Expr {
   void astPrint();
   Expr *toCps(K k);
   Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
+  std::string toCode(Parser &parser, ObjFunction *function);
 };
 
 struct IteratorExpr : public Expr {
@@ -106,7 +106,7 @@ struct IteratorExpr : public Expr {
   void astPrint();
   Expr *toCps(K k);
   Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
+  std::string toCode(Parser &parser, ObjFunction *function);
 };
 
 struct AssignExpr : public Expr {
@@ -119,7 +119,7 @@ struct AssignExpr : public Expr {
   void astPrint();
   Expr *toCps(K k);
   Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
+  std::string toCode(Parser &parser, ObjFunction *function);
 };
 
 struct BinaryExpr : public Expr {
@@ -132,7 +132,7 @@ struct BinaryExpr : public Expr {
   void astPrint();
   Expr *toCps(K k);
   Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
+  std::string toCode(Parser &parser, ObjFunction *function);
 };
 
 struct CastExpr : public Expr {
@@ -144,7 +144,7 @@ struct CastExpr : public Expr {
   void astPrint();
   Expr *toCps(K k);
   Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
+  std::string toCode(Parser &parser, ObjFunction *function);
 };
 
 struct GroupingExpr : public Expr {
@@ -158,7 +158,7 @@ struct GroupingExpr : public Expr {
   void astPrint();
   Expr *toCps(K k);
   Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
+  std::string toCode(Parser &parser, ObjFunction *function);
 };
 
 struct ArrayExpr : public Expr {
@@ -169,7 +169,7 @@ struct ArrayExpr : public Expr {
   void astPrint();
   Expr *toCps(K k);
   Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
+  std::string toCode(Parser &parser, ObjFunction *function);
 };
 
 struct CallExpr : public Expr {
@@ -184,7 +184,7 @@ struct CallExpr : public Expr {
   void astPrint();
   Expr *toCps(K k);
   Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
+  std::string toCode(Parser &parser, ObjFunction *function);
 };
 
 struct ArrayElementExpr : public Expr {
@@ -198,7 +198,7 @@ struct ArrayElementExpr : public Expr {
   void astPrint();
   Expr *toCps(K k);
   Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
+  std::string toCode(Parser &parser, ObjFunction *function);
 };
 
 struct DeclarationExpr : public Expr {
@@ -211,7 +211,7 @@ struct DeclarationExpr : public Expr {
   void astPrint();
   Expr *toCps(K k);
   Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
+  std::string toCode(Parser &parser, ObjFunction *function);
 };
 
 struct FunctionExpr : public Expr {
@@ -226,7 +226,7 @@ struct FunctionExpr : public Expr {
   void astPrint();
   Expr *toCps(K k);
   Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
+  std::string toCode(Parser &parser, ObjFunction *function);
 };
 
 struct GetExpr : public Expr {
@@ -240,7 +240,7 @@ struct GetExpr : public Expr {
   void astPrint();
   Expr *toCps(K k);
   Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
+  std::string toCode(Parser &parser, ObjFunction *function);
 };
 
 struct IfExpr : public Expr {
@@ -253,7 +253,7 @@ struct IfExpr : public Expr {
   void astPrint();
   Expr *toCps(K k);
   Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
+  std::string toCode(Parser &parser, ObjFunction *function);
 };
 
 struct LiteralExpr : public Expr {
@@ -265,7 +265,7 @@ struct LiteralExpr : public Expr {
   void astPrint();
   Expr *toCps(K k);
   Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
+  std::string toCode(Parser &parser, ObjFunction *function);
 };
 
 struct LogicalExpr : public Expr {
@@ -278,7 +278,7 @@ struct LogicalExpr : public Expr {
   void astPrint();
   Expr *toCps(K k);
   Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
+  std::string toCode(Parser &parser, ObjFunction *function);
 };
 
 struct PrimitiveExpr : public Expr {
@@ -290,7 +290,7 @@ struct PrimitiveExpr : public Expr {
   void astPrint();
   Expr *toCps(K k);
   Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
+  std::string toCode(Parser &parser, ObjFunction *function);
 };
 
 struct ReferenceExpr : public Expr {
@@ -302,7 +302,7 @@ struct ReferenceExpr : public Expr {
   void astPrint();
   Expr *toCps(K k);
   Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
+  std::string toCode(Parser &parser, ObjFunction *function);
 };
 
 struct ReturnExpr : public Expr {
@@ -315,7 +315,7 @@ struct ReturnExpr : public Expr {
   void astPrint();
   Expr *toCps(K k);
   Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
+  std::string toCode(Parser &parser, ObjFunction *function);
 };
 
 struct SetExpr : public Expr {
@@ -330,7 +330,7 @@ struct SetExpr : public Expr {
   void astPrint();
   Expr *toCps(K k);
   Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
+  std::string toCode(Parser &parser, ObjFunction *function);
 };
 
 struct TernaryExpr : public Expr {
@@ -344,7 +344,7 @@ struct TernaryExpr : public Expr {
   void astPrint();
   Expr *toCps(K k);
   Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
+  std::string toCode(Parser &parser, ObjFunction *function);
 };
 
 struct ThisExpr : public Expr {
@@ -355,7 +355,7 @@ struct ThisExpr : public Expr {
   void astPrint();
   Expr *toCps(K k);
   Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
+  std::string toCode(Parser &parser, ObjFunction *function);
 };
 
 struct UnaryExpr : public Expr {
@@ -367,7 +367,7 @@ struct UnaryExpr : public Expr {
   void astPrint();
   Expr *toCps(K k);
   Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
+  std::string toCode(Parser &parser, ObjFunction *function);
 };
 
 struct WhileExpr : public Expr {
@@ -379,7 +379,7 @@ struct WhileExpr : public Expr {
   void astPrint();
   Expr *toCps(K k);
   Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
+  std::string toCode(Parser &parser, ObjFunction *function);
 };
 
 struct SwapExpr : public Expr {
@@ -390,7 +390,7 @@ struct SwapExpr : public Expr {
   void astPrint();
   Expr *toCps(K k);
   Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
+  std::string toCode(Parser &parser, ObjFunction *function);
 };
 
 struct NativeExpr : public Expr {
@@ -401,7 +401,7 @@ struct NativeExpr : public Expr {
   void astPrint();
   Expr *toCps(K k);
   Type resolve(Parser &parser);
-  void toCode(Parser &parser, ObjFunction *function);
+  std::string toCode(Parser &parser, ObjFunction *function);
 };
 
 #endif

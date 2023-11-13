@@ -1,122 +1,8 @@
-/*
-const qedArrayPrototype = {
-  initArrayIndex(index) {
-    if (index < this.dims.length) {
-      let array = []
-  
-      for (let ndx = 0; ndx < this.dims[index]; ndx++)
-        array[ndx] = this.initArrayIndex(index + 1)
-  
-      return array
-    }
-    else
-      return this.fn()
-  }
-};
-
-function QEDArray(dims, fn) {
-  this.dims = dims
-  this.fn = fn
-  this.array = this.initArrayIndex(0)
-}
-
-Object.assign(QEDArray.prototype, qedArrayPrototype);
-
-let t = new QEDArray([3, 2], function L() {return "Martin"})
-*//*
-function QEDArray_(Init) {
-  QEDArray_$this = this;
-  this.Init = Init;
-
-  this.size = function () {
-    let s = 1;
-    forEach(i => {
-      s *= i;
-    });
-    return (s);
-  }
-
-  this.InitArray = function (size) {
-    this.dims = new Array(size.length).fill(0);
-    this.Insert(new Array(size.length).fill(0), size);
-    return QEDArray_$this;
-  }
-
-  this.Insert = function (pos, size) {
-    let newSize = [...size];
-    this.dims.every((length, index) => newSize[index] += length);
-    this.InsertLevel(this, this.dims, pos, size, newSize, [], 0)
-    this.dims = newSize;
-  }
-
-  this.InsertLevel = function (array, dims, pos, size, newSize, pp, level) {
-    if (level < dims.length - 1) {
-      for (pp[level] = 0; pp[level] < pos[level]; pp[level]++)
-        this.InsertLevel(array[pp[level]], dims, pos, size, newSize, pp, level + 1);
-
-      if (size[level] != 0)
-        for (pp[level] = dims[level] - 1; pp[level] >= pos[level]; pp[level]--)
-          array[pp[level] + size[level]] = array[pp[level]];
-
-      for (pp[level] = pos[level]; pp[level] < pos[level] + size[level]; pp[level]++) {
-        array[pp[level]] = []
-        this.InsertLevel(array[pp[level]], new Array(size.length).fill(0), new Array(size.length).fill(0), newSize, newSize, pp, level + 1);
-      }
-
-      for (pp[level] = pos[level] + size[level]; pp[level] < newSize[level]; pp[level]++)
-        this.InsertLevel(array[pp[level]], dims, pos, size, newSize, pp, level + 1);
-    }
-    else {
-      if (size[level] != 0)
-        for (pp[level] = dims[level] - 1; pp[level] >= pos[level]; pp[level]--)
-          array[pp[level] + size[level]] = array[pp[level]];
-
-      for (pp[level] = pos[level]; pp[level] < pos[level] + size[level]; pp[level]++)
-        this.Init(array, pp[level], pp);
-    }
-  }
-
-  this.Push = function () {
-    let pos = new Array(QEDArray_$this.dims.length).fill(0);
-    let size = new Array(QEDArray_$this.dims.length).fill(0);
-
-    pos[0] = QEDArray_$this.dims[0];
-    size[0] = 1;
-    Insert(pos, size);
-    return;
-  }
-
-  this.pop = function () {
-    let pos = new Array(QEDArray_$this.dims.length).fill(0);
-    let size = new Array(QEDArray_$this.dims.length).fill(0);
-
-    pos[0] = QEDArray_$this.dims[0] - 1;
-    size[0] = 1;
-    remove(pos, size);
-    return;
-  }
-}
-Object.setPrototypeOf(QEDArray_.prototype, Array.prototype);
-let ar = ["Martin", "Savage"];
-let num = 14;
-let Init = function l(array, x, pos) {
-  const i = pos[1];
-
-  array[x] = i;
-};
-
-let myFirstArray = new QEDArray_(Init);
-myFirstArray.InitArray([10, 11, 12, 13]);
-num = 15;
-myFirstArray.Insert([3, 4, 0, 0], [2, 1, 0, 0]);
-num = 16;
-myFirstArray.Insert([0, 0, 1, 5], [0, 0, 1, 2]);
-console.log("Done3");
-*/
 "use strict";
 const MainThis = this;
 const canvas = null;//document.getElementById("canvas");
-let postCount = 1;
+let postCount = 0;
+let postHandler = null;
 let attributeStacks = [];
 const ctx = null;//canvas.getContext("2d");
 function toColor(color) {return "#" + color.toString(16).padStart(6, '0');}
@@ -148,11 +34,20 @@ this.println = function println(str) {
   console.log(str);
 }
 this.post_ = function post_(handlerFn_) {
-  postCount++;
-  setTimeout(function() {
-    handlerFn_();
-//    this._refresh();
-  });
+  if (postHandler != null)
+    console.log("postHandler not null");
+
+    postHandler = handlerFn_;
+}
+this.executeEvents_ = function executeEvents_() {
+  while (postHandler != null) {
+    const fn = postHandler;
+  
+    postHandler = null;
+    fn();
+  }
+
+//  this._refresh();
 }
 this.max = function max(a, b) {
   return a > b ? a : b;
@@ -446,20 +341,19 @@ canvas.addEventListener("mouseup", function(ev) {
 });
 canvas.onselectstart = function () { return false; }
 */
-let count1 = 0;
 let myFirstArray = new this.QEDArray_(function l(array, x, pos, handlerFn_) {
   const i = (pos[0] + 1) * (pos[1] + 1);
 
   array[x] = i;
 //  MainThis.Timer(200, function(ret) {
-    console.log("LOOP " + ++count1);
     MainThis.post_(handlerFn_);
 //  });
 }, null);
 new myFirstArray.InitArray([2, 3], function Lambda_() {
   new myFirstArray.Insert([1, 1], [3, 2], function Lambda_() {
     new myFirstArray.Insert([0, 0], [1, 1], function Lambda_() {
-      console.log(myFirstArray);/*
+      console.log(myFirstArray);
+            /*
       let i = 0;
       (function while10$_() {
         if (i < 3) {
@@ -475,3 +369,4 @@ new myFirstArray.InitArray([2, 3], function Lambda_() {
     });
     });
 });
+this.executeEvents_();

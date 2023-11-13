@@ -43,7 +43,7 @@ bool isInRegularFunction(ObjFunction *function);
 bool isExternalField(ObjFunction *function);
 Expr *checkDeclaration(Declaration &declaration, Token &name, FunctionExpr *function, Parser *parser);
 
-ObjFunction *compile(FunctionExpr *expr, Parser *parser);
+std::string compile(FunctionExpr *expr, Parser *parser);
 
 bool identifiersEqual(Token *a, Token *b);
 Type getDeclarationType(Expr *expr);

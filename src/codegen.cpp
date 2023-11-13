@@ -8,7 +8,7 @@
 #include "compiler.hpp"
 
 static int nTabs = 0;
-std::stringstream s;
+const std::string emptyString;
 
 bool needsSemicolon(Expr *expr) {
   return !isGroup(expr, TOKEN_SEPARATOR) && expr->type != EXPR_GROUPING && expr->type != EXPR_IF && expr->type != EXPR_RETURN && expr->type != EXPR_WHILE && expr->type != EXPR_FUNCTION && !(expr->type == EXPR_SWAP && !needsSemicolon(((SwapExpr *) expr)->_expr));
@@ -43,172 +43,181 @@ static ObjFunction *getFunction(Expr *callee) {
   }
 }
 
-static std::stringstream &str() {
-  return s;
-}
-
-std::stringstream &line() {
+std::stringstream &line(std::stringstream &str) {
   for (int index = 0; index < nTabs; index++)
-    str() << "  ";
+    str << "  ";
 
-  return str();
+  return str;
 }
 
-static void startBlock() {
+static void startBlock(std::stringstream &str) {
   if (nTabs++ >= 0)
-    str() << "{\n";
+    str << "{\n";
 }
 
-static void endBlock() {
+static void endBlock(std::stringstream &str) {
   if (--nTabs >= 0)
-    line() << "}\n";
+    line(str) << "}\n";
 }
 
-void IteratorExpr::toCode(Parser &parser, ObjFunction *function) {
-  value->toCode(parser, function);
+std::string IteratorExpr::toCode(Parser &parser, ObjFunction *function) {
+  return value->toCode(parser, function);
 }
 
-void AssignExpr::toCode(Parser &parser, ObjFunction *function) {
+std::string AssignExpr::toCode(Parser &parser, ObjFunction *function) {
+  std::stringstream str;
+
   if (varExp)
-    varExp->toCode(parser, function);
+    str << varExp->toCode(parser, function);
 
-  if (value) {
-    str() << " " << op.getString() << " ";
-    value->toCode(parser, function);
-  }
+  if (value)
+    str << " " << op.getString() << " " << value->toCode(parser, function);
   else
-    str() << op.getString();
+    str << op.getString();
+
+  return str.str();
 }
 
-void UIAttributeExpr::toCode(Parser &parser, ObjFunction *function) {
+std::string UIAttributeExpr::toCode(Parser &parser, ObjFunction *function) {
   parser.error("Cannot generate UI code from UI expression.");
+  return emptyString;
 }
 
-void UIDirectiveExpr::toCode(Parser &parser, ObjFunction *function) {
+std::string UIDirectiveExpr::toCode(Parser &parser, ObjFunction *function) {
   parser.error("Cannot generate UI code from UI expression.");
+  return emptyString;
 }
 
-void BinaryExpr::toCode(Parser &parser, ObjFunction *function) {
+std::string BinaryExpr::toCode(Parser &parser, ObjFunction *function) {
+  std::stringstream str;
+
   switch (op.type) {
     case TOKEN_SEPARATOR:
-      left->toCode(parser, function);
+      str << left->toCode(parser, function);
 
       if (needsSemicolon(left))
-        str() << ";\n";
+        str << ";\n";
 
-      line();
-      right->toCode(parser, function);
+      line(str);
+      str << right->toCode(parser, function);
 
       if (needsSemicolon(right))
-        str() << ";\n";
+        str << ";\n";
       break;
     case TOKEN_COMMA:
-      left->toCode(parser, function);
-      str() << ", ";
-      right->toCode(parser, function);
+      str << left->toCode(parser, function) << ", " << right->toCode(parser, function);
       break;
     default:
-      left->toCode(parser, function);
-      str() << " ";
+      str << left->toCode(parser, function) << " ";
 
       switch (op.type) {
         case TOKEN_EQUAL_EQUAL:
-          str() << "===";
+          str << "===";
           break;
         case TOKEN_BANG_EQUAL:
-          str() << "!==";
+          str << "!==";
           break;
         default:
-          str() << op.getString();
+          str << op.getString();
           break;
       }
 
-      str() << " ";
-      right->toCode(parser, function);
+      str << " " << right->toCode(parser, function);
       break;
   }
+
+  return str.str();
 }
 
-void CallExpr::toCode(Parser &parser, ObjFunction *function) {
+std::string CallExpr::toCode(Parser &parser, ObjFunction *function) {
+  std::stringstream str;
   ObjFunction *calleeFunction = getFunction(callee);
 
   if (calleeFunction && calleeFunction->isClass())
-    str() << "new ";
+    str << "new ";
 
-  callee->toCode(parser, function);
-  str() << "(";
+  str << callee->toCode(parser, function) << "(";
 
   if (params)
-    params->toCode(parser, function);
+    str << params->toCode(parser, function);
 
   if (handler)
     handler = NULL;
 
-  str() << ")";
+  str << ")";
+  return str.str();
 }
 
-void ArrayElementExpr::toCode(Parser &parser, ObjFunction *function) {
-  callee->toCode(parser, function);
+std::string ArrayElementExpr::toCode(Parser &parser, ObjFunction *function) {
+  std::stringstream str;
 
-  for (int index = 0; index < count; index++) {
-    str() << "[";
-    indexes[index]->toCode(parser, function);
-    str() << "]";
+  str << callee->toCode(parser, function);
+
+  for (int index = 0; index < count; index++)
+    str << "[" << indexes[index]->toCode(parser, function) << "]";
+
+  return str.str();
+}
+
+std::string DeclarationExpr::toCode(Parser &parser, ObjFunction *function) {
+  std::stringstream str;
+
+  if (initExpr) {
+    if (_declaration.isExternalField())
+      str << "this.";
+    else
+      str << /*_declaration->function->isClass() ? "const " : */"let ";
+
+    str << _declaration.getRealName() << " = " << initExpr->toCode(parser, function);
   }
+
+  return str.str();
 }
 
-void DeclarationExpr::toCode(Parser &parser, ObjFunction *function) {
-  str() << (_declaration.isExternalField() ? "this." : /*_declaration->function->isClass() ? "const " : */"let ") << _declaration.getRealName() << " = ";
+std::string FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
+  std::stringstream str;
 
-  if (initExpr)
-    initExpr->toCode(parser, function);
-  else
-    str() << "null";
-}
-
-void FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
   pushScope(this);
 
   if (getCurrent()->enclosing) {
     if (getFunction(getCurrent()->enclosing)->_declaration.isInRegularFunction())
-      str() << "this." << _declaration.getRealName() << " = ";
+      str << "this." << _declaration.getRealName() << " = ";
 
-    str() << "function " << _declaration.getRealName() << "(";
+    str << "function " << _declaration.getRealName() << "(";
 
     for (int index = 0; index < arity; index++) {
       if (index)
-        str() << ", ";
+        str << ", ";
 
-      str() << getParam(this, index)->_declaration.name.getString();
+      str << getParam(this, index)->_declaration.name.getString();
     }
 
-    str() << ") ";
+    str << ") ";
   }
 
   if (body)
-    body->toCode(parser, &_function);
+    str << body->toCode(parser, &_function);
 
   popScope();
+  return str.str();
 }
 
-void GetExpr::toCode(Parser &parser, ObjFunction *function) {
-  object->toCode(parser, function);
-  str() << "." << name.getString();
+std::string GetExpr::toCode(Parser &parser, ObjFunction *function) {
+  return (std::stringstream() << object->toCode(parser, function) << "." << name.getString()).str();
 }
 
-void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
+std::string GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
+  std::stringstream str;
   bool functionFlag = getCurrent()->group == this;
 
   if (!functionFlag)
     pushScope(this);
 
-  if (name.type != TOKEN_LEFT_BRACE) {
-    str() << "(";
-    body->toCode(parser, function);
-    str() << ")";
-  } else {
+  if (name.type != TOKEN_LEFT_BRACE)
+    str << "(" << body->toCode(parser, function) << ")";
+  else {
     if (getCurrent()->enclosing)
-      startBlock();
+      startBlock(str);
 
     if (function->expr->body == this && function->isClass()) {
         for (int index = 0; index < function->expr->arity - 1; index++) {
@@ -217,7 +226,7 @@ void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
           if (isField(function->expr, declaration)) {
             std::string name = declaration->_declaration.name.getString();
 
-            line() << "this." << name << " = " << name << ";\n";
+            line(str) << "this." << name << " = " << name << ";\n";
           }
         }
 
@@ -225,64 +234,68 @@ void GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
           Expr *expr = car(body, TOKEN_SEPARATOR);
 
           if (expr->type == EXPR_DECLARATION && ((DeclarationExpr *) expr)->_isInternalField) {
-            line() << "const " << function->getThisVariableName() << " = this;\n";
+            line(str) << "const " << function->getThisVariableName() << " = this;\n";
             break;
           }
         }
       }
 
     if (body) {
-      line();
-      body->toCode(parser, function);
+      line(str) << body->toCode(parser, function);
 
-      if (!isGroup(body, TOKEN_SEPARATOR) && needsSemicolon(body))
-        str() << ";\n";
+      if (needsSemicolon(body))
+        str << ";\n";
     }
 
     if (function->expr->body == this && function->expr->ui)
-      function->expr->ui->toCode(parser, function);
+      str << function->expr->ui->toCode(parser, function);
 
     if (getCurrent()->enclosing)
-      endBlock();
+      endBlock(str);
   }
 
   if (!functionFlag)
     popScope();
+
+  return str.str();
 }
 
-void IfExpr::toCode(Parser &parser, ObjFunction *function) {
-  str() << "if (";
-  condition->toCode(parser, function);
-  str() << ") ";
-  startBlock();
-  line();
-  thenBranch->toCode(parser, function);
+std::string IfExpr::toCode(Parser &parser, ObjFunction *function) {
+  std::stringstream str;
+
+  str << "if (" << condition->toCode(parser, function) << ") ";
+  startBlock(str);
+  line(str) << thenBranch->toCode(parser, function);
 
   if (needsSemicolon(thenBranch))
-    str() << ";\n";
+    str << ";\n";
 
-  endBlock();
+  endBlock(str);
 
   if (elseBranch) {
-    line() << "else ";
-    startBlock();
-    line();
-    elseBranch->toCode(parser, function);
+    line(str) << "else ";
+    startBlock(str);
+    line(str) << elseBranch->toCode(parser, function);
 
     if (needsSemicolon(elseBranch))
-      str() << ";\n";
+      str << ";\n";
 
-    endBlock();
+    endBlock(str);
   }
+
+  return str.str();
 }
 
-void ArrayExpr::toCode(Parser &parser, ObjFunction *function) {
-  str() << "[";
+std::string ArrayExpr::toCode(Parser &parser, ObjFunction *function) {
+  std::stringstream str;
+
+  str << "[";
 
   if (body)
-    body->toCode(parser, function);
+    str << body->toCode(parser, function);
 
-  str() << "]";
+  str << "]";
+  return str.str();
 }
 /*
   this.size = 2;
@@ -307,131 +320,99 @@ void ArrayExpr::toCode(Parser &parser, ObjFunction *function) {
 	} @out(&0 + 1) @cdir(2) @bgcol(0x0000FF) @textcol(0xFFFFFF) @size(14)
 } @adir(1) @apack(0)
 */
-void LiteralExpr::toCode(Parser &parser, ObjFunction *function) {
+std::string LiteralExpr::toCode(Parser &parser, ObjFunction *function) {
   switch (type) {
-    case VAL_BOOL:
-      str() << (as.boolean ? "true" : "false");
-      break;
-
-    case VAL_FLOAT:
-      str() << as.floating;
-      break;
-
-    case VAL_INT:
-      str() << as.integer;
-      break;
-
+    case VAL_BOOL: return as.boolean ? "true" : "false";
+    case VAL_FLOAT: return std::to_string(as.floating);
+    case VAL_INT: return std::to_string(as.integer);
     case VAL_OBJ:
       switch (as.obj->type) {
-        case OBJ_STRING:
-          str() << "\"" << std::string(((ObjString *) as.obj)->str) << "\"";
-          break;
-
-        default:
-          str() << "null";
-          break;
+        case OBJ_STRING: return (std::stringstream() << '"' << std::string(((ObjString *) as.obj)->str) << '"').str();
+        default: return "null";
       }
-      break;
-
-    default:
-      str() << "null";
-      break;
+    default: return "null";
   }
 }
 
-void LogicalExpr::toCode(Parser &parser, ObjFunction *function) {
-  left->toCode(parser, function);
-  str() << " " << op.getString() << " ";
-  right->toCode(parser, function);
+std::string LogicalExpr::toCode(Parser &parser, ObjFunction *function) {
+  return (std::stringstream() << left->toCode(parser, function) << " " << op.getString() << " " << right->toCode(parser, function)).str();
 }
 
-void ReturnExpr::toCode(Parser &parser, ObjFunction *function) {
+std::string ReturnExpr::toCode(Parser &parser, ObjFunction *function) {
+  std::stringstream str;
+
   if (isUserClass) {
-    value->toCode(parser, function);
-    str() << ";\n";
-    line() << "return;\n";
+    str << value->toCode(parser, function) << ";\n";
+    line(str) << "return;\n";
   }
   else {
-    str() << "return";
+    str << "return";
 
-    if (value) {
-      str() << " (";
-      value->toCode(parser, function);
-      str() << ")";
-    }
+    if (value)
+      str << " (" << value->toCode(parser, function) << ")";
 
-    str() << ";\n";
+    str << ";\n";
   }
+  return str.str();
 }
 
-void SetExpr::toCode(Parser &parser, ObjFunction *function) {
-  object->toCode(parser, function);
-  str() << "." << name.getString() << " = ";
-  value->toCode(parser, function);
+std::string SetExpr::toCode(Parser &parser, ObjFunction *function) {
+  return (std::stringstream() << object->toCode(parser, function) << "." << name.getString() << " = " << value->toCode(parser, function)).str();
 }
 
-void TernaryExpr::toCode(Parser &parser, ObjFunction *function) {
-  left->toCode(parser, function);
-  str() << " ? ";
-  middle->toCode(parser, function);
-  str() << " : ";
-  right->toCode(parser, function);
+std::string TernaryExpr::toCode(Parser &parser, ObjFunction *function) {
+  return (std::stringstream() << left->toCode(parser, function) << " ? " << middle->toCode(parser, function) << " : " << right->toCode(parser, function)).str();
 }
 
-void ThisExpr::toCode(Parser &parser, ObjFunction *function) {
+std::string ThisExpr::toCode(Parser &parser, ObjFunction *function) {
+  return emptyString;
 }
 
-void CastExpr::toCode(Parser &parser, ObjFunction *function) {
-  expr->toCode(parser, function);
+std::string CastExpr::toCode(Parser &parser, ObjFunction *function) {
+  return expr->toCode(parser, function);
 }
 
-void WhileExpr::toCode(Parser &parser, ObjFunction *function) {
-  str() << "while(";
-  condition->toCode(parser, function);
-  str() << ") ";
-  body->toCode(parser, function);
+std::string WhileExpr::toCode(Parser &parser, ObjFunction *function) {
+  std::stringstream str;
+
+  str << "while(" << condition->toCode(parser, function) << ") " << body->toCode(parser, function);
 
   if (needsSemicolon(body))
-    str() << ";\n";
+    str << ";\n";
+
+  return str.str();
 }
 
-void UnaryExpr::toCode(Parser &parser, ObjFunction *function) {
+std::string UnaryExpr::toCode(Parser &parser, ObjFunction *function) {
   switch (op.type) {
-    case TOKEN_PERCENT:
-      str() << "((";
-      right->toCode(parser, function);
-      str() << ") / 100)";
-      break;
-
-    default:
-      str() << op.getString();
-      right->toCode(parser, function);
-      break;
+    case TOKEN_PERCENT: return (std::stringstream() << "((" << right->toCode(parser, function) << ") / 100)").str();
+    default: return (std::stringstream() << op.getString() << right->toCode(parser, function)).str();
   }
 }
 
-void PrimitiveExpr::toCode(Parser &parser, ObjFunction *function) {
+std::string PrimitiveExpr::toCode(Parser &parser, ObjFunction *function) {
+  return emptyString;
 }
 
-void ReferenceExpr::toCode(Parser &parser, ObjFunction *function) {
+std::string ReferenceExpr::toCode(Parser &parser, ObjFunction *function) {
   Declaration *declaration = getDeclaration(this->declaration);
 
   if (declaration)
     if (declaration->isExternalField())
       if (declaration->function == function->expr)
-        str() << "this." << declaration->getRealName();
+        return (std::stringstream() << "this." << declaration->getRealName()).str();
       else
-        str() << declaration->function->_function.getThisVariableName() << "." << declaration->getRealName();
+        return (std::stringstream() << declaration->function->_function.getThisVariableName() << "." << declaration->getRealName()).str();
     else
-      str() << declaration->getRealName();
+      return declaration->getRealName();
   else
-    str() << name.getString();
+    return name.getString();
 }
 
-void SwapExpr::toCode(Parser &parser, ObjFunction *function) {
-  _expr->toCode(parser, function);
+std::string SwapExpr::toCode(Parser &parser, ObjFunction *function) {
+  return _expr->toCode(parser, function);
 }
 
-void NativeExpr::toCode(Parser &parser, ObjFunction *function) {
-  str() << std::string(nativeCode.start, nativeCode.length);
+std::string NativeExpr::toCode(Parser &parser, ObjFunction *function) {
+  return std::string(nativeCode.start, nativeCode.length);
 }

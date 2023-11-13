@@ -19,10 +19,12 @@ static void repl() {
   strcpy(buffer, qedLib);
   Scanner scanner(buffer);
   Parser parser(scanner);
-  ObjFunction *function = parser.compile();
+  std::string str = parser.compile();
 
-  if (!function)
+  if (str.empty())
     return;
+  else
+    printf(str.c_str());
 
 //  strcpy(buffer, "");
 //  scanner.reset(buffer);
@@ -105,14 +107,11 @@ std::string runSrc(const char *source) {
   strcpy(&buffer[qedLibLength], source);
 
   buffer[qedLibLength + sourceLength] = '\0';
-  s.str("");
-  s.clear();
 
   Scanner scanner(buffer);
   Parser parser(scanner);
-  ObjFunction *function = parser.compile();
 
-  return s.str();
+  return parser.compile();
 }
 
 int main(int argc, const char *argv[]) {

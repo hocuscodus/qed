@@ -15,7 +15,7 @@
     PASS_DEF( void astPrint() )  \
     PASS_DEF( Expr *toCps(K k) )  \
     PASS_DEF( Type resolve(Parser &parser) )  \
-    PASS_DEF( void toCode(Parser &parser, ObjFunction *function) )
+    PASS_DEF( std::string toCode(Parser &parser, ObjFunction *function) )
 
 void writeHeader(FILE *file) {
   fprintf(file, "/*\n");

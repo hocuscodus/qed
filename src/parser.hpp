@@ -72,7 +72,7 @@ public:
   void compilerError(const char *fmt, ...);
   virtual void errorAt(Token *token, const char *fmt, ...);
 ////
-  ObjFunction *compile();
+  std::string compile();
   FunctionExpr *parse();
   void passSeparator();
 

@@ -216,9 +216,9 @@ void Parser::errorAt(Token *token, const char *fmt, ...) {
 }
 
 #undef FORMAT_MESSAGE
-std::stringstream &line();
+std::stringstream &line(std::stringstream &str);
 
-ObjFunction *compile(FunctionExpr *expr, Parser *parser) {
+std::string compile(FunctionExpr *expr, Parser *parser) {
 #ifdef DEBUG_PRINT_CODE
   fprintf(stderr, "Original parse: ");
   expr->astPrint();
@@ -252,7 +252,8 @@ ObjFunction *compile(FunctionExpr *expr, Parser *parser) {
   }*/
   fprintf(stderr, "\n");
 #endif
-  line() << "\"use strict\";\n";
+  std::stringstream str;
+  line(str) << "\"use strict\";\n";
 /*
 void QEDArray(var[] init, int[] dims, int varDims, InitFn Init) {
   var array
@@ -303,52 +304,52 @@ $/
     return
   }
 }*/
-  line() << "const canvas = document.getElementById(\"canvas\");\n";
-  line() << "let postCount = 1;\n";
-  line() << "let attributeStacks = [];\n";
-  line() << "const ctx = canvas.getContext(\"2d\");\n";
-  line() << "function toColor(color) {return \"#\" + color.toString(16).padStart(6, '0');}\n";
-  line() << "let getAttribute = function(index) {\n";
-  line() << "  return attributeStacks[index][attributeStacks[index].length - 1];\n";
-  line() << "}\n";
+  line(str) << "const canvas = document.getElementById(\"canvas\");\n";
+  line(str) << "let postCount = 1;\n";
+  line(str) << "let attributeStacks = [];\n";
+  line(str) << "const ctx = canvas.getContext(\"2d\");\n";
+  line(str) << "function toColor(color) {return \"#\" + color.toString(16).padStart(6, '0');}\n";
+  line(str) << "let getAttribute = function(index) {\n";
+  line(str) << "  return attributeStacks[index][attributeStacks[index].length - 1];\n";
+  line(str) << "}\n";
 
-  cpsExpr->toCode(*parser, &expr->_function);
+  str << cpsExpr->toCode(*parser, &expr->_function);
 
-  line() << "pushAttribute(4, 20);\n";
-  line() << "pushAttribute(10, 0);\n";
-  line() << "pushAttribute(11, 1.0);\n";
-  line() << "let layout_ = null;\n";
-  line() << "function _refresh() {\n";
-  line() << "//  if (ui_ != undefined && --postCount == 0) {\n";
-  line() << "    ui_ = new UI_();\n";
-  line() << "    layout_ = new ui_.Layout_();\n";
-  line() << "    ctx.globalAlpha = 1.0;\n";
-  line() << "    ctx.clearRect(0, 0, canvas.width, canvas.height);\n";
-  line() << "    layout_.paint(0, 0, layout_.size >> 16, layout_.size & 65535);\n";
-  line() << "//  }\n";
-  line() << "}\n";
-  line() << "_refresh();\n";
-  line() << "canvas.addEventListener(\"mousedown\", function(ev) {\n";
-  line() << "  postCount++;\n";
-  line() << "  var rect = canvas.getBoundingClientRect();\n";
-  line() << "  layout_.onEvent(0, ev.clientX - rect.left, ev.clientY - rect.top, layout_.size >> 16, layout_.size & 65535);\n";
-  line() << "  _refresh();\n";
-  line() << "  });\n";
-  line() << "canvas.addEventListener(\"mouseup\", function(ev) {\n";
-  line() << "  postCount++;\n";
-  line() << "  var rect = canvas.getBoundingClientRect();\n";
-  line() << "  layout_.onEvent(1, ev.clientX - rect.left, ev.clientY - rect.top, layout_.size >> 16, layout_.size & 65535);\n";
-  line() << "  _refresh();\n";
-  line() << "});\n";
-  line() << "canvas.onselectstart = function () { return false; }\n";
+  line(str) << "pushAttribute(4, 20);\n";
+  line(str) << "pushAttribute(10, 0);\n";
+  line(str) << "pushAttribute(11, 1.0);\n";
+  line(str) << "let layout_ = null;\n";
+  line(str) << "function _refresh() {\n";
+  line(str) << "//  if (ui_ != undefined && --postCount == 0) {\n";
+  line(str) << "    ui_ = new UI_();\n";
+  line(str) << "    layout_ = new ui_.Layout_();\n";
+  line(str) << "    ctx.globalAlpha = 1.0;\n";
+  line(str) << "    ctx.clearRect(0, 0, canvas.width, canvas.height);\n";
+  line(str) << "    layout_.paint(0, 0, layout_.size >> 16, layout_.size & 65535);\n";
+  line(str) << "//  }\n";
+  line(str) << "}\n";
+  line(str) << "_refresh();\n";
+  line(str) << "canvas.addEventListener(\"mousedown\", function(ev) {\n";
+  line(str) << "  postCount++;\n";
+  line(str) << "  var rect = canvas.getBoundingClientRect();\n";
+  line(str) << "  layout_.onEvent(0, ev.clientX - rect.left, ev.clientY - rect.top, layout_.size >> 16, layout_.size & 65535);\n";
+  line(str) << "  _refresh();\n";
+  line(str) << "  });\n";
+  line(str) << "canvas.addEventListener(\"mouseup\", function(ev) {\n";
+  line(str) << "  postCount++;\n";
+  line(str) << "  var rect = canvas.getBoundingClientRect();\n";
+  line(str) << "  layout_.onEvent(1, ev.clientX - rect.left, ev.clientY - rect.top, layout_.size >> 16, layout_.size & 65535);\n";
+  line(str) << "  _refresh();\n";
+  line(str) << "});\n";
+  line(str) << "canvas.onselectstart = function () { return false; }\n";
 
-  return parser->hadError ? NULL : &expr->_function;
+  return parser->hadError ? std::string() : str.str();
 }
 
-ObjFunction *Parser::compile() {
+std::string Parser::compile() {
   FunctionExpr *expr = parse();
 
-  return expr ? ::compile(expr, this) : NULL;
+  return expr ? ::compile(expr, this) : std::string();
 }
 
 FunctionExpr *Parser::parse() {
