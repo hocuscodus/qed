@@ -275,12 +275,17 @@ static void insertTabs() {
 static const char *getGroupName(UIDirectiveExpr *expr, int dir);
 
 Type IteratorExpr::resolve(Parser &parser) {
-  return value->resolve(parser);
+  Type type = value->resolve(parser);
+
+  hasSuperCalls = value->hasSuperCalls;
+  return type;
 }
 
 Type AssignExpr::resolve(Parser &parser) {
   Type type1 = varExp->resolve(parser);
   Type type2 = value ? value->resolve(parser) : type1;
+
+  hasSuperCalls = varExp->hasSuperCalls || (value && value->hasSuperCalls);
 
   if (IS_VOID(type1))
     parser.error("Variable not found");
@@ -314,6 +319,8 @@ Type BinaryExpr::resolve(Parser &parser) {
   Type type2 = right->resolve(parser);
   Type type = type1;
   bool boolVal = false;
+
+  hasSuperCalls = left->hasSuperCalls || right->hasSuperCalls;
 
   switch (op.type) {
   case TOKEN_PLUS:
@@ -422,6 +429,7 @@ Type CallExpr::resolve(Parser &parser) {
   if (IS_FUNCTION(type)) {
     ObjFunction *callable = AS_FUNCTION_TYPE(type);
 
+    hasSuperCalls = !newFlag && callable->expr->_declaration.name.isUserClass();
     return newFlag ? OBJ_TYPE(newInstance(callable)) : callable->expr->_declaration.type;
   } else {
     parser.error("Non-callable object type");
@@ -431,6 +439,8 @@ Type CallExpr::resolve(Parser &parser) {
 
 Type ArrayElementExpr::resolve(Parser &parser) {
   Type type = resolveType(callee);
+
+  hasSuperCalls = callee->hasSuperCalls;
 
   if (!count)
     if (isType(type))
@@ -449,8 +459,10 @@ Type ArrayElementExpr::resolve(Parser &parser) {
       case OBJ_ARRAY: {
         ObjArray *array = AS_ARRAY_TYPE(type);
 
-        for (int index = 0; index < count; index++)
+        for (int index = 0; index < count; index++) {
           indexes[index]->resolve(parser);
+          hasSuperCalls |= indexes[index]->hasSuperCalls;
+        }
 
         return array->elementType;
       }
@@ -479,6 +491,8 @@ Type ArrayElementExpr::resolve(Parser &parser) {
 Type DeclarationExpr::resolve(Parser &parser) {
   if (initExpr) {
     Type type1 = initExpr->resolve(parser);
+
+    hasSuperCalls = initExpr->hasSuperCalls;
 
     if (IS_ANY(_declaration.type))
       _declaration.type = type1;
@@ -644,6 +658,8 @@ Type GetExpr::resolve(Parser &parser) {
   Type objectType = object->resolve(parser);
   popSignature();
 
+  hasSuperCalls = object->hasSuperCalls;
+
   switch (AS_OBJ_TYPE(objectType)) {
     case OBJ_FUNCTION: {
         FunctionExpr *function = AS_FUNCTION_TYPE(objectType)->expr;
@@ -696,6 +712,7 @@ Type GroupingExpr::resolve(Parser &parser) {
   Type bodyType = body ? body->resolve(parser) : VOID_TYPE;
   Type type = name.type != TOKEN_LEFT_BRACE ? bodyType : VOID_TYPE;
 
+  hasSuperCalls = body && body->hasSuperCalls;
   popScope();
   return type;
 }
@@ -703,6 +720,7 @@ Type GroupingExpr::resolve(Parser &parser) {
 Type CastExpr::resolve(Parser &parser) {
   Type exprType = expr->resolve(parser);
 
+  hasSuperCalls = expr->hasSuperCalls;
   return isExplicitConvert(exprType, type) ? type : UNKNOWN_TYPE;
 }
 
@@ -711,9 +729,12 @@ Type IfExpr::resolve(Parser &parser) {
     parser.error("Value must not be void");
 
   thenBranch->resolve(parser);
+  hasSuperCalls = condition->hasSuperCalls || thenBranch->hasSuperCalls;
 
-  if (elseBranch)
+  if (elseBranch) {
     elseBranch->resolve(parser);
+    hasSuperCalls |= elseBranch->hasSuperCalls;
+  }
 
   return VOID_TYPE;
 }
@@ -726,6 +747,7 @@ Type ArrayExpr::resolve(Parser &parser) {
 //  compiler.pushScope(newFunction(VOID_TYPE, NULL, 0));
 
   objArray->elementType = body ? body->resolve(parser) : UNKNOWN_TYPE;
+  hasSuperCalls = body && body->hasSuperCalls;
 
 //  compiler.popScope();
 //  compiler.function->type = type;
@@ -778,6 +800,8 @@ Type LogicalExpr::resolve(Parser &parser) {
   Type type1 = left->resolve(parser);
   Type type2 = right->resolve(parser);
 
+  hasSuperCalls = left->hasSuperCalls || right->hasSuperCalls;
+
   if (!IS_BOOL(type1) || !IS_BOOL(type2))
     parser.error("Value must be boolean");
 
@@ -788,6 +812,7 @@ Type WhileExpr::resolve(Parser &parser) {
   Type type = condition->resolve(parser);
 
   body->resolve(parser);
+  hasSuperCalls = condition->hasSuperCalls || body->hasSuperCalls;
   return VOID_TYPE;
 }
 
@@ -796,6 +821,7 @@ Type ReturnExpr::resolve(Parser &parser) {
 
   if (value) {
     value->resolve(parser);
+    hasSuperCalls = value->hasSuperCalls;
 
 //  if (!getCurrent()->isClass())
 //    Type type = removeDeclaration();
@@ -809,6 +835,8 @@ Type ReturnExpr::resolve(Parser &parser) {
 Type SetExpr::resolve(Parser &parser) {
   Type objectType = object->resolve(parser);
   Type valueType = value->resolve(parser);
+
+  hasSuperCalls = object->hasSuperCalls || value->hasSuperCalls;
 
   if (AS_OBJ_TYPE(objectType) != OBJ_INSTANCE)
     parser.errorAt(&name, "Only instances have properties.");
@@ -839,8 +867,12 @@ Type TernaryExpr::resolve(Parser &parser) {
 
   Type type = middle->resolve(parser);
 
-  if (right)
+  hasSuperCalls = left->hasSuperCalls || middle->hasSuperCalls;
+
+  if (right) {
     right->resolve(parser);
+    hasSuperCalls |= right->hasSuperCalls;
+  }
 
   return type;
 }
@@ -851,6 +883,8 @@ Type ThisExpr::resolve(Parser &parser) {
 
 Type UnaryExpr::resolve(Parser &parser) {
   Type type = right->resolve(parser);
+
+  hasSuperCalls = right->hasSuperCalls;
 
   if (IS_VOID(type))
     parser.error("Value must not be void");

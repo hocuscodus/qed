@@ -9,6 +9,7 @@
 
 Expr::Expr(ExprType type) {
   this->type = type;
+  hasSuperCalls = false;
 }
 
 void Expr::destroy() {

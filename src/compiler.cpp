@@ -49,7 +49,7 @@ FunctionExpr *getFunction() {
 }
 
 Type resolveType(Expr *expr) {
-  Type type = {(ValueType) -1, NULL};
+  Type type = UNKNOWN_TYPE;//{(ValueType) -1, NULL};
 
   if (expr)
     switch (expr->type) {
@@ -350,6 +350,15 @@ Expr **getLastBodyExpr(Expr **body, TokenType tokenType) {
 
 bool isGroup(Expr *exp, TokenType tokenType) {
   return exp->type == EXPR_BINARY && ((BinaryExpr *) exp)->op.type == tokenType;
+}
+
+Expr *addToGroup(Expr **body, Expr *exp) {
+  if (*body && (*body)->type == EXPR_GROUPING) {
+    addExpr(&((GroupingExpr *) *body)->body, exp, buildToken(TOKEN_SEPARATOR, ";"));
+    return *body;
+  }
+  else
+    return new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), *addExpr(body, exp, buildToken(TOKEN_SEPARATOR, ";")), NULL);
 }
 
 Expr **addExpr(Expr **body, Expr *exp, Token op) {

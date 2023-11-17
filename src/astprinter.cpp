@@ -227,12 +227,8 @@ void LogicalExpr::astPrint() {
 }
 
 void ReturnExpr::astPrint() {
-  if (isUserClass) {
-    value->astPrint();
-    fprintf(stderr, "; ");
-  }
   fprintf(stderr, "return");
-  if (!isUserClass && value) {
+  if (value) {
     fprintf(stderr, " ");
     value->astPrint();
   }

@@ -141,7 +141,8 @@ public:
     fprintf(file, "} %sType;\n\n", baseName);
 
     fprintf(file, "struct %s {\n", baseName);
-    fprintf(file, "  %sType type;\n\n", baseName);
+    fprintf(file, "  %sType type;\n", baseName);
+    fprintf(file, "  bool hasSuperCalls;\n\n");
     fprintf(file, "  %s(%sType type);\n\n", baseName, baseName);
 
     fprintf(file, "  void destroy();\n\n");
@@ -175,6 +176,7 @@ PASSES_DEF
     // Base class constructor
     fprintf(file, "\n%s::%s(%sType type) {\n", baseName, baseName, baseName);
     fprintf(file, "  this->type = type;\n");
+    fprintf(file, "  hasSuperCalls = false;\n");
     fprintf(file, "}\n\n");
 
     fprintf(file, "void %s::destroy() {\n", baseName);
@@ -271,7 +273,7 @@ int main(int argc, const char *argv[]) {
     "Assign      : Expr* varExp, Token op, Expr* value",
     "Binary      : Expr* left, Token op, Expr* right",
     "Cast        : Type type, Expr* expr",
-    "Grouping    : Token name, Expr* body, Declaration* declarations, bool _hasSuperCalls",
+    "Grouping    : Token name, Expr* body, Declaration* declarations",
     "Array       : Expr* body",
     "Call        : bool newFlag, Expr* callee, Token paren, Expr* params, Expr* handler",
     "ArrayElement: Expr* callee, Token bracket, int count, Expr** indexes",

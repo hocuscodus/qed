@@ -50,6 +50,7 @@ typedef enum {
 
 struct Expr {
   ExprType type;
+  bool hasSuperCalls;
 
   Expr(ExprType type);
 
@@ -151,7 +152,6 @@ struct GroupingExpr : public Expr {
   Token name;
   Expr* body;
   Declaration* declarations;
-  bool _hasSuperCalls;
 
   GroupingExpr(Token name, Expr* body, Declaration* declarations);
   void cleanExprs();

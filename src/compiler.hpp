@@ -56,6 +56,7 @@ FunctionExpr *getFunction(Scope *current);
 FunctionExpr *getFunction();
 
 Expr **cdrAddress(Expr *body, TokenType tokenType);
+Expr *addToGroup(Expr **body, Expr *exp);
 Expr **addExpr(Expr **body, Expr *exp, Token op);
 Expr *removeExpr(Expr *body, TokenType tokenType);
 Expr **getLastBodyExpr(Expr **body, TokenType tokenType);

@@ -226,6 +226,11 @@ Expr *DeclarationExpr::toCps(K k) {
 }
 
 Expr *FunctionExpr::toCps(K k) {
+  if (_declaration.name.isUserClass()) {
+    _declaration.type = VOID_TYPE;
+    arity++;
+  }
+
   pushScope(this);
   Expr *currentBody = body;
   Expr *newBodyExpr = body->toCps([this](Expr *body) {return body;});
@@ -395,34 +400,35 @@ function cps_if(exp, k) {
 
 // (function Lambda_() {if (condition) {body; post_(Lambda_)} else {k}})();
 Expr *WhileExpr::toCps(K k) {
-  char *newSymbol = NULL;
-  Expr *cpsExpr = condition->toCps([this, k, &newSymbol](Expr *condition) {
-    return this->body->toCps([this, k, &newSymbol, condition](Expr *body) -> Expr* {
-      if (compareExpr(this->condition, condition) & compareExpr(this->body, body))
-        return this;
-      else {
-        newSymbol = genSymbol("while");
+  if (hasSuperCalls) {
+    char *newSymbol = genSymbol("while");
+    auto genBody = [this, k, &newSymbol](Expr *condition) {
+      Expr *body = this->body;
+      Expr *elseExpr = k(NULL);
+
+      if (body->hasSuperCalls) {
         ReferenceExpr *arg = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, newSymbol), NULL);
         ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "post_"), NULL);
         CallExpr *call = new CallExpr(false, callee, buildToken(TOKEN_CALL, "("), arg, NULL);
 
-        addExpr(&body, call, buildToken(TOKEN_SEPARATOR, ";"));
-        return new IfExpr(condition, body, k(NULL));
+        this->body = addToGroup(&body, call);
+        body = this->body->toCps([](Expr *body) {
+          return body;
+        });
       }
-    });
-  });
 
-  if (this == cpsExpr)
-    // delete body
-    return k(this);
-  else {
-    // delete this->thenBranch, this->body
-    Expr *wrapperLambda = makeWrapperLambda(newSymbol, NULL, [cpsExpr]() {
-      return cpsExpr;
+      return new IfExpr(condition, body, elseExpr);
+    };
+    Expr *wrapperLambda = makeWrapperLambda(newSymbol, NULL, [this, genBody]() {
+      return condition->hasSuperCalls
+        ? condition->toCps([genBody](Expr *condition) {return genBody(condition);})
+        : genBody(condition);
     });
 
     return newExpr(new CallExpr(false, wrapperLambda, buildToken(TOKEN_CALL, "("), NULL, NULL));
   }
+  else
+    return k(this);
 }
 
 Expr *ReturnExpr::toCps(K k) {

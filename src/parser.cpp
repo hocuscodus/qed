@@ -224,23 +224,14 @@ std::string compile(FunctionExpr *expr, Parser *parser) {
   expr->astPrint();
   fprintf(stderr, "\n");
 #endif
-
-  Expr *cpsExpr = expr->toCps([](Expr *expr) {
-    return expr;
-  });
-#ifdef DEBUG_PRINT_CODE
-  fprintf(stderr, "CPS parse: ");
-  cpsExpr->astPrint();
-  fprintf(stderr, "\n");
-#endif
-  cpsExpr->resolve(*parser);
+  expr->resolve(*parser);
 
   if (parser->hadError)
     return NULL;
 
 #ifdef DEBUG_PRINT_CODE
   fprintf(stderr, "Adapted parse: ");
-  cpsExpr->astPrint();
+  expr->astPrint();
   fprintf(stderr, "\n          ");/*
   for (int i = 0; i < declarationCount; i++) {
     Token *token = &declarations[i].name;
@@ -250,6 +241,15 @@ std::string compile(FunctionExpr *expr, Parser *parser) {
     else
       fprintf(stderr, "[ N/A ]");
   }*/
+  fprintf(stderr, "\n");
+#endif
+
+  Expr *cpsExpr = expr->toCps([](Expr *expr) {
+    return expr;
+  });
+#ifdef DEBUG_PRINT_CODE
+  fprintf(stderr, "CPS parse: ");
+  cpsExpr->astPrint();
   fprintf(stderr, "\n");
 #endif
   std::stringstream str;
@@ -721,8 +721,8 @@ Expr *Parser::grouping() {
   popScope();
 
   if (op.type != TOKEN_LEFT_BRACE && group->body && isGroup(group->body, TOKEN_SEPARATOR)) {
-    getCurrent()->hasSuperCalls |= group->_hasSuperCalls;
-    return new CallExpr(false, new GroupingExpr(op, newFunctionExpr(VOID_TYPE, buildToken(TOKEN_IDENTIFIER, group->_hasSuperCalls ? "L" : "l"), 0, group, NULL), NULL), op, NULL, NULL);
+    getCurrent()->hasSuperCalls |= group->hasSuperCalls;
+    return new CallExpr(false, new GroupingExpr(op, newFunctionExpr(VOID_TYPE, buildToken(TOKEN_IDENTIFIER, group->hasSuperCalls ? "L" : "l"), 0, group, NULL), NULL), op, NULL, NULL);
   }
 
   return group;
@@ -959,8 +959,6 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
         const char *type = getHandlerType(returnType);
         ReferenceExpr *paramTypeExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, type), NULL);
 
-        returnType = VOID_TYPE;
-
         if (getCurrent()) {
           Token name = buildToken(TOKEN_IDENTIFIER, "handlerFn_");
           Type paramType = resolveType(paramTypeExpr);
@@ -969,8 +967,6 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
             DeclarationExpr *dec = newDeclarationExpr(paramType, name, NULL);
 
             addExpr(&group->body, dec, buildToken(TOKEN_SEPARATOR, ";"));
-            functionExpr->arity++;
-            checkDeclaration(dec->_declaration, name, NULL, this);
           }
           else
             error("Parameter %d not typed correctly", functionExpr->arity + 1);
