@@ -134,7 +134,9 @@ void DeclarationExpr::astPrint() {
 void FunctionExpr::astPrint() {
   fprintf(stderr, "fun %.*s(", _declaration.name.length, _declaration.name.start);
   for (int index = 0; index < arity; index++) {
-    fprintf(stderr, ", ");
+    if (index)
+      fprintf(stderr, ", ");
+
     getParam(this, index)->astPrint();
   }
   fprintf(stderr, ") {");

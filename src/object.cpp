@@ -121,7 +121,7 @@ bool ObjFunction::isUserClass() {
 }
 
 std::string ObjFunction::getThisVariableName() {
-  return strcmp(expr->_declaration.name.start, "Main") ? std::string(expr->_declaration.name.start, expr->_declaration.name.length) + "$this" : "globalThis$";
+  return memcmp(expr->_declaration.name.start, "Main_", 5) ? std::string(expr->_declaration.name.start, expr->_declaration.name.length) + "$this" : "globalThis$";
 }
 
 IndexList::IndexList() {

@@ -354,7 +354,7 @@ std::string Parser::compile() {
 
 FunctionExpr *Parser::parse() {
   GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_EOF, ""), NULL, NULL);
-  FunctionExpr *functionExpr = newFunctionExpr(VOID_TYPE, buildToken(TOKEN_IDENTIFIER, "Main"), 0, group, NULL);
+  FunctionExpr *functionExpr = newFunctionExpr(VOID_TYPE, buildToken(TOKEN_IDENTIFIER, "Main_"), 0, group, NULL);
 
   pushScope(functionExpr);
   expList(group, TOKEN_EOF);

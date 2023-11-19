@@ -50,7 +50,7 @@ bool Token::equal(const char *string) {
 bool Token::endsWith(const char *suffix) {
   int suffixLength = strlen(suffix);
 
-  return length >= suffixLength && !strcmp(&start[length - suffixLength], suffix);
+  return length >= suffixLength && !memcmp(&start[length - suffixLength], suffix, suffixLength);
 }
 
 void Token::declareError(const char *message) {

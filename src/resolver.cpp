@@ -122,7 +122,7 @@ bool isType(Type &type) {
   case OBJ_FUNCTION: {
     const char *name = AS_FUNCTION_TYPE(type)->expr->_declaration.name.start;
 
-    return memcmp(name, "Main", 4) && name[0] >= 'A' && name[0] <= 'Z';
+    return memcmp(name, "Main_", 5) && name[0] >= 'A' && name[0] <= 'Z';
   }
 
   case OBJ_ARRAY:
@@ -541,8 +541,18 @@ Type FunctionExpr::resolve(Parser &parser) {
   if (body) {
     Expr *group = getStatement(body, arity);
 
-    if (group)
+    if (group) {
       group->resolve(parser);
+
+      body->hasSuperCalls = group->hasSuperCalls;
+      hasSuperCalls = body->hasSuperCalls;
+
+      for (int index = 0; index < arity; index++)
+        getStatement(body, index)->hasSuperCalls = hasSuperCalls;
+
+      if (_declaration.name.isUserClass())
+        getStatement(body, arity)->hasSuperCalls = hasSuperCalls;
+    }
 
     if (ui != NULL) {
       UIDirectiveExpr *exprUI = (UIDirectiveExpr *) ui;

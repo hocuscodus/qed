@@ -231,18 +231,21 @@ Expr *FunctionExpr::toCps(K k) {
     arity++;
   }
 
-  pushScope(this);
-  Expr *currentBody = body;
-  Expr *newBodyExpr = body->toCps([this](Expr *body) {return body;});
+  if (body->body) {
+    pushScope(this);
+    Expr *currentBody = body;
+    Expr *newBodyExpr = body->body->toCps([this](Expr *body) {return body;});
 
-  body = (GroupingExpr *) newBodyExpr;// && newBodyExpr->type == EXPR_GROUPING ? (GroupingExpr *) newBodyExpr : NULL;
+    body->body = (GroupingExpr *) newBodyExpr;// && newBodyExpr->type == EXPR_GROUPING ? (GroupingExpr *) newBodyExpr : NULL;
 
-  Expr *lastExpr = *getLastBodyExpr(&body->body, TOKEN_SEPARATOR);
+//  Expr *lastExpr = *getLastBodyExpr(&body->body, TOKEN_SEPARATOR);
 
 //  if (!lastExpr || lastExpr->type != EXPR_RETURN)
 //    addExpr(&body->body, new ReturnExpr(buildToken(TOKEN_IDENTIFIER, "return"), NULL, NULL), buildToken(TOKEN_SEPARATOR, ";"));
 
-  popScope();
+    popScope();
+  }
+
   return k(this);//compareExpr(body, bodyExpr) ? this : newExpr(newFunctionExpr(typeExpr, name, arity + 1, newParams, newBody, NULL)));
 /*
 function cps_lambda(exp, k) {
@@ -268,21 +271,21 @@ Expr *GetExpr::toCps(K k) {
 }
 
 Expr *GroupingExpr::toCps(K k) {
-  bool functionFlag = getCurrent()->group == this;
+  if (hasSuperCalls) {
+    bool functionFlag = getCurrent()->group == this;
 
-  if (!functionFlag)
-    pushScope(this);
+    if (!functionFlag)
+      pushScope(this);
 
-  Expr *body = this->body 
-    ? this->body->toCps([this, k](Expr *body) {
-        return body;
-      })
-    : NULL;
+    Expr *body = this->body->toCps(k);
 
-  if (!functionFlag)
-    popScope();
+    if (!functionFlag)
+      popScope();
 
-  return k(compareExpr(this->body, body) ? this : (GroupingExpr *) newExpr(new GroupingExpr(this->name, body, declarations)));
+    return body;
+  }
+  else
+    return k(this);
 }
 
 Expr *ArrayExpr::toCps(K k) {
