@@ -165,102 +165,83 @@ this.QEDArray_ = function QEDArray_(Init, handlerFn_) {
       QEDArray_$this.dims = newSize ;
       MainThis.post_(handlerFn_);
       return;
-    }
-));
+    }));
   }
   this.InsertLevel = function(array, dims, pos, size, newSize, pp, level, handlerFn_) {
     new (function W9$_(i1$_) {
       if (level < dims.length - 1) {
-        {
-          {
-            pp[level] = 0;
-            (this.while2$_ = function while2$_() {
-              if (pp[level] < pos[level]) {
-                {
-                  new QEDArray_$this.InsertLevel(array[pp[level]], dims, pos, size, newSize, pp, level + 1, (function Lambda_() {
-                    pp[level]++;
-                    MainThis.post_(while2$_);
-                  }));
+        pp[level] = 0;
+        (this.while2$_ = function while2$_() {
+          if (pp[level] < pos[level]) 
+            new QEDArray_$this.InsertLevel(array[pp[level]], dims, pos, size, newSize, pp, level + 1, (function Lambda_() {
+              pp[level]++;
+              MainThis.post_(while2$_);
+            }));
+
+          else {
+            if (size[level] !== 0) 
+              {
+                pp[level] = dims[level] - 1;
+                while(pp[level] >= pos[level]) {
+                  array[pp[level] + size[level]] = array[pp[level]];
+                  pp[level]--;
                 }
-              } else {
-                if (size[level] !== 0) {
-                  {
-                    pp[level] = dims[level] - 1;
-                    while(pp[level] >= pos[level]) {
-                      array[pp[level] + size[level]] = array[pp[level]];
-                      pp[level]--;
-                    }
-                  }
-                }
-                {
-                  pp[level] = pos[level];
-                  (function while4$_() {
-                    if (pp[level] < pos[level] + size[level]) {
-                      {
-                        array[pp[level]] = [];
-                        new QEDArray_$this.InsertLevel(array[pp[level]], new Array(size.length).fill(0), new Array(size.length).fill(0), newSize, newSize, pp, level + 1, (function Lambda_() {
-                          pp[level]++;
-                          MainThis.post_(while4$_);
-                        }));
-                      }
-                    } else {
-                      {
-                        pp[level] = pos[level] + size[level];
-                        (function while5$_() {
-                          if (pp[level] < newSize[level]) {
-                            {
-                              new QEDArray_$this.InsertLevel(array[pp[level]], dims, pos, size, newSize, pp, level + 1, (function Lambda_() {
-                                pp[level]++;
-                                MainThis.post_(while5$_);
-                              }));
-                            }
-                          }
-                          else
-                            i1$_();
-                        })();
-                      }
-                    }
-                  })();
-                }
+              }
+
+            pp[level] = pos[level];
+            (function while4$_() {
+              if (pp[level] < pos[level] + size[level]) {
+                array[pp[level]] = [];
+                new QEDArray_$this.InsertLevel(array[pp[level]], new Array(size.length).fill(0), new Array(size.length).fill(0), newSize, newSize, pp, level + 1, (function Lambda_() {
+                  pp[level]++;
+                  MainThis.post_(while4$_);
+                }));
+              }
+              else {
+                pp[level] = pos[level] + size[level];
+                (function while5$_() {
+                  if (pp[level] < newSize[level]) 
+                    new QEDArray_$this.InsertLevel(array[pp[level]], dims, pos, size, newSize, pp, level + 1, (function Lambda_() {
+                      pp[level]++;
+                      MainThis.post_(while5$_);
+                    }));
+
+                  else 
+                    i1$_();
+
+                })();
               }
             })();
           }
-        }
+        })();
       }
       else {
-        {
-          if (size[level] !== 0) {
-            {
-              pp[level] = dims[level] - 1;
-              while(pp[level] >= pos[level]) {
-                array[pp[level] + size[level]] = array[pp[level]];
-                pp[level]--;
-              }
+        if (size[level] !== 0) 
+          {
+            pp[level] = dims[level] - 1;
+            while(pp[level] >= pos[level]) {
+              array[pp[level] + size[level]] = array[pp[level]];
+              pp[level]--;
             }
           }
-          {
-            pp[level] = pos[level];
-            (function while7$_() {
-              if (pp[level] < pos[level] + size[level]) {
-                {
-                  QEDArray_$this.Init(array, pp[level], pp, (function Lambda_() {
-                    pp[level]++;
-                    MainThis.post_(while7$_);
-                  }));
-                }
-              }
-              else
-                i1$_();
-            })();
-          }
-        }
+
+        pp[level] = pos[level];
+        (function while7$_() {
+          if (pp[level] < pos[level] + size[level]) 
+            QEDArray_$this.Init(array, pp[level], pp, (function Lambda_() {
+              pp[level]++;
+              MainThis.post_(while7$_);
+            }));
+
+          else 
+            i1$_();
+
+        })();
       }
-    }
-)((this.c8$_ = function c8$_() {
+    })((this.c8$_ = function c8$_() {
       MainThis.post_(handlerFn_);
       return;
-    }
-));
+    }));
   }
 }
 Object.setPrototypeOf(this.QEDArray_.prototype, Array.prototype);
@@ -289,8 +270,7 @@ let x = (this.l = function l() {
       ++_x0;
     }
   }
-}
-)();
+})();
 this.println("" + ((20) / 100));
 this.UI_ = function UI_(handlerFn_) {
   const UI_$this = this;

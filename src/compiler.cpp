@@ -349,7 +349,7 @@ Expr **getLastBodyExpr(Expr **body, TokenType tokenType) {
 }
 
 bool isGroup(Expr *exp, TokenType tokenType) {
-  return exp->type == EXPR_BINARY && ((BinaryExpr *) exp)->op.type == tokenType;
+  return !exp || (exp->type == EXPR_BINARY && ((BinaryExpr *) exp)->op.type == tokenType);
 }
 
 Expr *addToGroup(Expr **body, Expr *exp) {

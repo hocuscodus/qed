@@ -11,7 +11,7 @@ static int nTabs = 0;
 const std::string emptyString;
 
 bool needsSemicolon(Expr *expr) {
-  return !isGroup(expr, TOKEN_SEPARATOR) && expr->type != EXPR_GROUPING && expr->type != EXPR_IF && expr->type != EXPR_RETURN && expr->type != EXPR_WHILE && expr->type != EXPR_FUNCTION && !(expr->type == EXPR_SWAP && !needsSemicolon(((SwapExpr *) expr)->_expr));
+  return !isGroup(expr, TOKEN_SEPARATOR) && expr->type != EXPR_GROUPING && expr->type != EXPR_IF && expr->type != EXPR_WHILE && expr->type != EXPR_FUNCTION && !(expr->type == EXPR_SWAP && !needsSemicolon(((SwapExpr *) expr)->_expr));
 }
 
 static ObjFunction *getFunction(Expr *callee) {
@@ -57,7 +57,34 @@ static void startBlock(std::stringstream &str) {
 
 static void endBlock(std::stringstream &str) {
   if (--nTabs >= 0)
-    line(str) << "}\n";
+    line(str) << "}";
+}
+
+static void blockToCode(std::stringstream &str, Parser &parser, ObjFunction *function, Expr *statementRef) {
+  bool braceFlag = isGroup(statementRef, TOKEN_SEPARATOR);
+
+  if (braceFlag)
+    startBlock(str);
+  else {
+    str << "\n";
+    nTabs++;
+  }
+
+  for (; statementRef; statementRef = cdr(statementRef, TOKEN_SEPARATOR)) {
+    Expr *statement = car(statementRef, TOKEN_SEPARATOR);
+
+    line(str) << statement->toCode(parser, function);
+
+    if (needsSemicolon(statement))
+      str << ";";
+
+    str << "\n";
+  }
+
+  if (braceFlag)
+    endBlock(str);
+  else
+    nTabs--;
 }
 
 std::string IteratorExpr::toCode(Parser &parser, ObjFunction *function) {
@@ -195,8 +222,22 @@ std::string FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
     str << ") ";
   }
 
-  if (body)
-    str << body->toCode(parser, &_function);
+  if (getCurrent()->enclosing)
+    startBlock(str);
+
+  for (Expr *statementRef = getStatement(body, arity); statementRef; statementRef = cdr(statementRef, TOKEN_SEPARATOR)) {
+    Expr *statement = car(statementRef, TOKEN_SEPARATOR);
+
+    line(str) << statement->toCode(parser, function);
+
+    if (needsSemicolon(statement))
+      str << ";";
+
+    str << "\n";
+  }
+
+  if (getCurrent()->enclosing)
+    endBlock(str);
 
   popScope();
   return str.str();
@@ -216,6 +257,7 @@ std::string GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
   if (name.type != TOKEN_LEFT_BRACE)
     str << "(" << body->toCode(parser, function) << ")";
   else {
+    blockToCode(str, parser, function, body);/*
     if (getCurrent()->enclosing)
       startBlock(str);
 
@@ -252,6 +294,7 @@ std::string GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
 
     if (getCurrent()->enclosing)
       endBlock(str);
+    */
   }
 
   if (!functionFlag)
@@ -264,6 +307,7 @@ std::string IfExpr::toCode(Parser &parser, ObjFunction *function) {
   std::stringstream str;
 
   str << "if (" << condition->toCode(parser, function) << ") ";
+  blockToCode(str, parser, function, thenBranch);/*
   startBlock(str);
   line(str) << thenBranch->toCode(parser, function);
 
@@ -271,16 +315,18 @@ std::string IfExpr::toCode(Parser &parser, ObjFunction *function) {
     str << ";\n";
 
   endBlock(str);
-
+*/
   if (elseBranch) {
+    str << "\n";
     line(str) << "else ";
+    blockToCode(str, parser, function, elseBranch);/*
     startBlock(str);
     line(str) << elseBranch->toCode(parser, function);
 
     if (needsSemicolon(elseBranch))
       str << ";\n";
 
-    endBlock(str);
+    endBlock(str);*/
   }
 
   return str.str();
@@ -343,15 +389,13 @@ std::string ReturnExpr::toCode(Parser &parser, ObjFunction *function) {
 
   if (isUserClass) {
     str << value->toCode(parser, function) << ";\n";
-    line(str) << "return;\n";
+    line(str) << "return";
   }
   else {
     str << "return";
 
     if (value)
       str << " (" << value->toCode(parser, function) << ")";
-
-    str << ";\n";
   }
   return str.str();
 }

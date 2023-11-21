@@ -35,7 +35,7 @@ void restoreContext() {
 }
 void oval(int pos, int size) {
 /$ctx.fillStyle = toColor(getAttribute(10));
-  ctx.globalAlpha = \\ + getAttribute(11);
+  ctx.globalAlpha = "" + getAttribute(11);
   ctx.beginPath();
   ctx.ellipse((pos >> 16) + (size >> 17), (pos & 65535) + ((size & 65535) >> 1), size >> 17, (size & 65535) >> 1, 0, 0, 2*Math.PI);
   ctx.fill();
@@ -43,7 +43,7 @@ void oval(int pos, int size) {
 }
 void rect(int pos, int size) {
 /$ctx.fillStyle = toColor(getAttribute(10));
-  ctx.globalAlpha = \\ + getAttribute(11);
+  ctx.globalAlpha = "" + getAttribute(11);
   ctx.beginPath();
   ctx.fillRect((pos >> 16), (pos & 65535), size >> 16, size & 65535)$/
 }
@@ -60,7 +60,7 @@ void popAttribute(int index) {
 /$attributeStacks[index].pop()$/
 }
 int getTextSize(String text) {
-/$ctx.font = getAttribute(4) + \px Arial\;
+/$ctx.font = getAttribute(4) + "px Arial";
 
   const textSize = ctx.measureText(text);
   const height = textSize.fontBoundingBoxAscent + textSize.fontBoundingBoxDescent;
@@ -69,10 +69,10 @@ int getTextSize(String text) {
 void displayText(String text, int pos, int size) {
 /$let pos1 = [(pos >> 16), (pos & 0xFFFF)];
   let size1 = [(size >> 16), (size & 0xFFFF)];
-  ctx.font = getAttribute(4) + \px Arial\;
+  ctx.font = getAttribute(4) + "px Arial";
   ctx.fillStyle = toColor(getAttribute(10));
   ctx.globalAlpha = getAttribute(11);
-  ctx.textBaseline = \top\;
+  ctx.textBaseline = "top";
   ctx.fillText(text, pos1[0], pos1[1])$/
 }
 
@@ -85,16 +85,16 @@ bool Timer(int timeoutMillis) {
   void reset() {}
 }
 void Time(voidHandler_ Func) {
-/$  console.time(\Time\);
+/$  console.time("Time");
   new Func(() => {
-    console.timeEnd(\Time\);
+    console.timeEnd("Time");
     handlerFn_();
   });$/
 }
 void time(voidHandler_ func) {
-/$  console.time(\time\);
+/$  console.time("time");
   func();
-  console.timeEnd(\time\);$/
+  console.timeEnd("time");$/
 }
 float Animation() {
 /$requestAnimationFrame((millis) => {
