@@ -60,31 +60,42 @@ static void endBlock(std::stringstream &str) {
     line(str) << "}";
 }
 
-static void blockToCode(std::stringstream &str, Parser &parser, ObjFunction *function, Expr *statementRef) {
+static void blockToCode(std::stringstream &str, Parser &parser, ObjFunction *function, Expr *statementRef, bool statementFlag) {
   bool braceFlag = isGroup(statementRef, TOKEN_SEPARATOR);
 
-  if (braceFlag)
-    startBlock(str);
-  else {
-    str << "\n";
-    nTabs++;
+  if (!braceFlag && statementRef->type == EXPR_GROUPING && ((GroupingExpr *) statementRef)->name.type == TOKEN_LEFT_BRACE) {
+    braceFlag = true;
+    statementRef = ((GroupingExpr *) statementRef)->body;
   }
 
-  for (; statementRef; statementRef = cdr(statementRef, TOKEN_SEPARATOR)) {
-    Expr *statement = car(statementRef, TOKEN_SEPARATOR);
+  if (braceFlag) {
+    if (statementFlag)
+      str << " ";
 
-    line(str) << statement->toCode(parser, function);
+    startBlock(str);
 
-    if (needsSemicolon(statement))
+    for (; statementRef; statementRef = cdr(statementRef, TOKEN_SEPARATOR)) {
+      Expr *statement = car(statementRef, TOKEN_SEPARATOR);
+
+      line(str) << statement->toCode(parser, function);
+
+      if (needsSemicolon(statement))
+        str << ";";
+
+      str << "\n";
+    }
+    endBlock(str);
+  }
+  else {
+    nTabs++;
+    str << "\n";
+    line(str) << statementRef->toCode(parser, function);
+
+    if (needsSemicolon(statementRef))
       str << ";";
 
-    str << "\n";
-  }
-
-  if (braceFlag)
-    endBlock(str);
-  else
     nTabs--;
+  }
 }
 
 std::string IteratorExpr::toCode(Parser &parser, ObjFunction *function) {
@@ -207,16 +218,16 @@ std::string FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
   pushScope(this);
 
   if (getCurrent()->enclosing) {
-    if (getFunction(getCurrent()->enclosing)->_declaration.isInRegularFunction())
-      str << "this." << _declaration.getRealName() << " = ";
-
-    str << "function " << _declaration.getRealName() << "(";
+    if (isInRegularFunction(getCurrent()->enclosing->function))
+      str << "this." << _declaration.getRealName() << " = function(";
+    else
+      str << "function " << _declaration.getRealName() << "(";
 
     for (int index = 0; index < arity; index++) {
       if (index)
         str << ", ";
 
-      str << getParam(this, index)->_declaration.name.getString();
+      str << getParam(this, index)->_declaration.getRealName();
     }
 
     str << ") ";
@@ -225,10 +236,29 @@ std::string FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
   if (getCurrent()->enclosing)
     startBlock(str);
 
+  for (int index = 0; index < arity - 1; index++) {
+    DeclarationExpr *declaration = getParam(this, index);
+
+    if (isField(this, declaration)) {
+      std::string name = declaration->_declaration.getRealName();
+
+      line(str) << "this." << name << " = " << name << ";\n";
+    }
+  }
+
+  for (Expr *body = this->body->body; body; body = cdr(body, TOKEN_SEPARATOR)) {
+    Expr *expr = car(body, TOKEN_SEPARATOR);
+
+    if (expr->type == EXPR_DECLARATION && getDeclaration(expr)->isInternalField) {
+      line(str) << "const " << _function.getThisVariableName() << " = this;\n";
+      break;
+    }
+  }
+
   for (Expr *statementRef = getStatement(body, arity); statementRef; statementRef = cdr(statementRef, TOKEN_SEPARATOR)) {
     Expr *statement = car(statementRef, TOKEN_SEPARATOR);
 
-    line(str) << statement->toCode(parser, function);
+    line(str) << statement->toCode(parser, &_function);
 
     if (needsSemicolon(statement))
       str << ";";
@@ -256,46 +286,8 @@ std::string GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
 
   if (name.type != TOKEN_LEFT_BRACE)
     str << "(" << body->toCode(parser, function) << ")";
-  else {
-    blockToCode(str, parser, function, body);/*
-    if (getCurrent()->enclosing)
-      startBlock(str);
-
-    if (function->expr->body == this && function->isClass()) {
-        for (int index = 0; index < function->expr->arity - 1; index++) {
-          DeclarationExpr *declaration = getParam(function->expr, index);
-
-          if (isField(function->expr, declaration)) {
-            std::string name = declaration->_declaration.name.getString();
-
-            line(str) << "this." << name << " = " << name << ";\n";
-          }
-        }
-
-        for (Expr *body = function->expr->body->body; body; body = cdr(body, TOKEN_SEPARATOR)) {
-          Expr *expr = car(body, TOKEN_SEPARATOR);
-
-          if (expr->type == EXPR_DECLARATION && ((DeclarationExpr *) expr)->_isInternalField) {
-            line(str) << "const " << function->getThisVariableName() << " = this;\n";
-            break;
-          }
-        }
-      }
-
-    if (body) {
-      line(str) << body->toCode(parser, function);
-
-      if (needsSemicolon(body))
-        str << ";\n";
-    }
-
-    if (function->expr->body == this && function->expr->ui)
-      str << function->expr->ui->toCode(parser, function);
-
-    if (getCurrent()->enclosing)
-      endBlock(str);
-    */
-  }
+  else
+    blockToCode(str, parser, function, body, false);
 
   if (!functionFlag)
     popScope();
@@ -306,27 +298,13 @@ std::string GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
 std::string IfExpr::toCode(Parser &parser, ObjFunction *function) {
   std::stringstream str;
 
-  str << "if (" << condition->toCode(parser, function) << ") ";
-  blockToCode(str, parser, function, thenBranch);/*
-  startBlock(str);
-  line(str) << thenBranch->toCode(parser, function);
+  str << "if (" << condition->toCode(parser, function) << ")";
+  blockToCode(str, parser, function, thenBranch, true);
 
-  if (needsSemicolon(thenBranch))
-    str << ";\n";
-
-  endBlock(str);
-*/
   if (elseBranch) {
     str << "\n";
-    line(str) << "else ";
-    blockToCode(str, parser, function, elseBranch);/*
-    startBlock(str);
-    line(str) << elseBranch->toCode(parser, function);
-
-    if (needsSemicolon(elseBranch))
-      str << ";\n";
-
-    endBlock(str);*/
+    line(str) << "else";
+    blockToCode(str, parser, function, elseBranch, true);
   }
 
   return str.str();
@@ -419,10 +397,8 @@ std::string CastExpr::toCode(Parser &parser, ObjFunction *function) {
 std::string WhileExpr::toCode(Parser &parser, ObjFunction *function) {
   std::stringstream str;
 
-  str << "while(" << condition->toCode(parser, function) << ") " << body->toCode(parser, function);
-
-  if (needsSemicolon(body))
-    str << ";\n";
+  str << "while(" << condition->toCode(parser, function) << ")";
+  blockToCode(str, parser, function, body, true);
 
   return str.str();
 }

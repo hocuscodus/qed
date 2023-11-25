@@ -582,6 +582,9 @@ Expr *PrimitiveExpr::toCps(K k) {
 }
 
 Expr *ReferenceExpr::toCps(K k) {
+  if (declaration && !name.equal("handlerFn_") && !getDeclarationRef(name/*buildToken(TOKEN_IDENTIFIER, getDeclaration(declaration)->getRealName().c_str())*/, getCurrent()->group->declarations))
+    getDeclaration(declaration)->isInternalField = true;
+
   return k(this);
 }
 

@@ -305,7 +305,7 @@ $/
   }
 }*/
   line(str) << "const canvas = document.getElementById(\"canvas\");\n";
-  line(str) << "let postCount = 1;\n";
+  line(str) << "let postHandler = null;\n";
   line(str) << "let attributeStacks = [];\n";
   line(str) << "const ctx = canvas.getContext(\"2d\");\n";
   line(str) << "function toColor(color) {return \"#\" + color.toString(16).padStart(6, '0');}\n";
@@ -432,7 +432,7 @@ Expr *Parser::assignment(Expr *left) {
 
   switch (left->type) {
   case EXPR_REFERENCE:
-    return new AssignExpr((ReferenceExpr *) left, op, right);
+    return new AssignExpr(left, op, right);
 
   case EXPR_GET: {
     GetExpr *getExpr = (GetExpr *) left;
@@ -440,10 +440,11 @@ Expr *Parser::assignment(Expr *left) {
     return new SetExpr(getExpr->object, getExpr->name, op, right, -1);
   }
 
+  case EXPR_NATIVE:
   case EXPR_ARRAYELEMENT: {
 //    GetExpr *getExpr = (GetExpr *) left;
 
-    return left;//new SetExpr(getExpr->object, getExpr->name, op, right, -1);
+    return new AssignExpr(left, op, right);
   }
   default:
     errorAt(&op, "Invalid assignment target."); // [no-throw]

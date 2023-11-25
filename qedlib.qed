@@ -17,11 +17,20 @@ void println(String str) {
 /$console.log(str)$/
 }
 void post_(voidHandler_ handlerFn_) {
-/$postCount++;
-  setTimeout(function() {
-    handlerFn_();
-    _refresh();
-  })$/
+/$if (postHandler != null)
+    console.log("postHandler not null");
+
+  postHandler = handlerFn_$/
+}
+void executeEvents_() {
+/$while (postHandler != null) {
+    const fn = postHandler;
+  
+    postHandler = null;
+    fn();
+  }
+
+//  this._refresh()$/
 }
 int max(int a, int b) {
 /$return a > b ? a : b$/
@@ -85,7 +94,7 @@ bool Timer(int timeoutMillis) {
   void reset() {}
 }
 void Time(voidHandler_ Func) {
-/$  console.time("Time");
+/$console.time("Time");
   new Func(() => {
     console.timeEnd("Time");
     handlerFn_();
@@ -104,7 +113,7 @@ float Animation() {
 }
 void InitFn(var array, int index, int[] pos) {}
 
-void QEDArray_(InitFn Init) {
+void QEDArray(InitFn Init) {
   int size() {
     int s = 1
 
@@ -115,147 +124,69 @@ void QEDArray_(InitFn Init) {
   }
 
   void InitArray(int[] size) {
-    /$this.dims = new Array(size.length).fill(0)$/
-    Insert(/$new Array(size.length).fill(0)$/ as int[], size)
+    /$QEDArray$this.dims = new Array(this.size$.length).fill(0)$/
+    Insert(/$new Array(this.size$.length).fill(0)$/ as int[], size)
     return
   }
 
   void Insert(int[] pos, int[] size) {
-    int[] newSize = size
+    int[] newSize = /$[...this.size$]$/
 
-    for (int index = /$this.dims.size() - 1$/; index >= 0; index--)
-      newSize[index] += /$this.dims[index]$/;
+    for (int index = /$QEDArray$this.dims.length - 1$/; index >= 0; index--)
+      newSize[index] += /$QEDArray$this.dims[this.index]$/ as int;
 
-    InsertLevel(/$this$/, /$this.dims$/, pos, size, newSize, /$new Array(size.length).fill(0)$/, 0)
-    /$this.dims = newSize $/
+    InsertLevel(/$QEDArray$this$/, /$QEDArray$this.dims$/, pos, size, newSize, /$new Array(this.size$.length).fill(0)$/, 0)
+    /$QEDArray$this.dims$/ = newSize
     return
   }
 
   void InsertLevel(var array, var dims, int[] pos, int[] size, int[] newSize, var pp, int level) {
-    if (level < /$dims.length - 1$/) {
+    if (level < /$QEDArray$this.dims.length - 1$/) {
       for (/$pp[level] = 0$/; /$pp[level] < pos[level]$/; /$pp[level]++$/)
         InsertLevel(/$array[pp[level]]$/, dims, pos, size, newSize, pp, level + 1)
 
       if (size[level] != 0)
         for (/$pp[level] = dims[level] - 1$/; /$pp[level] >= pos[level]$/; /$pp[level]--$/)
-          /$array[pp[level] + size[level]] = array[pp[level]]$/
+          /$array[pp[level] + InsertLevel$this.size$[level]] = array[pp[level]]$/
 
-      for (/$pp[level] = pos[level]$/; /$pp[level] < pos[level] + size[level]$/; /$pp[level]++$/) {
+      for (/$pp[level] = pos[level]$/; /$pp[level] < pos[level] + InsertLevel$this.size$[level]$/; /$pp[level]++$/) {
         /$array[pp[level]] = []$/
-        InsertLevel(/$array[pp[level]]$/, /$new Array(size.length).fill(0)$/, /$new Array(size.length).fill(0)$/ as int[], newSize, newSize, pp, level + 1)
+        InsertLevel(/$array[pp[level]]$/, /$new Array(InsertLevel$this.size$.length).fill(0)$/, /$new Array(InsertLevel$this.size$.length).fill(0)$/ as int[], newSize, newSize, pp, level + 1)
       }
 
-      for (/$pp[level] = pos[level] + size[level]$/; /$pp[level] < newSize[level]$/; /$pp[level]++$/)
+      for (/$pp[level] = pos[level] + InsertLevel$this.size$[level]$/; /$pp[level] < newSize[level]$/; /$pp[level]++$/)
         InsertLevel(/$array[pp[level]]$/, dims, pos, size, newSize, pp, level + 1)
     }
     else {
       if (size[level] != 0)
         for (/$pp[level] = dims[level] - 1$/; /$pp[level] >= pos[level]$/; /$pp[level]--$/)
-          /$array[pp[level] + size[level]] = array[pp[level]]$/
+          /$array[pp[level] + InsertLevel$this.size$[level]] = array[pp[level]]$/
 
-      for (/$pp[level] = pos[level]$/; /$pp[level] < pos[level] + size[level]$/; /$pp[level]++$/)
+      for (/$pp[level] = pos[level]$/; /$pp[level] < pos[level] + InsertLevel$this.size$[level]$/; /$pp[level]++$/)
         Init(array, /$pp[level]$/ as int, pp as int[])
     }
     return;
   }
 /*
   void Push() {
-    let pos = new Array(QEDArray_$this.dims.length).fill(0);
-    let size = new Array(QEDArray_$this.dims.length).fill(0);
+    let pos = new Array(QEDArray$this.dims.length).fill(0);
+    let size = new Array(QEDArray$this.dims.length).fill(0);
 
-    pos[0] = QEDArray_$this.dims[0];
+    pos[0] = QEDArray$this.dims[0];
     size[0] = 1;
     Insert(pos, size);
     return;
   }
 
   void pop() {
-    let pos = new Array(QEDArray_$this.dims.length).fill(0);
-    let size = new Array(QEDArray_$this.dims.length).fill(0);
+    let pos = new Array(QEDArray$this.dims.length).fill(0);
+    let size = new Array(QEDArray$this.dims.length).fill(0);
 
-    pos[0] = QEDArray_$this.dims[0] - 1;
+    pos[0] = QEDArray$this.dims[0] - 1;
     size[0] = 1;
     remove(pos, size);
     return;
   }*/
 }
-/$Object.setPrototypeOf(QEDArray_.prototype, Array.prototype)$/
-/*
-void InitFn(int[] pos, int[] size, var array) {}
-void QEDArray_(var[] init, int[] dims, int varDims, InitFn Init) {
-  var array
+/$Object.setPrototypeOf(QEDArray.prototype, Array.prototype)$/
 
-  int size() {
-    int s = 1;
-
-//    d::dims {s *= d}
-    return s;
-  }
-
-  var get(int index) {
-    /$return array[index]
-$/
-  }
-
-  void set(int index, int value) {
-    /$array[index] = value
-$/
-  }
-
-  void InitArray() {
-    return Init(dims/*size() 0*/, dims, array);
-  }
-
-  void Change(int[] pos, int[] s) {
-  }
-
-  void Push() {
-    int size = size()
-//    int[] posArray = size 0
-//    int[] sizeArray = size 0
-
-//    posArray[0] = dins[0]
-//    sizeArray[0] = 1
-//    Change(posArray, sizeArray)
-    return
-  }
-
-  void Pop() {
-    int size = size()
-//    int[] posArray = size 0
-//    int[] sizeArray = size 0
-
-//    posArray[0] = dims[0] - 1
-//    sizeArray[0] = -1
-//    Change(posArray, sizeArray)
-    return
-  }
-}
-*//*
-let x = (this.l = function l() {
-  let _d0 = 10;
-  let _d1 = 11;
-  let _d2 = 12;
-  let _d3 = 13;
-  {
-    let _x0 = 0;
-    while(_x0 < _d0) {
-      let i = 0;
-      while(i < _d1) {
-        let _x2 = 0;
-        while(_x2 < _d2) {
-          let _x3 = 0;
-          while(_x3 < _d3) {
-            14;
-            ++_x3;
-          }
-          ++_x2;
-        }
-        ++i;
-      }
-      ++_x0;
-    }
-  }
-}
-)();
-*/

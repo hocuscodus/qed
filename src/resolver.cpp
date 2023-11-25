@@ -929,10 +929,11 @@ Type PrimitiveExpr::resolve(Parser &parser) {
 }
 
 Type ReferenceExpr::resolve(Parser &parser) {
-  declaration = resolveReferenceExpr(name, &parser);
-//  declaration->isInternalField = declaration->function != function;
+  Declaration *first = getFirstDeclarationRef(getCurrent(), name);
 
-  if (declaration) 
+  declaration = resolveReference(first, name, getSignature(), &parser);
+
+  if (declaration)
     switch(declaration->type) {
       case EXPR_DECLARATION: return ((DeclarationExpr *) declaration)->_declaration.type;
       case EXPR_FUNCTION: return OBJ_TYPE(&((FunctionExpr *) declaration)->_function);

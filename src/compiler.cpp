@@ -167,19 +167,19 @@ void popSignature() {
   signatures.pop();
 }
 
-static Signature *getSignature() {
+Signature *getSignature() {
   return signatures.empty() ? NULL : signatures.top();
 }
 
 extern std::stringstream &line();
 
-static Expr *getDeclarationExpr(Expr *body) {
+Expr *getDeclarationExpr(Expr *body) {
   Expr *expr = car(body, TOKEN_SEPARATOR);
 
   return expr->type == EXPR_DECLARATION || expr->type == EXPR_FUNCTION ? expr : NULL;
 }
 
-static Declaration *getDeclarationRef(Token name, Declaration *dec) {
+Declaration *getDeclarationRef(Token name, Declaration *dec) {
   while (dec) {
     if (identifiersEqual(&name, &dec->name))
       break;
@@ -288,7 +288,7 @@ Expr *resolveReferenceExpr(Token &name, Parser *parser) {
 }
 
 bool isInRegularFunction(FunctionExpr *function) {
-  function->body->name.type == TOKEN_LEFT_BRACE;
+  return function && function->body->name.type == TOKEN_LEFT_BRACE;
 }
 
 bool isClass(FunctionExpr *function) {
@@ -300,7 +300,7 @@ bool isExternalField(FunctionExpr *function, DeclarationExpr *expr) {
 }
 
 bool isField(FunctionExpr *function, DeclarationExpr *expr) {
-  return isExternalField(function, expr) || expr->_isInternalField;
+  return isExternalField(function, expr) || expr->_declaration.isInternalField;
 }
 
 bool isInRegularFunction(ObjFunction *function) {

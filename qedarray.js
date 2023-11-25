@@ -1,7 +1,5 @@
 "use strict";
-const MainThis = this;
 const canvas = null;//document.getElementById("canvas");
-let postCount = 0;
 let postHandler = null;
 let attributeStacks = [];
 const ctx = null;//canvas.getContext("2d");
@@ -10,17 +8,17 @@ let getAttribute = function(index) {
   return attributeStacks[index][attributeStacks[index].length - 1];
 }
 let ui_ = null;
-this.voidHandler_ = function voidHandler_() {
+function voidHandler_() {
 }
-this.anyHandler_ = function anyHandler_(value) {
+function anyHandler_(value) {
 }
-this.intHandler_ = function intHandler_(value) {
+function intHandler_(value) {
 }
-this.floatHandler_ = function floatHandler_(value) {
+function floatHandler_(value) {
 }
-this.boolHandler_ = function boolHandler_(value) {
+function boolHandler_(value) {
 }
-this.stringHandler_ = function stringHandler_(value) {
+function stringHandler_(value) {
 }
 let WIDTH = 1;
 let HEIGHT = 2;
@@ -30,16 +28,16 @@ let COLOR_GREEN = 65280;
 let COLOR_YELLOW = 16776960;
 let COLOR_BLUE = 255;
 let COLOR_BLACK = 0;
-this.println = function println(str) {
+function println(str) {
   console.log(str);
 }
-this.post_ = function post_(handlerFn_) {
+function post_(handlerFn_) {
   if (postHandler != null)
     console.log("postHandler not null");
 
-    postHandler = handlerFn_;
+  postHandler = handlerFn_;
 }
-this.executeEvents_ = function executeEvents_() {
+function executeEvents_() {
   while (postHandler != null) {
     const fn = postHandler;
   
@@ -49,18 +47,18 @@ this.executeEvents_ = function executeEvents_() {
 
 //  this._refresh();
 }
-this.max = function max(a, b) {
+function max(a, b) {
   return a > b ? a : b;
 }
-this.clock = function clock() {
+function clock() {
 }
-this.saveContext = function saveContext() {
+function saveContext() {
   ctx.save();
 }
-this.restoreContext = function restoreContext() {
+function restoreContext() {
   ctx.restore();
 }
-this.oval = function oval(pos, size) {
+function oval(pos, size) {
   ctx.fillStyle = toColor(getAttribute(10));
   ctx.globalAlpha = "" + getAttribute(11);
   ctx.beginPath();
@@ -68,32 +66,32 @@ this.oval = function oval(pos, size) {
   ctx.fill();
   ctx.clip();
 }
-this.rect = function rect(pos, size) {
+function rect(pos, size) {
   ctx.fillStyle = toColor(getAttribute(10));
   ctx.globalAlpha = "" + getAttribute(11);
   ctx.beginPath();
   ctx.fillRect((pos >> 16), (pos & 65535), size >> 16, size & 65535);
 }
-this.pushAttribute = function pushAttribute(index, value) {
+function pushAttribute(index, value) {
   if (attributeStacks[index] == undefined)
     attributeStacks[index] = [];
 
   attributeStacks[index].push(value);
 }
-this.pushAttribute$_ = function pushAttribute$_(index, value) {
+function pushAttribute$_(index, value) {
   pushAttribute(index, value);
 }
-this.popAttribute = function popAttribute(index) {
+function popAttribute(index) {
   attributeStacks[index].pop();
 }
-this.getTextSize = function getTextSize(text) {
+function getTextSize(text) {
   ctx.font = getAttribute(4) + "px Arial";
 
   const textSize = ctx.measureText(text);
   const height = textSize.fontBoundingBoxAscent + textSize.fontBoundingBoxDescent;
   return (textSize.width << 16) | height;
 }
-this.displayText = function displayText(text, pos, size) {
+function displayText(text, pos, size) {
   let pos1 = [(pos >> 16), (pos & 0xFFFF)];
   let size1 = [(size >> 16), (size & 0xFFFF)];
   ctx.font = getAttribute(4) + "px Arial";
@@ -102,38 +100,42 @@ this.displayText = function displayText(text, pos, size) {
   ctx.textBaseline = "top";
   ctx.fillText(text, pos1[0], pos1[1]);
 }
-this.Timer = function Timer(timeoutMillis, handlerFn_) {
+function Timer(timeoutMillis, handlerFn_) {
+  this.timeoutMillis = timeoutMillis;
   setTimeout(function() {
     handlerFn_(true);
-//    _refresh();
+    _refresh();
   }, timeoutMillis);
-  function reset() {
+  this.reset = function() {
   }
 }
-this.Time = function Time(Func, handlerFn_) {
-    console.time("Time");
+function Time(Func, handlerFn_) {
+  this.Func = Func;
+  console.time("Time");
   new Func(() => {
     console.timeEnd("Time");
     handlerFn_();
   });;
 }
-this.time = function time(func) {
+function time(func) {
     console.time("time");
   func();
   console.timeEnd("time");;
 }
-this.Animation = function Animation(handlerFn_) {
+function Animation(handlerFn_) {
   requestAnimationFrame((millis) => {
   handlerFn_(millis);
   _refresh();
 });;
 }
-this.InitFn = function InitFn(array, index, pos, handlerFn_) {
+function InitFn(array, index, pos, handlerFn_) {
+  this.array = array;
+  this.index = index;
+  this.pos = pos;
 }
-this.QEDArray_ = function QEDArray_(Init, handlerFn_) {
-  const QEDArray_$this = this;
+function QEDArray(Init, handlerFn_) {
   this.Init = Init;
-  this.handlerFn_ = handlerFn_;
+  const QEDArray$this = this;
   this.size = function() {
     let s = 1;
     {
@@ -145,70 +147,77 @@ this.QEDArray_ = function QEDArray_(Init, handlerFn_) {
     }
     return (s);
   }
-  this.InitArray = function(size, handlerFn_) {
-    QEDArray_$this.dims = new Array(size.length).fill(0);
-    new QEDArray_$this.Insert(new Array(size.length).fill(0), size, (function Lambda_() {
-      MainThis.post_(handlerFn_);
+  this.InitArray = function(size$, handlerFn_$) {
+    this.size$ = size$;
+    QEDArray$this.dims = new Array(this.size$.length).fill(0);
+    new QEDArray$this.Insert(new Array(this.size$.length).fill(0), this.size$, (function Lambda_() {
+      post_(handlerFn_$);
       return;
     }));
   }
-  this.Insert = function(pos, size, handlerFn_) {
-    let newSize = [...size];
+  this.Insert = function(pos, size$, handlerFn_$) {
+    this.pos = pos;
+    this.size$ = size$;
+    const Insert$this = this;
+    this.newSize = [...this.size$];
     {
-      let index = QEDArray_$this.dims.length - 1;
-      while(index >= 0) {
-        newSize[index] += QEDArray_$this.dims[index];
-        index--;
+      this.index = QEDArray$this.dims.length - 1;
+      while(this.index >= 0) {
+        this.newSize[this.index] += QEDArray$this.dims[this.index];
+        this.index--;
       }
     }
-    new QEDArray_$this.InsertLevel(QEDArray_$this, QEDArray_$this.dims, pos, size, newSize, new Array(size.length).fill(0), 0, (function Lambda_() {
-      QEDArray_$this.dims = newSize ;
-      MainThis.post_(handlerFn_);
+    new QEDArray$this.InsertLevel(QEDArray$this, QEDArray$this.dims, this.pos, this.size$, this.newSize, new Array(this.size$.length).fill(0), 0, (function Lambda_() {
+      QEDArray$this.dims = Insert$this.newSize;
+      post_(handlerFn_$);
       return;
     }));
   }
-  this.InsertLevel = function(array, dims, pos, size, newSize, pp, level, handlerFn_) {
+  this.InsertLevel = function(array, dims, pos, size$, newSize, pp, level, handlerFn_$) {
+    this.array = array;
+    this.dims = dims;
+    this.pos = pos;
+    this.size$ = size$;
+    this.newSize = newSize;
+    this.pp = pp;
+    this.level = level;
+    const InsertLevel$this = this;
     new (function W9$_(i1$_) {
-      if (level < dims.length - 1) {
+      if (InsertLevel$this.level < QEDArray$this.dims.length - 1) {
         pp[level] = 0;
-        (this.while2$_ = function while2$_() {
-          if (pp[level] < pos[level]) 
-            new QEDArray_$this.InsertLevel(array[pp[level]], dims, pos, size, newSize, pp, level + 1, (function Lambda_() {
+        (function while2$_() {
+          if (pp[level] < pos[level])
+            new QEDArray$this.InsertLevel(array[pp[level]], InsertLevel$this.dims, InsertLevel$this.pos, InsertLevel$this.size$, InsertLevel$this.newSize, InsertLevel$this.pp, InsertLevel$this.level + 1, (function Lambda_() {
               pp[level]++;
-              MainThis.post_(while2$_);
+              post_(while2$_);
             }));
-
           else {
-            if (size[level] !== 0) 
-              {
-                pp[level] = dims[level] - 1;
-                while(pp[level] >= pos[level]) {
-                  array[pp[level] + size[level]] = array[pp[level]];
-                  pp[level]--;
-                }
+            if (InsertLevel$this.size$[InsertLevel$this.level] !== 0) {
+              pp[level] = dims[level] - 1;
+              while(pp[level] >= pos[level]) {
+                array[pp[level] + InsertLevel$this.size$[level]] = array[pp[level]];
+                pp[level]--;
               }
-
+            }
             pp[level] = pos[level];
             (function while4$_() {
-              if (pp[level] < pos[level] + size[level]) {
+              if (pp[level] < pos[level] + InsertLevel$this.size$[level]) {
                 array[pp[level]] = [];
-                new QEDArray_$this.InsertLevel(array[pp[level]], new Array(size.length).fill(0), new Array(size.length).fill(0), newSize, newSize, pp, level + 1, (function Lambda_() {
+                new QEDArray$this.InsertLevel(array[pp[level]], new Array(InsertLevel$this.size$.length).fill(0), new Array(InsertLevel$this.size$.length).fill(0), InsertLevel$this.newSize, InsertLevel$this.newSize, InsertLevel$this.pp, InsertLevel$this.level + 1, (function Lambda_() {
                   pp[level]++;
-                  MainThis.post_(while4$_);
+                  post_(while4$_);
                 }));
               }
               else {
-                pp[level] = pos[level] + size[level];
+                pp[level] = pos[level] + InsertLevel$this.size$[level];
                 (function while5$_() {
-                  if (pp[level] < newSize[level]) 
-                    new QEDArray_$this.InsertLevel(array[pp[level]], dims, pos, size, newSize, pp, level + 1, (function Lambda_() {
+                  if (pp[level] < newSize[level])
+                    new QEDArray$this.InsertLevel(array[pp[level]], InsertLevel$this.dims, InsertLevel$this.pos, InsertLevel$this.size$, InsertLevel$this.newSize, InsertLevel$this.pp, InsertLevel$this.level + 1, (function Lambda_() {
                       pp[level]++;
-                      MainThis.post_(while5$_);
+                      post_(while5$_);
                     }));
-
-                  else 
+                  else
                     i1$_();
-
                 })();
               }
             })();
@@ -216,37 +225,33 @@ this.QEDArray_ = function QEDArray_(Init, handlerFn_) {
         })();
       }
       else {
-        if (size[level] !== 0) 
-          {
-            pp[level] = dims[level] - 1;
-            while(pp[level] >= pos[level]) {
-              array[pp[level] + size[level]] = array[pp[level]];
-              pp[level]--;
-            }
+        if (InsertLevel$this.size$[InsertLevel$this.level] !== 0) {
+          pp[level] = dims[level] - 1;
+          while(pp[level] >= pos[level]) {
+            array[pp[level] + InsertLevel$this.size$[level]] = array[pp[level]];
+            pp[level]--;
           }
-
+        }
         pp[level] = pos[level];
         (function while7$_() {
-          if (pp[level] < pos[level] + size[level]) 
-            QEDArray_$this.Init(array, pp[level], pp, (function Lambda_() {
+          if (pp[level] < pos[level] + InsertLevel$this.size$[level])
+            QEDArray$this.Init(InsertLevel$this.array, pp[level], InsertLevel$this.pp, (function Lambda_() {
               pp[level]++;
-              MainThis.post_(while7$_);
+              post_(while7$_);
             }));
-
-          else 
+          else
             i1$_();
-
         })();
       }
-    })((this.c8$_ = function c8$_() {
-      MainThis.post_(handlerFn_);
+    })((function c8$_() {
+      post_(handlerFn_$);
       return;
     }));
   }
 }
-Object.setPrototypeOf(this.QEDArray_.prototype, Array.prototype);
+Object.setPrototypeOf(QEDArray.prototype, Array.prototype);
 let ar = ["Martin", "Savage"];
-let x = (this.l = function l() {
+let x = (function l() {
   let _d0 = 10;
   let _d1 = 11;
   let _d2 = 12;
@@ -271,7 +276,7 @@ let x = (this.l = function l() {
     }
   }
 })();
-this.println("" + ((20) / 100));
+println("" + ((20) / 100));
 this.UI_ = function UI_(handlerFn_) {
   const UI_$this = this;
   this.v1 = "SS";
@@ -292,17 +297,17 @@ this.UI_ = function UI_(handlerFn_) {
     }
   }
 }
-this.pushAttribute(4, 20);
-this.pushAttribute(10, 0);
-this.pushAttribute(11, 1.0);
+pushAttribute(4, 20);
+pushAttribute(10, 0);
+pushAttribute(11, 1.0);
 let layout_ = null;
 function _refresh() {
 //  if (ui_ != undefined && --postCount == 0) {
-    this.ui_ = new this.UI_(null);
-    this.layout_ = new this.ui_.Layout_();
-    this.ctx.globalAlpha = 1.0;
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    this.layout_.paint(0, 0, this.layout_.size >> 16, this.layout_.size & 65535);
+    ui_ = new UI_();
+    layout_ = new ui_.Layout_();
+    ctx.globalAlpha = 1.0;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    layout_.paint(0, 0, layout_.size >> 16, layout_.size & 65535);
 //  }
 }
 /*
@@ -321,12 +326,12 @@ canvas.addEventListener("mouseup", function(ev) {
 });
 canvas.onselectstart = function () { return false; }
 */
-let myFirstArray = new this.QEDArray_(function l(array, x, pos, handlerFn_) {
+let myFirstArray = new QEDArray(function l(array, x, pos, handlerFn_) {
   const i = (pos[0] + 1) * (pos[1] + 1);
 
   array[x] = i;
 //  MainThis.Timer(200, function(ret) {
-    MainThis.post_(handlerFn_);
+    post_(handlerFn_);
 //  });
 }, null);
 new myFirstArray.InitArray([2, 3], function Lambda_() {
@@ -338,10 +343,10 @@ new myFirstArray.InitArray([2, 3], function Lambda_() {
       (function while10$_() {
         if (i < 3) {
           {
-            new MainThis.Timer(1000, (function Lambda_(_ret) {
-              MainThis.println("Count: " + i);
+            new Timer(1000, (function Lambda_(_ret) {
+              println("Count: " + i);
               i++;
-              MainThis.post_(while10$_);
+              post_(while10$_);
             }));
           }
         }
@@ -349,4 +354,4 @@ new myFirstArray.InitArray([2, 3], function Lambda_() {
     });
     });
 });
-this.executeEvents_();
+executeEvents_();
