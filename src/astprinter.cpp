@@ -238,6 +238,10 @@ void ReturnExpr::astPrint() {
 }
 
 void CastExpr::astPrint() {
+  fprintf(stderr, "(");
+  printType(&type);
+  fprintf(stderr, ") ");
+  expr->astPrint();
 }
 
 void SetExpr::astPrint() {

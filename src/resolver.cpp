@@ -200,8 +200,8 @@ static Expr *convertToFloat(Expr *expr, Type &type, Parser &parser) {
   return expr;
 }
 
-static Expr *convertToObj(Obj *srcObjType, Expr *expr, Type &type, Parser &parser) {
-  switch (srcObjType->type) {
+static Expr *convertToObj(Obj *dstObjType, Expr *expr, Type &type, Parser &parser) {
+  switch (dstObjType->type) {
   case OBJ_ARRAY:
 //    expr = convertToArray(OP_BOOL_TO_STRING, expr);
     break;
@@ -232,14 +232,14 @@ static Expr *convertToObj(Obj *srcObjType, Expr *expr, Type &type, Parser &parse
   return expr;
 }
 
-static Expr *convertToType(Type srcType, Expr *expr, Type &type, Parser &parser) {
-  switch (srcType.valueType) {
+static Expr *convertToType(Type dstType, Expr *expr, Type &srcType, Parser &parser) {
+  switch (dstType.valueType) {
   case VAL_INT:
-    expr = convertToInt(expr, type, parser);
+    expr = convertToInt(expr, srcType, parser);
     break;
 
   case VAL_FLOAT:
-    expr = convertToFloat(expr, type, parser);
+    expr = convertToFloat(expr, srcType, parser);
     break;
 
   case VAL_BOOL:
@@ -247,7 +247,7 @@ static Expr *convertToType(Type srcType, Expr *expr, Type &type, Parser &parser)
     break;
 
   case VAL_OBJ:
-    expr = convertToObj(srcType.objType, expr, type, parser);
+    expr = convertToObj(dstType.objType, expr, srcType, parser);
     break;
 
   case VAL_VOID:
@@ -290,7 +290,7 @@ Type AssignExpr::resolve(Parser &parser) {
   if (IS_VOID(type1))
     parser.error("Variable not found");
   else if (!type1.equals(type2)) {
-    value = convertToType(type2, value, type1, parser);
+    value = convertToType(type1, value, type2, parser);
 
     if (!value) {
       parser.error("Value must match the variable type");
@@ -531,7 +531,6 @@ Type DeclarationExpr::resolve(Parser &parser) {
       break;
     }
 
-  checkDeclaration(_declaration, _declaration.name, NULL, &parser);
   return VOID_TYPE;
 }
 
@@ -539,7 +538,7 @@ Type FunctionExpr::resolve(Parser &parser) {
   pushScope(this);
 
   if (body) {
-    Expr *group = getStatement(body, arity);
+    Expr *group = getStatement(body, arity + (_declaration.name.isUserClass() ? 1 : 0));
 
     if (group) {
       group->resolve(parser);

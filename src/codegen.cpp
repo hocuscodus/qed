@@ -322,18 +322,6 @@ std::string ArrayExpr::toCode(Parser &parser, ObjFunction *function) {
   return str.str();
 }
 /*
-  this.size = 2;
-  this.dims = [];
-  this.array = [][];
-
-  this.dims[0] = 10;
-  this.dims[1] = 10;
-;
-  for (let x0 = 0; x0 < this.dims[0]; x0++) {
-    for (let x1 = 0; x1 < this.dims[1]; x1++) {
-      this.array = 11;
-    }
-  }
 10 {
 	{
 		10 {
@@ -415,7 +403,7 @@ std::string PrimitiveExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 std::string ReferenceExpr::toCode(Parser &parser, ObjFunction *function) {
-  Declaration *declaration = getDeclaration(this->declaration);
+  Declaration *declaration = this->declaration ? getDeclaration(this->declaration) : NULL;
 
   if (declaration)
     if (declaration->isExternalField())

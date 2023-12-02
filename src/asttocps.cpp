@@ -72,6 +72,35 @@ Expr *getCompareExpr(Expr *origExpr, Expr *newExpr) {
   return newExpr;
 }
 
+Expr *declarationToCps(Declaration *declaration, std::function<Expr *()> genGroup) {
+  if (declaration) {
+    if (declaration->expr->type == EXPR_FUNCTION) {
+      FunctionExpr *function = (FunctionExpr *) declaration->expr;
+
+      if (function->_declaration.name.isUserClass()) {
+        function->_declaration.type = VOID_TYPE;
+        function->arity++;
+      }
+
+      if (function->_declaration.name.isClass()) {
+        pushScope(function);
+        function->body->body = declarationToCps(function->body->declarations, [function]() {
+          Expr *body = getStatement(function->body, function->arity);
+
+          return body ? body->toCps([](Expr *body) {return body;}) : NULL;
+        });
+        popScope();
+      }
+    }
+
+    Expr *right = declarationToCps(declaration->next, genGroup);
+
+    return right ? new BinaryExpr(declaration->expr, buildToken(TOKEN_SEPARATOR, ";"), right) : declaration->expr;
+  }
+  else
+    return genGroup();
+}
+
 Expr *IteratorExpr::toCps(K k) {
   Expr *iteratorExpr = this->value->toCps([this, k](Expr *value) {
     return compareExpr(this->value, value) ? this : k(newExpr(new IteratorExpr(this->name, this->op, value)));
@@ -109,43 +138,19 @@ Expr *UIDirectiveExpr::toCps(K k) {
 }
 
 Expr *BinaryExpr::toCps(K k) {
-  auto genBinary = [this](Expr *left, Expr *right) {
-    return compareExpr(this->left, left) && compareExpr(this->right, right) ? this : newExpr(new BinaryExpr(left, this->op, right));
-  };
-
   if (op.type == TOKEN_SEPARATOR) {
-    Expr *exp = left->toCps([this, genBinary, k](Expr *left) {/*
-      while (this->right) {
-        Expr *next = car(this->right, TOKEN_SEPARATOR);
-        FunctionExpr *func = next->type == EXPR_FUNCTION ? (FunctionExpr *) next : NULL;
+    Expr *exp = left->toCps([this, k](Expr *left) {
+      Expr *right = this->right ? this->right->toCps(k) : NULL;//k(getCompareExpr(this->left, left));
 
-        if (func && getCurrent() != func->body->enclosing) {
-          addExpr(&func->body->enclosing->funcs, func, buildToken(TOKEN_SEPARATOR, ";"));
-          this->right = removeExpr(this->right, TOKEN_SEPARATOR);
-        }
-        else
-          break;
-      }
-*/
-      Expr *right = this->right ? this->right->toCps(k) : k(getCompareExpr(this->left, left));
-
-      return left && right ? genBinary(left, right) : right;
+      return left && right ? new BinaryExpr(left, op, right) : left ? left : right;
     });
-
-    if (exp->type != EXPR_BINARY) {/*
-      if (getCurrent()->funcs) {
-        exp = new BinaryExpr(exp, op, getCurrent()->funcs->toCps([](Expr *expr) {
-          return expr;
-        }));
-        getCurrent()->funcs = NULL;
-      }
-*/
-//      delete this;
-    }
 
     return exp;
   }
   else {
+    auto genBinary = [this](Expr *left, Expr *right) {
+      return compareExpr(this->left, left) && compareExpr(this->right, right) ? this : newExpr(new BinaryExpr(left, this->op, right));
+    };
     Expr *cpsExpr = left->toCps([this, genBinary, k](Expr *left) {
       return this->right->toCps([this, genBinary, k, left](Expr *right) {
         Expr *expr = genBinary(left, right);
@@ -216,37 +221,27 @@ Expr *ArrayElementExpr::toCps(K k) {
 }
 
 Expr *DeclarationExpr::toCps(K k) {
-  Expr *cpsExpr = !initExpr ? this : initExpr->toCps([this, k](Expr *initExpr) {
-    return compareExpr(this->initExpr, initExpr) ? this : k(newExpr([this, initExpr]() {
-      return newDeclarationExpr(_declaration.type, _declaration.name, initExpr);
-    }()));
-  });
+  if (initExpr) {
+    auto genAssign = [this, k](Expr *initExpr) {
+      Expr *assignExpr = new AssignExpr(new ReferenceExpr(_declaration.name, this), buildToken(TOKEN_EQUAL, "="), initExpr);
 
-  return this == cpsExpr ? k(this) : cpsExpr;
+      this->initExpr = NULL;
+      return k(assignExpr);
+    };
+
+    if (initExpr->hasSuperCalls)
+      initExpr = initExpr->toCps([genAssign](Expr *initExpr) {
+        return genAssign(initExpr);
+      });
+    else
+      return genAssign(initExpr);
+  }
+  else
+    return k(this);
 }
 
 Expr *FunctionExpr::toCps(K k) {
-  if (_declaration.name.isUserClass()) {
-    _declaration.type = VOID_TYPE;
-    arity++;
-  }
-
-  if (body->body) {
-    pushScope(this);
-    Expr *currentBody = body;
-    Expr *newBodyExpr = body->body->toCps([this](Expr *body) {return body;});
-
-    body->body = (GroupingExpr *) newBodyExpr;// && newBodyExpr->type == EXPR_GROUPING ? (GroupingExpr *) newBodyExpr : NULL;
-
-//  Expr *lastExpr = *getLastBodyExpr(&body->body, TOKEN_SEPARATOR);
-
-//  if (!lastExpr || lastExpr->type != EXPR_RETURN)
-//    addExpr(&body->body, new ReturnExpr(buildToken(TOKEN_IDENTIFIER, "return"), NULL, NULL), buildToken(TOKEN_SEPARATOR, ";"));
-
-    popScope();
-  }
-
-  return k(this);//compareExpr(body, bodyExpr) ? this : newExpr(newFunctionExpr(typeExpr, name, arity + 1, newParams, newBody, NULL)));
+  return k(NULL);//compareExpr(body, bodyExpr) ? this : newExpr(newFunctionExpr(typeExpr, name, arity + 1, newParams, newBody, NULL)));
 /*
 function cps_lambda(exp, k) {
   var cont = gensym("K");
@@ -272,16 +267,9 @@ Expr *GetExpr::toCps(K k) {
 
 Expr *GroupingExpr::toCps(K k) {
   if (hasSuperCalls) {
-    bool functionFlag = getCurrent()->group == this;
-
-    if (!functionFlag)
-      pushScope(this);
-
+    pushScope(this);
     Expr *body = this->body->toCps(k);
-
-    if (!functionFlag)
-      popScope();
-
+    popScope();
     return body;
   }
   else

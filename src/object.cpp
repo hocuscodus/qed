@@ -88,8 +88,6 @@ Declaration::Declaration() {
 }
 
 std::string Declaration::getRealName() {
-  Token &name = getDeclaration(expr)->name;
-
   return peer ? peer->getRealName() + (parentFlag ? "$" : "$_") : std::string(name.start, name.length);
 }
 
@@ -98,7 +96,7 @@ bool Declaration::isInRegularFunction() {
 }
 
 bool Declaration::isExternalField() {
-  return function && isClass(function) && isInRegularFunction() && !getDeclaration(expr)->name.isInternal();
+  return function && isClass(function) && isInRegularFunction() && !name.isInternal();
 }
 
 bool Declaration::isField() {

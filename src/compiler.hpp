@@ -46,7 +46,7 @@ bool isExternalField(FunctionExpr *function, DeclarationExpr *expr);
 bool isField(FunctionExpr *function, DeclarationExpr *expr);
 bool isInRegularFunction(ObjFunction *function);
 bool isExternalField(ObjFunction *function);
-Expr *checkDeclaration(Declaration &declaration, Token &name, FunctionExpr *function, Parser *parser);
+void checkDeclaration(Declaration &declaration, Token &name, FunctionExpr *function, Parser *parser);
 
 std::string compile(FunctionExpr *expr, Parser *parser);
 

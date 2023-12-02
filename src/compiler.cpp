@@ -124,7 +124,6 @@ DeclarationExpr *newDeclarationExpr(Type type, Token name, Expr* initExpr) {
   expr->_declaration.type = type;
   expr->_declaration.name = name;
   expr->_declaration.expr = expr;
-  expr->_declaration.function = getFunction();
   return expr;
 }
 
@@ -134,7 +133,6 @@ FunctionExpr *newFunctionExpr(Type type, Token name, int arity, GroupingExpr* bo
   expr->_declaration.type = type;
   expr->_declaration.name = name;
   expr->_declaration.expr = expr;
-  expr->_declaration.function = getFunction();
   expr->_function.expr = expr;
   return expr;
 }
@@ -152,7 +150,7 @@ Type getDeclarationType(Expr *expr) {
 }
 
 Declaration *getDeclaration(Expr *expr) {
-  switch(expr ? expr->type : -1) {
+  switch(expr->type) {
     case EXPR_DECLARATION: return &((DeclarationExpr *) expr)->_declaration;
     case EXPR_FUNCTION: return &((FunctionExpr *) expr)->_declaration;
     default: return NULL;
@@ -311,8 +309,10 @@ bool isExternalField(ObjFunction *function) {
   return function && function->expr && function->isClass() && isInRegularFunction(function) && !function->expr->_declaration.name.isInternal();
 }
 
-Expr *checkDeclaration(Declaration &declaration, Token &name, FunctionExpr *function, Parser *parser) {
+void checkDeclaration(Declaration &declaration, Token &name, FunctionExpr *function, Parser *parser) {
   Signature signature;
+
+  declaration.function = getFunction();
 
   if (function)
     for (int index = 0; index < function->arity; index++)
@@ -320,22 +320,20 @@ Expr *checkDeclaration(Declaration &declaration, Token &name, FunctionExpr *func
 
   Expr *expr = resolveReference(getDeclarationRef(name, getCurrent()->group->declarations), name, function ? &signature : NULL, NULL);
 
-  if (expr) {
+  if (expr)
     parser->error("Identical identifier '%.*s' with this name in this scope.", name.length, name.start);
-    return NULL;
+  else {
+    if (function)
+      expr = resolveReference(getDeclarationRef(name, getCurrent()->group->declarations), name, NULL, NULL);
+
+    if (!expr) {
+      expr = resolveReference(getFirstDeclarationRef(getCurrent()->enclosing, name), name, NULL, NULL);
+      declaration.parentFlag = !!expr;
+    }
+
+    declaration.peer = expr ? getDeclaration(expr) : NULL;
+    getCurrent()->add(&declaration);
   }
-
-  if (function)
-    expr = resolveReference(getDeclarationRef(name, getCurrent()->group->declarations), name, NULL, NULL);
-
-  if (!expr) {
-    expr = resolveReference(getFirstDeclarationRef(getCurrent()->enclosing, name), name, NULL, NULL);
-    declaration.parentFlag = !!expr;
-  }
-
-  declaration.peer = getDeclaration(expr);
-  getCurrent()->add(&declaration);
-  return NULL;
 }
 
 Expr **cdrAddress(Expr *body, TokenType tokenType) {

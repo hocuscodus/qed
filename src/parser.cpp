@@ -59,60 +59,97 @@ static Expr *createWhileExpr(Expr *condition, Expr *increment, Expr *body) {
   return new WhileExpr(condition, body);
 }
 
-static Expr *createArrayLoops(int index, Point &dirs, Expr **iteratorExprs, Expr *body) {
-  if (!iteratorExprs)
-    return body;
-
-  char dimName[16];
-  char varName[256];
-  Expr *expr = car(*iteratorExprs, TOKEN_SEPARATOR);
-  IteratorExpr *iteratorExpr = expr->type == EXPR_ITERATOR ? (IteratorExpr *) expr : NULL;
-
-  sprintf(dimName, "_d%d", index);
-  sprintf(varName, iteratorExpr && iteratorExpr->name.length ? iteratorExpr->name.getString().c_str() : "_x%d", index);
-
-  if (iteratorExpr) {
-    int dir = getDir(iteratorExpr->op.start[1]);
-
-    for (int ndx = 0; ndx < NUM_DIRS; ndx++)
-      dirs[ndx] |= !!(dir & (1 << ndx)) << index;
-
-    expr = iteratorExpr->value;
-    delete iteratorExpr;
-  }
-
-  expr = newDeclarationExpr(anyType, buildToken(TOKEN_IDENTIFIER, newString(dimName)), expr);
-
-  if (isGroup(*iteratorExprs, TOKEN_SEPARATOR))
-    ((BinaryExpr *) *iteratorExprs)->left = expr;
-  else
-    *iteratorExprs = expr;
-
-  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL, NULL);
-  Expr *initializer = newDeclarationExpr(INT_TYPE, buildToken(TOKEN_IDENTIFIER, newString(varName)), new LiteralExpr(VAL_INT, {.integer = 0}));
-
-  pushScope(group);
-  addExpr(&group->body, initializer, buildToken(TOKEN_SEPARATOR, ";"));
-
-  Expr *condition = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, newString(varName)), NULL);
-  Expr *increment = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, newString(varName)), NULL);
-
-  condition = new BinaryExpr(condition, buildToken(TOKEN_LESS, "<"), new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, newString(dimName)), NULL));
-  increment = new UnaryExpr(buildToken(TOKEN_PLUS_PLUS, "++"), increment);
-
-  Expr *whileExpr = createWhileExpr(condition, increment, createArrayLoops(index + 1, dirs, cdrAddress(*iteratorExprs, TOKEN_SEPARATOR), body));
-
-  addExpr(&group->body, whileExpr, buildToken(TOKEN_SEPARATOR, ";"));
-  popScope();
-  return group;
-}
-
 static Expr *createArrayExpr(Expr *iteratorExprs, Expr *body) {
+  int index = 0;
   Point dirs{};
-  Expr *arrayExpr = *addExpr(&iteratorExprs, createArrayLoops(0, dirs, &iteratorExprs, body), buildToken(TOKEN_SEPARATOR, ";"));
+  Expr *dimDecs = NULL;
+  DeclarationExpr *arrayParam = newDeclarationExpr(anyType, buildToken(TOKEN_IDENTIFIER, "array"), NULL);
+  DeclarationExpr *xParam = newDeclarationExpr(INT_TYPE, buildToken(TOKEN_IDENTIFIER, "x"), NULL);
+  DeclarationExpr *posParam = newDeclarationExpr(OBJ_TYPE(newArray(INT_TYPE)), buildToken(TOKEN_IDENTIFIER, "pos"), NULL);
+  DeclarationExpr *handlerParam = newDeclarationExpr(resolveType(new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "voidHandler_"), NULL)), buildToken(TOKEN_IDENTIFIER, "handlerFn_"), NULL);
+  Expr *initBody = NULL;
 
-  arrayExpr = makeWrapperLambda("l", NULL, [arrayExpr]() {return arrayExpr;});
-  return new CallExpr(false, arrayExpr, buildToken(TOKEN_LEFT_PAREN, "("), NULL, NULL);
+  addExpr(&initBody, arrayParam, buildToken(TOKEN_SEPARATOR, ";"));
+  addExpr(&initBody, xParam, buildToken(TOKEN_SEPARATOR, ";"));
+  addExpr(&initBody, posParam, buildToken(TOKEN_SEPARATOR, ";"));
+  addExpr(&initBody, handlerParam, buildToken(TOKEN_SEPARATOR, ";"));
+
+  for (Expr **iteratorExprPtrs = &iteratorExprs; iteratorExprPtrs; iteratorExprPtrs = cdrAddress(*iteratorExprPtrs, TOKEN_SEPARATOR)) {
+    char dimName[16];
+    Expr *expr = car(*iteratorExprPtrs, TOKEN_SEPARATOR);
+    IteratorExpr *iteratorExpr = expr->type == EXPR_ITERATOR ? (IteratorExpr *) expr : NULL;
+
+    sprintf(dimName, "_d%d", index);
+
+    if (iteratorExpr) {
+      int dir = getDir(iteratorExpr->op.start[1]);
+
+      for (int ndx = 0; ndx < NUM_DIRS; ndx++)
+        dirs[ndx] |= !!(dir & (1 << ndx)) << index;
+
+      expr = iteratorExpr->value;
+    }
+
+    Token decName = buildToken(TOKEN_IDENTIFIER, newString(dimName));
+
+    expr = newDeclarationExpr(anyType, decName, expr);
+    checkDeclaration(*getDeclaration(expr), decName, NULL, NULL);
+
+    if (isGroup(*iteratorExprPtrs, TOKEN_SEPARATOR))
+      ((BinaryExpr *) *iteratorExprPtrs)->left = expr;
+    else
+      *iteratorExprPtrs = expr;
+
+    if (iteratorExpr && iteratorExpr->name.length) {
+      Expr **indexExpr = new Expr *[1];
+      indexExpr[0] = new LiteralExpr(VAL_INT, {.integer = index});
+      Expr *getExpr = new ArrayElementExpr(new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "pos"), NULL), buildToken(TOKEN_LEFT_BRACKET, "["), 1, indexExpr);
+      Expr *initializer = newDeclarationExpr(INT_TYPE, iteratorExpr->name, getExpr);
+
+      addExpr(&initBody, initializer, buildToken(TOKEN_SEPARATOR, ";"));
+    }
+
+    if (iteratorExpr)
+      delete iteratorExpr;
+
+    addExpr(&dimDecs, new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, newString(dimName)), NULL), buildToken(TOKEN_SEPARATOR, ";"));
+    index++;
+  }
+//  Expr *arrayExpr = *addExpr(&iteratorExprs, createArrayLoops(0, dirs, &iteratorExprs, body), buildToken(TOKEN_SEPARATOR, ";"));
+  NativeExpr *array = new NativeExpr(buildToken(TOKEN_IDENTIFIER, "array[x]"));
+  Expr *bodyExpr = new AssignExpr(array, buildToken(TOKEN_EQUAL, "="), body);
+  ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "post_"), NULL);
+  Expr *param = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "handlerFn_"), NULL);
+  CallExpr *postCall = new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), param, NULL);
+
+  addExpr(&initBody, bodyExpr, buildToken(TOKEN_SEPARATOR, ";"));
+  addExpr(&initBody, postCall, buildToken(TOKEN_SEPARATOR, ";"));
+
+//    GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL, NULL);
+//  value = new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), param, NULL);
+  Token nameToken = buildToken(TOKEN_IDENTIFIER, "L");
+  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), initBody, NULL);
+  FunctionExpr *wrapperFunc = newFunctionExpr(VOID_TYPE, nameToken, 3, group, NULL);
+  GroupingExpr *initExpr = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "("), wrapperFunc, NULL);
+
+  pushScope(initExpr);
+  checkDeclaration(wrapperFunc->_declaration, nameToken, wrapperFunc, NULL);
+  pushScope(wrapperFunc);
+  checkDeclaration(arrayParam->_declaration, arrayParam->_declaration.name, NULL, NULL);
+  checkDeclaration(xParam->_declaration, xParam->_declaration.name, NULL, NULL);
+  checkDeclaration(posParam->_declaration, posParam->_declaration.name, NULL, NULL);
+  checkDeclaration(handlerParam->_declaration, handlerParam->_declaration.name, NULL, NULL);
+
+  for (int ndx = 0; ndx < index; ndx++)
+    checkDeclaration(getParam(wrapperFunc, 4 + ndx)->_declaration, getParam(wrapperFunc, 4 + ndx)->_declaration.name, NULL, NULL);
+
+  popScope();
+  popScope();
+
+  Expr *qedArrayExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "QEDArray"), NULL);
+  Expr *newArrayExpr = new CallExpr(true, qedArrayExpr, buildToken(TOKEN_LEFT_PAREN, "("), initExpr, NULL);
+
+  return newArrayExpr;
 }
 
 static const char *getHandlerType(Type type) {
@@ -217,6 +254,7 @@ void Parser::errorAt(Token *token, const char *fmt, ...) {
 
 #undef FORMAT_MESSAGE
 std::stringstream &line(std::stringstream &str);
+Expr *declarationToCps(Declaration *declaration, std::function<Expr *()> genGroup);
 
 std::string compile(FunctionExpr *expr, Parser *parser) {
 #ifdef DEBUG_PRINT_CODE
@@ -243,10 +281,14 @@ std::string compile(FunctionExpr *expr, Parser *parser) {
   }*/
   fprintf(stderr, "\n");
 #endif
+  pushScope(expr);
+  expr->body->body = declarationToCps(expr->body->declarations, [expr]() {
+    Expr *body = getStatement(expr->body, expr->arity);
 
-  Expr *cpsExpr = expr->toCps([](Expr *expr) {
-    return expr;
+    return body ? body->toCps([](Expr *body) {return body;}) : NULL;
   });
+  popScope();
+  Expr *cpsExpr = expr;
 #ifdef DEBUG_PRINT_CODE
   fprintf(stderr, "CPS parse: ");
   cpsExpr->astPrint();
@@ -254,56 +296,6 @@ std::string compile(FunctionExpr *expr, Parser *parser) {
 #endif
   std::stringstream str;
   line(str) << "\"use strict\";\n";
-/*
-void QEDArray(var[] init, int[] dims, int varDims, InitFn Init) {
-  var array
-
-  int size() {
-    int s = 1;
-
-//    d::dims {s *= d}
-    return s;
-  }
-
-  var get(int index) {
-    /$return array[index]
-$/
-  }
-
-  void set(int index, int value) {
-    /$array[index] = value
-$/
-  }
-
-  void InitArray() {
-    return Init(dims/ *size() 0* /, dims, array);
-  }
-
-  void Change(int[] pos, int[] s) {
-  }
-
-  void Push() {
-    int size = size()
-//    int[] posArray = size 0
-//    int[] sizeArray = size 0
-
-//    posArray[0] = dins[0]
-//    sizeArray[0] = 1
-//    Change(posArray, sizeArray)
-    return
-  }
-
-  void Pop() {
-    int size = size()
-//    int[] posArray = size 0
-//    int[] sizeArray = size 0
-
-//    posArray[0] = dims[0] - 1
-//    sizeArray[0] = -1
-//    Change(posArray, sizeArray)
-    return
-  }
-}*/
   line(str) << "const canvas = document.getElementById(\"canvas\");\n";
   line(str) << "let postHandler = null;\n";
   line(str) << "let attributeStacks = [];\n";
@@ -906,8 +898,10 @@ DeclarationExpr *Parser::declareVariable(Expr *typeExpr, TokenType *endGroupType
   Token name = previous;
   Expr *expr = match(TOKEN_EQUAL) ? expression(endGroupTypes) : NULL;
   Type decType = resolveType(typeExpr);
+  DeclarationExpr *dec = newDeclarationExpr(decType, name, expr);
 
-  return newDeclarationExpr(decType, name, expr);
+  checkDeclaration(dec->_declaration, name, NULL, this);
+  return dec;
 }
 
 DeclarationExpr *Parser::parseVariable(TokenType *endGroupTypes, const char *errorMessage) {
@@ -945,7 +939,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
           if (!IS_UNKNOWN(param->_declaration.type)) {
             addExpr(&group->body, param, buildToken(TOKEN_SEPARATOR, ";"));
             functionExpr->arity++;
-            checkDeclaration(param->_declaration, param->_declaration.name, NULL, this);
+//            checkDeclaration(param->_declaration, param->_declaration.name, NULL, this);
 //            functionExpr->params = RESIZE_ARRAY(DeclarationExpr *, functionExpr->params, functionExpr->arity, functionExpr->arity + 1);
 //            functionExpr->params[functionExpr->arity++] = param;
 //            param->_declaration = group->_compiler.addDeclaration(paramType, param->name, NULL, false, this);
@@ -967,6 +961,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
           if (!IS_UNKNOWN(paramType)) {
             DeclarationExpr *dec = newDeclarationExpr(paramType, name, NULL);
 
+            checkDeclaration(dec->_declaration, dec->_declaration.name, NULL, this);
             addExpr(&group->body, dec, buildToken(TOKEN_SEPARATOR, ";"));
           }
           else
