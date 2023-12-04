@@ -15,7 +15,6 @@ Scope::Scope(FunctionExpr *function, GroupingExpr *group, Scope *enclosing) {
   this->function = function;
   this->group = group;
   this->enclosing = enclosing;
-  hasSuperCalls = false;
   vCount = 1;
 }
 

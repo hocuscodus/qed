@@ -72,26 +72,35 @@ Expr *getCompareExpr(Expr *origExpr, Expr *newExpr) {
   return newExpr;
 }
 
+bool isCpsContext() {
+  return getCurrent() && getCurrent()->group->hasSuperCalls;
+}
+
+Expr *declarationToCps(Declaration *declaration, std::function<Expr *()> genGroup);
+
+FunctionExpr *functionToCps(FunctionExpr *function) {
+  if (function->_declaration.name.isUserClass()) {
+    function->_declaration.type = VOID_TYPE;
+    function->arity++;
+  }
+
+  if (function->_declaration.name.isClass()) {
+    pushScope(function);
+    function->body->body = declarationToCps(function->body->declarations, [function]() {
+      Expr *body = getStatement(function->body, function->arity);
+
+      return body ? body->toCps([](Expr *body) {return body;}) : NULL;
+    });
+    popScope();
+  }
+
+  return function;
+}
+
 Expr *declarationToCps(Declaration *declaration, std::function<Expr *()> genGroup) {
   if (declaration) {
-    if (declaration->expr->type == EXPR_FUNCTION) {
-      FunctionExpr *function = (FunctionExpr *) declaration->expr;
-
-      if (function->_declaration.name.isUserClass()) {
-        function->_declaration.type = VOID_TYPE;
-        function->arity++;
-      }
-
-      if (function->_declaration.name.isClass()) {
-        pushScope(function);
-        function->body->body = declarationToCps(function->body->declarations, [function]() {
-          Expr *body = getStatement(function->body, function->arity);
-
-          return body ? body->toCps([](Expr *body) {return body;}) : NULL;
-        });
-        popScope();
-      }
-    }
+    if (declaration->expr->type == EXPR_FUNCTION)
+      functionToCps((FunctionExpr *) declaration->expr);
 
     Expr *right = declarationToCps(declaration->next, genGroup);
 
@@ -233,15 +242,17 @@ Expr *DeclarationExpr::toCps(K k) {
       initExpr = initExpr->toCps([genAssign](Expr *initExpr) {
         return genAssign(initExpr);
       });
-    else
+    else {
+      initExpr->toCps([](Expr *expr) {return expr;});
       return genAssign(initExpr);
+    }
   }
   else
     return k(this);
 }
 
 Expr *FunctionExpr::toCps(K k) {
-  return k(NULL);//compareExpr(body, bodyExpr) ? this : newExpr(newFunctionExpr(typeExpr, name, arity + 1, newParams, newBody, NULL)));
+  return k(isCpsContext() ? NULL : functionToCps(this));//compareExpr(body, bodyExpr) ? this : newExpr(newFunctionExpr(typeExpr, name, arity + 1, newParams, newBody, NULL)));
 /*
 function cps_lambda(exp, k) {
   var cont = gensym("K");
@@ -272,8 +283,15 @@ Expr *GroupingExpr::toCps(K k) {
     popScope();
     return body;
   }
-  else
+  else {
+    if (body) {
+      pushScope(this);
+      body->toCps([](Expr *expr) {return expr;});
+      popScope();
+    }
+
     return k(this);
+  }
 }
 
 Expr *ArrayExpr::toCps(K k) {

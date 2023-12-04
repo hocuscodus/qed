@@ -14,7 +14,6 @@ struct Scope {
   FunctionExpr *function;
   GroupingExpr *group;
   Scope *enclosing;
-  bool hasSuperCalls;
   int vCount;
 
   Scope(FunctionExpr *function, GroupingExpr *group, Scope *enclosing);

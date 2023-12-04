@@ -200,14 +200,14 @@ std::string ArrayElementExpr::toCode(Parser &parser, ObjFunction *function) {
 std::string DeclarationExpr::toCode(Parser &parser, ObjFunction *function) {
   std::stringstream str;
 
-  if (initExpr) {
+//  if (initExpr) {
     if (_declaration.isExternalField())
       str << "this.";
     else
       str << /*_declaration->function->isClass() ? "const " : */"let ";
 
-    str << _declaration.getRealName() << " = " << initExpr->toCode(parser, function);
-  }
+    str << _declaration.getRealName() << " = " << (initExpr ? initExpr->toCode(parser, function) : "null");
+//  }
 
   return str.str();
 }

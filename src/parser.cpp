@@ -147,7 +147,7 @@ static Expr *createArrayExpr(Expr *iteratorExprs, Expr *body) {
   popScope();
 
   Expr *qedArrayExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "QEDArray"), NULL);
-  Expr *newArrayExpr = new CallExpr(true, qedArrayExpr, buildToken(TOKEN_LEFT_PAREN, "("), initExpr, NULL);
+  Expr *newArrayExpr = new CallExpr(false, qedArrayExpr, buildToken(TOKEN_LEFT_PAREN, "("), initExpr, NULL);
 
   return newArrayExpr;
 }
@@ -254,7 +254,6 @@ void Parser::errorAt(Token *token, const char *fmt, ...) {
 
 #undef FORMAT_MESSAGE
 std::stringstream &line(std::stringstream &str);
-Expr *declarationToCps(Declaration *declaration, std::function<Expr *()> genGroup);
 
 std::string compile(FunctionExpr *expr, Parser *parser) {
 #ifdef DEBUG_PRINT_CODE
@@ -281,14 +280,7 @@ std::string compile(FunctionExpr *expr, Parser *parser) {
   }*/
   fprintf(stderr, "\n");
 #endif
-  pushScope(expr);
-  expr->body->body = declarationToCps(expr->body->declarations, [expr]() {
-    Expr *body = getStatement(expr->body, expr->arity);
-
-    return body ? body->toCps([](Expr *body) {return body;}) : NULL;
-  });
-  popScope();
-  Expr *cpsExpr = expr;
+  Expr *cpsExpr = expr->toCps([](Expr *expr) {return expr;});
 #ifdef DEBUG_PRINT_CODE
   fprintf(stderr, "CPS parse: ");
   cpsExpr->astPrint();
@@ -581,9 +573,6 @@ Expr *Parser::call(Expr *left) {
 
   this->newFlag = false;
 
-  if (!newFlag)
-    getCurrent()->hasSuperCalls |= false;//isUserClass(left);
-
   if (!check(TOKEN_RIGHT_PAREN)) {
     do {
       Token comma = previous;
@@ -712,12 +701,12 @@ Expr *Parser::grouping() {
   expList(group, endGroupType);
   consume(endGroupType, "Expect '%c' after expression.", closingChar);
   popScope();
-
+/*
   if (op.type != TOKEN_LEFT_BRACE && group->body && isGroup(group->body, TOKEN_SEPARATOR)) {
     getCurrent()->hasSuperCalls |= group->hasSuperCalls;
     return new CallExpr(false, new GroupingExpr(op, newFunctionExpr(VOID_TYPE, buildToken(TOKEN_IDENTIFIER, group->hasSuperCalls ? "L" : "l"), 0, group, NULL), NULL), op, NULL, NULL);
   }
-
+*/
   return group;
 }
 
