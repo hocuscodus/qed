@@ -133,6 +133,7 @@ FunctionExpr *newFunctionExpr(Type type, Token name, int arity, GroupingExpr* bo
   expr->_declaration.name = name;
   expr->_declaration.expr = expr;
   expr->_function.expr = expr;
+  expr->body->hasSuperCalls = name.isClass();
   return expr;
 }
 

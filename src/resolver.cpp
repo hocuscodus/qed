@@ -542,7 +542,7 @@ Type FunctionExpr::resolve(Parser &parser) {
 
     if (group) {
       group->resolve(parser);
-      body->hasSuperCalls = _declaration.name.isClass();
+      body->hasSuperCalls |= _declaration.name.isClass();
 /*
       for (int index = 0; index < arity; index++)
         getStatement(body, index)->hasSuperCalls = hasSuperCalls;

@@ -131,6 +131,7 @@ static Expr *createArrayExpr(Expr *iteratorExprs, Expr *body) {
   GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), initBody, NULL);
   FunctionExpr *wrapperFunc = newFunctionExpr(VOID_TYPE, nameToken, 3, group, NULL);
   GroupingExpr *initExpr = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "("), wrapperFunc, NULL);
+  Expr *params = NULL;
 
   pushScope(initExpr);
   checkDeclaration(wrapperFunc->_declaration, nameToken, wrapperFunc, NULL);
@@ -145,9 +146,11 @@ static Expr *createArrayExpr(Expr *iteratorExprs, Expr *body) {
 
   popScope();
   popScope();
+  addExpr(&params, new ArrayExpr(dimDecs), buildToken(TOKEN_COMMA, ","));
+  addExpr(&params, initExpr, buildToken(TOKEN_COMMA, ","));
 
   Expr *qedArrayExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "QEDArray"), NULL);
-  Expr *newArrayExpr = new CallExpr(false, qedArrayExpr, buildToken(TOKEN_LEFT_PAREN, "("), initExpr, NULL);
+  Expr *newArrayExpr = new CallExpr(false, qedArrayExpr, buildToken(TOKEN_LEFT_PAREN, "("), params, NULL);
 
   return newArrayExpr;
 }
@@ -312,6 +315,7 @@ std::string compile(FunctionExpr *expr, Parser *parser) {
   line(str) << "    layout_.paint(0, 0, layout_.size >> 16, layout_.size & 65535);\n";
   line(str) << "//  }\n";
   line(str) << "}\n";
+  line(str) << "executeEvents_();\n";
   line(str) << "_refresh();\n";
   line(str) << "canvas.addEventListener(\"mousedown\", function(ev) {\n";
   line(str) << "  postCount++;\n";
