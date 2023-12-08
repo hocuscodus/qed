@@ -284,7 +284,7 @@ std::string GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
   if (!functionFlag)
     pushScope(this);
 
-  if (name.type != TOKEN_LEFT_BRACE)
+  if (name.type != TOKEN_LEFT_BRACE && !isGroup(body, TOKEN_SEPARATOR))
     str << "(" << body->toCode(parser, function) << ")";
   else
     blockToCode(str, parser, function, body, false);
@@ -315,8 +315,14 @@ std::string ArrayExpr::toCode(Parser &parser, ObjFunction *function) {
 
   str << "[";
 
-  if (body)
-    str << body->toCode(parser, function);
+  for (Expr *statementRef = body; statementRef; statementRef = cdr(statementRef, TOKEN_COMMA)) {
+    Expr *statement = car(statementRef, TOKEN_COMMA);
+
+    if (statementRef != body)
+      str << ", ";
+
+    str << statement->toCode(parser, function);
+  }
 
   str << "]";
   return str.str();

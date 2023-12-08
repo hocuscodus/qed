@@ -11,7 +11,7 @@
 
 int GENSYM = 0;
 
-Expr *newExpr(Expr *newExp) {
+Expr *idExpr(Expr *newExp) {
   return newExp;
 }
 
@@ -112,7 +112,7 @@ Expr *declarationToCps(Declaration *declaration, std::function<Expr *()> genGrou
 
 Expr *IteratorExpr::toCps(K k) {
   Expr *iteratorExpr = this->value->toCps([this, k](Expr *value) {
-    return compareExpr(this->value, value) ? this : k(newExpr(new IteratorExpr(this->name, this->op, value)));
+    return compareExpr(this->value, value) ? this : k(idExpr(new IteratorExpr(this->name, this->op, value)));
   });
 
   return this == iteratorExpr ? k(this) : iteratorExpr;
@@ -122,9 +122,9 @@ Expr *AssignExpr::toCps(K k) {
   Expr *cpsExpr = varExp->toCps([this, k](Expr *varExp) {
     return this->value
       ? this->value->toCps([this, k, varExp](Expr *value) {
-          return compareExpr(this->varExp, varExp) && compareExpr(this->value, value) ? this : k(newExpr(new AssignExpr(varExp, this->op, value)));
+          return compareExpr(this->varExp, varExp) && compareExpr(this->value, value) ? this : k(idExpr(new AssignExpr(varExp, this->op, value)));
         })
-      : compareExpr(this->varExp, varExp) ? this : k(newExpr(new AssignExpr(varExp, this->op, NULL)));
+      : compareExpr(this->varExp, varExp) ? this : k(idExpr(new AssignExpr(varExp, this->op, NULL)));
   });
 
   return this == cpsExpr ? k(this) : cpsExpr;
@@ -132,7 +132,7 @@ Expr *AssignExpr::toCps(K k) {
 
 Expr *CastExpr::toCps(K k) {
   Expr *cpsExpr = expr->toCps([this, k](Expr *expr) {
-    return compareExpr(this->expr, expr) ? this : k(newExpr(new CastExpr(type, expr)));
+    return compareExpr(this->expr, expr) ? this : k(idExpr(new CastExpr(type, expr)));
   });
 
   return this == cpsExpr ? k(this) : cpsExpr;
@@ -158,7 +158,7 @@ Expr *BinaryExpr::toCps(K k) {
   }
   else {
     auto genBinary = [this](Expr *left, Expr *right) {
-      return compareExpr(this->left, left) && compareExpr(this->right, right) ? this : newExpr(new BinaryExpr(left, this->op, right));
+      return compareExpr(this->left, left) && compareExpr(this->right, right) ? this : idExpr(new BinaryExpr(left, this->op, right));
     };
     Expr *cpsExpr = left->toCps([this, genBinary, k](Expr *left) {
       return this->right->toCps([this, genBinary, k, left](Expr *right) {
@@ -211,7 +211,7 @@ Expr *CallExpr::toCps(K k) {
       this->handler = NULL;
     }
 
-    return same && !userClassCall ? this : newExpr(new CallExpr(this->newFlag, callee, this->paren, params, NULL));
+    return same && !userClassCall ? this : idExpr(new CallExpr(this->newFlag, callee, this->paren, params, NULL));
   };
 
   Expr *cpsExpr = callee->toCps([this, genCall](Expr *callee) {
@@ -232,18 +232,18 @@ Expr *ArrayElementExpr::toCps(K k) {
 Expr *DeclarationExpr::toCps(K k) {
   if (initExpr) {
     auto genAssign = [this, k](Expr *initExpr) {
-      Expr *assignExpr = new AssignExpr(new ReferenceExpr(_declaration.name, this), buildToken(TOKEN_EQUAL, "="), initExpr);
+      AssignExpr *assignExpr = new AssignExpr(new ReferenceExpr(_declaration.name, this), buildToken(TOKEN_EQUAL, "="), initExpr);
 
       this->initExpr = NULL;
       return k(assignExpr);
     };
 
     if (initExpr->hasSuperCalls)
-      initExpr = initExpr->toCps([genAssign](Expr *initExpr) {
+      return initExpr->toCps([genAssign](Expr *initExpr) {
         return genAssign(initExpr);
       });
     else {
-      initExpr->toCps([](Expr *expr) {return expr;});
+      initExpr->toCps(idExpr);
       return genAssign(initExpr);
     }
   }
@@ -270,28 +270,25 @@ function cps_lambda(exp, k) {
 
 Expr *GetExpr::toCps(K k) {
   Expr *cpsExpr = object->toCps([this, k](Expr *object) {
-    return compareExpr(this->object, object) ? this : k(newExpr(new GetExpr(object, this->name, this->index)));
+    return compareExpr(this->object, object) ? this : k(idExpr(new GetExpr(object, this->name, this->index)));
   });
 
   return this == cpsExpr ? k(this) : cpsExpr;
 }
 
 Expr *GroupingExpr::toCps(K k) {
-  if (hasSuperCalls) {
+  if (body) {
     pushScope(this);
-    Expr *body = this->body->toCps(k);
-    popScope();
-    return body;
-  }
-  else {
-    if (body) {
-      pushScope(this);
-      body->toCps([](Expr *expr) {return expr;});
-      popScope();
-    }
 
-    return k(this);
+    Expr *body = this->body->toCps(hasSuperCalls ? k : idExpr);
+
+    if (hasSuperCalls)
+      this->body = body;
+
+    popScope();
   }
+
+  return hasSuperCalls ? this : k(this);
 }
 
 Expr *ArrayExpr::toCps(K k) {
@@ -301,7 +298,7 @@ Expr *ArrayExpr::toCps(K k) {
       })
     : NULL;
 
-  return k(compareExpr(this->body, body) ? this : (ArrayExpr *) newExpr(new ArrayExpr(body)));
+  return k(compareExpr(this->body, body) ? this : (ArrayExpr *) idExpr(new ArrayExpr(body)));
 }
 
 Expr *LiteralExpr::toCps(K k) {
@@ -321,7 +318,7 @@ Expr *LogicalExpr::toCps(K k) {
 
     if (rightEqual) {
       // delete right
-      return compareExpr(this->left, left) ? this : k(newExpr(new LogicalExpr(left, this->op, this->right)));
+      return compareExpr(this->left, left) ? this : k(idExpr(new LogicalExpr(left, this->op, this->right)));
     } else {
       GroupingExpr *cast = makeBooleanContinuation(k, true);
       Type contType = {VAL_OBJ, &((FunctionExpr *) cast->body)->_function.obj};
@@ -330,14 +327,14 @@ Expr *LogicalExpr::toCps(K k) {
       Expr *left2 = getCompareExpr(this->left, left);
       Expr *notExpr = this->op.type == TOKEN_OR_OR ? new UnaryExpr(buildToken(TOKEN_BANG, "!"), left2) : left2;
       ReferenceExpr *callee2 = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cvar), NULL);
-      Expr *elseExpr = newExpr(new CallExpr(false, callee2, buildToken(TOKEN_CALL, "("), new LiteralExpr(VAL_BOOL, {.boolean = false}), NULL));
+      Expr *elseExpr = idExpr(new CallExpr(false, callee2, buildToken(TOKEN_CALL, "("), new LiteralExpr(VAL_BOOL, {.boolean = false}), NULL));
       std::function<Expr*()> bodyFn = [notExpr, right, elseExpr]() -> Expr* {
         return new IfExpr(notExpr, right, elseExpr);
       };
 
       Expr *wrapperLambda = makeWrapperLambda(param, bodyFn);
 
-      return newExpr(new CallExpr(false, wrapperLambda, buildToken(TOKEN_CALL, "("), cast, NULL));
+      return idExpr(new CallExpr(false, wrapperLambda, buildToken(TOKEN_CALL, "("), cast, NULL));
     }
   });
 
@@ -434,7 +431,7 @@ Expr *WhileExpr::toCps(K k) {
         : genBody(condition);
     });
 
-    return newExpr(new CallExpr(false, wrapperLambda, buildToken(TOKEN_CALL, "("), NULL, NULL));
+    return idExpr(new CallExpr(false, wrapperLambda, buildToken(TOKEN_CALL, "("), NULL, NULL));
   }
   else
     return k(this);
@@ -442,7 +439,7 @@ Expr *WhileExpr::toCps(K k) {
 
 Expr *ReturnExpr::toCps(K k) {
   Expr *cpsExpr = !value ? this : value->toCps([this, k](Expr *value) {
-    return compareExpr(this->value, value) ? this : k(newExpr(new ReturnExpr(this->keyword, this->isUserClass, value)));
+    return compareExpr(this->value, value) ? this : k(idExpr(new ReturnExpr(this->keyword, this->isUserClass, value)));
   });
 
   return this == cpsExpr ? k(this) : cpsExpr;
@@ -451,7 +448,7 @@ Expr *ReturnExpr::toCps(K k) {
 Expr *SetExpr::toCps(K k) {
   Expr *cpsExpr = object->toCps([this, k](Expr *object) {
     return this->value->toCps([this, k, object](Expr *value) {
-      return compareExpr(this->object, object) && compareExpr(this->value, value) ? this : k(newExpr(new SetExpr(object, this->name, this->op, value, this->index)));
+      return compareExpr(this->object, object) && compareExpr(this->value, value) ? this : k(idExpr(new SetExpr(object, this->name, this->op, value, this->index)));
     });
   });
 
@@ -479,7 +476,7 @@ Expr *IfExpr::toCps(K k) {
 
     if (bothEqual) {
       // delete cvar, thenBranch and elseBranch
-      return compareExpr(this->condition, condition) ? this : k(newExpr(new IfExpr(condition, this->thenBranch, this->elseBranch)));
+      return compareExpr(this->condition, condition) ? this : k(idExpr(new IfExpr(condition, this->thenBranch, this->elseBranch)));
     } else {
       // delete this->thenBranch, this->elseBranch
       GroupingExpr *cast = makeBooleanContinuation(k, false);
@@ -491,7 +488,7 @@ Expr *IfExpr::toCps(K k) {
 
       Expr *wrapperLambda = makeWrapperLambda(param, bodyFn);
 
-      return newExpr(new CallExpr(false, wrapperLambda, buildToken(TOKEN_CALL, "("), cast, NULL));
+      return idExpr(new CallExpr(false, wrapperLambda, buildToken(TOKEN_CALL, "("), cast, NULL));
     }
   });
 
@@ -552,7 +549,7 @@ Expr *TernaryExpr::toCps(K k) {
 
     if (bothEqual) {
       // delete middle and right
-      return compareExpr(this->left, left) ? this : k(newExpr(new TernaryExpr(this->op, left, this->middle, this->right)));
+      return compareExpr(this->left, left) ? this : k(idExpr(new TernaryExpr(this->op, left, this->middle, this->right)));
     } else {
       // delete this->middle, this->right
       GroupingExpr *cast = makeBooleanContinuation(k, true);
@@ -564,7 +561,7 @@ Expr *TernaryExpr::toCps(K k) {
 
       Expr *wrapperLambda = makeWrapperLambda(param, bodyFn);
 
-      return newExpr(new CallExpr(false, wrapperLambda, buildToken(TOKEN_CALL, "("), cast, NULL));
+      return idExpr(new CallExpr(false, wrapperLambda, buildToken(TOKEN_CALL, "("), cast, NULL));
     }
   });
 
@@ -577,7 +574,7 @@ Expr *ThisExpr::toCps(K k) {
 
 Expr *UnaryExpr::toCps(K k) {
   Expr *cpsExpr = right->toCps([this, k](Expr *right) {
-    return compareExpr(this->right, right) ? this : k(newExpr(new UnaryExpr(this->op, right)));
+    return compareExpr(this->right, right) ? this : k(idExpr(new UnaryExpr(this->op, right)));
   });
 
   return this == cpsExpr ? k(this) : cpsExpr;
@@ -596,7 +593,7 @@ Expr *ReferenceExpr::toCps(K k) {
 
 Expr *SwapExpr::toCps(K k) {
   Expr *cpsExpr = _expr->toCps([this, k](Expr *_expr) -> Expr* {
-    SwapExpr *swapExpr = compareExpr(this->_expr, _expr) ? this : (SwapExpr *) newExpr(new SwapExpr());
+    SwapExpr *swapExpr = compareExpr(this->_expr, _expr) ? this : (SwapExpr *) idExpr(new SwapExpr());
 
     if (swapExpr == this)
       return this;

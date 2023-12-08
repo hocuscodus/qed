@@ -68,7 +68,9 @@ static Expr *createArrayExpr(Expr *iteratorExprs, Expr *body) {
   DeclarationExpr *posParam = newDeclarationExpr(OBJ_TYPE(newArray(INT_TYPE)), buildToken(TOKEN_IDENTIFIER, "pos"), NULL);
   DeclarationExpr *handlerParam = newDeclarationExpr(resolveType(new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "voidHandler_"), NULL)), buildToken(TOKEN_IDENTIFIER, "handlerFn_"), NULL);
   Expr *initBody = NULL;
+  GroupingExpr *mainGroup = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "("), NULL, NULL);
 
+  pushScope(mainGroup);
   addExpr(&initBody, arrayParam, buildToken(TOKEN_SEPARATOR, ";"));
   addExpr(&initBody, xParam, buildToken(TOKEN_SEPARATOR, ";"));
   addExpr(&initBody, posParam, buildToken(TOKEN_SEPARATOR, ";"));
@@ -93,6 +95,7 @@ static Expr *createArrayExpr(Expr *iteratorExprs, Expr *body) {
     Token decName = buildToken(TOKEN_IDENTIFIER, newString(dimName));
 
     expr = newDeclarationExpr(anyType, decName, expr);
+    addExpr(&mainGroup->body, expr, buildToken(TOKEN_SEPARATOR, ";"));
     checkDeclaration(*getDeclaration(expr), decName, NULL, NULL);
 
     if (isGroup(*iteratorExprPtrs, TOKEN_SEPARATOR))
@@ -112,10 +115,9 @@ static Expr *createArrayExpr(Expr *iteratorExprs, Expr *body) {
     if (iteratorExpr)
       delete iteratorExpr;
 
-    addExpr(&dimDecs, new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, newString(dimName)), NULL), buildToken(TOKEN_SEPARATOR, ";"));
+    addExpr(&dimDecs, new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, newString(dimName)), NULL), buildToken(TOKEN_COMMA, ","));
     index++;
   }
-//  Expr *arrayExpr = *addExpr(&iteratorExprs, createArrayLoops(0, dirs, &iteratorExprs, body), buildToken(TOKEN_SEPARATOR, ";"));
   NativeExpr *array = new NativeExpr(buildToken(TOKEN_IDENTIFIER, "array[x]"));
   Expr *bodyExpr = new AssignExpr(array, buildToken(TOKEN_EQUAL, "="), body);
   ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "post_"), NULL);
@@ -152,7 +154,9 @@ static Expr *createArrayExpr(Expr *iteratorExprs, Expr *body) {
   Expr *qedArrayExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "QEDArray"), NULL);
   Expr *newArrayExpr = new CallExpr(false, qedArrayExpr, buildToken(TOKEN_LEFT_PAREN, "("), params, NULL);
 
-  return newArrayExpr;
+  addExpr(&mainGroup->body, newArrayExpr, buildToken(TOKEN_SEPARATOR, ";"));
+  popScope();
+  return mainGroup;
 }
 
 static const char *getHandlerType(Type type) {
@@ -1008,18 +1012,8 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
     if ((*getLastBodyExpr(&exp, TOKEN_SEPARATOR))->type == EXPR_ITERATOR)
       error("Cannot define an iterator list without a body expression.");
 
-    if (iteratorExprs) {/*
-      Expr *body = NULL;
-      ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "QEDArray"), NULL);
-
-      addExpr(&body, createArrayExpr(iteratorExprs, exp), buildToken(TOKEN_COMMA, ","));
-      addExpr(&body, createArrayExpr(iteratorExprs, exp), buildToken(TOKEN_COMMA, ","));
-      addExpr(&body, new LiteralExpr(VAL_INT, {0}), buildToken(TOKEN_COMMA, ","));
-      addExpr(&body, createArrayExpr(iteratorExprs, exp), buildToken(TOKEN_COMMA, ","));
-      exp = new CallExpr(true, callee, buildToken(TOKEN_LEFT_PAREN, "("), body, NULL);
-*/
+    if (iteratorExprs)
       exp = createArrayExpr(iteratorExprs, exp);
-    }
 
     return exp;
   }
