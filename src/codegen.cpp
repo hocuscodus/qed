@@ -19,7 +19,14 @@ static ObjFunction *getFunction(Expr *callee) {
     case EXPR_REFERENCE: {
         ReferenceExpr *reference = (ReferenceExpr *) callee;
 
-        return reference->declaration && reference->declaration->type == EXPR_FUNCTION ? &(((FunctionExpr *) reference->declaration)->_function) : NULL;
+        if (reference->declaration)
+          switch (reference->declaration->type) {
+            case EXPR_FUNCTION: return &(((FunctionExpr *) reference->declaration)->_function);
+            case EXPR_DECLARATION: return AS_FUNCTION_TYPE(((DeclarationExpr *) reference->declaration)->_declaration.type);
+            default: return NULL;
+          }
+
+        return NULL;
       }
     case EXPR_GET: {
         GetExpr *getExpr = (GetExpr *) callee;

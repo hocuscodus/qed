@@ -113,7 +113,11 @@ float Animation() {
 }
 void InitFn(var array, int index, int[] pos) {}
 
-void QEDArray(InitFn Init) {
+var QEDArray(int[] limits, InitFn Init) {
+  /$this.dims = new Array(this.limits.length).fill(0)$/
+  Insert(/$new Array(this.limits.length).fill(0)$/ as int[], limits)
+  return /$QEDArray$this$/
+
   int size() {
     int s = 1
 
@@ -121,12 +125,6 @@ void QEDArray(InitFn Init) {
       s *= /$this.dims[index]$/
 
     return s
-  }
-
-  void InitArray(int[] size) {
-    /$QEDArray$this.dims = new Array(this.size$.length).fill(0)$/
-    Insert(/$new Array(this.size$.length).fill(0)$/ as int[], size)
-    return
   }
 
   void Insert(int[] pos, int[] size) {

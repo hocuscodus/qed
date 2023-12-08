@@ -661,7 +661,6 @@ Type FunctionExpr::resolve(Parser &parser) {
 
 Type GetExpr::resolve(Parser &parser) {
   pushSignature(NULL);
-  int count = 0;
   Type objectType = object->resolve(parser);
   popSignature();
 
@@ -669,6 +668,7 @@ Type GetExpr::resolve(Parser &parser) {
 
   switch (AS_OBJ_TYPE(objectType)) {
     case OBJ_FUNCTION: {
+        int count = 0;
         FunctionExpr *function = AS_FUNCTION_TYPE(objectType)->expr;
 
         for (Expr *body = function->body->body; body; body = cdr(body, TOKEN_SEPARATOR), count++) {
@@ -687,6 +687,7 @@ Type GetExpr::resolve(Parser &parser) {
       break;
 
     case OBJ_INSTANCE: {
+        int count = 0;
         ObjInstance *type = AS_INSTANCE_TYPE(objectType);
         FunctionExpr *function = ((ObjFunction *) type->callable)->expr;
 
@@ -840,8 +841,10 @@ Type ReturnExpr::resolve(Parser &parser) {
 }
 
 Type SetExpr::resolve(Parser &parser) {
+  pushSignature(NULL);
   Type objectType = object->resolve(parser);
   Type valueType = value->resolve(parser);
+  popSignature();
 
   hasSuperCalls = object->hasSuperCalls || value->hasSuperCalls;
 

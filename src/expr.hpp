@@ -203,7 +203,6 @@ struct ArrayElementExpr : public Expr {
 
 struct DeclarationExpr : public Expr {
   Expr* initExpr;
-  bool _isInternalField;
   Declaration _declaration;
 
   DeclarationExpr(Expr* initExpr);

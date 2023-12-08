@@ -277,7 +277,7 @@ int main(int argc, const char *argv[]) {
     "Array       : Expr* body",
     "Call        : bool newFlag, Expr* callee, Token paren, Expr* params, Expr* handler",
     "ArrayElement: Expr* callee, Token bracket, int count, Expr** indexes",
-    "Declaration : Expr* initExpr, bool _isInternalField, Declaration _declaration",
+    "Declaration : Expr* initExpr, Declaration _declaration",
     "Function    : int arity, GroupingExpr* body, Expr* ui, Declaration _declaration, ObjFunction _function",
     "Get         : Expr* object, Token name, int index, Declaration* _declaration",
     "If          : Expr* condition, Expr* thenBranch, Expr* elseBranch",

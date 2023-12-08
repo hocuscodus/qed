@@ -73,7 +73,7 @@ Expr *getCompareExpr(Expr *origExpr, Expr *newExpr) {
 }
 
 bool isCpsContext() {
-  return getCurrent() && getCurrent()->group->hasSuperCalls;
+  return getCurrent() && getCurrent()->function && getCurrent()->group->hasSuperCalls;
 }
 
 Expr *declarationToCps(Declaration *declaration, std::function<Expr *()> genGroup);
@@ -230,7 +230,7 @@ Expr *ArrayElementExpr::toCps(K k) {
 }
 
 Expr *DeclarationExpr::toCps(K k) {
-  if (initExpr) {
+  if (isCpsContext() && initExpr) {
     auto genAssign = [this, k](Expr *initExpr) {
       AssignExpr *assignExpr = new AssignExpr(new ReferenceExpr(_declaration.name, this), buildToken(TOKEN_EQUAL, "="), initExpr);
 
@@ -248,7 +248,7 @@ Expr *DeclarationExpr::toCps(K k) {
     }
   }
   else
-    return k(this);
+    return k(initExpr ? this : NULL);
 }
 
 Expr *FunctionExpr::toCps(K k) {
