@@ -69,4 +69,9 @@ Expr *car(Expr *exp, TokenType tokenType);
 Expr *cdr(Expr *exp, TokenType tokenType);
 int getSize(Expr *exp, TokenType tokenType);
 
+char *genSymbol(std::string name);
+GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, std::function<Expr*()> bodyFn);
+GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, Expr *body);
+GroupingExpr *makeWrapperLambda(DeclarationExpr *param, std::function<Expr*()> bodyFn);
+
 #endif

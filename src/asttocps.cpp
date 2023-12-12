@@ -9,46 +9,8 @@
 #include "parser.hpp"
 
 
-int GENSYM = 0;
-
 Expr *idExpr(Expr *newExp) {
   return newExp;
-}
-
-char *genSymbol(std::string name) {
-    std::string s = name + std::to_string(++GENSYM) + "$_";
-    char *str = new char[s.size() + 1];
-
-    strcpy(str, s.c_str());
-    return str;
-}
-
-GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, std::function<Expr*()> bodyFn) {
-  int arity = param ? 1 : 0;
-  Token nameToken = buildToken(TOKEN_IDENTIFIER, name);
-  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), param, NULL);
-  FunctionExpr *wrapperFunc = newFunctionExpr(VOID_TYPE, nameToken, arity, group, NULL);
-  GroupingExpr *mainGroup = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "("), wrapperFunc, NULL);
-
-  pushScope(mainGroup);
-  checkDeclaration(wrapperFunc->_declaration, nameToken, wrapperFunc, NULL);
-  pushScope(wrapperFunc);
-
-  if (param)
-    checkDeclaration(param->_declaration, param->_declaration.name, NULL, NULL);
-
-  addExpr(&group->body, bodyFn(), buildToken(TOKEN_SEPARATOR, ";"));
-  popScope();
-  popScope();
-  return mainGroup;
-}
-
-GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, Expr *body) {
-  return makeWrapperLambda(name, param, [body]() -> Expr* {return body;});
-}
-
-GroupingExpr *makeWrapperLambda(DeclarationExpr *param, std::function<Expr*()> bodyFn) {
-  return makeWrapperLambda(genSymbol("W"), param, bodyFn);
 }
 
 GroupingExpr *makeBooleanContinuation(K k, bool boolParam) {

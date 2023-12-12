@@ -715,10 +715,43 @@ Type GetExpr::resolve(Parser &parser) {
 }
 
 Type GroupingExpr::resolve(Parser &parser) {
+  Type type;
+
   pushScope(this);
 
-  Type bodyType = body ? body->resolve(parser) : VOID_TYPE;
-  Type type = name.type != TOKEN_LEFT_BRACE ? bodyType : VOID_TYPE;
+  if (name.type == TOKEN_LEFT_BRACKET) {
+    Expr **lastExpr = getLastBodyExpr(&body, TOKEN_SEPARATOR);
+    GroupingExpr **initExpr = (GroupingExpr **) getLastBodyExpr(lastExpr, TOKEN_COMMA);
+    FunctionExpr *functionExpr = (FunctionExpr *) (*initExpr)->body;
+
+    pushScope(functionExpr);
+    type = functionExpr->body->body->resolve(parser);
+
+    if (!IS_VOID(type)) {
+      Expr **body = getLastBodyExpr(&functionExpr->body->body, TOKEN_SEPARATOR);
+      ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "post_"), NULL);
+      Expr *param = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "handlerFn_"), NULL);
+      CallExpr *call = new CallExpr(false, param, buildToken(TOKEN_LEFT_PAREN, "("), *body, NULL);
+      Expr *lambda = makeWrapperLambda("lambda_", NULL, [call]() {return call;});
+      Expr *lambdaCall = new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), lambda, NULL);
+
+      *body = new ReturnExpr(buildToken(TOKEN_RETURN, "return"), true, lambdaCall);
+    }
+
+    popScope();
+
+    Expr *qedArrayExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "QEDArray"), NULL);
+
+    *lastExpr = new CallExpr(false, qedArrayExpr, buildToken(TOKEN_LEFT_PAREN, "("), *lastExpr, NULL);
+    (*lastExpr)->hasSuperCalls = true;
+    body->hasSuperCalls = true;
+    name = buildToken(TOKEN_LEFT_PAREN, "(");
+  }
+  else {
+    Type bodyType = body ? body->resolve(parser) : VOID_TYPE;
+
+    type = name.type != TOKEN_LEFT_BRACE ? bodyType : VOID_TYPE;
+  }
 
   hasSuperCalls = body && body->hasSuperCalls;
   popScope();

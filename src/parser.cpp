@@ -26,8 +26,6 @@ Type stringType = {VAL_OBJ, &objString};
 Obj objAny= {OBJ_ANY};
 Type anyType = {VAL_OBJ, &objAny};
 
-GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, std::function<Expr*()> bodyFn);
-
 int getDir(char op) {
   switch (op) {
     case '_': return 1;
@@ -59,20 +57,19 @@ static Expr *createWhileExpr(Expr *condition, Expr *increment, Expr *body) {
   return new WhileExpr(condition, body);
 }
 
+// var dir
+// dim array
+// vars + body
 static Expr *createArrayExpr(Expr *iteratorExprs, Expr *body) {
   int index = 0;
   Point dirs{};
   Expr *dimDecs = NULL;
-  DeclarationExpr *arrayParam = newDeclarationExpr(anyType, buildToken(TOKEN_IDENTIFIER, "array"), NULL);
-  DeclarationExpr *xParam = newDeclarationExpr(INT_TYPE, buildToken(TOKEN_IDENTIFIER, "x"), NULL);
   DeclarationExpr *posParam = newDeclarationExpr(OBJ_TYPE(newArray(INT_TYPE)), buildToken(TOKEN_IDENTIFIER, "pos"), NULL);
-  DeclarationExpr *handlerParam = newDeclarationExpr(resolveType(new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "voidHandler_"), NULL)), buildToken(TOKEN_IDENTIFIER, "handlerFn_"), NULL);
+  DeclarationExpr *handlerParam = newDeclarationExpr(resolveType(new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "anyHandler_"), NULL)), buildToken(TOKEN_IDENTIFIER, "handlerFn_"), NULL);
   Expr *initBody = NULL;
-  GroupingExpr *mainGroup = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "("), NULL, NULL);
+  GroupingExpr *mainGroup = new GroupingExpr(buildToken(TOKEN_LEFT_BRACKET, "["), NULL, NULL);
 
   pushScope(mainGroup);
-  addExpr(&initBody, arrayParam, buildToken(TOKEN_SEPARATOR, ";"));
-  addExpr(&initBody, xParam, buildToken(TOKEN_SEPARATOR, ";"));
   addExpr(&initBody, posParam, buildToken(TOKEN_SEPARATOR, ";"));
   addExpr(&initBody, handlerParam, buildToken(TOKEN_SEPARATOR, ";"));
 
@@ -118,43 +115,33 @@ static Expr *createArrayExpr(Expr *iteratorExprs, Expr *body) {
     addExpr(&dimDecs, new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, newString(dimName)), NULL), buildToken(TOKEN_COMMA, ","));
     index++;
   }
-  NativeExpr *array = new NativeExpr(buildToken(TOKEN_IDENTIFIER, "array[x]"));
-  Expr *bodyExpr = new AssignExpr(array, buildToken(TOKEN_EQUAL, "="), body);
-  ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "post_"), NULL);
-  Expr *param = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "handlerFn_"), NULL);
-  CallExpr *postCall = new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), param, NULL);
 
-  addExpr(&initBody, bodyExpr, buildToken(TOKEN_SEPARATOR, ";"));
-  addExpr(&initBody, postCall, buildToken(TOKEN_SEPARATOR, ";"));
+  addExpr(&initBody, body, buildToken(TOKEN_SEPARATOR, ";"));
 
-//    GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL, NULL);
-//  value = new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), param, NULL);
   Token nameToken = buildToken(TOKEN_IDENTIFIER, "L");
   GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), initBody, NULL);
-  FunctionExpr *wrapperFunc = newFunctionExpr(VOID_TYPE, nameToken, 3, group, NULL);
+  FunctionExpr *wrapperFunc = newFunctionExpr(anyType, nameToken, 1, group, NULL);
   GroupingExpr *initExpr = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "("), wrapperFunc, NULL);
   Expr *params = NULL;
 
   pushScope(initExpr);
   checkDeclaration(wrapperFunc->_declaration, nameToken, wrapperFunc, NULL);
   pushScope(wrapperFunc);
-  checkDeclaration(arrayParam->_declaration, arrayParam->_declaration.name, NULL, NULL);
-  checkDeclaration(xParam->_declaration, xParam->_declaration.name, NULL, NULL);
   checkDeclaration(posParam->_declaration, posParam->_declaration.name, NULL, NULL);
   checkDeclaration(handlerParam->_declaration, handlerParam->_declaration.name, NULL, NULL);
 
   for (int ndx = 0; ndx < index; ndx++)
-    checkDeclaration(getParam(wrapperFunc, 4 + ndx)->_declaration, getParam(wrapperFunc, 4 + ndx)->_declaration.name, NULL, NULL);
+    checkDeclaration(getParam(wrapperFunc, 2 + ndx)->_declaration, getParam(wrapperFunc, 2 + ndx)->_declaration.name, NULL, NULL);
 
   popScope();
   popScope();
   addExpr(&params, new ArrayExpr(dimDecs), buildToken(TOKEN_COMMA, ","));
   addExpr(&params, initExpr, buildToken(TOKEN_COMMA, ","));
 
-  Expr *qedArrayExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "QEDArray"), NULL);
-  Expr *newArrayExpr = new CallExpr(false, qedArrayExpr, buildToken(TOKEN_LEFT_PAREN, "("), params, NULL);
+//  Expr *qedArrayExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "QEDArray"), NULL);
+//  Expr *newArrayExpr = new CallExpr(false, qedArrayExpr, buildToken(TOKEN_LEFT_PAREN, "("), params, NULL);
 
-  addExpr(&mainGroup->body, newArrayExpr, buildToken(TOKEN_SEPARATOR, ";"));
+  addExpr(&mainGroup->body, params/*newArrayExpr*/, buildToken(TOKEN_SEPARATOR, ";"));
   popScope();
   return mainGroup;
 }
