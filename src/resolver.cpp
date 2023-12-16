@@ -430,6 +430,7 @@ Type CallExpr::resolve(Parser &parser) {
     ObjFunction *callable = AS_FUNCTION_TYPE(type);
 
     hasSuperCalls = !newFlag && callable->expr->_declaration.name.isUserClass();
+    _declaration = &callable->expr->_declaration;
     return newFlag ? OBJ_TYPE(newInstance(callable)) : callable->expr->_declaration.type;
   } else {
     parser.error("Non-callable object type");
@@ -668,15 +669,13 @@ Type GetExpr::resolve(Parser &parser) {
 
   switch (AS_OBJ_TYPE(objectType)) {
     case OBJ_FUNCTION: {
-        int count = 0;
         FunctionExpr *function = AS_FUNCTION_TYPE(objectType)->expr;
 
-        for (Expr *body = function->body->body; body; body = cdr(body, TOKEN_SEPARATOR), count++) {
+        for (Expr *body = function->body->body; body; body = cdr(body, TOKEN_SEPARATOR)) {
           Expr *expr = car(body, TOKEN_SEPARATOR);
           DeclarationExpr *dec = expr->type == EXPR_DECLARATION ? (DeclarationExpr *) expr : NULL;
 
           if (dec && isField(function, dec) && identifiersEqual(&name, &dec->_declaration.name)) {
-            index = count;
             _declaration = &dec->_declaration;
             return dec->_declaration.type;
           }
@@ -687,22 +686,39 @@ Type GetExpr::resolve(Parser &parser) {
       break;
 
     case OBJ_INSTANCE: {
-        int count = 0;
         ObjInstance *type = AS_INSTANCE_TYPE(objectType);
         FunctionExpr *function = ((ObjFunction *) type->callable)->expr;
 
-        for (Expr *body = function->body->body; body; body = cdr(body, TOKEN_SEPARATOR), count++) {
+        for (Expr *body = function->body->body; body; body = cdr(body, TOKEN_SEPARATOR)) {
           Expr *expr = car(body, TOKEN_SEPARATOR);
           DeclarationExpr *dec = expr->type == EXPR_DECLARATION ? (DeclarationExpr *) expr : NULL;
 
           if (dec && isField(function, dec) && identifiersEqual(&name, &dec->_declaration.name)) {
-            index = count;
             _declaration = &dec->_declaration;
             return dec->_declaration.type;
           }
         }
 
         parser.errorAt(&name, "Field '%.*s' not found.", name.length, name.start);
+      }
+      break;
+
+    case OBJ_ARRAY: {
+        ObjArray *type = AS_ARRAY_TYPE(objectType);
+        Type elementType = type->elementType;
+        FunctionExpr *function = (FunctionExpr *) ((ObjArray *) type)->declaration->expr;
+
+        for (Expr *body = function->body->body; body; body = cdr(body, TOKEN_SEPARATOR)) {
+          Expr *expr = car(body, TOKEN_SEPARATOR);
+          FunctionExpr *dec = expr->type == EXPR_FUNCTION ? (FunctionExpr *) expr : NULL;
+
+          if (dec && identifiersEqual(&name, &dec->_declaration.name)) {
+            _declaration = &dec->_declaration;
+            return OBJ_TYPE(&dec->_function);
+          }
+        }
+
+        parser.errorAt(&name, "Method '%.*s' not found.", name.length, name.start);
       }
       break;
 
@@ -736,13 +752,17 @@ Type GroupingExpr::resolve(Parser &parser) {
       Expr *lambdaCall = new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), lambda, NULL);
 
       *body = new ReturnExpr(buildToken(TOKEN_RETURN, "return"), true, lambdaCall);
+      type = OBJ_TYPE(newArray(type));
     }
 
     popScope();
 
-    Expr *qedArrayExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "QEDArray"), NULL);
+    Token arrayName = buildToken(TOKEN_IDENTIFIER, "QEDArray");
+    ReferenceExpr *qedArrayExpr = new ReferenceExpr(arrayName, NULL);
 
     *lastExpr = new CallExpr(false, qedArrayExpr, buildToken(TOKEN_LEFT_PAREN, "("), *lastExpr, NULL);
+    (*lastExpr)->resolve(parser);
+    AS_ARRAY_TYPE(type)->declaration = getDeclaration(qedArrayExpr->declaration);
     (*lastExpr)->hasSuperCalls = true;
     body->hasSuperCalls = true;
     name = buildToken(TOKEN_LEFT_PAREN, "(");
@@ -893,7 +913,7 @@ Type SetExpr::resolve(Parser &parser) {
       DeclarationExpr *dec = expr->type == EXPR_DECLARATION ? (DeclarationExpr *) expr : NULL;
 
       if (dec && isField(function, dec) && identifiersEqual(&name, &dec->_declaration.name)) {
-        index = count;
+        _declaration = &dec->_declaration;
         return dec->_declaration.type;
       }
     }

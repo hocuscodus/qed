@@ -34,7 +34,8 @@ static ObjFunction *getFunction(Expr *callee) {
 
         return getExpr->_declaration && IS_FUNCTION(decType) ? AS_FUNCTION_TYPE(decType) : NULL;
       }
-    case EXPR_FUNCTION: return &((FunctionExpr *) callee)->_function;
+    case EXPR_FUNCTION:
+      return &((FunctionExpr *) callee)->_function;
     case EXPR_GROUPING: {
         GroupingExpr *group = (GroupingExpr *) callee;
 

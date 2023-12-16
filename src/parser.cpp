@@ -137,11 +137,7 @@ static Expr *createArrayExpr(Expr *iteratorExprs, Expr *body) {
   popScope();
   addExpr(&params, new ArrayExpr(dimDecs), buildToken(TOKEN_COMMA, ","));
   addExpr(&params, initExpr, buildToken(TOKEN_COMMA, ","));
-
-//  Expr *qedArrayExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "QEDArray"), NULL);
-//  Expr *newArrayExpr = new CallExpr(false, qedArrayExpr, buildToken(TOKEN_LEFT_PAREN, "("), params, NULL);
-
-  addExpr(&mainGroup->body, params/*newArrayExpr*/, buildToken(TOKEN_SEPARATOR, ";"));
+  addExpr(&mainGroup->body, params, buildToken(TOKEN_SEPARATOR, ";"));
   popScope();
   return mainGroup;
 }
@@ -416,7 +412,7 @@ Expr *Parser::assignment(Expr *left) {
   case EXPR_GET: {
     GetExpr *getExpr = (GetExpr *) left;
 
-    return new SetExpr(getExpr->object, getExpr->name, op, right, -1);
+    return new SetExpr(getExpr->object, getExpr->name, op, right);
   }
 
   case EXPR_NATIVE:
@@ -557,7 +553,7 @@ Expr *Parser::ternary(Expr *left) {
 Expr *Parser::dot(Expr *left) {
   consume(TOKEN_IDENTIFIER, "Expect property name after '.'.");
 
-  return new GetExpr(left, previous, -1);
+  return new GetExpr(left, previous);
 }
 
 Expr *Parser::call(Expr *left) {

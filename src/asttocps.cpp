@@ -135,12 +135,7 @@ Expr *BinaryExpr::toCps(K k) {
 }
 
 Expr *CallExpr::toCps(K k) {
-  pushSignature(NULL);
-  Type type = resolveType(callee);
-  popSignature();
-
-  ObjFunction *callable = AS_FUNCTION_TYPE(type);
-  FunctionExpr *function = callable ? callable->expr : NULL;
+  FunctionExpr *function = (FunctionExpr *) _declaration->expr;
   bool userClassCall = !newFlag && function && function->_declaration.name.isUserClass();
   auto genCall = [this, function, userClassCall, k](bool same, Expr *callee, Expr *&params) {
     if (function->_declaration.name.isUserClass()) {
@@ -232,7 +227,7 @@ function cps_lambda(exp, k) {
 
 Expr *GetExpr::toCps(K k) {
   Expr *cpsExpr = object->toCps([this, k](Expr *object) {
-    return compareExpr(this->object, object) ? this : k(idExpr(new GetExpr(object, this->name, this->index)));
+    return compareExpr(this->object, object) ? this : k(idExpr(new GetExpr(object, this->name)));
   });
 
   return this == cpsExpr ? k(this) : cpsExpr;
@@ -379,6 +374,7 @@ Expr *WhileExpr::toCps(K k) {
         ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "post_"), NULL);
         CallExpr *call = new CallExpr(false, callee, buildToken(TOKEN_CALL, "("), arg, NULL);
 
+        call->resolve(*((Parser *) NULL));
         this->body = addToGroup(&body, call);
         body = this->body->toCps([](Expr *body) {
           return body;
@@ -410,7 +406,7 @@ Expr *ReturnExpr::toCps(K k) {
 Expr *SetExpr::toCps(K k) {
   Expr *cpsExpr = object->toCps([this, k](Expr *object) {
     return this->value->toCps([this, k, object](Expr *value) {
-      return compareExpr(this->object, object) && compareExpr(this->value, value) ? this : k(idExpr(new SetExpr(object, this->name, this->op, value, this->index)));
+      return compareExpr(this->object, object) && compareExpr(this->value, value) ? this : k(idExpr(new SetExpr(object, this->name, this->op, value)));
     });
   });
 

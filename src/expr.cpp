@@ -90,10 +90,9 @@ FunctionExpr::FunctionExpr(int arity, GroupingExpr* body, Expr* ui) : Expr(EXPR_
   this->ui = ui;
 }
 
-GetExpr::GetExpr(Expr* object, Token name, int index) : Expr(EXPR_GET) {
+GetExpr::GetExpr(Expr* object, Token name) : Expr(EXPR_GET) {
   this->object = object;
   this->name = name;
-  this->index = index;
 }
 
 IfExpr::IfExpr(Expr* condition, Expr* thenBranch, Expr* elseBranch) : Expr(EXPR_IF) {
@@ -129,12 +128,11 @@ ReturnExpr::ReturnExpr(Token keyword, bool isUserClass, Expr* value) : Expr(EXPR
   this->value = value;
 }
 
-SetExpr::SetExpr(Expr* object, Token name, Token op, Expr* value, int index) : Expr(EXPR_SET) {
+SetExpr::SetExpr(Expr* object, Token name, Token op, Expr* value) : Expr(EXPR_SET) {
   this->object = object;
   this->name = name;
   this->op = op;
   this->value = value;
-  this->index = index;
 }
 
 TernaryExpr::TernaryExpr(Token op, Expr* left, Expr* middle, Expr* right) : Expr(EXPR_TERNARY) {

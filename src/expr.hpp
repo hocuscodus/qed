@@ -163,6 +163,7 @@ struct GroupingExpr : public Expr {
 
 struct ArrayExpr : public Expr {
   Expr* body;
+  Declaration* _declaration;
 
   ArrayExpr(Expr* body);
   void cleanExprs();
@@ -178,6 +179,7 @@ struct CallExpr : public Expr {
   Token paren;
   Expr* params;
   Expr* handler;
+  Declaration* _declaration;
 
   CallExpr(bool newFlag, Expr* callee, Token paren, Expr* params, Expr* handler);
   void cleanExprs();
@@ -231,10 +233,9 @@ struct FunctionExpr : public Expr {
 struct GetExpr : public Expr {
   Expr* object;
   Token name;
-  int index;
   Declaration* _declaration;
 
-  GetExpr(Expr* object, Token name, int index);
+  GetExpr(Expr* object, Token name);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);
@@ -322,9 +323,9 @@ struct SetExpr : public Expr {
   Token name;
   Token op;
   Expr* value;
-  int index;
+  Declaration* _declaration;
 
-  SetExpr(Expr* object, Token name, Token op, Expr* value, int index);
+  SetExpr(Expr* object, Token name, Token op, Expr* value);
   void cleanExprs();
   void astPrint();
   Expr *toCps(K k);

@@ -205,6 +205,7 @@ typedef enum {
 typedef struct {
   Obj obj;
   Type elementType;
+  Declaration *declaration;
 } ObjArray;
 
 struct ObjInstance {
