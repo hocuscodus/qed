@@ -118,25 +118,10 @@ static Expr *createArrayExpr(Expr *iteratorExprs, Expr *body) {
 
   addExpr(&initBody, body, buildToken(TOKEN_SEPARATOR, ";"));
 
-  Token nameToken = buildToken(TOKEN_IDENTIFIER, "L");
-  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), initBody, NULL);
-  FunctionExpr *wrapperFunc = newFunctionExpr(anyType, nameToken, 1, group, NULL);
-  GroupingExpr *initExpr = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "("), wrapperFunc, NULL);
   Expr *params = NULL;
 
-  pushScope(initExpr);
-  checkDeclaration(wrapperFunc->_declaration, nameToken, wrapperFunc, NULL);
-  pushScope(wrapperFunc);
-  checkDeclaration(posParam->_declaration, posParam->_declaration.name, NULL, NULL);
-  checkDeclaration(handlerParam->_declaration, handlerParam->_declaration.name, NULL, NULL);
-
-  for (int ndx = 0; ndx < index; ndx++)
-    checkDeclaration(getParam(wrapperFunc, 2 + ndx)->_declaration, getParam(wrapperFunc, 2 + ndx)->_declaration.name, NULL, NULL);
-
-  popScope();
-  popScope();
   addExpr(&params, new ArrayExpr(dimDecs), buildToken(TOKEN_COMMA, ","));
-  addExpr(&params, initExpr, buildToken(TOKEN_COMMA, ","));
+  addExpr(&params, initBody, buildToken(TOKEN_COMMA, ","));
   addExpr(&mainGroup->body, params, buildToken(TOKEN_SEPARATOR, ";"));
   popScope();
   return mainGroup;

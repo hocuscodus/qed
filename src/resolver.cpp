@@ -706,7 +706,7 @@ Type GetExpr::resolve(Parser &parser) {
     case OBJ_ARRAY: {
         ObjArray *type = AS_ARRAY_TYPE(objectType);
         Type elementType = type->elementType;
-        FunctionExpr *function = (FunctionExpr *) ((ObjArray *) type)->declaration->expr;
+        FunctionExpr *function = (FunctionExpr *) type->declaration->expr;
 
         for (Expr *body = function->body->body; body; body = cdr(body, TOKEN_SEPARATOR)) {
           Expr *expr = car(body, TOKEN_SEPARATOR);
@@ -736,36 +736,75 @@ Type GroupingExpr::resolve(Parser &parser) {
   pushScope(this);
 
   if (name.type == TOKEN_LEFT_BRACKET) {
+    Expr **next;
     Expr **lastExpr = getLastBodyExpr(&body, TOKEN_SEPARATOR);
-    GroupingExpr **initExpr = (GroupingExpr **) getLastBodyExpr(lastExpr, TOKEN_COMMA);
-    FunctionExpr *functionExpr = (FunctionExpr *) (*initExpr)->body;
+    Expr **initBody = getLastBodyExpr(lastExpr, TOKEN_COMMA);
+    Token nameToken = buildToken(TOKEN_IDENTIFIER, "l");
+    GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), *initBody, NULL);
+    FunctionExpr *wrapperFunc = newFunctionExpr(anyType, nameToken, 1, group, NULL);
+    GroupingExpr *initExpr = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "("), wrapperFunc, NULL);
 
-    pushScope(functionExpr);
-    type = functionExpr->body->body->resolve(parser);
+    name = buildToken(TOKEN_LEFT_PAREN, "(");
+    pushScope(initExpr);
+    checkDeclaration(wrapperFunc->_declaration, nameToken, wrapperFunc, NULL);
+    pushScope(wrapperFunc);
 
-    if (!IS_VOID(type)) {
-      Expr **body = getLastBodyExpr(&functionExpr->body->body, TOKEN_SEPARATOR);
-      ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "post_"), NULL);
-      Expr *param = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "handlerFn_"), NULL);
-      CallExpr *call = new CallExpr(false, param, buildToken(TOKEN_LEFT_PAREN, "("), *body, NULL);
-      Expr *lambda = makeWrapperLambda("lambda_", NULL, [call]() {return call;});
-      Expr *lambdaCall = new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), lambda, NULL);
+    for (Expr **bodyElement = initBody; bodyElement; bodyElement = next) {
+      Expr *expr = car(*bodyElement, TOKEN_SEPARATOR);
 
-      *body = new ReturnExpr(buildToken(TOKEN_RETURN, "return"), true, lambdaCall);
-      type = OBJ_TYPE(newArray(type));
+      next = cdrAddress(*bodyElement, TOKEN_SEPARATOR);
+
+      if (next) {
+        checkDeclaration(*getDeclaration(expr), getDeclaration(expr)->name, NULL, NULL);
+        expr->resolve(parser);
+      }
+      else {
+        *initBody = initExpr;
+        type = OBJ_TYPE(newArray(expr->resolve(parser)));
+
+        if (!IS_VOID(AS_ARRAY_TYPE(type)->elementType)) {
+          Token arrayName = buildToken(TOKEN_IDENTIFIER, expr->hasSuperCalls ? "SQEDArray" : "qedArray");
+          ReferenceExpr *qedArrayExpr = new ReferenceExpr(arrayName, NULL);
+
+          wrapperFunc->_declaration.name = buildToken(TOKEN_IDENTIFIER, expr->hasSuperCalls ? "L" : "l");
+          *lastExpr = new CallExpr(false, qedArrayExpr, buildToken(TOKEN_LEFT_PAREN, "("), *lastExpr, NULL);
+          (*lastExpr)->resolve(parser);
+          AS_ARRAY_TYPE(type)->declaration = getDeclaration(qedArrayExpr->declaration);
+
+          if (!expr->hasSuperCalls) {
+            FunctionExpr *function = (FunctionExpr *) AS_ARRAY_TYPE(type)->declaration->expr;
+
+            AS_ARRAY_TYPE(type)->declaration = &AS_FUNCTION_TYPE(function->_declaration.type)->expr->_declaration;
+          }
+
+          (*lastExpr)->hasSuperCalls = true;
+          body->hasSuperCalls = true;
+          *bodyElement = new ReturnExpr(buildToken(TOKEN_RETURN, "return"), expr->hasSuperCalls, expr);
+        }
+        else {
+          Token arrayName = buildToken(TOKEN_IDENTIFIER, expr->hasSuperCalls ? "VSQEDArray" : "vqedArray");
+          ReferenceExpr *qedArrayExpr = new ReferenceExpr(arrayName, NULL);
+
+          wrapperFunc->_declaration.name = buildToken(TOKEN_IDENTIFIER, expr->hasSuperCalls ? "L" : "l");
+          *lastExpr = new CallExpr(false, qedArrayExpr, buildToken(TOKEN_LEFT_PAREN, "("), *lastExpr, NULL);
+          (*lastExpr)->resolve(parser);
+          AS_ARRAY_TYPE(type)->declaration = getDeclaration(qedArrayExpr->declaration);
+
+          if (!expr->hasSuperCalls) {
+            FunctionExpr *function = (FunctionExpr *) AS_ARRAY_TYPE(type)->declaration->expr;
+
+            AS_ARRAY_TYPE(type)->declaration = &AS_FUNCTION_TYPE(function->_declaration.type)->expr->_declaration;
+          }
+
+          (*lastExpr)->hasSuperCalls = true;
+          body->hasSuperCalls = true;
+          *bodyElement = new ReturnExpr(buildToken(TOKEN_RETURN, "return"), expr->hasSuperCalls, expr);
+        }
+      }
     }
 
     popScope();
-
-    Token arrayName = buildToken(TOKEN_IDENTIFIER, "QEDArray");
-    ReferenceExpr *qedArrayExpr = new ReferenceExpr(arrayName, NULL);
-
-    *lastExpr = new CallExpr(false, qedArrayExpr, buildToken(TOKEN_LEFT_PAREN, "("), *lastExpr, NULL);
-    (*lastExpr)->resolve(parser);
-    AS_ARRAY_TYPE(type)->declaration = getDeclaration(qedArrayExpr->declaration);
-    (*lastExpr)->hasSuperCalls = true;
-    body->hasSuperCalls = true;
-    name = buildToken(TOKEN_LEFT_PAREN, "(");
+    popScope();
   }
   else {
     Type bodyType = body ? body->resolve(parser) : VOID_TYPE;

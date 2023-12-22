@@ -53,8 +53,12 @@ var ar = ["Martin", "Savage"]/*
 println("" + ar[1]);
 for (int i = 0; i < 5; i++)
   println("Count: " + i)
-*/
+*//*
 var x = :|10 i:_11 12 :\13 14 // int array, continue, l
+for (int i = 0; i < 3; i++) {
+  Timer(1000);
+  println("Count: " + i)
+}*/
 //var x = new :|10 i:_11 12 :\13 14[ -> {handler}] // ERROR (l)
 //var x = :|10 i:_11 12 :\13 method() // r(method) array, continue, l
 //var x = new :|10 i:_11 12 :\13 method()[ -> {handler}] // ERROR (l)
@@ -71,7 +75,25 @@ var x = :|10 i:_11 12 :\13 14 // int array, continue, l
 //var x = new :|10 i:_11 12 :\13 {Method()}[ -> {handler}] // void array, continue, LL
 //var x = :|10 i:_11 12 :\13 new {Method()}[ -> {handler}] // object array, continue, ll
 //var x = new :|10 i:_11 12 :\13 new {Method()}[ -> {handler}][ -> {handler}] // ERROR (ll)
+/*int counter = 0
+bool stopped = false
+
+// The Timer(100) call waits (e.g. enters in the global event loop)
+// for 100 milliseconds but before waiting, it refreshes the UI
+// (described at the bottom). When back from waiting, it always
+// returns true (making it convenient to embed under while loops)
+while (!stopped) {
+  Timer(100)
+  counter++
+}
+
+Timer(2)*/
 println("" + 20%)
+var myFirstArray = i::2 j::3 (i + 1) * (j + 1)//(int L() {return (i + 1) * (j + 1);})()
+myFirstArray.insert([1, 1], [3, 2])
+myFirstArray.insert([0, 0], [1, 1])
+/$console.log(myFirstArray)$/
+
 <out: "SS";>//x;>
 /*
 var x = i:|10 j:_10 new {
@@ -107,8 +129,7 @@ Button But = Button;
     <out: incButton;>
   >
 >
-*/
-/*
+*//*
 Ball[] balls = 3 new Ball()
 CounterWidget counter = new CounterWidget()
 
