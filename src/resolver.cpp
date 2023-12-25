@@ -539,6 +539,10 @@ Type FunctionExpr::resolve(Parser &parser) {
   pushScope(this);
 
   if (body) {
+    for (Declaration *declaration = body->declarations; declaration; declaration = declaration->next)
+      if (declaration->expr->type == EXPR_FUNCTION)
+        declaration->expr->resolve(parser);
+
     Expr *group = getStatement(body, arity + (_declaration.name.isUserClass() ? 1 : 0));
 
     if (group) {
@@ -854,41 +858,7 @@ Type ArrayExpr::resolve(Parser &parser) {
 //  function = compiler.function;
   return type;
 }
-/*
-    Expr *iteratorExprs = NULL;
 
-    while (!check(endGroupTypes) && !check(TOKEN_EOF)) {
-//      if (isIteratorList(exp))
-      for (Expr *expr = exp; expr; expr = cdr(expr, TOKEN_SEPARATOR))
-        if (expr->type == EXPR_ITERATOR) {
-          IteratorExpr *iteratorExpr = (IteratorExpr *) car(expr, TOKEN_SEPARATOR);
-          // add expr with dimension and iterator name
-        }
-        else
-          ; // add expr with default dimensions 0 and generated iterator name
-  //      addIteratorExpr(&iteratorExprs, exp, buildToken(TOKEN_ITERATOR, "::"));
-//      else
-//        ; // add expr with default dimensions 0 and generated iterator name
-//      addIteratorExpr(&iteratorExprs, exp, buildToken(TOKEN_ITERATOR, "::"));
-
-      exp = parsePrecedence((Precedence)(PREC_NONE + 1));
-
-      if (!exp)
-        error("Expect expression.");
-    }
-
-    if (isIteratorList(exp))
-      error("Cannot define an iterator list without a body expression.");
-
-    if (iteratorExprs) {
-      GroupingExpr *callee = makeWrapperLambda("L", NULL, [iteratorExprs]() {return iteratorExprs;});
-
-      exp = new CallExpr(true, callee, buildToken(TOKEN_CALL, "("), NULL, NULL);
-//      exp = new GroupExpr(*addExpr(&iteratorExprs, exp, buildToken(TOKEN_SEPARATOR, ",")));
-    }
-
-    return exp;
-*/
 Type LiteralExpr::resolve(Parser &parser) {
   if (type == VAL_OBJ)
     return stringType;

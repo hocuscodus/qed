@@ -290,11 +290,15 @@ bool isInRegularFunction(FunctionExpr *function) {
 }
 
 bool isClass(FunctionExpr *function) {
-  return function->_declaration.name.isClass();
+  return function && function->_declaration.name.isClass();
+}
+
+bool isInClass() {
+  return isClass(getCurrent()->function);
 }
 
 bool isExternalField(FunctionExpr *function, DeclarationExpr *expr) {
-  return function && isClass(function) && isInRegularFunction(function) && !expr->_declaration.name.isInternal();
+  return isClass(function) && isInRegularFunction(function) && !expr->_declaration.name.isInternal();
 }
 
 bool isField(FunctionExpr *function, DeclarationExpr *expr) {
@@ -306,7 +310,7 @@ bool isInRegularFunction(ObjFunction *function) {
 }
 
 bool isExternalField(ObjFunction *function) {
-  return function && function->expr && function->isClass() && isInRegularFunction(function) && !function->expr->_declaration.name.isInternal();
+  return function && function->expr && isClass(function->expr) && isInRegularFunction(function) && !function->expr->_declaration.name.isInternal();
 }
 
 void checkDeclaration(Declaration &declaration, Token &name, FunctionExpr *function, Parser *parser) {

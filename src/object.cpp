@@ -110,14 +110,6 @@ ObjFunction::ObjFunction() {
   uiFunction = NULL;
 }
 
-bool ObjFunction::isClass() {
-  return expr->_declaration.name.isClass();
-}
-
-bool ObjFunction::isUserClass() {
-  return expr->_declaration.name.isUserClass();
-}
-
 std::string ObjFunction::getThisVariableName() {
   return memcmp(expr->_declaration.name.start, "Main_", 5) ? std::string(expr->_declaration.name.start, expr->_declaration.name.length) + "$this" : "globalThis$";
 }

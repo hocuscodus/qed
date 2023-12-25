@@ -944,7 +944,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
 
       group->name = previous;
       popScope();
-      /*functionExpr->_declaration = */checkDeclaration(functionExpr->_declaration, name, functionExpr, this);
+      checkDeclaration(functionExpr->_declaration, name, functionExpr, this);
       pushScope(functionExpr);
       expList(group, endGroupType);
 
@@ -960,7 +960,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
 
       consume(endGroupType, "Expect '%c' after expression.", parenFlag ? ')' : '}');
       popScope();
-      return functionExpr;
+      return isInClass() ? (Expr *) new ReferenceExpr(name, NULL) : functionExpr;
     }
     else
       return declareVariable(exp, endGroupTypes);

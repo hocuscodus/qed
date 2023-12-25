@@ -51,7 +51,7 @@ FunctionExpr *functionToCps(FunctionExpr *function) {
     function->body->body = declarationToCps(function->body->declarations, [function]() {
       Expr *body = getStatement(function->body, function->arity);
 
-      return body ? body->toCps([](Expr *body) {return body;}) : NULL;
+      return body ? body->toCps(idExpr) : NULL;
     });
     popScope();
   }
@@ -249,11 +249,7 @@ Expr *GroupingExpr::toCps(K k) {
 }
 
 Expr *ArrayExpr::toCps(K k) {
-  Expr *body = this->body 
-    ? this->body->toCps([this, k](Expr *body) {
-        return body;
-      })
-    : NULL;
+  Expr *body = this->body ? this->body->toCps(idExpr) : NULL;
 
   return k(compareExpr(this->body, body) ? this : (ArrayExpr *) idExpr(new ArrayExpr(body)));
 }
@@ -295,20 +291,7 @@ Expr *LogicalExpr::toCps(K k) {
     }
   });
 
-  return this == cpsExpr ? k(this) : cpsExpr;/*
-  return left->toCps([this, k](Expr *left) -> Expr* {
-    Expr *right = this->right->toCps([this, k](Expr *right) {
-      return compareExpr(this->right, right) ? right : k(right);
-    });
-
-    if (compareExpr(this->left, left) && right == this->right)
-      return k(this);
-    else {
-      Expr *notExpr = this->op.type == TOKEN_OR_OR ? new UnaryExpr(buildToken(TOKEN_BANG, "!"), left) : left;
-
-      return new IfExpr(notExpr, right, k(new LiteralExpr(VAL_BOOL, {.boolean = false})));
-    }
-  });*/
+  return this == cpsExpr ? k(this) : cpsExpr;
 /*
 function cps_if(exp, k) {
     return cps(exp.cond, function(cond){
@@ -376,9 +359,7 @@ Expr *WhileExpr::toCps(K k) {
 
         call->resolve(*((Parser *) NULL));
         this->body = addToGroup(&body, call);
-        body = this->body->toCps([](Expr *body) {
-          return body;
-        });
+        body = this->body->toCps(idExpr);
       }
 
       return new IfExpr(condition, body, elseExpr);
@@ -427,7 +408,6 @@ Expr *IfExpr::toCps(K k) {
     ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cvar), NULL);
     CallExpr *elseExpr = new CallExpr(false, callee, buildToken(TOKEN_CALL, "("), NULL, NULL);
     Expr *elseBranch = this->elseBranch ? this->elseBranch->toCps([this, &bothEqual, elseExpr](Expr *elseBranch) {
-
       bothEqual &= compareExpr(this->elseBranch, elseBranch);
       return *addExpr(&elseBranch, elseExpr, buildToken(TOKEN_SEPARATOR, ";"));
     }) : elseExpr;
@@ -451,21 +431,6 @@ Expr *IfExpr::toCps(K k) {
   });
 
   return this == cpsExpr ? k(this) : cpsExpr;
-/*
-  return condition->toCps([this, k](Expr *cond) {
-    const char *cvar = genSymbol("I");
-    GroupingExpr *cast = makeContinuation(k);
-    K newK = [this, cvar](Expr *ifResult) {
-      ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, cvar), NULL);
-
-      return new CallExpr(false, callee, buildToken(TOKEN_CALL, "("), ifResult, NULL);
-    };
-    DeclarationExpr *param = newDeclarationExpr(paramType, buildToken(TOKEN_IDENTIFIER, cvar), NULL);
-    Expr *ifExpr = new IfExpr(cond, this->thenBranch->toCps(newK), this->elseBranch->toCps(newK));
-
-    return new CallExpr(false, makeWrapperLambda(param, ifExpr), buildToken(TOKEN_CALL, "("), cast, NULL);
-  });*/
-//  return k(this);
 /*
 function cps_if(exp, k) {
     return cps(exp.cond, function(cond){

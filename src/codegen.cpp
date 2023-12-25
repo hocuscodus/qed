@@ -179,7 +179,7 @@ std::string CallExpr::toCode(Parser &parser, ObjFunction *function) {
   std::stringstream str;
   ObjFunction *calleeFunction = getFunction(callee);
 
-  if (calleeFunction && calleeFunction->isClass())
+  if (calleeFunction && isClass(calleeFunction->expr))
     str << "new ";
 
   str << callee->toCode(parser, function) << "(";

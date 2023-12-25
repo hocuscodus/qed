@@ -168,8 +168,6 @@ struct ObjFunction : ObjCallable {
   ObjFunction *uiFunction;
   ObjFunction();
 
-  bool isClass();
-  bool isUserClass();
   std::string getThisVariableName();
 };
 

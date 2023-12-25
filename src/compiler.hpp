@@ -41,6 +41,7 @@ Expr *resolveReferenceExpr(Token &name, Parser *parser);
 std::string getRealName(ObjFunction *function);
 bool isInRegularFunction(FunctionExpr *function);
 bool isClass(FunctionExpr *function);
+bool isInClass();
 bool isExternalField(FunctionExpr *function, DeclarationExpr *expr);
 bool isField(FunctionExpr *function, DeclarationExpr *expr);
 bool isInRegularFunction(ObjFunction *function);
