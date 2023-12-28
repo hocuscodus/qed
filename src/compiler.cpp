@@ -53,11 +53,12 @@ Type resolveType(Expr *expr) {
   if (expr)
     switch (expr->type) {
       case EXPR_GROUPING: {
-        Expr *lastExpr = *getLastBodyExpr(&((GroupingExpr *) expr)->body, TOKEN_SEPARATOR);
+          Expr *lastExpr = *getLastBodyExpr(&((GroupingExpr *) expr)->body, TOKEN_SEPARATOR);
 
-        type = lastExpr ? resolveType(lastExpr) : UNKNOWN_TYPE;
+          type = lastExpr ? resolveType(lastExpr) : UNKNOWN_TYPE;
+        }
         break;
-      }
+
       case EXPR_FUNCTION:
         type = OBJ_TYPE(&((FunctionExpr *) expr)->_function);
         break;
@@ -67,29 +68,42 @@ Type resolveType(Expr *expr) {
         break;
 
       case EXPR_REFERENCE: {
-        Expr *dec = resolveReferenceExpr(((ReferenceExpr *) expr)->name, NULL);
+          Expr *dec = resolveReferenceExpr(((ReferenceExpr *) expr)->name, NULL);
 
-        if (dec)
-          switch(dec->type) {
-            case EXPR_FUNCTION:
-              ((ReferenceExpr *) expr)->declaration = dec;
-              type = OBJ_TYPE(&((FunctionExpr *) dec)->_function);
-              break;
+          if (dec)
+            switch(dec->type) {
+              case EXPR_FUNCTION:
+                ((ReferenceExpr *) expr)->declaration = dec;
+                type = OBJ_TYPE(&((FunctionExpr *) dec)->_function);
+                break;
 
-            case EXPR_DECLARATION:
-              ((ReferenceExpr *) expr)->declaration = dec;
-              type = OBJ_TYPE(((ObjFunction *) ((DeclarationExpr *) dec)->_declaration.type.objType));
-              break;
-          }
+              case EXPR_DECLARATION:
+                ((ReferenceExpr *) expr)->declaration = dec;
+                type = OBJ_TYPE(((ObjFunction *) ((DeclarationExpr *) dec)->_declaration.type.objType));
+                break;
+            }
+        }
         break;
-      }
+
       case EXPR_ARRAYELEMENT: {
-        ArrayElementExpr *arrayElementExpr = (ArrayElementExpr *) expr;
+          ArrayElementExpr *arrayElementExpr = (ArrayElementExpr *) expr;
 
-        if (!arrayElementExpr->count && arrayElementExpr->callee)
-          type = OBJ_TYPE(newArray(resolveType(arrayElementExpr->callee)));
+          if (!arrayElementExpr->count && arrayElementExpr->callee)
+            type = OBJ_TYPE(newArray(resolveType(arrayElementExpr->callee)));
+        }
         break;
-      }
+
+      case EXPR_BINARY: {
+          BinaryExpr *binaryExpr = (BinaryExpr *) expr;
+
+          if (binaryExpr->op.type == TOKEN_STAR && binaryExpr->left->type == EXPR_REFERENCE &&
+                binaryExpr->right->type == EXPR_ARRAY && !((ArrayExpr *) binaryExpr->right)->body) {
+            Type instanceType = resolveType(binaryExpr->left);
+
+            type = OBJ_TYPE(newArray(OBJ_TYPE(newInstance(AS_FUNCTION_TYPE(instanceType)))));
+          }
+        }
+        break;
     }
 
   if (type.valueType != -1) {

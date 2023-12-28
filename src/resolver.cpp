@@ -674,15 +674,13 @@ Type GetExpr::resolve(Parser &parser) {
   switch (AS_OBJ_TYPE(objectType)) {
     case OBJ_FUNCTION: {
         FunctionExpr *function = AS_FUNCTION_TYPE(objectType)->expr;
+        Scope scope(function, function->body, NULL);
+        Declaration *dec = getDeclarationRef(name, scope.group->declarations);
+        Expr *refExpr = dec ? resolveReference(dec, name, getSignature(), &parser) : NULL;
 
-        for (Expr *body = function->body->body; body; body = cdr(body, TOKEN_SEPARATOR)) {
-          Expr *expr = car(body, TOKEN_SEPARATOR);
-          DeclarationExpr *dec = expr->type == EXPR_DECLARATION ? (DeclarationExpr *) expr : NULL;
-
-          if (dec && isField(function, dec) && identifiersEqual(&name, &dec->_declaration.name)) {
-            _declaration = &dec->_declaration;
-            return dec->_declaration.type;
-          }
+        if (refExpr) {
+          _declaration = getDeclaration(refExpr);
+          return getDeclarationType(refExpr);
         }
 
         parser.errorAt(&name, "Field '%.*s' not found.", name.length, name.start);
@@ -692,15 +690,13 @@ Type GetExpr::resolve(Parser &parser) {
     case OBJ_INSTANCE: {
         ObjInstance *type = AS_INSTANCE_TYPE(objectType);
         FunctionExpr *function = ((ObjFunction *) type->callable)->expr;
+        Scope scope(function, function->body, NULL);
+        Declaration *dec = getDeclarationRef(name, scope.group->declarations);
+        Expr *refExpr = dec ? resolveReference(dec, name, getSignature(), &parser) : NULL;
 
-        for (Expr *body = function->body->body; body; body = cdr(body, TOKEN_SEPARATOR)) {
-          Expr *expr = car(body, TOKEN_SEPARATOR);
-          DeclarationExpr *dec = expr->type == EXPR_DECLARATION ? (DeclarationExpr *) expr : NULL;
-
-          if (dec && isField(function, dec) && identifiersEqual(&name, &dec->_declaration.name)) {
-            _declaration = &dec->_declaration;
-            return dec->_declaration.type;
-          }
+        if (refExpr) {
+          _declaration = getDeclaration(refExpr);
+          return getDeclarationType(refExpr);
         }
 
         parser.errorAt(&name, "Field '%.*s' not found.", name.length, name.start);
