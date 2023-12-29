@@ -146,7 +146,7 @@ void Ball() {
   int size = rand() * 25 + 15
   Vector*[] vectors = 2 new Vector(rand(), (rand() * 0.15) + 0.01)
 
-  while (Yield()) {
+  while (Yield(/$Ball$this$/)) {
 //    v::vectors v.move()
     vectors[0].move();
     vectors[1].move();
@@ -182,8 +182,8 @@ void CounterWidget() {
 */
 //CounterWidget counter = new CounterWidget()
 
-//while (true)//Animation())
-//  balls.Yield();
+while (Animation())
+  process(balls);
 /*
 <out:"Bouncing"; size:130; color: 0x50FFFFFF; align: [50%, 10%];>
 <out:"Balls!!"; size:160; color: 0x30FFFFFF; align: [50%, 70%];>

@@ -13,6 +13,21 @@ int COLOR_YELLOW = 0xFFFF00;
 int COLOR_BLUE = 0x0000FF;
 int COLOR_BLACK = 0x000000;
 
+bool Yield(var obj) {
+/$obj.yieldHandler = (function() {
+    handlerFn_(true);
+  })$/
+}
+void process(var obj) {
+/$if (obj instanceof Array) {
+    let size = obj.size();
+
+    for (let index = 0; index < size; index++)
+      process(obj[index]);
+  }
+  else
+    obj.yieldHandler()$/
+}
 void println(String str) {
 /$console.log(str)$/
 }
@@ -34,6 +49,9 @@ void executeEvents_() {
 }
 int max(int a, int b) {
 /$return a > b ? a : b$/
+}
+float rand() {
+/$return Math.random()$/
 }
 float clock() {}
 void saveContext() {
@@ -105,9 +123,9 @@ void time(voidHandler_ func) {
   func();
   console.timeEnd("time");$/
 }
-float Animation() {
+bool Animation() {
 /$requestAnimationFrame((millis) => {
-  handlerFn_(millis);
+  handlerFn_(true);
   _refresh();
 });$/
 }
@@ -121,7 +139,7 @@ var SQEDArray(int[] limits, InitFn Init) {
   int size() {
     int s = 1
 
-    for (int index = /$this.dims.size() - 1$/; index >= 0; index--)
+    for (int index = /$this.dims.length - 1$/; index >= 0; index--)
       s *= /$this.dims[index]$/
 
     return s
@@ -201,7 +219,7 @@ var VSQEDArray(int[] limits, VInitFn Init) {
   int size() {
     int s = 1
 
-    for (int index = /$this.dims.size() - 1$/; index >= 0; index--)
+    for (int index = /$this.dims.length - 1$/; index >= 0; index--)
       s *= /$this.dims[index]$/
 
     return s
@@ -251,7 +269,7 @@ void QEDArray(int[] limits, sInitFn init) {
   int size() {
     int s = 1
 
-    for (int index = /$this.dims.size() - 1$/; index >= 0; index--)
+    for (int index = /$this.dims.length - 1$/; index >= 0; index--)
       s *= /$this.dims[index]$/
 
     return s
@@ -331,7 +349,7 @@ void VQEDArray(int[] limits, vInitFn init) {
   int size() {
     int s = 1
 
-    for (int index = /$this.dims.size() - 1$/; index >= 0; index--)
+    for (int index = /$this.dims.length - 1$/; index >= 0; index--)
       s *= /$this.dims[index]$/
 
     return s
