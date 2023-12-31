@@ -556,7 +556,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         getStatement(body, arity)->hasSuperCalls = hasSuperCalls;*/
     }
 
-    if (ui != NULL) {
+    if (ui) {
       UIDirectiveExpr *exprUI = (UIDirectiveExpr *) ui;
 
       if (exprUI->previous || exprUI->lastChild) {
@@ -576,7 +576,11 @@ Type FunctionExpr::resolve(Parser &parser) {
         fprintf(stderr, ss->str().c_str());
         parse(body, ss->str().c_str());
 
-        FunctionExpr *uiFunctionExpr = (FunctionExpr *) *getLastBodyExpr(&body->body, TOKEN_SEPARATOR);
+        FunctionExpr *uiFunctionExpr = NULL;
+
+        for (Declaration *dec = body->declarations; dec; dec = dec->next)
+          if (!dec->next)
+            uiFunctionExpr = (FunctionExpr *) dec->expr;
 
         uiFunctionExpr->resolve(parser);
         uiFunctionExpr->_function.eventFlags = exprUI->_eventFlags;
@@ -605,7 +609,11 @@ Type FunctionExpr::resolve(Parser &parser) {
         fprintf(stderr, ss->str().c_str());
         parse(uiFunctionExpr->body, ss->str().c_str());
 
-        FunctionExpr *layoutFunctionExpr = (FunctionExpr *) *getLastBodyExpr(&uiFunctionExpr->body->body, TOKEN_SEPARATOR);
+        FunctionExpr *layoutFunctionExpr = NULL;
+
+        for (Declaration *dec = uiFunctionExpr->body->declarations; dec; dec = dec->next)
+          if (!dec->next)
+            layoutFunctionExpr = (FunctionExpr *) dec->expr;
 
         layoutFunctionExpr->resolve(parser);
 
@@ -624,7 +632,11 @@ Type FunctionExpr::resolve(Parser &parser) {
         fprintf(stderr, ss->str().c_str());
         parse(layoutFunctionExpr->body, ss->str().c_str());
 
-        FunctionExpr *paintFunctionExpr = (FunctionExpr *) *getLastBodyExpr(&layoutFunctionExpr->body->body, TOKEN_SEPARATOR);
+        FunctionExpr *paintFunctionExpr = NULL;
+
+        for (Declaration *dec = layoutFunctionExpr->body->declarations; dec; dec = dec->next)
+          if (!dec->next)
+            paintFunctionExpr = (FunctionExpr *) dec->expr;
 
         paintFunctionExpr->resolve(parser);
 
@@ -641,12 +653,13 @@ Type FunctionExpr::resolve(Parser &parser) {
         fprintf(stderr, ss->str().c_str());
         parse(layoutFunctionExpr->body, ss->str().c_str());
 
-        FunctionExpr **eventFunctionExpr = (FunctionExpr **) getLastBodyExpr(&layoutFunctionExpr->body->body, TOKEN_SEPARATOR);
+        FunctionExpr *eventFunctionExpr = (FunctionExpr *) paintFunctionExpr->_declaration.next->expr;
+//        FunctionExpr **eventFunctionExpr = (FunctionExpr **) getLastBodyExpr(&layoutFunctionExpr->body->body, TOKEN_SEPARATOR);
 /*
         *eventFunctionExpr = (FunctionExpr *) eventFunctionExpr[0]->toCps([](Expr *expr) {
           return expr;
         });*/
-        eventFunctionExpr[0]->resolve(parser);
+        eventFunctionExpr->resolve(parser);
         popScope();
         popScope();
       }

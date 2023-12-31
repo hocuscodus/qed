@@ -955,7 +955,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
         ValueStack<ValueStackElement> valueStack;
 
         functionExpr->ui = directive(parenFlag ? TOKEN_RIGHT_PAREN : TOKEN_RIGHT_BRACE, NULL);
-        ((UIDirectiveExpr *) functionExpr->ui)->_attrSet.init(&offset, zoneOffsets, arrayDirFlags, valueStack, (UIDirectiveExpr *) functionExpr->ui, 0, &functionExpr->_function);
+//        ((UIDirectiveExpr *) functionExpr->ui)->_attrSet.init(&offset, zoneOffsets, arrayDirFlags, valueStack, (UIDirectiveExpr *) functionExpr->ui, 0, &functionExpr->_function);
       }
 
       consume(endGroupType, "Expect '%c' after expression.", parenFlag ? ')' : '}');
