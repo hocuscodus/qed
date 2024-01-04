@@ -41,7 +41,7 @@ EMXXFLAGS = $(COMMONFLAGS) -Oz
 # -s SAFE_HEAP=1 -s ASSERTIONS=2 --profiling  -s DEMANGLE_SUPPORT=1
 EMXXLINK = -s TOTAL_MEMORY=50331648 -s ALLOW_MEMORY_GROWTH=1 --use-preload-plugins \
 	-s EXPORTED_RUNTIME_METHODS="['callMain', 'ccall', 'cwrap']" \
-	-s EXPORTED_FUNCTIONS="['_main', '_runSource']" \
+	-s EXPORTED_FUNCTIONS="['_main']" \
 	-s INVOKE_RUN=0 -sLLD_REPORT_UNDEFINED --bind
 
 all: $(BINDIR)/qed

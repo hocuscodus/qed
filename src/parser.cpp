@@ -239,7 +239,7 @@ std::string compile(FunctionExpr *expr, Parser *parser) {
   expr->resolve(*parser);
 
   if (parser->hadError)
-    return NULL;
+    return "";
 
 #ifdef DEBUG_PRINT_CODE
   fprintf(stderr, "Adapted parse: ");

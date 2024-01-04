@@ -404,6 +404,9 @@ Type BinaryExpr::resolve(Parser &parser) {
   case TOKEN_AND_AND:
     return BOOL_TYPE;
 
+  case TOKEN_COMMA:
+    return type2;
+
   case TOKEN_SEPARATOR:
     return type2;
 
@@ -585,7 +588,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         uiFunctionExpr->resolve(parser);
         uiFunctionExpr->_function.eventFlags = exprUI->_eventFlags;
 
-        ObjFunction *uiFunction = &uiFunctionExpr->_function;
+        _function.uiFunction = &uiFunctionExpr->_function;
         GroupingExpr group(body->name, NULL, NULL);
 
         parse(&group, "UI_ *ui_;\n");
@@ -922,18 +925,15 @@ Type SetExpr::resolve(Parser &parser) {
   if (AS_OBJ_TYPE(objectType) != OBJ_INSTANCE)
     parser.errorAt(&name, "Only instances have properties.");
   else {
-    int count = 0;
     ObjInstance *type = AS_INSTANCE_TYPE(objectType);
     FunctionExpr *function = ((ObjFunction *) type->callable)->expr;
+    Scope scope(function, function->body, NULL);
+    Declaration *dec = getDeclarationRef(name, scope.group->declarations);
+    Expr *refExpr = dec ? resolveReference(dec, name, getSignature(), &parser) : NULL;
 
-    for (Expr *body = function->body->body; body; body = cdr(body, TOKEN_SEPARATOR), count++) {
-      Expr *expr = car(body, TOKEN_SEPARATOR);
-      DeclarationExpr *dec = expr->type == EXPR_DECLARATION ? (DeclarationExpr *) expr : NULL;
-
-      if (dec && isField(function, dec) && identifiersEqual(&name, &dec->_declaration.name)) {
-        _declaration = &dec->_declaration;
-        return dec->_declaration.type;
-      }
+    if (refExpr) {
+      _declaration = getDeclaration(refExpr);
+      return getDeclarationType(refExpr);
     }
 
     parser.errorAt(&name, "Field '%.*s' not found.", name.length, name.start);
@@ -1242,6 +1242,21 @@ void processAttrs(UIDirectiveExpr *expr, Parser &parser) {
 ValueStack3 valueStackSize(ATTRIBUTE_ALIGN);
 ValueStack3 valueStackPaint(ATTRIBUTE_COLOR);
 
+static const char *getDirVar(int dir, const char *prefix, int varNum) {
+  static char var[20];
+
+  sprintf(var, "%s%d", prefix, varNum);
+
+  Token name = buildToken(TOKEN_IDENTIFIER, var);
+  Expr *expr = resolveReferenceExpr(name, NULL);
+  Declaration *dec = getDeclaration(expr);
+
+  if (IS_ARRAY(dec->type))
+    sprintf(&var[strlen(var)], "[%d]", dir);
+
+  return var;
+}
+
 static UIAttributeExpr *findAttr(UIDirectiveExpr *expr, Attribute uiIndex) {
   static char name[20];
 
@@ -1481,7 +1496,7 @@ int adjustLayout(UIDirectiveExpr *expr, Parser &parser) {
 // 11 int childSize = unitX + (sizeX - unitX) * vExpand
         if (align != -1) {
           insertTabs();
-          (*ss) << "int posDiff" << dir << " = (size" << dir << " - childSize" << dir << ") * v" << align << "\n";
+          (*ss) << "int posDiff" << dir << " = (size" << dir << " - childSize" << dir << ") * " << getDirVar(dir, "v", align) << "\n";
           posDiffDirs |= 1 << dir;
         }
 

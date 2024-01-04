@@ -143,8 +143,8 @@ void Ball() {
   }
 
   int color = rand() * 0xFFFFFF
-  int size = rand() * 25 + 15
-  Vector*[] vectors = 2 new Vector(rand(), (rand() * 0.15) + 0.01)
+  int size = rand() * 50 + 15
+  Vector*[] vectors = 2 new Vector(rand(), (rand() * 2%) + 0.01%)
 
   while (Yield(/$Ball$this$/)) {
 //    v::vectors v.move()
@@ -152,7 +152,7 @@ void Ball() {
     vectors[1].move();
   }
 
-  <out: oval; color: color; size: size; align: vectors[0].pos;>//[vectors[0].pos, vectors[1].pos];>
+  <out: oval; color: color; size: size; align: [vectors[0].pos, vectors[1].pos];>
 //  <out: oval; color: color; size: size; align: v::vectors v.pos;>
 }
 
@@ -185,7 +185,42 @@ void CounterWidget() {
 while (Animation())
   process(balls);
 
-<out:"Bouncing"; size:130; color: 0x50FFFFFF;>/* align: [50%, 10%];>*/
-<out:"Balls!!"; size:160; color: 0x30FFFFFF;>/* align: [50%, 70%];>*/
-//<out: balls;>
+<out:rect; size:800; color: 0;>
+<out:"Bouncing"; size:130; color: 0x50FFFFFF; align: [50%, 10%];>
+<out:"Balls!!"; size:160; color: 0x30FFFFFF; align: [50%, 70%];>
+<out:balls[0];>
 //<out: counter; align: 95%;>
+/*
+void Ball() {
+  void Vector(float pos, float delta) {
+    void move() {
+      pos += delta
+
+      if (pos > 1 || pos < 0) {
+        pos = delta > 0 ? 2 - pos : -pos
+        delta = -delta
+      }
+    }
+  }
+
+  int color = rand() * 0xFFFFFF
+  int size = rand() * 25 + 15
+  Vector*[] vectors = 2 new Vector(rand(), (rand() * 0.15) + 0.01)
+
+  while (Yield(/$Ball$this$/)) {
+    vectors[0].move();
+    vectors[1].move();
+  }
+
+  <out: oval; color: color; size: size; align: [vectors[0].pos, vectors[1].pos];>
+}
+
+Ball*[] balls = 3 new Ball()
+
+while (Animation())
+  process(balls);
+
+<out:"Bouncing"; size:130; color: 0x50FFFFFF; align: [50%, 10%];>
+<out:"Balls!!"; size:160; color: 0x30FFFFFF; align: [50%, 70%];>
+<out: balls[0];>
+*/
