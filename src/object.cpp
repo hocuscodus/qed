@@ -111,7 +111,7 @@ ObjFunction::ObjFunction() {
 }
 
 std::string ObjFunction::getThisVariableName() {
-  return memcmp(expr->_declaration.name.start, "Main_", 5) ? std::string(expr->_declaration.name.start, expr->_declaration.name.length) + "$this" : "globalThis$";
+  return std::string(expr->_declaration.name.start, expr->_declaration.name.length) + "$this";
 }
 
 IndexList::IndexList() {

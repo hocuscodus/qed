@@ -145,7 +145,7 @@ void FunctionExpr::astPrint() {
     body->astPrint();
 
   if (ui)
-    ui->astPrint();
+;//    ui->astPrint();
 
   fprintf(stderr, "}");
 }

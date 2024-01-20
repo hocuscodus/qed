@@ -45,7 +45,7 @@ void executeEvents_() {
     fn();
   }
 
-//  this._refresh()$/
+  _refresh()$/
 }
 int max(int a, int b) {
 /$return a > b ? a : b$/
@@ -66,7 +66,7 @@ void oval(int pos, int size) {
   ctx.beginPath();
   ctx.ellipse((pos >> 16) + (size >> 17), (pos & 65535) + ((size & 65535) >> 1), size >> 17, (size & 65535) >> 1, 0, 0, 2*Math.PI);
   ctx.fill();
-  ctx.clip()$/
+//  ctx.clip()$/
 }
 void rect(int pos, int size) {
 /$ctx.fillStyle = toColor(getAttribute(10));
@@ -129,6 +129,26 @@ bool Animation() {
   _refresh();
 });$/
 }
+
+void QEDBaseArray_() {
+  int size() {return 0;}
+  void insert(int[] pos, int[] size) {}
+  void Insert(int[] pos, int[] size) {}
+  void Push() {}
+  void pop() {}
+  var get(int[] pos) {}
+  void set(int[] pos, var value) {}
+  var get(int index) {}
+  void set(int index, var value) {}
+  void UI_() {
+    void Layout_() {
+      var size = 0
+    }
+  }
+  UI_ *ui_;
+}
+/$Object.setPrototypeOf(QEDBaseArray_.prototype, Array.prototype)$/
+
 var InitFn(int[] pos) {}
 
 var SQEDArray(int[] limits, InitFn Init) {
@@ -207,7 +227,7 @@ var SQEDArray(int[] limits, InitFn Init) {
     return;
   }*/
 }
-/$Object.setPrototypeOf(SQEDArray.prototype, Array.prototype)$/
+/$Object.setPrototypeOf(SQEDArray.prototype, QEDBaseArray_.prototype)$/
 
 void VInitFn(int[] pos) {}
 
@@ -261,8 +281,9 @@ var VSQEDArray(int[] limits, VInitFn Init) {
 }
 
 var sInitFn(int[] pos) {}
+void Qui_(var array, int[] dims) {}
 
-void QEDArray(int[] limits, sInitFn init) {
+void QEDArray(int[] limits, sInitFn init, Qui_ Ui_) {
   /$this.dims = new Array(this.limits.length).fill(0)$/
   insert(/$new Array(this.limits.length).fill(0)$/ as int[], limits)
 
@@ -332,13 +353,18 @@ void QEDArray(int[] limits, sInitFn init) {
     size[0] = 1;
     remove(pos, size);
     return;
+  }*//*
+  Ui_ *ui_
+
+  void setUI() {
+    ui_ = new Ui_(/$QEDArray$this$/, /$this.dims$/);
   }*/
 }
 
-QEDArray *qedArray(int[] limits, sInitFn init) {
-  return new QEDArray(limits, init);
+QEDArray *qedArray(int[] limits, sInitFn init, Qui_ Ui_) {
+  return new QEDArray(limits, init, Ui_);
 }
-/$Object.setPrototypeOf(QEDArray.prototype, Array.prototype)$/
+/$Object.setPrototypeOf(QEDArray.prototype, QEDBaseArray_.prototype)$/
 
 void vInitFn(int[] pos) {}
 

@@ -10,6 +10,7 @@
 
 static std::stack<Signature *> signatures;
 static Scope *currentScope = NULL;
+Declaration *arrayDeclaration = NULL;
 
 Scope::Scope(FunctionExpr *function, GroupingExpr *group, Scope *enclosing) {
   this->function = function;
@@ -351,6 +352,9 @@ void checkDeclaration(Declaration &declaration, Token &name, FunctionExpr *funct
 
     declaration.peer = expr ? getDeclaration(expr) : NULL;
     getCurrent()->add(&declaration);
+
+    if (name.equal("QEDBaseArray_"))
+      arrayDeclaration = &declaration;
   }
 }
 

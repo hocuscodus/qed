@@ -288,7 +288,6 @@ std::string compile(FunctionExpr *expr, Parser *parser) {
   line(str) << "//  }\n";
   line(str) << "}\n";
   line(str) << "executeEvents_();\n";
-  line(str) << "_refresh();\n";
   line(str) << "canvas.addEventListener(\"mousedown\", function(ev) {\n";
   line(str) << "  postCount++;\n";
   line(str) << "  var rect = canvas.getBoundingClientRect();\n";

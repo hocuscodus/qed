@@ -20,6 +20,8 @@ struct Scope {
   void add(Declaration *declaration);
 };
 
+extern Declaration *arrayDeclaration;
+
 class Parser;
 
 typedef std::vector<Type> Signature;

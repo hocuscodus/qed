@@ -1,0 +1,54 @@
+Ball*[] balls = 3 new Ball()
+CounterWidget counter = new CounterWidget()
+
+while (Animation())
+  balls.process();
+
+<out:"Bouncing"; size:130; color: 0x50FFFFFF; align: [50%, 10%];>
+<out:"Balls!!"; size:160; color: 0x30FFFFFF; align: [50%, 70%];>
+<out: balls;>
+<out: counter; align: 95%;>
+
+void Ball() {
+  void Vector(float pos, float delta) {
+    void move() {
+      pos += delta
+
+      if (pos > 1 || pos < 0) {
+        pos = delta > 0 ? 2 - pos : -pos
+        delta = -delta
+      }
+    }
+  }
+
+  int color = rand() * 0xFFFFFF
+  int size = rand() * 25 + 15
+  Vector*[] vectors = 2 new Vector(rand(), (rand() * 0.15) + 0.01)
+
+  while (Yield())
+    v::vectors v.move()
+
+  <out: oval; color: color; size: size; align: v::vectors v.pos;>
+}
+
+void CounterWidget() {
+  Button incButton = new Button("+") -> balls++
+  Button decButton = new Button("-") -> if (balls.size() > 0) balls--
+
+  void Button(String text) {
+    float shade = 20%
+
+    <out: rect; opacity: shade; size: [35, -1]; onPress: shade = 35%
+    onRelease: {shade = 20%; return}>
+    <out: text; opacity: 60%; align: 50%; fontSize: 40;>
+  }
+
+  <_ color: 0xFFFFFF;
+    <out: decButton;>
+    <
+      <out: ""; size: 60;>
+      <out: balls.size(); color: 0x80000000; align: 50%;>
+    >
+    <out: incButton;>
+  >
+}

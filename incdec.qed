@@ -143,7 +143,7 @@ void Ball() {
   }
 
   int color = rand() * 0xFFFFFF
-  int size = rand() * 50 + 15
+  int size = rand() * 35 + 35
   Vector*[] vectors = 2 new Vector(rand(), (rand() * 2%) + 0.01%)
 
   while (Yield(/$Ball$this$/)) {
@@ -188,7 +188,7 @@ while (Animation())
 <out:rect; size:800; color: 0;>
 <out:"Bouncing"; size:130; color: 0x50FFFFFF; align: [50%, 10%];>
 <out:"Balls!!"; size:160; color: 0x30FFFFFF; align: [50%, 70%];>
-<out:balls[0];>
+<out:balls;>
 //<out: counter; align: 95%;>
 /*
 void Ball() {
