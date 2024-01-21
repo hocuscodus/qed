@@ -102,10 +102,12 @@ struct Token {
 
   std::string getString();
   bool equal(const char *string);
+  int getStartIndex();
   bool endsWith(const char *suffix);
-  inline bool isInternal() {return endsWith("_");}
-  inline bool isClass() {return start[0] >= 'A' && start[0] <= 'Z';}
-  inline bool isUserClass() {return isClass() && !isInternal();}
+  bool isClass();
+  inline bool isInternal() {return start[0] == '_';}
+  inline bool isHandler() {return endsWith("_");}
+  inline bool isUserClass() {return isClass() && !isHandler();}
 
   virtual void declareError(const char *message);
 };

@@ -800,6 +800,11 @@ Type GroupingExpr::resolve(Parser &parser) {
             (*ss) << "    Layout_*[] layouts;\n";
             (*ss) << "    for(let index = 0; index < dims[0]; index++)\n";
             (*ss) << "      layouts[index] = new array[index].ui_.Layout_()\n";
+            (*ss) << "\n";
+            (*ss) << "    void paint(int pos0, int pos1, int size0, int size1) {\n";
+            (*ss) << "      for(let index = 0; index < dims[0]; index++)\n";
+            (*ss) << "        layouts[index].paint(pos0, pos1, size0, size1)\n";
+            (*ss) << "    }\n";
             (*ss) << "  }\n";
             (*ss) << "}\n";
             fprintf(stderr, ss->str().c_str());

@@ -47,10 +47,24 @@ bool Token::equal(const char *string) {
   return !memcmp(start, string, length) && string[length] == '\0';
 }
 
+int Token::getStartIndex() {
+  for (int index = 0; start[index]; index++)
+    if (start[index] != '_')
+      return index;
+
+  return -1;
+}
+
 bool Token::endsWith(const char *suffix) {
   int suffixLength = strlen(suffix);
 
   return length >= suffixLength && !memcmp(&start[length - suffixLength], suffix, suffixLength);
+}
+
+bool Token::isClass() {
+  char firstChar = start[getStartIndex()];
+
+  return firstChar >= 'A' && firstChar <= 'Z';
 }
 
 void Token::declareError(const char *message) {

@@ -15,7 +15,7 @@ int COLOR_BLACK = 0x000000;
 
 bool Yield(var obj) {
 /$obj.yieldHandler = (function() {
-    handlerFn_(true);
+    _HandlerFn_(true);
   })$/
 }
 void process(var obj) {
@@ -31,11 +31,11 @@ void process(var obj) {
 void println(String str) {
 /$console.log(str)$/
 }
-void post_(voidHandler_ handlerFn_) {
+void post_(voidHandler_ _HandlerFn_) {
 /$if (postHandler != null)
     console.log("postHandler not null");
 
-  postHandler = handlerFn_$/
+  postHandler = _HandlerFn_$/
 }
 void executeEvents_() {
 /$while (postHandler != null) {
@@ -105,7 +105,7 @@ void displayText(String text, int pos, int size) {
 
 bool Timer(int timeoutMillis) {
 /$setTimeout(function() {
-    handlerFn_(true);
+    _HandlerFn_(true);
     _refresh();
   }, timeoutMillis)$/
 
@@ -115,7 +115,7 @@ void Time(voidHandler_ Func) {
 /$console.time("Time");
   new Func(() => {
     console.timeEnd("Time");
-    handlerFn_();
+    _HandlerFn_();
   });$/
 }
 void time(voidHandler_ func) {
@@ -125,7 +125,7 @@ void time(voidHandler_ func) {
 }
 bool Animation() {
 /$requestAnimationFrame((millis) => {
-  handlerFn_(true);
+  _HandlerFn_(true);
   _refresh();
 });$/
 }
@@ -143,6 +143,8 @@ void QEDBaseArray_() {
   void UI_() {
     void Layout_() {
       var size = 0
+      void paint(int pos0, int pos1, int size0, int size1) {}
+      void onEvent(var event, int pos0, int pos1, int size0, int size1) {}
     }
   }
   UI_ *ui_;
@@ -227,7 +229,7 @@ var SQEDArray(int[] limits, InitFn Init) {
     return;
   }*/
 }
-/$Object.setPrototypeOf(SQEDArray.prototype, QEDBaseArray_.prototype)$/
+/$Object.setPrototypeOf(SQEDArray.prototype, Array.prototype)$/
 
 void VInitFn(int[] pos) {}
 
@@ -364,7 +366,7 @@ void QEDArray(int[] limits, sInitFn init, Qui_ Ui_) {
 QEDArray *qedArray(int[] limits, sInitFn init, Qui_ Ui_) {
   return new QEDArray(limits, init, Ui_);
 }
-/$Object.setPrototypeOf(QEDArray.prototype, QEDBaseArray_.prototype)$/
+/$Object.setPrototypeOf(QEDArray.prototype, Array.prototype)$/
 
 void vInitFn(int[] pos) {}
 

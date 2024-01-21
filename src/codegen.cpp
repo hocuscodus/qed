@@ -209,7 +209,7 @@ std::string DeclarationExpr::toCode(Parser &parser, ObjFunction *function) {
   std::stringstream str;
 
 //  if (initExpr) {
-    if (_declaration.isExternalField())
+    if (isExternalField(_declaration.function, &_declaration))
       str << "this.";
     else
       str << /*_declaration->function->isClass() ? "const " : */"let ";
@@ -245,10 +245,10 @@ std::string FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
     startBlock(str);
 
   for (int index = 0; index < arity - 1; index++) {
-    DeclarationExpr *declaration = getParam(this, index);
+    DeclarationExpr *declarationExpr = getParam(this, index);
 
-    if (isField(this, declaration)) {
-      std::string name = declaration->_declaration.getRealName();
+    if (isField(this, &declarationExpr->_declaration)) {
+      std::string name = declarationExpr->_declaration.getRealName();
 
       line(str) << "this." << name << " = " << name << ";\n";
     }
@@ -420,7 +420,7 @@ std::string ReferenceExpr::toCode(Parser &parser, ObjFunction *function) {
   Declaration *declaration = this->declaration ? getDeclaration(this->declaration) : NULL;
 
   if (declaration)
-    if (declaration->isExternalField())
+    if (isExternalField(declaration->function, declaration))
       if (declaration->function == function->expr)
         return (std::stringstream() << "this." << declaration->getRealName()).str();
       else

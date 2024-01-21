@@ -128,9 +128,6 @@ struct Declaration {
   Declaration();
 
   std::string getRealName();
-  bool isInRegularFunction();
-  bool isExternalField();
-  bool isField();
 };
 
 typedef struct {

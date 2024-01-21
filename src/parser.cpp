@@ -65,7 +65,7 @@ static Expr *createArrayExpr(Expr *iteratorExprs, Expr *body) {
   Point dirs{};
   Expr *dimDecs = NULL;
   DeclarationExpr *posParam = newDeclarationExpr(OBJ_TYPE(newArray(INT_TYPE)), buildToken(TOKEN_IDENTIFIER, "pos"), NULL);
-  DeclarationExpr *handlerParam = newDeclarationExpr(resolveType(new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "anyHandler_"), NULL)), buildToken(TOKEN_IDENTIFIER, "handlerFn_"), NULL);
+  DeclarationExpr *handlerParam = newDeclarationExpr(resolveType(new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "anyHandler_"), NULL)), buildToken(TOKEN_IDENTIFIER, "_HandlerFn_"), NULL);
   Expr *initBody = NULL;
   GroupingExpr *mainGroup = new GroupingExpr(buildToken(TOKEN_LEFT_BRACKET, "["), NULL, NULL);
 
@@ -919,7 +919,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
         ReferenceExpr *paramTypeExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, type), NULL);
 
         if (getCurrent()) {
-          Token name = buildToken(TOKEN_IDENTIFIER, "handlerFn_");
+          Token name = buildToken(TOKEN_IDENTIFIER, "_HandlerFn_");
           Type paramType = resolveType(paramTypeExpr);
 
           if (!IS_UNKNOWN(paramType)) {
@@ -1096,7 +1096,7 @@ Expr *Parser::returnStatement(TokenType endGroupType) {
 
   if (getFunction()->_declaration.name.isUserClass()) {
     ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "post_"), NULL);
-    Expr *param = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "handlerFn_"), NULL);
+    Expr *param = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "_HandlerFn_"), NULL);
 
     if (value) {
       CallExpr *call = new CallExpr(false, param, buildToken(TOKEN_LEFT_PAREN, "("), value, NULL);

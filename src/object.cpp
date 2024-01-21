@@ -91,18 +91,6 @@ std::string Declaration::getRealName() {
   return peer ? peer->getRealName() + (parentFlag ? "$" : "$_") : std::string(name.start, name.length);
 }
 
-bool Declaration::isInRegularFunction() {
-  return !function || function->body->name.type == TOKEN_LEFT_BRACE;
-}
-
-bool Declaration::isExternalField() {
-  return function && isClass(function) && isInRegularFunction() && !name.isInternal();
-}
-
-bool Declaration::isField() {
-  return isExternalField() || isInternalField;
-}
-
 ObjFunction::ObjFunction() {
   obj.type = OBJ_FUNCTION;
   instanceIndexes = new IndexList();

@@ -44,10 +44,9 @@ std::string getRealName(ObjFunction *function);
 bool isInRegularFunction(FunctionExpr *function);
 bool isClass(FunctionExpr *function);
 bool isInClass();
-bool isExternalField(FunctionExpr *function, DeclarationExpr *expr);
-bool isField(FunctionExpr *function, DeclarationExpr *expr);
+bool isExternalField(FunctionExpr *function, Declaration *dec);
+bool isField(FunctionExpr *function, Declaration *dec);
 bool isInRegularFunction(ObjFunction *function);
-bool isExternalField(ObjFunction *function);
 void checkDeclaration(Declaration &declaration, Token &name, FunctionExpr *function, Parser *parser);
 
 std::string compile(FunctionExpr *expr, Parser *parser);

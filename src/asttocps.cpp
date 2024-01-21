@@ -143,7 +143,7 @@ Expr *CallExpr::toCps(K k) {
       if (IS_VOID(returnType)) {
         DeclarationExpr *lastParam = getParam(function, function->arity - 1);
 
-        if (lastParam && lastParam->_declaration.name.equal("handlerFn_")) {
+        if (lastParam && lastParam->_declaration.name.equal("_HandlerFn_")) {
           FunctionExpr *handlerExpr = AS_FUNCTION_TYPE(lastParam->_declaration.type)->expr;
 
           if (handlerExpr->arity)
