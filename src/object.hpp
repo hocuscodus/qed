@@ -163,6 +163,7 @@ struct ObjFunction : ObjCallable {
   IndexList *instanceIndexes;
   long eventFlags;
   ObjFunction *uiFunction;
+  bool hasInternalFields;
   ObjFunction();
 
   std::string getThisVariableName();

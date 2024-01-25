@@ -522,8 +522,13 @@ Expr *PrimitiveExpr::toCps(K k) {
 }
 
 Expr *ReferenceExpr::toCps(K k) {
-  if (declaration && !name.equal("handlerFn_") && !getDeclarationRef(name/*buildToken(TOKEN_IDENTIFIER, getDeclaration(declaration)->getRealName().c_str())*/, getCurrent()->group->declarations))
-    getDeclaration(declaration)->isInternalField = true;
+//  Declaration *declaration = this->declaration ? getDeclaration(this->declaration) : NULL;
+
+//  if (declaration && declaration->function && isExternalField(declaration->function, declaration) && declaration->function != function->expr)
+  Declaration *dec = declaration ? getDeclaration(declaration) : NULL;
+
+  if (dec && dec->function && dec->function != getFunction() && isExternalField(dec->function, dec))
+    dec->function->_function.hasInternalFields = true;
 
   return k(this);
 }

@@ -96,6 +96,7 @@ ObjFunction::ObjFunction() {
   instanceIndexes = new IndexList();
   eventFlags = 0L;
   uiFunction = NULL;
+  hasInternalFields = false;
 }
 
 std::string ObjFunction::getThisVariableName() {

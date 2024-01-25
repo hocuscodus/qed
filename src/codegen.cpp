@@ -209,7 +209,7 @@ std::string DeclarationExpr::toCode(Parser &parser, ObjFunction *function) {
   std::stringstream str;
 
 //  if (initExpr) {
-    if (isExternalField(_declaration.function, &_declaration))
+    if (_declaration.function && isExternalField(_declaration.function, &_declaration))
       str << "this.";
     else
       str << /*_declaration->function->isClass() ? "const " : */"let ";
@@ -254,14 +254,8 @@ std::string FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
     }
   }
 
-  for (Expr *body = this->body->body; body; body = cdr(body, TOKEN_SEPARATOR)) {
-    Expr *expr = car(body, TOKEN_SEPARATOR);
-
-    if (expr->type == EXPR_DECLARATION && getCurrent()->enclosing && getDeclaration(expr)->isInternalField) {
-      line(str) << "const " << _function.getThisVariableName() << " = this;\n";
-      break;
-    }
-  }
+  if (_function.hasInternalFields)
+    line(str) << "const " << _function.getThisVariableName() << " = this;\n";
 
   for (Expr *statementRef = getStatement(body, arity); statementRef; statementRef = cdr(statementRef, TOKEN_SEPARATOR)) {
     Expr *statement = car(statementRef, TOKEN_SEPARATOR);
@@ -419,7 +413,7 @@ std::string PrimitiveExpr::toCode(Parser &parser, ObjFunction *function) {
 std::string ReferenceExpr::toCode(Parser &parser, ObjFunction *function) {
   Declaration *declaration = this->declaration ? getDeclaration(this->declaration) : NULL;
 
-  if (declaration)
+  if (declaration && declaration->function)
     if (isExternalField(declaration->function, declaration))
       if (declaration->function == function->expr)
         return (std::stringstream() << "this." << declaration->getRealName()).str();

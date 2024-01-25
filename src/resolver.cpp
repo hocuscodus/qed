@@ -229,7 +229,7 @@ static Expr *convertToObj(Obj *dstObjType, Expr *expr, Type &type, Parser &parse
     break;
   }
 
-  return expr;
+return expr;
 }
 
 static Expr *convertToType(Type dstType, Expr *expr, Type &srcType, Parser &parser) {

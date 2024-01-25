@@ -148,6 +148,9 @@ void QEDBaseArray_() {
     }
   }
   UI_ *ui_;
+  void setUI_() {
+    ui_ = new UI_()
+  }
 }
 /$Object.setPrototypeOf(QEDBaseArray_.prototype, Array.prototype)$/
 
@@ -174,7 +177,7 @@ var SQEDArray(int[] limits, InitFn Init) {
     int[] newSize = /$[...this.size$]$/
 
     for (int index = /$SQEDArray$this.dims.length - 1$/; index >= 0; index--)
-      newSize[index] += /$SQEDArray$this.dims[this.index]$/ as int;
+      newSize[index] += /$SQEDArray$this.dims[index]$/ as int;
 
     InsertLevel(/$SQEDArray$this$/, /$SQEDArray$this.dims$/, pos, size, newSize, /$new Array(this.size$.length).fill(0)$/, 0)
     /$SQEDArray$this.dims$/ = newSize
@@ -254,7 +257,7 @@ var VSQEDArray(int[] limits, VInitFn Init) {
     int[] newSize = /$[...this.size$]$/
 
     for (int index = /$VSQEDArray$this.dims.length - 1$/; index >= 0; index--)
-      newSize[index] += /$VSQEDArray$this.dims[this.index]$/ as int;
+      newSize[index] += /$VSQEDArray$this.dims[index]$/ as int;
 
     InsertLevel(/$VSQEDArray$this.dims$/, pos, size, newSize, /$new Array(this.size$.length).fill(0)$/, 0)
     /$VSQEDArray$this.dims$/ = newSize
@@ -287,6 +290,7 @@ void Qui_(var array, int[] dims) {}
 
 void QEDArray(int[] limits, sInitFn init, Qui_ Ui_) {
   /$this.dims = new Array(this.limits.length).fill(0)$/
+  /$const QEDArray$this = this$/
   insert(/$new Array(this.limits.length).fill(0)$/ as int[], limits)
 
   int size() {

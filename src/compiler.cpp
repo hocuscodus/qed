@@ -327,7 +327,7 @@ bool isInRegularFunction(ObjFunction *function) {
 void checkDeclaration(Declaration &declaration, Token &name, FunctionExpr *function, Parser *parser) {
   Signature signature;
 
-  declaration.function = getFunction();
+  declaration.function = getCurrent()->function;
 
   if (function)
     for (int index = 0; index < function->arity; index++)
