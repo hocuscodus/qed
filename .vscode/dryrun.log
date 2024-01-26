@@ -1,0 +1,61 @@
+make --dry-run --always-make --keep-going --print-directory
+make: Entering directory '/home/msavage/Documents/qed'
+ 
+mkdir -p build/
+echo g++ -c src/astprinter.cpp -o build/astprinter.o
+g++ -g -std=c++11 -MMD -MP -isystem . -D_REENTRANT -I/home/linuxbrew/.linuxbrew/include/SDL2 -Wall -Wextra -pedantic -Wpointer-arith -Wshadow -Wfloat-conversion -Wfloat-equal -Wno-unused-function -Wno-unused-parameter -c src/astprinter.cpp -o build/astprinter.o
+mkdir -p build/
+echo g++ -c src/attrset.cpp -o build/attrset.o
+g++ -g -std=c++11 -MMD -MP -isystem . -D_REENTRANT -I/home/linuxbrew/.linuxbrew/include/SDL2 -Wall -Wextra -pedantic -Wpointer-arith -Wshadow -Wfloat-conversion -Wfloat-equal -Wno-unused-function -Wno-unused-parameter -c src/attrset.cpp -o build/attrset.o
+mkdir -p build/
+echo g++ -c src/chunk.cpp -o build/chunk.o
+g++ -g -std=c++11 -MMD -MP -isystem . -D_REENTRANT -I/home/linuxbrew/.linuxbrew/include/SDL2 -Wall -Wextra -pedantic -Wpointer-arith -Wshadow -Wfloat-conversion -Wfloat-equal -Wno-unused-function -Wno-unused-parameter -c src/chunk.cpp -o build/chunk.o
+mkdir -p build/
+echo g++ -c src/codegen.cpp -o build/codegen.o
+g++ -g -std=c++11 -MMD -MP -isystem . -D_REENTRANT -I/home/linuxbrew/.linuxbrew/include/SDL2 -Wall -Wextra -pedantic -Wpointer-arith -Wshadow -Wfloat-conversion -Wfloat-equal -Wno-unused-function -Wno-unused-parameter -c src/codegen.cpp -o build/codegen.o
+mkdir -p build/
+echo g++ -c src/compiler.cpp -o build/compiler.o
+g++ -g -std=c++11 -MMD -MP -isystem . -D_REENTRANT -I/home/linuxbrew/.linuxbrew/include/SDL2 -Wall -Wextra -pedantic -Wpointer-arith -Wshadow -Wfloat-conversion -Wfloat-equal -Wno-unused-function -Wno-unused-parameter -c src/compiler.cpp -o build/compiler.o
+mkdir -p build/
+echo g++ -c src/debug.cpp -o build/debug.o
+g++ -g -std=c++11 -MMD -MP -isystem . -D_REENTRANT -I/home/linuxbrew/.linuxbrew/include/SDL2 -Wall -Wextra -pedantic -Wpointer-arith -Wshadow -Wfloat-conversion -Wfloat-equal -Wno-unused-function -Wno-unused-parameter -c src/debug.cpp -o build/debug.o
+mkdir -p build/
+echo g++ -c src/expr.cpp -o build/expr.o
+g++ -g -std=c++11 -MMD -MP -isystem . -D_REENTRANT -I/home/linuxbrew/.linuxbrew/include/SDL2 -Wall -Wextra -pedantic -Wpointer-arith -Wshadow -Wfloat-conversion -Wfloat-equal -Wno-unused-function -Wno-unused-parameter -c src/expr.cpp -o build/expr.o
+mkdir -p build/
+echo g++ -c src/logger.cpp -o build/logger.o
+g++ -g -std=c++11 -MMD -MP -isystem . -D_REENTRANT -I/home/linuxbrew/.linuxbrew/include/SDL2 -Wall -Wextra -pedantic -Wpointer-arith -Wshadow -Wfloat-conversion -Wfloat-equal -Wno-unused-function -Wno-unused-parameter -c src/logger.cpp -o build/logger.o
+mkdir -p build/
+echo g++ -c src/memory.cpp -o build/memory.o
+g++ -g -std=c++11 -MMD -MP -isystem . -D_REENTRANT -I/home/linuxbrew/.linuxbrew/include/SDL2 -Wall -Wextra -pedantic -Wpointer-arith -Wshadow -Wfloat-conversion -Wfloat-equal -Wno-unused-function -Wno-unused-parameter -c src/memory.cpp -o build/memory.o
+mkdir -p build/
+echo g++ -c src/object.cpp -o build/object.o
+g++ -g -std=c++11 -MMD -MP -isystem . -D_REENTRANT -I/home/linuxbrew/.linuxbrew/include/SDL2 -Wall -Wextra -pedantic -Wpointer-arith -Wshadow -Wfloat-conversion -Wfloat-equal -Wno-unused-function -Wno-unused-parameter -c src/object.cpp -o build/object.o
+mkdir -p build/
+echo g++ -c src/parser.cpp -o build/parser.o
+g++ -g -std=c++11 -MMD -MP -isystem . -D_REENTRANT -I/home/linuxbrew/.linuxbrew/include/SDL2 -Wall -Wextra -pedantic -Wpointer-arith -Wshadow -Wfloat-conversion -Wfloat-equal -Wno-unused-function -Wno-unused-parameter -c src/parser.cpp -o build/parser.o
+mkdir -p build/
+echo g++ -c src/qed.cpp -o build/qed.o
+g++ -g -std=c++11 -MMD -MP -isystem . -D_REENTRANT -I/home/linuxbrew/.linuxbrew/include/SDL2 -Wall -Wextra -pedantic -Wpointer-arith -Wshadow -Wfloat-conversion -Wfloat-equal -Wno-unused-function -Wno-unused-parameter -c src/qed.cpp -o build/qed.o
+mkdir -p build/
+echo g++ -c src/qni.cpp -o build/qni.o
+g++ -g -std=c++11 -MMD -MP -isystem . -D_REENTRANT -I/home/linuxbrew/.linuxbrew/include/SDL2 -Wall -Wextra -pedantic -Wpointer-arith -Wshadow -Wfloat-conversion -Wfloat-equal -Wno-unused-function -Wno-unused-parameter -c src/qni.cpp -o build/qni.o
+mkdir -p build/
+echo g++ -c src/resolver.cpp -o build/resolver.o
+g++ -g -std=c++11 -MMD -MP -isystem . -D_REENTRANT -I/home/linuxbrew/.linuxbrew/include/SDL2 -Wall -Wextra -pedantic -Wpointer-arith -Wshadow -Wfloat-conversion -Wfloat-equal -Wno-unused-function -Wno-unused-parameter -c src/resolver.cpp -o build/resolver.o
+mkdir -p build/
+echo g++ -c src/scanner.cpp -o build/scanner.o
+g++ -g -std=c++11 -MMD -MP -isystem . -D_REENTRANT -I/home/linuxbrew/.linuxbrew/include/SDL2 -Wall -Wextra -pedantic -Wpointer-arith -Wshadow -Wfloat-conversion -Wfloat-equal -Wno-unused-function -Wno-unused-parameter -c src/scanner.cpp -o build/scanner.o
+ 
+mkdir -p build/
+echo g++ -c src/stdlib.cpp -o build/stdlib.o
+g++ -g -std=c++11 -MMD -MP -isystem . -D_REENTRANT -I/home/linuxbrew/.linuxbrew/include/SDL2 -Wall -Wextra -pedantic -Wpointer-arith -Wshadow -Wfloat-conversion -Wfloat-equal -Wno-unused-function -Wno-unused-parameter -c src/stdlib.cpp -o build/stdlib.o
+mkdir -p build/
+echo g++ -c src/value.cpp -o build/value.o
+g++ -g -std=c++11 -MMD -MP -isystem . -D_REENTRANT -I/home/linuxbrew/.linuxbrew/include/SDL2 -Wall -Wextra -pedantic -Wpointer-arith -Wshadow -Wfloat-conversion -Wfloat-equal -Wno-unused-function -Wno-unused-parameter -c src/value.cpp -o build/value.o
+mkdir -p build/
+echo g++ -c src/vm.cpp -o build/vm.o
+g++ -g -std=c++11 -MMD -MP -isystem . -D_REENTRANT -I/home/linuxbrew/.linuxbrew/include/SDL2 -Wall -Wextra -pedantic -Wpointer-arith -Wshadow -Wfloat-conversion -Wfloat-equal -Wno-unused-function -Wno-unused-parameter -c src/vm.cpp -o build/vm.o
+g++ -g -std=c++11 -MMD -MP -isystem . -D_REENTRANT -I/home/linuxbrew/.linuxbrew/include/SDL2 build/astprinter.o build/attrset.o build/chunk.o build/codegen.o build/compiler.o build/debug.o build/expr.o build/logger.o build/memory.o build/object.o build/parser.o build/qed.o build/qni.o build/resolver.o build/scanner.o build/stdlib.o build/value.o build/vm.o -L/home/linuxbrew/.linuxbrew/lib -Wl,-rpath,/home/linuxbrew/.linuxbrew/lib -Wl,--enable-new-dtags -lSDL2 -lSDL2_image -o bin/qed
+make: Leaving directory '/home/msavage/Documents/qed'
+ 

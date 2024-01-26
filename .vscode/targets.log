@@ -1,0 +1,1193 @@
+make all --print-data-base --no-builtin-variables --no-builtin-rules --question
+# GNU Make 4.3
+# Built for x86_64-pc-linux-gnu
+# Copyright (C) 1988-2020 Free Software Foundation, Inc.
+# License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+# This is free software: you are free to change and redistribute it.
+# There is NO WARRANTY, to the extent permitted by law.
+
+# Make data base, printed on Fri Aug 19 07:47:35 2022
+
+# Variables
+
+# environment
+GDK_BACKEND = x11
+# environment
+LC_ALL = C
+# environment
+GNOME_SHELL_SESSION_MODE = ubuntu
+# environment
+SSH_AGENT_LAUNCHER = gnome-keyring
+# environment
+SNAP_INSTANCE_KEY = 
+# makefile (from 'Makefile', line 24)
+NOWARNDIRS = imgui/ stb/
+# environment
+GJS_DEBUG_OUTPUT = stderr
+# makefile (from 'Makefile', line 15)
+BINDIR = bin
+# environment
+VSCODE_CWD = /home/msavage
+# default
+MAKE_COMMAND := make
+# environment
+QT_ACCESSIBILITY = 1
+# automatic
+@D = $(patsubst %/,%,$(dir $@))
+# environment
+SNAP_INSTANCE_NAME = code
+# environment
+GDK_PIXBUF_MODULEDIR = /snap/code/104/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders
+# environment
+VSCODE_HANDLES_UNCAUGHT_ERRORS = true
+# default
+.VARIABLES := 
+# environment
+PWD = /home/msavage/Documents/qed
+# automatic
+%D = $(patsubst %/,%,$(dir $%))
+# makefile (from 'Makefile', line 36)
+EMXXFLAGS = $(COMMONFLAGS) -Oz -s USE_SDL=2 -s USE_SDL_IMAGE=2
+# environment
+XDG_DATA_DIRS = /usr/share/ubuntu:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop
+# automatic
+^D = $(patsubst %/,%,$(dir $^))
+# automatic
+%F = $(notdir $%)
+# environment
+VSCODE_CODE_CACHE_PATH = /home/msavage/.config/Code/CachedData/6d9b74a70ca9c7733b29f0456fd8195364076dda
+# environment
+LANG = C
+# environment
+XAUTHORITY = /run/user/1000/.mutter-Xwaylandauth.SWONQ1
+# default
+.LOADED := 
+# default
+.INCLUDE_DIRS = /usr/local/include /usr/include /usr/include
+# makefile
+MAKEFLAGS = pqrR
+# makefile (from 'Makefile', line 11)
+ASSETS = qed-small6.png
+# makefile (from 'Makefile', line 20)
+LOCALFLAGS = -g $(COMMONFLAGS) -D_REENTRANT -I/home/linuxbrew/.linuxbrew/include/SDL2
+# makefile
+CURDIR := /home/msavage/Documents/qed
+# makefile (from 'Makefile', line 13)
+UNAME = $(shell uname -s)
+# environment
+APPLICATION_INSIGHTS_NO_DIAGNOSTIC_CHANNEL = true
+# automatic
+*D = $(patsubst %/,%,$(dir $*))
+# makefile (from 'Makefile', line 9)
+SED = s/\.cpp$$//
+# makefile (from 'Makefile', line 10)
+MODULES = $(shell (cd src && ls -1 *.cpp | sed -e '$(SED)') | tr '\n' ' ')
+# environment
+MFLAGS = -pqrR
+# environment
+SSH_AUTH_SOCK = /run/user/1000/keyring/ssh
+# default
+.SHELLFLAGS := -c
+# environment
+WAYLAND_DISPLAY = wayland-0
+# environment
+XDG_CONFIG_DIRS = /etc/xdg/xdg-ubuntu:/etc/xdg
+# automatic
++D = $(patsubst %/,%,$(dir $+))
+# environment
+XDG_SESSION_DESKTOP = ubuntu
+# makefile (from 'build/memory.d', line 1)
+MAKEFILE_LIST := Makefile build/qed.d build/scanner.d build/debug.d build/resolver.d build/object.d build/qni.d build/expr.d build/stdlib.d build/vm.d build/parser.d build/astprinter.d build/codegen.d build/logger.d build/chunk.d build/value.d build/compiler.d build/memory.d
+# environment
+SNAP_REEXEC = 
+# automatic
+@F = $(notdir $@)
+# environment
+VSCODE_PID = 2428
+# environment
+XDG_SESSION_TYPE = wayland
+# automatic
+?D = $(patsubst %/,%,$(dir $?))
+# environment
+BAMF_DESKTOP_FILE_HINT = /var/lib/snapd/desktop/applications/code_code.desktop
+# environment
+SESSION_MANAGER = local/msavage-ubuntu:@/tmp/.ICE-unix/1750,unix/msavage-ubuntu:/tmp/.ICE-unix/1750
+# automatic
+*F = $(notdir $*)
+# environment
+EM_CONFIG = /home/msavage/Documents/emsdk/.emscripten
+# environment
+CHROME_DESKTOP = code-url-handler.desktop
+# environment
+DBUS_SESSION_BUS_ADDRESS = unix:path=/run/user/1000/bus
+# automatic
+<D = $(patsubst %/,%,$(dir $<))
+# environment
+VSCODE_NLS_CONFIG = {"locale":"en-gb","availableLanguages":{},"_languagePackSupport":true}
+# default
+MAKE_HOST := x86_64-pc-linux-gnu
+# makefile (from 'Makefile', line 16)
+WWWDIR = www
+# environment
+GNOME_DESKTOP_SESSION_ID = this-is-deprecated
+# makefile
+SHELL = /bin/sh
+# default
+MAKECMDGOALS := all
+# environment
+XMODIFIERS = @im=ibus
+# environment
+GJS_DEBUG_TOPICS = JS ERROR;JS LOG
+# environment
+SHLVL = 1
+# environment
+MAKELEVEL := 0
+# environment
+IM_CONFIG_CHECK_ENV = 1
+# default
+MAKE = $(MAKE_COMMAND)
+# environment
+SNAP_COOKIE = qBL1p3phlw5s6z-nHCbEQ5m-XSkyLoztgzkhNdTAAjZkPuWrEnoh
+# environment
+PATH = /home/msavage/Documents/emsdk:/home/msavage/Documents/emsdk/upstream/emscripten:/home/msavage/Documents/emsdk/node/14.18.2_64bit/bin:/home/linuxbrew/.linuxbrew/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
+# environment
+EMSDK_NODE = /home/msavage/Documents/emsdk/node/14.18.2_64bit/bin/node
+# default
+MAKEFILES := 
+# environment
+LANGUAGE = en_CA:en
+# automatic
+^F = $(notdir $^)
+# environment
+SNAP_USER_COMMON = /home/msavage/snap/code/common
+# makefile (from 'Makefile', line 25)
+LOCALWARN = -Wall -Wextra -pedantic -Wpointer-arith -Wshadow -Wfloat-conversion -Wfloat-equal -Wno-unused-function -Wno-unused-parameter
+# environment
+SNAP = /snap/code/104
+# environment
+INVOCATION_ID = 288b66d8b5d140aab5f49eb6d208b5f4
+# environment
+SNAP_REVISION = 104
+# environment
+SNAP_REAL_HOME = /home/msavage
+# makefile (from 'Makefile', line 38)
+EMXXLINK = -s TOTAL_MEMORY=50331648 --use-preload-plugins
+# makefile (from 'Makefile', line 17)
+_MKDIRS := 
+# environment
+USERNAME = msavage
+# environment
+GNOME_SETUP_DISPLAY = :1
+# automatic
+?F = $(notdir $?)
+# environment
+XDG_CURRENT_DESKTOP = Unity
+# automatic
++F = $(notdir $+)
+# environment
+DESKTOP_SESSION = ubuntu
+# environment
+ORIGINAL_XDG_CURRENT_DESKTOP = ubuntu:GNOME
+# 'override' directive
+GNUMAKEFLAGS := 
+# environment
+LOGNAME = msavage
+# environment
+GIO_LAUNCHED_DESKTOP_FILE = /var/lib/snapd/desktop/applications/code_code.desktop
+# environment
+EMSDK = /home/msavage/Documents/emsdk
+# environment
+SNAP_ARCH = amd64
+# makefile
+.DEFAULT_GOAL := all
+# environment
+SYSTEMD_EXEC_PID = 1772
+# environment
+DISPLAY = :0
+# environment
+GTK_MODULES = gail:atk-bridge
+# environment
+USER = msavage
+# makefile (from 'Makefile', line 28)
+LOCALLIBS = -L/home/linuxbrew/.linuxbrew/lib -Wl,-rpath,/home/linuxbrew/.linuxbrew/lib -Wl,--enable-new-dtags -lSDL2 -lSDL2_image
+# default
+MAKE_VERSION := 4.3
+# 'override' directive
+.SHELLSTATUS := 0
+# environment
+DISABLE_WAYLAND = 1
+# environment
+SNAP_DATA = /var/snap/code/104
+# environment
+SNAP_CONTEXT = qBL1p3phlw5s6z-nHCbEQ5m-XSkyLoztgzkhNdTAAjZkPuWrEnoh
+# environment
+MANAGERPID = 1531
+# environment
+GIO_LAUNCHED_DESKTOP_FILE_PID = 2377
+# environment
+_ = /usr/bin/make
+# environment
+XDG_RUNTIME_DIR = /run/user/1000
+# environment
+GDK_PIXBUF_MODULE_FILE = /home/msavage/snap/code/common/.cache/gdk-pixbuf-loaders.cache
+# environment
+JOURNAL_STREAM = 8:23120
+# environment
+XDG_SESSION_CLASS = user
+# environment
+VSCODE_AMD_ENTRYPOINT = vs/workbench/api/node/extensionHostProcess
+# environment
+HOME = /home/msavage
+# environment
+QT_IM_MODULE = ibus
+# environment
+ELECTRON_RUN_AS_NODE = 1
+# environment
+VSCODE_IPC_HOOK = /run/user/1000/vscode-83ad6ad2-1.70.1-main.sock
+# environment
+SNAP_NAME = code
+# environment
+GSETTINGS_SCHEMA_DIR = /snap/code/104/usr/share/glib-2.0/schemas
+# environment
+IM_CONFIG_PHASE = 1
+# makefile (from 'Makefile', line 19)
+COMMONFLAGS = -std=c++11 -MMD -MP -isystem .
+# default
+.RECIPEPREFIX := 
+# automatic
+<F = $(notdir $<)
+# environment
+SNAP_VERSION = 6d9b74a7
+# makefile (from 'Makefile', line 35)
+EMXX = em++
+# default
+SUFFIXES := 
+# environment
+VSCODE_CLI = 1
+# environment
+ELECTRON_NO_ATTACH_CONSOLE = 1
+# environment
+SNAP_COMMON = /var/snap/code/common
+# default
+.FEATURES := target-specific order-only second-expansion else-if shortest-stem undefine oneshell nocomment grouped-target extra-prereqs archives jobserver output-sync check-symlink load
+# makefile (from 'Makefile', line 14)
+BUILDDIR = build
+# environment
+SNAP_USER_DATA = /home/msavage/snap/code/104
+# environment
+XDG_MENU_PREFIX = gnome-
+ 
+# environment
+GDMSESSION = ubuntu
+# environment
+SNAP_LIBRARY_PATH = /var/lib/snapd/lib/gl:/var/lib/snapd/lib/gl32:/var/lib/snapd/void
+# variable set hash-table stats:
+# Load=135/1024=13%, Rehash=0, Collisions=9/248=4%
+
+# Pattern-specific Variable Values
+
+# No pattern-specific variable values.
+
+# Directories
+
+# src (device 2051, inode 950312): 8 files, no impossibilities so far.
+# . (device 2051, inode 951126): 19 files, no impossibilities.
+
+# 27 files, no impossibilities in 2 directories.
+
+# Implicit Rules
+
+build/%.em.o: src/%.cpp Makefile
+#  recipe to execute (from 'Makefile', line 54):
+	@mkdir -p $(dir $@)
+	@echo $(EMXX) -c $< -o $@
+	@$(EMXX) $(EMXXFLAGS) -c $< -o $@
+
+build/%.o: src/%.cpp Makefile
+#  recipe to execute (from 'Makefile', line 60):
+	@mkdir -p $(dir $@)
+	@echo $(CXX) -c $< -o $@
+	@$(CXX) $(LOCALFLAGS) $(if $(filter-out $(NOWARNDIRS),$(dir $<)),$(LOCALWARN)) -c $< -o $@
+
+# 2 implicit rules, 0 (0.0%) terminal.
+# Files
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_quit.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_audio.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_metal.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/value.d:
+#  Implicit rule search has been done.
+#  Last modified 2022-08-06 09:45:22.834507327
+#  File has been updated.
+#  Successfully updated.
+
+src/codegen.hpp:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/chunk.d:
+#  Implicit rule search has been done.
+#  Last modified 2022-08-06 09:43:51.587350262
+#  File has been updated.
+#  Successfully updated.
+
+# Not a target:
+src/stdlib.cpp:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/vm.em.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/qed.em.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/debug.em.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_gesture.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+src/chunk.cpp:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/stdlib.em.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/qni.em.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/compiler.d:
+#  Implicit rule search has been done.
+#  Last modified 2022-08-13 09:44:09.811547134
+#  File has been updated.
+#  Successfully updated.
+
+# Not a target:
+build/compiler.em.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+build/attrset.o: src/attrset.cpp Makefile
+#  Implicit rule search has been done.
+#  Implicit/static pattern stem: 'attrset'
+#  File does not exist.
+#  File has been updated.
+#  Needs to be updated (-q is set).
+# automatic
+# @ := build/attrset.o
+# automatic
+# * := attrset
+# automatic
+# < := src/attrset.cpp
+# automatic
+# + := src/attrset.cpp Makefile
+# automatic
+# % := 
+# automatic
+# ^ := src/attrset.cpp Makefile
+# automatic
+# ? := src/attrset.cpp Makefile
+# automatic
+# | := 
+# variable set hash-table stats:
+# Load=8/32=25%, Rehash=0, Collisions=6/23=26%
+#  recipe to execute (from 'Makefile', line 60):
+	@mkdir -p $(dir $@)
+	@echo $(CXX) -c $< -o $@
+	@$(CXX) $(LOCALFLAGS) $(if $(filter-out $(NOWARNDIRS),$(dir $<)),$(LOCALWARN)) -c $< -o $@
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_system.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+src/compiler.hpp:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+emscripten-shell.html:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/codegen.d:
+#  Implicit rule search has been done.
+ 
+#  Last modified 2022-08-13 09:44:09.44355773
+#  File has been updated.
+#  Successfully updated.
+
+www/_main.js: build/astprinter.em.o build/attrset.em.o build/chunk.em.o build/codegen.em.o build/compiler.em.o build/debug.em.o build/expr.em.o build/logger.em.o build/memory.em.o build/object.em.o build/parser.em.o build/qed.em.o build/qni.em.o build/resolver.em.o build/scanner.em.o build/stdlib.em.o build/value.em.o build/vm.em.o qed-small6.png Makefile
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  recipe to execute (from 'Makefile', line 51):
+	$(EMXX) $(EMXXFLAGS) $(EMXXLINK) $(filter %.o,$^) $(ASSETS:%=--preload-file %) -o $@
+
+# Not a target:
+build/expr.em.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_endian.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+build/logger.o: src/logger.cpp
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/scanner.d:
+#  Implicit rule search has been done.
+#  Last modified 2022-08-13 09:44:12.38347302
+#  File has been updated.
+#  Successfully updated.
+
+build/qni.o: src/qni.cpp src/qni.hpp src/vm.hpp src/chunk.hpp src/common.h src/value.h src/scanner.hpp src/object.hpp src/compiler.hpp src/parser.hpp src/expr.hpp
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/value.em.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_hints.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/qed.d:
+#  Implicit rule search has been done.
+#  Last modified 2022-08-13 11:13:11.206856956
+#  File has been updated.
+#  Successfully updated.
+
+# Not a target:
+src/codegen.cpp:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_power.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+Makefile:
+#  Implicit rule search has been done.
+#  Last modified 2022-07-30 08:28:00.128706457
+#  File has been updated.
+#  Successfully updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_clipboard.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_image.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+src/resolver.hpp:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/expr.d:
+#  Implicit rule search has been done.
+#  Last modified 2022-08-13 09:44:10.107538608
+#  File has been updated.
+#  Successfully updated.
+
+# Not a target:
+build/codegen.em.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+build/memory.o: src/memory.cpp src/memory.h src/common.h src/object.hpp src/chunk.hpp src/value.h
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_main.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+src/vm.cpp:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/logger.d:
+#  Implicit rule search has been done.
+#  Last modified 2022-07-30 09:37:50.775138375
+#  File has been updated.
+#  Successfully updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_loadso.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_pixels.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_sensor.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/memory.d:
+#  Implicit rule search has been done.
+#  Last modified 2022-08-06 09:43:52.676438275
+#  File has been updated.
+#  Successfully updated.
+
+clean:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  recipe to execute (from 'Makefile', line 65):
+	rm -rf $(BUILDDIR)/* $(BINDIR)/* $(WWWDIR)/*
+
+# Not a target:
+build/object.d:
+#  Implicit rule search has been done.
+#  Last modified 2022-08-13 11:12:42.358686585
+#  File has been updated.
+#  Successfully updated.
+
+# Not a target:
+src/logger.cpp:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_hidapi.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+src/debug.cpp:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_platform.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+build/parser.o: src/parser.cpp src/parser.hpp src/object.hpp src/common.h src/chunk.hpp src/value.h src/scanner.hpp src/expr.hpp src/compiler.hpp src/resolver.hpp src/codegen.hpp src/memory.h
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_messagebox.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+build/expr.o: src/expr.cpp src/expr.hpp src/chunk.hpp src/common.h src/value.h src/object.hpp src/scanner.hpp
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/qni.d:
+#  Implicit rule search has been done.
+#  Last modified 2022-08-13 11:13:11.782860297
+#  File has been updated.
+#  Successfully updated.
+
+build/scanner.o: src/scanner.cpp src/scanner.hpp
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_render.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/debug.d:
+#  Implicit rule search has been done.
+#  Last modified 2022-08-06 09:43:52.444206272
+#  File has been updated.
+#  Successfully updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_mouse.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_blendmode.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_shape.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+src/memory.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+src/object.cpp:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+build/object.o: src/object.cpp src/memory.h src/common.h src/parser.hpp src/object.hpp src/chunk.hpp src/value.h src/scanner.hpp src/expr.hpp src/vm.hpp src/compiler.hpp
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+src/object.hpp:
+#  Implicit rule search has been done.
+#  Last modified 2022-07-26 09:41:32.354082246
+#  File has been updated.
+#  Successfully updated.
+
+# Not a target:
+build/astprinter.d:
+#  Implicit rule search has been done.
+#  Last modified 2022-08-13 09:44:08.899573395
+#  File has been updated.
+#  Successfully updated.
+
+# Not a target:
+build/stdlib.d:
+#  Implicit rule search has been done.
+#  Last modified 2022-08-13 11:13:13.106867967
+#  File has been updated.
+#  Successfully updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/begin_code.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+ 
+#  File has not been updated.
+
+build/codegen.o: src/codegen.cpp src/codegen.hpp src/compiler.hpp src/parser.hpp src/object.hpp src/common.h src/chunk.hpp src/value.h src/scanner.hpp src/expr.hpp src/debug.hpp
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/scanner.em.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+build/vm.o: src/vm.cpp src/vm.hpp src/chunk.hpp src/common.h src/value.h src/scanner.hpp src/object.hpp src/compiler.hpp src/parser.hpp src/expr.hpp src/resolver.hpp src/codegen.hpp src/debug.hpp src/memory.h src/astprinter.hpp /home/linuxbrew/.linuxbrew/include/SDL2/SDL.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_main.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_stdinc.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_config.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_platform.h /home/linuxbrew/.linuxbrew/include/SDL2/begin_code.h /home/linuxbrew/.linuxbrew/include/SDL2/close_code.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_assert.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_atomic.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_audio.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_error.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_endian.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_mutex.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_thread.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_rwops.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_clipboard.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_cpuinfo.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_events.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_video.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_pixels.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_rect.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_surface.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_blendmode.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_keyboard.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_keycode.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_scancode.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_mouse.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_joystick.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_gamecontroller.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_sensor.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_quit.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_gesture.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_touch.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_filesystem.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_haptic.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_hidapi.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_hints.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_loadso.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_log.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_messagebox.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_metal.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_power.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_render.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_shape.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_system.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_timer.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_version.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_locale.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_misc.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_image.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_timer.h
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/resolver.d:
+#  Implicit rule search has been done.
+#  Last modified 2022-08-13 11:13:12.282863195
+#  File has been updated.
+#  Successfully updated.
+
+build/resolver.o: src/resolver.cpp src/resolver.hpp src/compiler.hpp src/parser.hpp src/object.hpp src/common.h src/chunk.hpp src/value.h src/scanner.hpp src/expr.hpp src/memory.h src/qni.hpp src/vm.hpp
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_timer.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+src/scanner.hpp:
+#  Implicit rule search has been done.
+#  Last modified 2022-08-13 09:43:49.864119236
+#  File has been updated.
+#  Successfully updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_cpuinfo.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/vm.d:
+#  Implicit rule search has been done.
+#  Last modified 2022-08-13 11:13:14.166874099
+#  File has been updated.
+#  Successfully updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_events.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+.DEFAULT:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/resolver.em.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/chunk.em.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_thread.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+all: bin/qed
+#  Command line target.
+#  Implicit rule search has been done.
+#  File does not exist.
+#  File has been updated.
+#  Needs to be updated (-q is set).
+# variable set hash-table stats:
+# Load=0/32=0%, Rehash=0, Collisions=0/9=0%
+
+build/debug.o: src/debug.cpp src/debug.hpp src/chunk.hpp src/common.h src/value.h src/object.hpp
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/astprinter.em.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+src/attrset.cpp:
+#  Implicit rule search has been done.
+#  Last modified 2022-08-18 17:08:50.871441103
+#  File has been updated.
+#  Successfully updated.
+
+# Not a target:
+src/astprinter.cpp:
+#  Implicit rule search has been done.
+#  Last modified 2022-08-12 15:26:07.263726282
+#  File has been updated.
+#  Successfully updated.
+
+# Not a target:
+src/parser.cpp:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_config.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+src/value.cpp:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_haptic.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/parser.d:
+#  Implicit rule search has been done.
+#  Last modified 2022-08-13 09:44:10.93951464
+#  File has been updated.
+#  Successfully updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_surface.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+src/memory.cpp:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_rect.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+build/stdlib.o: src/stdlib.cpp src/qni.hpp src/vm.hpp src/chunk.hpp src/common.h src/value.h src/scanner.hpp src/object.hpp src/compiler.hpp src/parser.hpp src/expr.hpp /home/linuxbrew/.linuxbrew/include/SDL2/SDL.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_main.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_stdinc.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_config.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_platform.h /home/linuxbrew/.linuxbrew/include/SDL2/begin_code.h /home/linuxbrew/.linuxbrew/include/SDL2/close_code.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_assert.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_atomic.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_audio.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_error.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_endian.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_mutex.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_thread.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_rwops.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_clipboard.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_cpuinfo.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_events.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_video.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_pixels.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_rect.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_surface.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_blendmode.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_keyboard.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_keycode.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_scancode.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_mouse.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_joystick.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_gamecontroller.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_sensor.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_quit.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_gesture.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_touch.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_filesystem.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_haptic.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_hidapi.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_hints.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_loadso.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_log.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_messagebox.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_metal.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_power.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_render.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_shape.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_system.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_timer.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_version.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_locale.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_misc.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_image.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL.h /home/linuxbrew/.linuxbrew/include/SDL2/SDL_timer.h
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+src/vm.hpp:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/attrset.em.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+src/value.h:
+#  Implicit rule search has been done.
+#  Last modified 2022-07-26 09:43:09.774769373
+#  File has been updated.
+#  Successfully updated.
+
+src/chunk.hpp:
+#  Implicit rule search has been done.
+#  Last modified 2022-08-05 10:14:04.983260007
+#  File has been updated.
+#  Successfully updated.
+
+# Not a target:
+build/parser.em.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_keycode.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_misc.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_scancode.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_locale.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+src/astprinter.hpp:
+#  Implicit rule search has been done.
+#  Last modified 2022-08-10 19:38:34.141895377
+#  File has been updated.
+#  Successfully updated.
+
+www: www/index.html www/_main.js
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+build/chunk.o: src/chunk.cpp src/chunk.hpp src/common.h src/value.h src/memory.h
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/memory.em.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+www/index.html: emscripten-shell.html
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  recipe to execute (from 'Makefile', line 48):
+	cp emscripten-shell.html $(dir $@)index.html
+
+bin/qed: build/astprinter.o build/attrset.o build/chunk.o build/codegen.o build/compiler.o build/debug.o build/expr.o build/logger.o build/memory.o build/object.o build/parser.o build/qed.o build/qni.o build/resolver.o build/scanner.o build/stdlib.o build/value.o build/vm.o Makefile
+#  Implicit rule search has not been done.
+#  Last modified 2022-08-13 11:13:14.638876827
+#  File has been updated.
+#  Needs to be updated (-q is set).
+# variable set hash-table stats:
+# Load=0/32=0%, Rehash=0, Collisions=0/9=0%
+#  recipe to execute (from 'Makefile', line 45):
+	$(CXX) $(LOCALFLAGS) $(filter %.o,$^) $(LOCALLIBS) -o $@
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_log.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_joystick.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+src/debug.hpp:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+ 
+
+build/astprinter.o: src/astprinter.cpp Makefile src/astprinter.cpp src/astprinter.hpp src/expr.hpp src/chunk.hpp src/common.h src/value.h src/object.hpp src/scanner.hpp
+#  Implicit rule search has been done.
+#  Implicit/static pattern stem: 'astprinter'
+#  Last modified 2022-08-13 09:44:08.935572359
+#  File has been updated.
+#  Successfully updated.
+#  recipe to execute (from 'Makefile', line 60):
+	@mkdir -p $(dir $@)
+	@echo $(CXX) -c $< -o $@
+	@$(CXX) $(LOCALFLAGS) $(if $(filter-out $(NOWARNDIRS),$(dir $<)),$(LOCALWARN)) -c $< -o $@
+
+# Not a target:
+src/qed.cpp:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+src/qni.cpp:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+src/parser.hpp:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+build/value.o: src/value.cpp src/object.hpp src/common.h src/chunk.hpp src/value.h src/memory.h
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+src/scanner.cpp:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_gamecontroller.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+src/compiler.cpp:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/close_code.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_mutex.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_error.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+src/expr.cpp:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+src/qni.hpp:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_keyboard.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_assert.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+src/common.h:
+#  Implicit rule search has been done.
+#  Last modified 2022-07-26 09:43:09.774769373
+#  File has been updated.
+#  Successfully updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_filesystem.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_touch.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+build/qed.o: src/qed.cpp src/compiler.hpp src/parser.hpp src/object.hpp src/common.h src/chunk.hpp src/value.h src/scanner.hpp src/expr.hpp src/vm.hpp src/qni.hpp
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+qed-small6.png:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+src/expr.hpp:
+#  Implicit rule search has been done.
+#  Last modified 2022-08-12 09:13:32.691100849
+#  File has been updated.
+#  Successfully updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_version.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+src/resolver.cpp:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_atomic.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/logger.em.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_rwops.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+build/compiler.o: src/compiler.cpp src/compiler.hpp src/parser.hpp src/object.hpp src/common.h src/chunk.hpp src/value.h src/scanner.hpp src/expr.hpp src/resolver.hpp src/codegen.hpp src/astprinter.hpp
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
+build/object.em.o:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_video.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+/home/linuxbrew/.linuxbrew/include/SDL2/SDL_stdinc.h:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# files hash-table stats:
+# Load=147/1024=14%, Rehash=0, Collisions=31/734=4%
+# VPATH Search Paths
+
+# No 'vpath' search paths.
+
+# No general ('VPATH' variable) search path.
+
+# strcache buffers: 1 (0) / strings = 177 / storage = 4345 B / avg = 24 B
+# current buf: size = 8162 B / used = 4345 B / count = 177 / avg = 24 B
+
+# strcache performance: lookups = 898 / hit rate = 80%
+# hash-table stats:
+# Load=177/8192=2%, Rehash=0, Collisions=7/898=1%
+# Finished Make data base on Fri Aug 19 07:47:35 2022
+
+ 

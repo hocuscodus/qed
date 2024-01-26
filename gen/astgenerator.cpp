@@ -13,8 +13,9 @@
 #define PASSES_DEF \
     PASS_DEF( void cleanExprs() )  \
     PASS_DEF( void astPrint() )  \
-    PASS_DEF( Expr *toCps(K k) )  \
     PASS_DEF( Type resolve(Parser &parser) )  \
+    PASS_DEF( Type findTypes(Parser &parser) )  \
+    PASS_DEF( Expr *toCps(K k) )  \
     PASS_DEF( std::string toCode(Parser &parser, ObjFunction *function) )
 
 void writeHeader(FILE *file) {

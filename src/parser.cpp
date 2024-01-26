@@ -21,10 +21,6 @@
 #define KEY_DEF( identifier, unary, binary, prec )  { unary, binary, prec }
 ParseExpRule expRules[] = { KEYS_DEF };
 #undef KEY_DEF
-Obj objString = {OBJ_STRING};
-Type stringType = {VAL_OBJ, &objString};
-Obj objAny= {OBJ_ANY};
-Type anyType = {VAL_OBJ, &objAny};
 
 int getDir(char op) {
   switch (op) {
@@ -126,7 +122,7 @@ static Expr *createArrayExpr(Expr *iteratorExprs, Expr *body) {
   popScope();
   return mainGroup;
 }
-
+/*
 static const char *getHandlerType(Type type) {
   switch (type.valueType) {
     case VAL_VOID: return "voidHandler_";
@@ -142,7 +138,7 @@ static const char *getHandlerType(Type type) {
     default: return NULL;
   }
 }
-
+*/
 Parser::Parser(Scanner &scanner) : scanner(scanner) {
   hadError = false;
   panicMode = false;
@@ -236,6 +232,7 @@ std::string compile(FunctionExpr *expr, Parser *parser) {
   expr->astPrint();
   fprintf(stderr, "\n");
 #endif
+  expr->findTypes(*parser);
   expr->resolve(*parser);
 
   if (parser->hadError)
@@ -427,12 +424,12 @@ Expr *Parser::as(Expr *expr) {
   passSeparator();
 
   Expr *typeExpr = parsePrecedence((Precedence)(getExpRule(TOKEN_AS)->precedence + 1));
-  Type type = typeExpr ? resolveType(typeExpr) : UNKNOWN_TYPE;
+/*  Type type = typeExpr ? resolveType(typeExpr) : UNKNOWN_TYPE;
 
   if (IS_UNKNOWN(type))
     error("Expect type.");
-
-  return new CastExpr(type, expr);
+*/
+  return new CastExpr(UNKNOWN_TYPE, expr);
 }
 
 Expr *Parser::binary(Expr *left) {
@@ -674,6 +671,17 @@ Expr *Parser::grouping() {
 
   pushScope(group);
   expList(group, endGroupType);
+
+  if (op.type == TOKEN_LEFT_BRACE && check(TOKEN_LESS)) {
+    int offset = 0;
+    Point zoneOffsets;
+    std::array<long, NUM_DIRS> arrayDirFlags;
+    ValueStack<ValueStackElement> valueStack;
+
+    /*functionExpr->ui = */directive(/*parenFlag ? TOKEN_RIGHT_PAREN : */TOKEN_RIGHT_BRACE, NULL);
+//        ((UIDirectiveExpr *) functionExpr->ui)->_attrSet.init(&offset, zoneOffsets, arrayDirFlags, valueStack, (UIDirectiveExpr *) functionExpr->ui, 0, &functionExpr->_function);
+  }
+
   consume(endGroupType, "Expect '%c' after expression.", closingChar);
   popScope();
 /*
@@ -838,7 +846,7 @@ Expr *Parser::parsePrecedence(Precedence precedence) {
     return NULL;
 
   Expr *left = (this->*prefixRule)();
-
+/*
   if (check(TOKEN_STAR) && checkNext(TOKEN_IDENTIFIER)) {
     Type type = resolveType(left);
 
@@ -848,7 +856,7 @@ Expr *Parser::parsePrecedence(Precedence precedence) {
       return left;
     }
   }
-
+*/
   while (precedence <= getExpRule(current.type)->precedence) {
     advance();
 
@@ -880,11 +888,11 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
 
   if (exp == NULL)
     error("Expect expression.");
-
+/*
   Type returnType = resolveType(exp);
 
   if (returnType.valueType != -1 &&//->type == EXPR_REFERENCE &&//) {
-    /*if (*/check(TOKEN_IDENTIFIER) && (checkNext(TOKEN_EQUAL) || checkNext(TOKEN_CALL) || checkNext(TOKEN_SEPARATOR))) {
+    / *if (* /check(TOKEN_IDENTIFIER) && (checkNext(TOKEN_EQUAL) || checkNext(TOKEN_CALL) || checkNext(TOKEN_SEPARATOR))) {
     consume(TOKEN_IDENTIFIER, "Expect name identifier after type.");
 
     Token name = previous;
@@ -965,7 +973,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
       return declareVariable(exp, endGroupTypes);
 //    }
   }
-  else {
+  else {*/
     Expr *iteratorExprs = NULL;
 
     while (!check(endGroupTypes) && !check(TOKEN_EOF)) {
@@ -976,14 +984,15 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
         error("Expect expression.");
     }
 
-    if ((*getLastBodyExpr(&exp, TOKEN_SEPARATOR))->type == EXPR_ITERATOR)
+    if (!exp || (*getLastBodyExpr(&exp, TOKEN_SEPARATOR))->type == EXPR_ITERATOR)
       error("Cannot define an iterator list without a body expression.");
 
     if (iteratorExprs)
-      exp = createArrayExpr(iteratorExprs, exp);
+      addExpr(&iteratorExprs, exp, buildToken(TOKEN_SEPARATOR, ","));
+//      exp = createArrayExpr(iteratorExprs, exp);
 
     return exp;
-  }
+//  }
 }
 
 Expr *Parser::varDeclaration(TokenType endGroupType) {

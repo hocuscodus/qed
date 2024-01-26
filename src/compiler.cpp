@@ -8,6 +8,12 @@
 #include "compiler.hpp"
 #include "parser.hpp"
 
+
+Obj objString = {OBJ_STRING};
+Type stringType = {VAL_OBJ, &objString};
+Obj objAny= {OBJ_ANY};
+Type anyType = {VAL_OBJ, &objAny};
+
 static std::stack<Signature *> signatures;
 static Scope *currentScope = NULL;
 Declaration *arrayDeclaration = NULL;
