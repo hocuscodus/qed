@@ -5,8 +5,12 @@
 	"build": {
 		"dockerfile": "Dockerfile"
 	},
-	"features": {
-		"ghcr.io/jungaretti/features/make:1": {}
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-vscode.cpptools"
+			]
+		}
 	}
 
 	// Features to add to the dev container. More info: https://containers.dev/features.

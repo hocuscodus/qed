@@ -24,7 +24,7 @@ int UIAttributeExpr::findTypes(Parser &parser) {
 
 int UIDirectiveExpr::findTypes(Parser &parser) {
   parser.error("Internal error, cannot be invoked..");
-  return this->
+  return 0;
 }
 
 int BinaryExpr::findTypes(Parser &parser) {
