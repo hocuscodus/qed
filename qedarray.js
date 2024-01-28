@@ -821,7 +821,7 @@ Object.setPrototypeOf(SQEDArray.prototype, Array.prototype);
 Object.setPrototypeOf(QEDArray.prototype, Array.prototype);
 ar = ["Martin", "Savage"];
 {
-  let _d0 = 50;
+  let _d0 = 500;
   balls = qedArray([_d0], (function l(pos) {
     let _HandlerFn_ = null;
     return (new Ball());

@@ -59,7 +59,7 @@ struct Expr {
   virtual void cleanExprs() = 0;
   virtual void astPrint() = 0;
   virtual Type resolve(Parser &parser) = 0;
-  virtual Type findTypes(Parser &parser) = 0;
+  virtual int findTypes(Parser &parser) = 0;
   virtual Expr *toCps(K k) = 0;
   virtual std::string toCode(Parser &parser, ObjFunction *function) = 0;
 };
@@ -74,7 +74,7 @@ struct UIAttributeExpr : public Expr {
   void cleanExprs();
   void astPrint();
   Type resolve(Parser &parser);
-  Type findTypes(Parser &parser);
+  int findTypes(Parser &parser);
   Expr *toCps(K k);
   std::string toCode(Parser &parser, ObjFunction *function);
 };
@@ -95,7 +95,7 @@ struct UIDirectiveExpr : public Expr {
   void cleanExprs();
   void astPrint();
   Type resolve(Parser &parser);
-  Type findTypes(Parser &parser);
+  int findTypes(Parser &parser);
   Expr *toCps(K k);
   std::string toCode(Parser &parser, ObjFunction *function);
 };
@@ -109,7 +109,7 @@ struct IteratorExpr : public Expr {
   void cleanExprs();
   void astPrint();
   Type resolve(Parser &parser);
-  Type findTypes(Parser &parser);
+  int findTypes(Parser &parser);
   Expr *toCps(K k);
   std::string toCode(Parser &parser, ObjFunction *function);
 };
@@ -123,7 +123,7 @@ struct AssignExpr : public Expr {
   void cleanExprs();
   void astPrint();
   Type resolve(Parser &parser);
-  Type findTypes(Parser &parser);
+  int findTypes(Parser &parser);
   Expr *toCps(K k);
   std::string toCode(Parser &parser, ObjFunction *function);
 };
@@ -137,7 +137,7 @@ struct BinaryExpr : public Expr {
   void cleanExprs();
   void astPrint();
   Type resolve(Parser &parser);
-  Type findTypes(Parser &parser);
+  int findTypes(Parser &parser);
   Expr *toCps(K k);
   std::string toCode(Parser &parser, ObjFunction *function);
 };
@@ -150,7 +150,7 @@ struct CastExpr : public Expr {
   void cleanExprs();
   void astPrint();
   Type resolve(Parser &parser);
-  Type findTypes(Parser &parser);
+  int findTypes(Parser &parser);
   Expr *toCps(K k);
   std::string toCode(Parser &parser, ObjFunction *function);
 };
@@ -164,7 +164,7 @@ struct GroupingExpr : public Expr {
   void cleanExprs();
   void astPrint();
   Type resolve(Parser &parser);
-  Type findTypes(Parser &parser);
+  int findTypes(Parser &parser);
   Expr *toCps(K k);
   std::string toCode(Parser &parser, ObjFunction *function);
 };
@@ -177,7 +177,7 @@ struct ArrayExpr : public Expr {
   void cleanExprs();
   void astPrint();
   Type resolve(Parser &parser);
-  Type findTypes(Parser &parser);
+  int findTypes(Parser &parser);
   Expr *toCps(K k);
   std::string toCode(Parser &parser, ObjFunction *function);
 };
@@ -194,7 +194,7 @@ struct CallExpr : public Expr {
   void cleanExprs();
   void astPrint();
   Type resolve(Parser &parser);
-  Type findTypes(Parser &parser);
+  int findTypes(Parser &parser);
   Expr *toCps(K k);
   std::string toCode(Parser &parser, ObjFunction *function);
 };
@@ -209,7 +209,7 @@ struct ArrayElementExpr : public Expr {
   void cleanExprs();
   void astPrint();
   Type resolve(Parser &parser);
-  Type findTypes(Parser &parser);
+  int findTypes(Parser &parser);
   Expr *toCps(K k);
   std::string toCode(Parser &parser, ObjFunction *function);
 };
@@ -222,7 +222,7 @@ struct DeclarationExpr : public Expr {
   void cleanExprs();
   void astPrint();
   Type resolve(Parser &parser);
-  Type findTypes(Parser &parser);
+  int findTypes(Parser &parser);
   Expr *toCps(K k);
   std::string toCode(Parser &parser, ObjFunction *function);
 };
@@ -238,7 +238,7 @@ struct FunctionExpr : public Expr {
   void cleanExprs();
   void astPrint();
   Type resolve(Parser &parser);
-  Type findTypes(Parser &parser);
+  int findTypes(Parser &parser);
   Expr *toCps(K k);
   std::string toCode(Parser &parser, ObjFunction *function);
 };
@@ -252,7 +252,7 @@ struct GetExpr : public Expr {
   void cleanExprs();
   void astPrint();
   Type resolve(Parser &parser);
-  Type findTypes(Parser &parser);
+  int findTypes(Parser &parser);
   Expr *toCps(K k);
   std::string toCode(Parser &parser, ObjFunction *function);
 };
@@ -266,7 +266,7 @@ struct IfExpr : public Expr {
   void cleanExprs();
   void astPrint();
   Type resolve(Parser &parser);
-  Type findTypes(Parser &parser);
+  int findTypes(Parser &parser);
   Expr *toCps(K k);
   std::string toCode(Parser &parser, ObjFunction *function);
 };
@@ -279,7 +279,7 @@ struct LiteralExpr : public Expr {
   void cleanExprs();
   void astPrint();
   Type resolve(Parser &parser);
-  Type findTypes(Parser &parser);
+  int findTypes(Parser &parser);
   Expr *toCps(K k);
   std::string toCode(Parser &parser, ObjFunction *function);
 };
@@ -293,7 +293,7 @@ struct LogicalExpr : public Expr {
   void cleanExprs();
   void astPrint();
   Type resolve(Parser &parser);
-  Type findTypes(Parser &parser);
+  int findTypes(Parser &parser);
   Expr *toCps(K k);
   std::string toCode(Parser &parser, ObjFunction *function);
 };
@@ -306,7 +306,7 @@ struct PrimitiveExpr : public Expr {
   void cleanExprs();
   void astPrint();
   Type resolve(Parser &parser);
-  Type findTypes(Parser &parser);
+  int findTypes(Parser &parser);
   Expr *toCps(K k);
   std::string toCode(Parser &parser, ObjFunction *function);
 };
@@ -319,7 +319,7 @@ struct ReferenceExpr : public Expr {
   void cleanExprs();
   void astPrint();
   Type resolve(Parser &parser);
-  Type findTypes(Parser &parser);
+  int findTypes(Parser &parser);
   Expr *toCps(K k);
   std::string toCode(Parser &parser, ObjFunction *function);
 };
@@ -333,7 +333,7 @@ struct ReturnExpr : public Expr {
   void cleanExprs();
   void astPrint();
   Type resolve(Parser &parser);
-  Type findTypes(Parser &parser);
+  int findTypes(Parser &parser);
   Expr *toCps(K k);
   std::string toCode(Parser &parser, ObjFunction *function);
 };
@@ -349,7 +349,7 @@ struct SetExpr : public Expr {
   void cleanExprs();
   void astPrint();
   Type resolve(Parser &parser);
-  Type findTypes(Parser &parser);
+  int findTypes(Parser &parser);
   Expr *toCps(K k);
   std::string toCode(Parser &parser, ObjFunction *function);
 };
@@ -364,7 +364,7 @@ struct TernaryExpr : public Expr {
   void cleanExprs();
   void astPrint();
   Type resolve(Parser &parser);
-  Type findTypes(Parser &parser);
+  int findTypes(Parser &parser);
   Expr *toCps(K k);
   std::string toCode(Parser &parser, ObjFunction *function);
 };
@@ -376,7 +376,7 @@ struct ThisExpr : public Expr {
   void cleanExprs();
   void astPrint();
   Type resolve(Parser &parser);
-  Type findTypes(Parser &parser);
+  int findTypes(Parser &parser);
   Expr *toCps(K k);
   std::string toCode(Parser &parser, ObjFunction *function);
 };
@@ -389,7 +389,7 @@ struct UnaryExpr : public Expr {
   void cleanExprs();
   void astPrint();
   Type resolve(Parser &parser);
-  Type findTypes(Parser &parser);
+  int findTypes(Parser &parser);
   Expr *toCps(K k);
   std::string toCode(Parser &parser, ObjFunction *function);
 };
@@ -402,7 +402,7 @@ struct WhileExpr : public Expr {
   void cleanExprs();
   void astPrint();
   Type resolve(Parser &parser);
-  Type findTypes(Parser &parser);
+  int findTypes(Parser &parser);
   Expr *toCps(K k);
   std::string toCode(Parser &parser, ObjFunction *function);
 };
@@ -414,7 +414,7 @@ struct SwapExpr : public Expr {
   void cleanExprs();
   void astPrint();
   Type resolve(Parser &parser);
-  Type findTypes(Parser &parser);
+  int findTypes(Parser &parser);
   Expr *toCps(K k);
   std::string toCode(Parser &parser, ObjFunction *function);
 };
@@ -426,7 +426,7 @@ struct NativeExpr : public Expr {
   void cleanExprs();
   void astPrint();
   Type resolve(Parser &parser);
-  Type findTypes(Parser &parser);
+  int findTypes(Parser &parser);
   Expr *toCps(K k);
   std::string toCode(Parser &parser, ObjFunction *function);
 };

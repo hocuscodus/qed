@@ -9,49 +9,31 @@
 #include "parser.hpp"
 #include "compiler.hpp"
 
-Type IteratorExpr::findTypes(Parser &parser) {
-  Type type = value->findTypes(parser);
-
-  hasSuperCalls = value->hasSuperCalls;
-  return type;
+int IteratorExpr::findTypes(Parser &parser) {
+  return value->findTypes(parser);
 }
 
-Type AssignExpr::findTypes(Parser &parser) {
-  Type type1 = varExp->findTypes(parser);
-  Type type2 = value ? value->findTypes(parser) : type1;
-
-  hasSuperCalls = varExp->hasSuperCalls || (value && value->hasSuperCalls);
-
-  if (IS_VOID(type1))
-    parser.error("Variable not found");
-  else if (!type1.equals(type2)) {
-//    value = convertToType(type1, value, type2, parser);
-
-    if (!value) {
-      parser.error("Value must match the variable type");
-    }
-  }
-
-  return type1;
+int AssignExpr::findTypes(Parser &parser) {
+  return varExp->findTypes(parser) + (value ? value->findTypes(parser) : 0);
 }
 
-Type UIAttributeExpr::findTypes(Parser &parser) {
+int UIAttributeExpr::findTypes(Parser &parser) {
   parser.error("Internal error, cannot be invoked..");
-  return VOID_TYPE;
+  return this->findTypes(parser);
 }
 
-Type UIDirectiveExpr::findTypes(Parser &parser) {
+int UIDirectiveExpr::findTypes(Parser &parser) {
   parser.error("Internal error, cannot be invoked..");
-  return VOID_TYPE;
+  return this->
 }
 
-Type BinaryExpr::findTypes(Parser &parser) {
-  Type type1 = left->findTypes(parser);
+int BinaryExpr::findTypes(Parser &parser) {
+  int type1 = left->findTypes(parser);
 
 //  if (IS_FUNCTION(type1))
-//    return OBJ_TYPE(newInstance(AS_FUNCTION_TYPE(type1)));
+//    return 0;
 
-  Type type2 = right->findTypes(parser);
+  int type2 = right->findTypes(parser);/*
   Type type = type1;
   bool boolVal = false;
 
@@ -61,7 +43,7 @@ Type BinaryExpr::findTypes(Parser &parser) {
   case TOKEN_PLUS:
     if (IS_OBJ(type1)) {
 //      right = convertToString(right, type2, parser);
-      return stringType;
+      return 0;
     }
     // no break statement, fall through
 
@@ -76,7 +58,7 @@ Type BinaryExpr::findTypes(Parser &parser) {
       if (!IS_OBJ(type2))
         parser.error("Second operand must be a string");
 
-      return BOOL_TYPE;
+      return 0;
     }
     // no break statement, fall through
 
@@ -89,43 +71,43 @@ Type BinaryExpr::findTypes(Parser &parser) {
         if (!IS_FLOAT(type2))
           if (IS_ANY(type2)) {
 //            right = convertToInt(right, type2, parser);
-            return {boolVal ? VAL_BOOL : VAL_INT};
+            return 0;
           }
           else {
             parser.error("Second operand must be numeric");
-            return VOID_TYPE;
+            return 0;
           }
 
 //        left = convertToFloat(left, type1, parser);
-        return {boolVal ? VAL_BOOL : VAL_FLOAT};
+        return 0;
       }
       else
-        return {boolVal ? VAL_BOOL : VAL_INT};
+        return 0;
 
     case VAL_FLOAT:
       if (!type1.equals(type2)) {
         if (!IS_INT(type2) && !IS_ANY(type2)) {
           parser.error("Second operand must be numeric");
-          return VOID_TYPE;
+          return 0;
         }
 
 //        right = convertToFloat(right, type2, parser);
       }
 
-      return {boolVal ? VAL_BOOL : VAL_FLOAT};
+      return 0;
 
     case VAL_UNKNOWN:
-      return type2;
+      return 0;
 
     default:
       parser.error("First operand must be numeric");
-      return type1;
+      return 0;
     }
   }
   break;
 
   case TOKEN_XOR:
-    return {IS_BOOL(type1) ? VAL_BOOL : VAL_FLOAT};
+    return 0;
 
   case TOKEN_OR:
   case TOKEN_AND:
@@ -133,65 +115,67 @@ Type BinaryExpr::findTypes(Parser &parser) {
   case TOKEN_GREATER_GREATER:
   case TOKEN_LESS_LESS:
   case TOKEN_PERCENT:
-    return INT_TYPE;
+    return 0;
 
   case TOKEN_OR_OR:
   case TOKEN_AND_AND:
-    return BOOL_TYPE;
+    return 0;
 
   case TOKEN_COMMA:
-    return type2;
+    return 0;
 
   case TOKEN_SEPARATOR:
-    return type2;
+    return 0;
 
   default:
-    return VOID_TYPE; // Unreachable.
-  }
+    return 0; // Unreachable.
+  }*/
+  return 0;
 }
 
 static Token tok = buildToken(TOKEN_IDENTIFIER, "Capital");
-Type CallExpr::findTypes(Parser &parser) {
+int CallExpr::findTypes(Parser &parser) {
   Signature signature;
 
   for (Expr *params = this->params; params; params = cdr(params, TOKEN_COMMA)) {
-    Type type = car(params, TOKEN_COMMA)->findTypes(parser);
+    int type = car(params, TOKEN_COMMA)->findTypes(parser);
 
-    signature.push_back(type);
+//    signature.push_back(type);
   }
 
   pushSignature(&signature);
-  Type type = callee->findTypes(parser);
+  int type = callee->findTypes(parser);
   popSignature();
-
+/*
   if (IS_FUNCTION(type)) {
     ObjFunction *callable = AS_FUNCTION_TYPE(type);
 
     hasSuperCalls = !newFlag && callable->expr->_declaration.name.isUserClass();
     _declaration = &callable->expr->_declaration;
-    return newFlag ? OBJ_TYPE(newInstance(callable)) : callable->expr->_declaration.type;
+    return 0;
   } else {
     parser.error("Non-callable object type");
-    return VOID_TYPE;
-  }
+    return 0;
+  }*/
+  return 0;
 }
 
-Type ArrayElementExpr::findTypes(Parser &parser) {
+int ArrayElementExpr::findTypes(Parser &parser) {
   Type type = resolveType(callee);
 
   hasSuperCalls = callee->hasSuperCalls;
 
   if (!count)/*
     if (isType(type))
-      return OBJ_TYPE(newArray(type));
+      return 0;
     else*/ {
       parser.error("No index defined.");
-      return VOID_TYPE;
+      return 0;
     }
   else/*
     if (isType(type)) {
       parser.error("A type cannot have an index.");
-      return VOID_TYPE;
+      return 0;
     }
     else*/
       switch (AS_OBJ_TYPE(type)) {
@@ -203,7 +187,7 @@ Type ArrayElementExpr::findTypes(Parser &parser) {
           hasSuperCalls |= indexes[index]->hasSuperCalls;
         }
 
-        return array->elementType;
+        return 0;
       }
       case OBJ_STRING: {/*
         ObjString *string = (ObjString *)type.objType;
@@ -214,23 +198,24 @@ Type ArrayElementExpr::findTypes(Parser &parser) {
         getCurrent()->addDeclaration(string->type.valueType);
 
         for (int index = 0; index < count; index++) {
-          indexes[index]->findTypes(parser);
+          indexes[index]return 0;ypes(parser);
           Type argType = removeDeclaration();
 
           argType = argType;
         }*/
-        return VOID_TYPE;
+        return 0;
       }
       default:
         parser.error("Non-indexable object type");
-        return VOID_TYPE;
+        return 0;
       }
 }
 
-Type DeclarationExpr::findTypes(Parser &parser) {
+int DeclarationExpr::findTypes(Parser &parser) {
   if (initExpr) {
-    Type type1 = initExpr->findTypes(parser);
-
+    int type1 = initExpr->findTypes(parser);
+  }
+/*
     hasSuperCalls = initExpr->hasSuperCalls;
 
     if (IS_ANY(_declaration.type))
@@ -269,11 +254,11 @@ Type DeclarationExpr::findTypes(Parser &parser) {
       }
       break;
     }
-
-  return VOID_TYPE;
+*/
+  return 0;
 }
 
-Type FunctionExpr::findTypes(Parser &parser) {
+int FunctionExpr::findTypes(Parser &parser) {
   pushScope(this);
 
   if (body) {
@@ -300,14 +285,14 @@ Type FunctionExpr::findTypes(Parser &parser) {
   if (getCurrent())
     getCurrent()->add(&_declaration);
 
-  return OBJ_TYPE(&_function);
+  return 0;
 }
 
-Type GetExpr::findTypes(Parser &parser) {
+int GetExpr::findTypes(Parser &parser) {
   pushSignature(NULL);
-  Type objectType = object->findTypes(parser);
+  int objectType = object->findTypes(parser);
   popSignature();
-
+/*
   hasSuperCalls = object->hasSuperCalls;
 
   switch (AS_OBJ_TYPE(objectType)) {
@@ -319,7 +304,7 @@ Type GetExpr::findTypes(Parser &parser) {
 
         if (refExpr) {
           _declaration = getDeclaration(refExpr);
-          return getDeclarationType(refExpr);
+          return 0;
         }
 
         parser.errorAt(&name, "Field '%.*s' not found.", name.length, name.start);
@@ -335,7 +320,7 @@ Type GetExpr::findTypes(Parser &parser) {
 
         if (refExpr) {
           _declaration = getDeclaration(refExpr);
-          return getDeclarationType(refExpr);
+          return 0;
         }
 
         parser.errorAt(&name, "Field '%.*s' not found.", name.length, name.start);
@@ -352,7 +337,7 @@ Type GetExpr::findTypes(Parser &parser) {
 
         if (refExpr) {
           _declaration = getDeclaration(refExpr);
-          return getDeclarationType(refExpr);
+          return 0;
         }
 
         parser.errorAt(&name, "Method '%.*s' not found.", name.length, name.start);
@@ -363,12 +348,12 @@ Type GetExpr::findTypes(Parser &parser) {
       parser.errorAt(&name, "Only instances have properties.");
       break;
   }
-
-  return VOID_TYPE;
+*/
+  return 0;
 }
 
-Type GroupingExpr::findTypes(Parser &parser) {
-  Type type;
+int GroupingExpr::findTypes(Parser &parser) {
+  int type;
 
   pushScope(this);
 
@@ -397,7 +382,7 @@ Type GroupingExpr::findTypes(Parser &parser) {
         checkDeclaration(*dec, dec->name, NULL, NULL);
         expr->findTypes(parser);
       }
-      else {
+      else {/*
         *initBody = initExpr;
         type = OBJ_TYPE(newArray(expr->findTypes(parser)));
 
@@ -432,7 +417,7 @@ Type GroupingExpr::findTypes(Parser &parser) {
           (*lastExpr)->hasSuperCalls = true;
           body->hasSuperCalls = true;
           *bodyElement = new ReturnExpr(buildToken(TOKEN_RETURN, "return"), expr->hasSuperCalls, expr);
-        }
+        }*/
       }
     }
 
@@ -440,24 +425,24 @@ Type GroupingExpr::findTypes(Parser &parser) {
     popScope();
   }
   else {
-    Type bodyType = body ? body->findTypes(parser) : VOID_TYPE;
+    int bodyType = body ? body->findTypes(parser) : 0;
 
-    type = name.type != TOKEN_LEFT_BRACE ? bodyType : VOID_TYPE;
+    type = name.type != TOKEN_LEFT_BRACE ? bodyType : 0;
   }
 
   hasSuperCalls = body && body->hasSuperCalls;
   popScope();
-  return type;
+  return 0;
 }
 
-Type CastExpr::findTypes(Parser &parser) {
-  Type exprType = expr->findTypes(parser);
+int CastExpr::findTypes(Parser &parser) {
+  int exprType = expr->findTypes(parser);
 
   hasSuperCalls = expr->hasSuperCalls;
-  return /*isExplicitConvert(exprType, type) ? type : */UNKNOWN_TYPE;
+  return 0;
 }
 
-Type IfExpr::findTypes(Parser &parser) {
+int IfExpr::findTypes(Parser &parser) {/*
   if (IS_VOID(condition->findTypes(parser)))
     parser.error("Value must not be void");
 
@@ -468,13 +453,13 @@ Type IfExpr::findTypes(Parser &parser) {
     elseBranch->findTypes(parser);
     hasSuperCalls |= elseBranch->hasSuperCalls;
   }
-
-  return VOID_TYPE;
+*/
+  return 0;
 }
 
-Type ArrayExpr::findTypes(Parser &parser) {
+int ArrayExpr::findTypes(Parser &parser) {
   ObjArray *objArray = newArray(VOID_TYPE);
-  Type type = OBJ_TYPE(objArray);
+  Type type = OBJ_TYPE(objArray);/*
 //  Compiler compiler;
 
 //  compiler.pushScope(newFunction(VOID_TYPE, NULL, 0));
@@ -485,37 +470,37 @@ Type ArrayExpr::findTypes(Parser &parser) {
 //  compiler.popScope();
 //  compiler.function->type = type;
 //  function = compiler.function;
-  return type;
+*/  return 0;
 }
 
-Type LiteralExpr::findTypes(Parser &parser) {
+int LiteralExpr::findTypes(Parser &parser) {
   if (type == VAL_OBJ)
-    return stringType;
+    return 0;
   else
-    return {type};
+    return 0;
 }
 
-Type LogicalExpr::findTypes(Parser &parser) {
-  Type type1 = left->findTypes(parser);
-  Type type2 = right->findTypes(parser);
+int LogicalExpr::findTypes(Parser &parser) {
+  int type1 = left->findTypes(parser);
+  int type2 = right->findTypes(parser);
 
   hasSuperCalls = left->hasSuperCalls || right->hasSuperCalls;
 
-  if (!IS_BOOL(type1) || !IS_BOOL(type2))
+//  if (!IS_BOOL(type1) || !IS_BOOL(type2))
     parser.error("Value must be boolean");
 
-  return BOOL_TYPE;
+  return 0;
 }
 
-Type WhileExpr::findTypes(Parser &parser) {
-  Type type = condition->findTypes(parser);
+int WhileExpr::findTypes(Parser &parser) {
+  int type = condition->findTypes(parser);
 
   body->findTypes(parser);
   hasSuperCalls = condition->hasSuperCalls || body->hasSuperCalls;
-  return VOID_TYPE;
+  return 0;
 }
 
-Type ReturnExpr::findTypes(Parser &parser) {
+int ReturnExpr::findTypes(Parser &parser) {
   // sync processing below
 
   if (value) {
@@ -528,17 +513,17 @@ Type ReturnExpr::findTypes(Parser &parser) {
     // else return void
   }
 
-  return VOID_TYPE;
+  return 0;
 }
 
-Type SetExpr::findTypes(Parser &parser) {
+int SetExpr::findTypes(Parser &parser) {
   pushSignature(NULL);
-  Type objectType = object->findTypes(parser);
-  Type valueType = value->findTypes(parser);
+  int objectType = object->findTypes(parser);
+  int valueType = value->findTypes(parser);
   popSignature();
 
   hasSuperCalls = object->hasSuperCalls || value->hasSuperCalls;
-
+/*
   if (AS_OBJ_TYPE(objectType) != OBJ_INSTANCE)
     parser.errorAt(&name, "Only instances have properties.");
   else {
@@ -550,20 +535,20 @@ Type SetExpr::findTypes(Parser &parser) {
 
     if (refExpr) {
       _declaration = getDeclaration(refExpr);
-      return getDeclarationType(refExpr);
+      return 0;
     }
 
     parser.errorAt(&name, "Field '%.*s' not found.", name.length, name.start);
   }
-
-  return VOID_TYPE;
+*/
+  return 0;
 }
 
-Type TernaryExpr::findTypes(Parser &parser) {
-  if (IS_VOID(left->findTypes(parser)))
+int TernaryExpr::findTypes(Parser &parser) {
+//  if (IS_VOID(left->findTypes(parser)))
     parser.error("Value must not be void");
 
-  Type type = middle->findTypes(parser);
+  int type = middle->findTypes(parser);
 
   hasSuperCalls = left->hasSuperCalls || middle->hasSuperCalls;
 
@@ -572,18 +557,18 @@ Type TernaryExpr::findTypes(Parser &parser) {
     hasSuperCalls |= right->hasSuperCalls;
   }
 
-  return type;
+  return 0;
 }
 
-Type ThisExpr::findTypes(Parser &parser) {
-  return VOID_TYPE;
+int ThisExpr::findTypes(Parser &parser) {
+  return 0;
 }
 
-Type UnaryExpr::findTypes(Parser &parser) {
-  Type type = right->findTypes(parser);
+int UnaryExpr::findTypes(Parser &parser) {
+  int type = right->findTypes(parser);
 
   hasSuperCalls = right->hasSuperCalls;
-
+/*
   if (IS_VOID(type))
     parser.error("Value must not be void");
 
@@ -600,38 +585,39 @@ Type UnaryExpr::findTypes(Parser &parser) {
     if (errorFlag)
       parser.error("Operator new must target a callable function");
 
-    return type;
+    return 0;
   }
 
   case TOKEN_PERCENT:
 //    right = convertToFloat(right, type, parser);
-    return FLOAT_TYPE;
+    return 0;
 
   default:
-    return type;
-  }
+    return 0;
+  }*/
+  return 0;
 }
 
-Type PrimitiveExpr::findTypes(Parser &parser) {
-  return UNKNOWN_TYPE;
+int PrimitiveExpr::findTypes(Parser &parser) {
+  return 0;
 }
 
-Type ReferenceExpr::findTypes(Parser &parser) {
+int ReferenceExpr::findTypes(Parser &parser) {
   Declaration *first = getFirstDeclarationRef(getCurrent(), name);
 
   declaration = resolveReference(first, name, getSignature(), &parser);
 
   if (declaration)
     switch(declaration->type) {
-      case EXPR_DECLARATION: return ((DeclarationExpr *) declaration)->_declaration.type;
-      case EXPR_FUNCTION: return OBJ_TYPE(&((FunctionExpr *) declaration)->_function);
+      case EXPR_DECLARATION: return 0;
+      case EXPR_FUNCTION: return 0;
       default: parser.error("Variable '%.*s' is not a call.", name.length, name.start);
     }
 
-  return UNKNOWN_TYPE;
+  return 0;
 }
 
-Type SwapExpr::findTypes(Parser &parser) {
+int SwapExpr::findTypes(Parser &parser) {
   Type type;/* = uiTypes.front();
 
   _expr = uiExprs.front();
@@ -639,11 +625,11 @@ Type SwapExpr::findTypes(Parser &parser) {
   uiTypes.pop_front();
 */
   if (type.valueType == VAL_UNKNOWN)
-    return _expr->findTypes(parser);
+    return 0;
 
-  return type;
+  return 0;
 }
 
-Type NativeExpr::findTypes(Parser &parser) {
-  return anyType;
+int NativeExpr::findTypes(Parser &parser) {
+  return 0;
 }

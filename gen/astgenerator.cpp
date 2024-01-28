@@ -14,7 +14,7 @@
     PASS_DEF( void cleanExprs() )  \
     PASS_DEF( void astPrint() )  \
     PASS_DEF( Type resolve(Parser &parser) )  \
-    PASS_DEF( Type findTypes(Parser &parser) )  \
+    PASS_DEF( int findTypes(Parser &parser) )  \
     PASS_DEF( Expr *toCps(K k) )  \
     PASS_DEF( std::string toCode(Parser &parser, ObjFunction *function) )
 
