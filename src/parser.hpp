@@ -12,6 +12,28 @@
 
 typedef enum {
   PREC_NONE,
+  PREC_ASSIGNMENT,  // =
+  PREC_TERNARY,     // ?:
+  PREC_LOGICAL_OR,  // ||
+  PREC_LOGICAL_AND, // &&
+  PREC_EQUALITY,    // == !=
+  PREC_COMPARISON,  // < > <= >=
+  PREC_TERM,        // + -
+  PREC_FACTOR,      // * /
+  PREC_BITWISE_XOR, // ^             akin to !=, A^~(B) akin to ==
+  PREC_BITWISE_OR,  // |             akin to +
+  PREC_BITWISE_AND, // &             akin to *
+  PREC_SHIFT,       // >> << >>>     akin to powered base
+  PREC_ARRAY,       // $$
+  PREC_ITERATOR,    // :\ :: :_ :|
+  PREC_UNARY,       // ! - ~
+  PREC_CALL,        // ()
+  PREC_MEMBER,      // .
+  PREC_PRIMARY
+} Precedence;
+/*
+typedef enum {
+  PREC_NONE,
   PREC_ITERATOR,    // :\ :: :_ :|
   PREC_ASSIGNMENT,  // =
   PREC_TERNARY,     // ?:
@@ -30,7 +52,7 @@ typedef enum {
   PREC_MEMBER,      // .
   PREC_PRIMARY
 } Precedence;
-
+*/
 class Parser;
 
 typedef Expr *(Parser::*UnaryExpFn)();
@@ -82,6 +104,7 @@ public:
   Expr *assignment(Expr *left);
   Expr *as(Expr *expr);
   Expr *binary(Expr *left);
+  Expr *rightBinary(Expr *left);
   Expr *binaryOrPostfix(Expr *left);
   Expr *ternary(Expr *left);
   uint8_t argumentList();

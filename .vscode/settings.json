@@ -60,4 +60,5 @@
     "editor.tabSize": 2,
     "C_Cpp.errorSquiggles": "enabled",
     "liveServer.settings.port": 5503,
+    "editor.autoClosingBrackets": "never",
 }

@@ -217,14 +217,18 @@ Token Scanner::scanToken() {
       return string();
 
     case '$': {
-      while (isAlpha(peek())) advance();
+      if (match('$'))
+        return makeToken(TOKEN_ARRAY);
+      else {
+        while (isAlpha(peek())) advance();
 
-      TokenType tokenType = checkKeyword(0, 5, "$EXPR", TOKEN_INSERT);
+        TokenType tokenType = checkKeyword(0, 5, "$EXPR", TOKEN_INSERT);
 
-      if (tokenType != TOKEN_IDENTIFIER)
-        return makeToken(tokenType);
-      else
-        break;
+        if (tokenType != TOKEN_IDENTIFIER)
+          return makeToken(tokenType);
+        else
+          break;
+      }
     }
 
     case '\n':

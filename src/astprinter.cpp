@@ -155,7 +155,7 @@ void GetExpr::astPrint() {
   fprintf(stderr, "(. ");
   object->astPrint();
   fprintf(stderr, " %.*s)", name.length, name.start);
-} 
+}
 
 void GroupingExpr::astPrint() {
   fprintf(stderr, "(group'%.*s' ", name.length, name.start);

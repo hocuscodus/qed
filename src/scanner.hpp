@@ -59,6 +59,7 @@
     KEY_DEF( TOKEN_COLON, NULL, NULL, PREC_NONE ),  \
     KEY_DEF( TOKEN_BACKSLASH, NULL, NULL, PREC_NONE ),  \
     KEY_DEF( TOKEN_UNDERLINE, NULL, NULL, PREC_NONE ),  \
+    KEY_DEF( TOKEN_ARRAY, NULL, &Parser::rightBinary, PREC_ARRAY ),  \
     KEY_DEF( TOKEN_ITERATOR, &Parser::anonymousIterator, &Parser::iterator, PREC_ITERATOR ),  \
     /* Literals. */ \
     KEY_DEF( TOKEN_IDENTIFIER, &Parser::variable, NULL, PREC_NONE ),  \

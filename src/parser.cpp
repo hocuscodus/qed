@@ -122,7 +122,7 @@ static Expr *createArrayExpr(Expr *iteratorExprs, Expr *body) {
   popScope();
   return mainGroup;
 }
-/*
+
 static const char *getHandlerType(Type type) {
   switch (type.valueType) {
     case VAL_VOID: return "voidHandler_";
@@ -138,7 +138,7 @@ static const char *getHandlerType(Type type) {
     default: return NULL;
   }
 }
-*/
+
 Parser::Parser(Scanner &scanner) : scanner(scanner) {
   hadError = false;
   panicMode = false;
@@ -233,13 +233,17 @@ std::string compile(FunctionExpr *expr, Parser *parser) {
   fprintf(stderr, "\n");
 #endif
   expr->findTypes(*parser);
+  fprintf(stderr, "Symbol parse: ");
+  expr->astPrint();
+  fprintf(stderr, "\n");
+//  while (expr->findTypes(*parser));
   expr->resolve(*parser);
 
   if (parser->hadError)
     return "";
 
 #ifdef DEBUG_PRINT_CODE
-  fprintf(stderr, "Adapted parse: ");
+  fprintf(stderr, "Type checking parse: ");
   expr->astPrint();
   fprintf(stderr, "\n          ");/*
   for (int i = 0; i < declarationCount; i++) {
@@ -403,7 +407,8 @@ Expr *Parser::assignment(Expr *left) {
     return new AssignExpr(left, op, right);
   }
   default:
-    errorAt(&op, "Invalid assignment target."); // [no-throw]
+    //TODO: remove comment when fixed
+//    errorAt(&op, "Invalid assignment target."); // [no-throw]
     return left;
   }
 }
@@ -424,12 +429,12 @@ Expr *Parser::as(Expr *expr) {
   passSeparator();
 
   Expr *typeExpr = parsePrecedence((Precedence)(getExpRule(TOKEN_AS)->precedence + 1));
-/*  Type type = typeExpr ? resolveType(typeExpr) : UNKNOWN_TYPE;
+  Type type = typeExpr ? resolveType(typeExpr) : UNKNOWN_TYPE;
 
   if (IS_UNKNOWN(type))
     error("Expect type.");
-*/
-  return new CastExpr(UNKNOWN_TYPE, expr);
+
+  return new CastExpr(type, expr);
 }
 
 Expr *Parser::binary(Expr *left) {
@@ -444,20 +449,22 @@ Expr *Parser::binary(Expr *left) {
   if (right == NULL)
     error("Expect expression.");
 
-  return new BinaryExpr(left, op, right); /*
-   switch (op.type) {
-     case TOKEN_BANG_EQUAL:    emitBytes(OP_EQUAL, OP_NOT); break;
-     case TOKEN_EQUAL_EQUAL:   return new BinaryExpr(left, op, right);
-     case TOKEN_GREATER:       emitByte(OP_GREATER); break;
-     case TOKEN_GREATER_EQUAL: emitBytes(OP_LESS, OP_NOT); break;
-     case TOKEN_LESS:          emitByte(OP_LESS); break;
-     case TOKEN_LESS_EQUAL:    emitBytes(OP_GREATER, OP_NOT); break;
-     case TOKEN_PLUS:          emitByte(OP_ADD); break;
-     case TOKEN_MINUS:         emitByte(OP_SUBTRACT); break;
-     case TOKEN_STAR:          emitByte(OP_MULTIPLY); break;
-     case TOKEN_SLASH:         emitByte(OP_DIVIDE); break;
-     default: return NULL; // Unreachable.
-   }*/
+  return new BinaryExpr(left, op, right);
+}
+
+Expr *Parser::rightBinary(Expr *left) {
+  Token op = previous;
+  ParseExpRule *rule = getExpRule(op.type);
+
+  // ignore optional separator before second operand
+  passSeparator();
+
+  Expr *right = parsePrecedence((Precedence)(rule->precedence + 0));
+
+  if (right == NULL)
+    error("Expect expression.");
+
+  return new BinaryExpr(left, op, right);
 }
 
 Expr *Parser::binaryOrPostfix(Expr *left) {
@@ -857,10 +864,23 @@ Expr *Parser::parsePrecedence(Precedence precedence) {
     }
   }
 */
-  while (precedence <= getExpRule(current.type)->precedence) {
-    advance();
+  while (true) {
+    ParseExpRule *rule = getExpRule(current.type);
+    bool isIdentifier = rule->prefix && !rule->infix;
 
-    left = (this->*getExpRule(previous.type)->infix)(left);
+    if (isIdentifier)
+      rule = getExpRule(TOKEN_ARRAY);
+
+    if (precedence <= rule->precedence) {
+      if (isIdentifier)
+        previous = buildToken(TOKEN_ARRAY, "$$");
+      else
+        advance();
+
+      left = (this->*rule->infix)(left);
+    }
+    else
+      break;
   }
 
   return left;
@@ -888,11 +908,11 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
 
   if (exp == NULL)
     error("Expect expression.");
-/*
+
   Type returnType = resolveType(exp);
 
   if (returnType.valueType != -1 &&//->type == EXPR_REFERENCE &&//) {
-    / *if (* /check(TOKEN_IDENTIFIER) && (checkNext(TOKEN_EQUAL) || checkNext(TOKEN_CALL) || checkNext(TOKEN_SEPARATOR))) {
+    /*if (*/check(TOKEN_IDENTIFIER) && (checkNext(TOKEN_EQUAL) || checkNext(TOKEN_CALL) || checkNext(TOKEN_SEPARATOR))) {
     consume(TOKEN_IDENTIFIER, "Expect name identifier after type.");
 
     Token name = previous;
@@ -973,7 +993,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
       return declareVariable(exp, endGroupTypes);
 //    }
   }
-  else {*/
+  else {
     Expr *iteratorExprs = NULL;
 
     while (!check(endGroupTypes) && !check(TOKEN_EOF)) {
@@ -984,15 +1004,14 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
         error("Expect expression.");
     }
 
-    if (!exp || (*getLastBodyExpr(&exp, TOKEN_SEPARATOR))->type == EXPR_ITERATOR)
+    if ((*getLastBodyExpr(&exp, TOKEN_SEPARATOR))->type == EXPR_ITERATOR)
       error("Cannot define an iterator list without a body expression.");
 
     if (iteratorExprs)
-      addExpr(&iteratorExprs, exp, buildToken(TOKEN_SEPARATOR, ","));
-//      exp = createArrayExpr(iteratorExprs, exp);
+      exp = createArrayExpr(iteratorExprs, exp);
 
     return exp;
-//  }
+  }
 }
 
 Expr *Parser::varDeclaration(TokenType endGroupType) {
@@ -1077,13 +1096,25 @@ Expr *Parser::whileStatement(TokenType endGroupType) {
 }
 
 Expr *Parser::declaration(TokenType endGroupType) {
-  Expr *exp;
+  Expr *exp = NULL;
+
+//  passSeparator();
 /*
+  if (check(TOKEN_IDENTIFIER))
+    switch (next.type) {
+      case TOKEN_IDENTIFIER: {
+      }
+      case TOKEN_STAR:
+        advance();
+      case TOKEN_LEFT_BRACKET:
+    }
+*//*
   if (match(TOKEN_FUN))
     exp = funDeclaration(endGroupType);
   else if (match(TOKEN_VAR))
     exp = varDeclaration(endGroupType);
   else*/
+  if (!exp)
     exp = statement(endGroupType);
 
   if (panicMode)

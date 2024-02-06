@@ -225,11 +225,12 @@ static Expr *convertToObj(Obj *dstObjType, Expr *expr, Type &type, Parser &parse
     break;
 
   default:
-    parser.error("Cannot convert to object");
+    //TODO: remove comment at next line
+//    parser.error("Cannot convert to object");
     break;
   }
 
-return expr;
+  return expr;
 }
 
 static Expr *convertToType(Type dstType, Expr *expr, Type &srcType, Parser &parser) {

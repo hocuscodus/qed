@@ -360,6 +360,10 @@ void checkDeclaration(Declaration &declaration, Token &name, FunctionExpr *funct
   }
 }
 
+Expr **carAddress(Expr *exp, TokenType tokenType) {
+  return isGroup(exp, tokenType) ? &((BinaryExpr *) exp)->left : &exp;
+}
+
 Expr **cdrAddress(Expr *body, TokenType tokenType) {
   return body && isGroup(body, tokenType) ? &((BinaryExpr *) body)->right : NULL;
 }
@@ -406,7 +410,9 @@ Expr *removeExpr(Expr *body, TokenType tokenType) {
 }
 
 Expr *car(Expr *exp, TokenType tokenType) {
-  return isGroup(exp, tokenType) ? ((BinaryExpr *) exp)->left : exp;
+  Expr **ptr = carAddress(exp, tokenType);
+
+  return ptr ? *ptr : NULL;
 }
 
 Expr *cdr(Expr *exp, TokenType tokenType) {
