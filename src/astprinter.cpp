@@ -137,7 +137,8 @@ void FunctionExpr::astPrint() {
     if (index)
       fprintf(stderr, ", ");
 
-    getParam(this, index)->astPrint();
+    //TODO: restore when done
+//    getParam(this, index)->astPrint();
   }
   fprintf(stderr, ") {");
 

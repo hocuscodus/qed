@@ -69,7 +69,7 @@ static Expr *createArrayExpr(Expr *iteratorExprs, Expr *body) {
   addExpr(&initBody, posParam, buildToken(TOKEN_SEPARATOR, ";"));
   addExpr(&initBody, handlerParam, buildToken(TOKEN_SEPARATOR, ";"));
 
-  for (Expr **iteratorExprPtrs = &iteratorExprs; iteratorExprPtrs; iteratorExprPtrs = cdrAddress(*iteratorExprPtrs, TOKEN_SEPARATOR)) {
+  for (Expr **iteratorExprPtrs = initAddress(iteratorExprs); iteratorExprPtrs; iteratorExprPtrs = cdrAddress(*iteratorExprPtrs, TOKEN_SEPARATOR)) {
     char dimName[16];
     Expr *expr = car(*iteratorExprPtrs, TOKEN_SEPARATOR);
     IteratorExpr *iteratorExpr = expr->type == EXPR_ITERATOR ? (IteratorExpr *) expr : NULL;
@@ -233,10 +233,11 @@ std::string compile(FunctionExpr *expr, Parser *parser) {
   fprintf(stderr, "\n");
 #endif
   expr->findTypes(*parser);
+//  while (expr->findTypes(*parser));
   fprintf(stderr, "Symbol parse: ");
   expr->astPrint();
   fprintf(stderr, "\n");
-//  while (expr->findTypes(*parser));
+
   expr->resolve(*parser);
 
   if (parser->hadError)
@@ -387,29 +388,29 @@ Expr *Parser::assignment(Expr *left) {
 
   Expr *right = parsePrecedence((Precedence)(rule->precedence + 0));
 
-  if (right == NULL)
+  if (!right)
     error("Expect expression.");
 
   switch (left->type) {
-  case EXPR_REFERENCE:
-    return new AssignExpr(left, op, right);
+    case EXPR_REFERENCE:
+      return new AssignExpr(left, op, right);
 
-  case EXPR_GET: {
-    GetExpr *getExpr = (GetExpr *) left;
+    case EXPR_GET: {
+      GetExpr *getExpr = (GetExpr *) left;
 
-    return new SetExpr(getExpr->object, getExpr->name, op, right);
-  }
+      return new SetExpr(getExpr->object, getExpr->name, op, right);
+    }
 
-  case EXPR_NATIVE:
-  case EXPR_ARRAYELEMENT: {
-//    GetExpr *getExpr = (GetExpr *) left;
+    case EXPR_NATIVE:
+    case EXPR_ARRAYELEMENT:default: {
+  //    GetExpr *getExpr = (GetExpr *) left;
 
-    return new AssignExpr(left, op, right);
-  }
-  default:
-    //TODO: remove comment when fixed
-//    errorAt(&op, "Invalid assignment target."); // [no-throw]
-    return left;
+      return new AssignExpr(left, op, right);
+    }
+  //  default:
+      //TODO: remove comment when fixed
+  //    errorAt(&op, "Invalid assignment target."); // [no-throw]
+      return left;
   }
 }
 
@@ -548,6 +549,7 @@ Expr *Parser::call(Expr *left) {
   TokenType tokens[] = {TOKEN_RIGHT_PAREN, TOKEN_COMMA, TOKEN_ELSE, TOKEN_EOF};
   Expr *params = NULL;
   Expr *handler = NULL;
+  Token op = previous;
   bool newFlag = this->newFlag;
 
   this->newFlag = false;
@@ -577,10 +579,11 @@ Expr *Parser::call(Expr *left) {
       handler = statement(TOKEN_SEPARATOR);
   }
 
-  return new CallExpr(newFlag, left, previous, params, handler);
+  return new CallExpr(newFlag, left, op, params, handler);
 }
 
 Expr *Parser::arrayElement(Expr *left) {
+  Token op = previous;
   TokenType tokens[] = {TOKEN_RIGHT_BRACKET, TOKEN_COMMA, TOKEN_ELSE, TOKEN_EOF};
   uint8_t indexCount = 0;
   Expr **expList = NULL;
@@ -598,7 +601,7 @@ Expr *Parser::arrayElement(Expr *left) {
 
   consume(TOKEN_RIGHT_BRACKET, "Expect ']' after indexes.");
 
-  return new ArrayElementExpr(left, previous, indexCount, expList);
+  return new ArrayElementExpr(left, op, indexCount, expList);
 }
 
 Expr *Parser::logical(Expr *left) {

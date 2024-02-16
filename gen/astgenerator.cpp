@@ -1,6 +1,6 @@
 /*
  * The QED Programming Language
- * Copyright (C) 2022-2023  Hocus Codus Software inc.
+ * Copyright (C) 2022-2024  Hocus Codus Software inc.
  *
  * All rights reserved.
  */
@@ -13,7 +13,8 @@
 #define PASSES_DEF \
     PASS_DEF( void cleanExprs() )  \
     PASS_DEF( void astPrint() )  \
-    PASS_DEF( Expr *findTypes(Parser &parser) )  \
+    PASS_DEF( int findTypes(Parser &parser) )  \
+    PASS_DEF( Token getNextToken(ExprStack *exprStack, int index, Parser &parser) )  \
     PASS_DEF( Type resolve(Parser &parser) )  \
     PASS_DEF( Expr *toCps(K k) )  \
     PASS_DEF( std::string toCode(Parser &parser, ObjFunction *function) )
@@ -21,7 +22,7 @@
 void writeHeader(FILE *file) {
   fprintf(file, "/*\n");
   fprintf(file, " * The QED Programming Language\n");
-  fprintf(file, " * Copyright (C) 2022-2023  Hocus Codus Software inc.\n");
+  fprintf(file, " * Copyright (C) 2022-2024  Hocus Codus Software inc.\n");
   fprintf(file, " *\n");
   fprintf(file, " * This code has been generated using astgenerator.cpp.\n");
   fprintf(file, " * Do not manually modify it.\n");
@@ -128,6 +129,7 @@ public:
     fprintf(file, "#include <functional>\n\n");
 
     fprintf(file, "struct Expr;\n\n");
+    fprintf(file, "struct ExprStack;\n\n");
     fprintf(file, "typedef std::function<Expr *(Expr *)> K;\n\n");
     fprintf(file, "struct ObjFunction;\n");
     fprintf(file, "struct ObjCallable;\n\n");

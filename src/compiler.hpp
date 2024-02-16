@@ -61,7 +61,8 @@ Scope *getCurrent();
 FunctionExpr *getFunction(Scope *current);
 FunctionExpr *getFunction();
 
-Expr **carAddress(Expr *body, TokenType tokenType);
+Expr **carAddress(Expr **body, TokenType tokenType);
+Expr **initAddress(Expr *&body);
 Expr **cdrAddress(Expr *body, TokenType tokenType);
 Expr *addToGroup(Expr **body, Expr *exp);
 Expr **addExpr(Expr **body, Expr *exp, Token op);
