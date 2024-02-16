@@ -390,6 +390,21 @@ Expr *analyzeStatement(Expr *expr, Parser &parser) {
       break;
 
     case TOKEN_IDENTIFIER:
+      Expr *dec = resolveReferenceExpr(token, NULL);
+
+      if (dec)
+        switch(dec->type) {
+          case EXPR_FUNCTION:
+//            ((ReferenceExpr *) expr)->declaration = dec;
+            type = OBJ_TYPE(&((FunctionExpr *) dec)->_function);
+            break;
+
+          case EXPR_DECLARATION:
+//            ((ReferenceExpr *) expr)->declaration = dec;
+//            type = OBJ_TYPE(((ObjFunction *) ((DeclarationExpr *) dec)->_declaration.type.objType));
+            break;
+        }
+//      type = resolveType(stack.top->expr);
       break;
   }
 
@@ -416,10 +431,12 @@ Expr *analyzeStatement(Expr *expr, Parser &parser) {
       switch (token.type) {
         case TOKEN_SUPER:
           expr = newDeclarationExpr(type, name, NULL);
+          checkDeclaration(((DeclarationExpr *) expr)->_declaration, name, NULL, &parser);
           break;
 
         case TOKEN_EQUAL:
           expr = newDeclarationExpr(type, name, stack.getBody(parser));
+          checkDeclaration(((DeclarationExpr *) expr)->_declaration, name, NULL, &parser);
           break;
 
         case TOKEN_CALL: {
@@ -428,6 +445,7 @@ Expr *analyzeStatement(Expr *expr, Parser &parser) {
 
             token = stack.getNextToken(parser);
             expr = newFunctionExpr(type, name, 0, (GroupingExpr *) stack.getBody(parser), NULL);
+            checkDeclaration(((FunctionExpr *) expr)->_declaration, name, (FunctionExpr *) expr, &parser);
             analyzeStatements(params, TOKEN_COMMA, parser);
           }
           break;
@@ -442,9 +460,9 @@ void analyzeStatements(Expr *&body, TokenType tokenType, Parser &parser) {
   Expr **statements = initAddress(body);
 
   while (statements) {
-    Expr **statement = carAddress(statements, tokenType);
+    Expr *&statement = *carAddress(statements, tokenType);
 
-    *statement = analyzeStatement(*statement, parser);
+    statement = analyzeStatement(statement, parser);
     statements = cdrAddress(*statements, tokenType);
   }
 }
@@ -926,31 +944,12 @@ int DeclarationExpr::findTypes(Parser &parser) {
 }
 
 int FunctionExpr::findTypes(Parser &parser) {
-  pushScope(this);
-
   if (body) {
-    for (Declaration *declaration = body->declarations; declaration; declaration = declaration->next)
-      if (declaration->expr->type == EXPR_FUNCTION)
-        declaration->expr->findTypes(parser);
-
-    Expr *group = getStatement(body, arity + (_declaration.name.isUserClass() ? 1 : 0));
-
-    if (group) {
-      group->findTypes(parser);
-      body->hasSuperCalls |= _declaration.name.isClass();
-/*
-      for (int index = 0; index < arity; index++)
-        getStatement(body, index)->hasSuperCalls = hasSuperCalls;
-
-      if (_declaration.name.isUserClass())
-        getStatement(body, arity)->hasSuperCalls = hasSuperCalls;*/
-    }
+    pushScope(this);
+    analyzeStatements(body->body, TOKEN_SEPARATOR, parser);
+    body->findTypes(parser);
+    popScope();
   }
-
-  popScope();
-
-  if (getCurrent())
-    getCurrent()->add(&_declaration);
 
   return 0;
 }
@@ -1022,9 +1021,18 @@ int GetExpr::findTypes(Parser &parser) {
 int GroupingExpr::findTypes(Parser &parser) {
   int numChanges = 0;
 
-  pushScope(this);
-  analyzeStatements(body, TOKEN_SEPARATOR, parser);
-  popScope();
+  if (body) {
+    bool functionFlag = getCurrent()->group == this;
+
+    if (!functionFlag)
+      pushScope(this);
+
+    analyzeStatements(body, TOKEN_SEPARATOR, parser);
+    body->findTypes(parser);
+
+    if (!functionFlag)
+      popScope();
+  }
 
   return numChanges;
 }
