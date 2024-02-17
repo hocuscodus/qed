@@ -414,15 +414,19 @@ Expr *analyzeStatement(Expr *expr, Parser &parser) {
     if (name.type == TOKEN_STAR) {
       name = stack.getNextToken(parser);
       // change type
+      if (IS_FUNCTION(type))
+        type = OBJ_TYPE(newInstance(AS_FUNCTION_TYPE(type)));
     }
 
     while (name.type == TOKEN_LEFT_BRACKET) {
       name = stack.getNextToken(parser);
 
       if (name.type != TOKEN_RIGHT_BRACKET)
-        ;
-      else
+        type = OBJ_TYPE(newArray(type));
+      else {
         name = stack.getNextToken(parser);
+        type = OBJ_TYPE(newArray(type));
+      }
     }
 
     if (name.type == TOKEN_IDENTIFIER) {
@@ -446,7 +450,9 @@ Expr *analyzeStatement(Expr *expr, Parser &parser) {
             token = stack.getNextToken(parser);
             expr = newFunctionExpr(type, name, 0, (GroupingExpr *) stack.getBody(parser), NULL);
             checkDeclaration(((FunctionExpr *) expr)->_declaration, name, (FunctionExpr *) expr, &parser);
+            pushScope((FunctionExpr *) expr);
             analyzeStatements(params, TOKEN_COMMA, parser);
+            popScope();
           }
           break;
       }
@@ -846,54 +852,12 @@ int CallExpr::findTypes(Parser &parser) {
 }
 
 int ArrayElementExpr::findTypes(Parser &parser) {
-  Type type = resolveType(callee);
+  int numTypes = callee->findTypes(parser);
 
-  hasSuperCalls = callee->hasSuperCalls;
+  for (int index = 0; index < count; index++)
+    numTypes += indexes[index]->findTypes(parser);
 
-  if (!count)/*
-    if (isType(type))
-      return 0;
-    else*/ {
-      parser.error("No index defined.");
-      return 0;
-    }
-  else/*
-    if (isType(type)) {
-      parser.error("A type cannot have an index.");
-      return 0;
-    }
-    else*/
-      switch (AS_OBJ_TYPE(type)) {
-      case OBJ_ARRAY: {
-        ObjArray *array = AS_ARRAY_TYPE(type);
-
-        for (int index = 0; index < count; index++) {
-          indexes[index]->findTypes(parser);
-          hasSuperCalls |= indexes[index]->hasSuperCalls;
-        }
-
-        return 0;
-      }
-      case OBJ_STRING: {/*
-        ObjString *string = (ObjString *)type.objType;
-
-        if (count != string->arity)
-          parser.error("Expected %d arguments but got %d.", string->arity, count);
-
-        getCurrent()->addDeclaration(string->type.valueType);
-
-        for (int index = 0; index < count; index++) {
-          indexes[index]return 0;ypes(parser);
-          Type argType = removeDeclaration();
-
-          argType = argType;
-        }*/
-        return 0;
-      }
-      default:
-        parser.error("Non-indexable object type");
-        return 0;
-      }
+  return numTypes;
 }
 
 int DeclarationExpr::findTypes(Parser &parser) {

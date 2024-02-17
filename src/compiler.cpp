@@ -340,10 +340,10 @@ void checkDeclaration(Declaration &declaration, Token &name, FunctionExpr *funct
       signature.push_back(getParam(function, index)->_declaration.type);
 
   Expr *expr = resolveReference(getDeclarationRef(name, getCurrent()->group->declarations), name, function ? &signature : NULL, NULL);
-
+/*
   if (expr)
     parser->error("Identical identifier '%.*s' with this name in this scope.", name.length, name.start);
-  else {
+  else */{
     if (function)
       expr = resolveReference(getDeclarationRef(name, getCurrent()->group->declarations), name, NULL, NULL);
 
