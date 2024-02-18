@@ -445,13 +445,21 @@ Expr *analyzeStatement(Expr *expr, Parser &parser) {
 
         case TOKEN_CALL: {
             CallExpr *callExpr = (CallExpr *) stack.top->expr;
-            Expr *params = callExpr->params;
+            Expr *params = callExpr->args;
 
             token = stack.getNextToken(parser);
-            expr = newFunctionExpr(type, name, 0, (GroupingExpr *) stack.getBody(parser), NULL);
-            checkDeclaration(((FunctionExpr *) expr)->_declaration, name, (FunctionExpr *) expr, &parser);
-            pushScope((FunctionExpr *) expr);
+
+            FunctionExpr *functionExpr = newFunctionExpr(type, name, 0, NULL, (GroupingExpr *) stack.getBody(parser), NULL);
+
+            expr = functionExpr;
+            checkDeclaration(functionExpr->_declaration, name, functionExpr, &parser);
+            pushScope(functionExpr);
             analyzeStatements(params, TOKEN_COMMA, parser);
+
+            for (Expr *paramRef = params; paramRef; paramRef = cdr(paramRef, TOKEN_COMMA))
+              functionExpr->arity++;
+
+            functionExpr->params = params;
             popScope();
           }
           break;
@@ -828,8 +836,8 @@ static Token tok = buildToken(TOKEN_IDENTIFIER, "Capital");
 int CallExpr::findTypes(Parser &parser) {
   Signature signature;
 
-  for (Expr *params = this->params; params; params = cdr(params, TOKEN_COMMA)) {
-    int type = car(params, TOKEN_COMMA)->findTypes(parser);
+  for (Expr *args = this->args; args; args = cdr(args, TOKEN_COMMA)) {
+    int type = car(args, TOKEN_COMMA)->findTypes(parser);
 
 //    signature.push_back(type);
   }
@@ -1171,7 +1179,7 @@ int PrimitiveExpr::findTypes(Parser &parser) {
 int ReferenceExpr::findTypes(Parser &parser) {
   Declaration *first = getFirstDeclarationRef(getCurrent(), name);
 
-  declaration = resolveReference(first, name, getSignature(), &parser);
+  declaration = resolveReference(first, name, NULL/*getSignature()*/, &parser);
 
   if (declaration)
     switch(declaration->type) {

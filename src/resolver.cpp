@@ -420,8 +420,8 @@ static Token tok = buildToken(TOKEN_IDENTIFIER, "Capital");
 Type CallExpr::resolve(Parser &parser) {
   Signature signature;
 
-  for (Expr *params = this->params; params; params = cdr(params, TOKEN_COMMA)) {
-    Type type = car(params, TOKEN_COMMA)->resolve(parser);
+  for (Expr *args = this->args; args; args = cdr(args, TOKEN_COMMA)) {
+    Type type = car(args, TOKEN_COMMA)->resolve(parser);
 
     signature.push_back(type);
   }
@@ -755,8 +755,8 @@ Type GroupingExpr::resolve(Parser &parser) {
     Expr **lastExpr = getLastBodyExpr(&body, TOKEN_SEPARATOR);
     Expr **initBody = getLastBodyExpr(lastExpr, TOKEN_COMMA);
     Token nameToken = buildToken(TOKEN_IDENTIFIER, "l");
-    GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), *initBody, NULL);
-    FunctionExpr *wrapperFunc = newFunctionExpr(anyType, nameToken, 1, group, NULL);
+    GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL/**initBody*/, NULL);
+    FunctionExpr *wrapperFunc = newFunctionExpr(anyType, nameToken, 1, *initBody, group, NULL);
     GroupingExpr *initExpr = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "("), wrapperFunc, NULL);
 
     name = buildToken(TOKEN_LEFT_PAREN, "(");

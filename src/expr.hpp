@@ -197,11 +197,11 @@ struct CallExpr : public Expr {
   bool newFlag;
   Expr* callee;
   Token paren;
-  Expr* params;
+  Expr* args;
   Expr* handler;
   Declaration* _declaration;
 
-  CallExpr(bool newFlag, Expr* callee, Token paren, Expr* params, Expr* handler);
+  CallExpr(bool newFlag, Expr* callee, Token paren, Expr* args, Expr* handler);
   void cleanExprs();
   void astPrint();
   int findTypes(Parser &parser);
@@ -243,12 +243,13 @@ struct DeclarationExpr : public Expr {
 
 struct FunctionExpr : public Expr {
   int arity;
+  Expr* params;
   GroupingExpr* body;
   Expr* ui;
   Declaration _declaration;
   ObjFunction _function;
 
-  FunctionExpr(int arity, GroupingExpr* body, Expr* ui);
+  FunctionExpr(int arity, Expr* params, GroupingExpr* body, Expr* ui);
   void cleanExprs();
   void astPrint();
   int findTypes(Parser &parser);

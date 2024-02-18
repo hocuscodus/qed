@@ -147,8 +147,8 @@ DeclarationExpr *newDeclarationExpr(Type type, Token name, Expr* initExpr) {
   return expr;
 }
 
-FunctionExpr *newFunctionExpr(Type type, Token name, int arity, GroupingExpr* body, Expr* ui) {
-  FunctionExpr *expr = new FunctionExpr(arity, body, ui);
+FunctionExpr *newFunctionExpr(Type type, Token name, int arity, Expr* params, GroupingExpr* body, Expr* ui) {
+  FunctionExpr *expr = new FunctionExpr(arity, params, body, ui);
 
   expr->_declaration.type = type;
   expr->_declaration.name = name;
@@ -220,19 +220,23 @@ Declaration *getFirstDeclarationRef(Scope *current, Token &name) {
   return dec;
 }
 
-Expr *getStatement(GroupingExpr *expr, int index) {
+Expr *getExprRef(Expr *exprs, int index, TokenType tokenType) {
   if (index >= 0)
-    for (Expr *body = expr ? expr->body : NULL; body; body = cdr(body, TOKEN_SEPARATOR))
+    for (Expr *body = exprs; body; body = cdr(body, tokenType))
       if (!index--)
         return body;
 
   return NULL;
 }
 
-DeclarationExpr *getParam(FunctionExpr *expr, int index) {
-  Expr *statement = getStatement(expr->body, index);
+Expr *getStatement(GroupingExpr *expr, int index) {
+  return getExprRef(expr ? expr->body : NULL, index, TOKEN_SEPARATOR);
+}
 
-  return statement ? (DeclarationExpr *) getDeclarationExpr(statement) : NULL;
+DeclarationExpr *getParam(FunctionExpr *expr, int index) {
+  Expr *param = car(getExprRef(expr->params, index, TOKEN_COMMA), TOKEN_COMMA);
+
+  return param ? (DeclarationExpr *) getDeclarationExpr(param) : NULL;
 }
 
 Expr *resolveReference(Declaration *decRef, Token &name, Signature *signature, Parser *parser) {
@@ -445,8 +449,8 @@ char *genSymbol(std::string name) {
 GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, std::function<Expr*()> bodyFn) {
   int arity = param ? 1 : 0;
   Token nameToken = buildToken(TOKEN_IDENTIFIER, name);
-  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), param, NULL);
-  FunctionExpr *wrapperFunc = newFunctionExpr(VOID_TYPE, nameToken, arity, group, NULL);
+  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL, NULL);
+  FunctionExpr *wrapperFunc = newFunctionExpr(VOID_TYPE, nameToken, arity, param, group, NULL);
   GroupingExpr *mainGroup = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "("), wrapperFunc, NULL);
 
   pushScope(mainGroup);

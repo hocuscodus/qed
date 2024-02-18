@@ -31,7 +31,7 @@ void pushScope(FunctionExpr *functionExpr);
 void pushScope(GroupingExpr *groupingExpr);
 void popScope();
 DeclarationExpr *newDeclarationExpr(Type type, Token name, Expr* initExpr);
-FunctionExpr *newFunctionExpr(Type type, Token name, int arity, GroupingExpr* body, Expr* ui);
+FunctionExpr *newFunctionExpr(Type type, Token name, int arity, Expr* params, GroupingExpr* body, Expr* ui);
 Expr *getDeclarationExpr(Expr *body);
 Signature *getSignature();
 Declaration *getDeclarationRef(Token name, Declaration *dec);

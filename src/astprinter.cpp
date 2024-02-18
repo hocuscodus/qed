@@ -104,9 +104,9 @@ void CallExpr::astPrint() {
   fprintf(stderr, "(call ");
   callee->astPrint();
 
-  if (params) {
+  if (args) {
     fprintf(stderr, " ");
-    params->astPrint();
+    args->astPrint();
   }
 
   fprintf(stderr, ")");
@@ -123,7 +123,7 @@ void ArrayElementExpr::astPrint() {
 }
 
 void DeclarationExpr::astPrint() {
-  fprintf(stderr, "(var %.*s", _declaration.name.length, _declaration.name.start);
+  fprintf(stderr, "(%s %.*s", _declaration.type.toString(), _declaration.name.length, _declaration.name.start);
 
   if (initExpr)
     initExpr->astPrint();
@@ -137,8 +137,7 @@ void FunctionExpr::astPrint() {
     if (index)
       fprintf(stderr, ", ");
 
-    //TODO: restore when done
-//    getParam(this, index)->astPrint();
+    getParam(this, index)->astPrint();
   }
   fprintf(stderr, ") {");
 

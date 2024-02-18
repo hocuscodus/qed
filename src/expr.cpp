@@ -65,11 +65,11 @@ ArrayExpr::ArrayExpr(Expr* body) : Expr(EXPR_ARRAY) {
   this->body = body;
 }
 
-CallExpr::CallExpr(bool newFlag, Expr* callee, Token paren, Expr* params, Expr* handler) : Expr(EXPR_CALL) {
+CallExpr::CallExpr(bool newFlag, Expr* callee, Token paren, Expr* args, Expr* handler) : Expr(EXPR_CALL) {
   this->newFlag = newFlag;
   this->callee = callee;
   this->paren = paren;
-  this->params = params;
+  this->args = args;
   this->handler = handler;
 }
 
@@ -84,8 +84,9 @@ DeclarationExpr::DeclarationExpr(Expr* initExpr) : Expr(EXPR_DECLARATION) {
   this->initExpr = initExpr;
 }
 
-FunctionExpr::FunctionExpr(int arity, GroupingExpr* body, Expr* ui) : Expr(EXPR_FUNCTION) {
+FunctionExpr::FunctionExpr(int arity, Expr* params, GroupingExpr* body, Expr* ui) : Expr(EXPR_FUNCTION) {
   this->arity = arity;
+  this->params = params;
   this->body = body;
   this->ui = ui;
 }

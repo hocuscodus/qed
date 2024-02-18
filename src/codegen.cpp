@@ -184,8 +184,8 @@ std::string CallExpr::toCode(Parser &parser, ObjFunction *function) {
 
   str << callee->toCode(parser, function) << "(";
 
-  if (params)
-    str << params->toCode(parser, function);
+  if (args)
+    str << args->toCode(parser, function);
 
   if (handler)
     handler = NULL;

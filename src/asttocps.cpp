@@ -136,7 +136,7 @@ Expr *BinaryExpr::toCps(K k) {
 Expr *CallExpr::toCps(K k) {
   FunctionExpr *function = (FunctionExpr *) _declaration->expr;
   bool userClassCall = !newFlag && function && function->_declaration.name.isUserClass();
-  auto genCall = [this, function, userClassCall, k](bool same, Expr *callee, Expr *&params) {
+  auto genCall = [this, function, userClassCall, k](bool same, Expr *callee, Expr *&args) {
     if (function->_declaration.name.isUserClass()) {
       Type returnType = function->_declaration.type;
 
@@ -163,19 +163,19 @@ Expr *CallExpr::toCps(K k) {
     }
 
     if (this->handler) {
-      addExpr(same && !userClassCall ? &this->params : &params, this->handler, buildToken(TOKEN_COMMA, ","));
+      addExpr(same && !userClassCall ? &this->args : &args, this->handler, buildToken(TOKEN_COMMA, ","));
       this->handler = NULL;
     }
 
-    return same && !userClassCall ? this : idExpr(new CallExpr(this->newFlag, callee, this->paren, params, NULL));
+    return same && !userClassCall ? this : idExpr(new CallExpr(this->newFlag, callee, this->paren, args, NULL));
   };
 
   Expr *cpsExpr = callee->toCps([this, genCall](Expr *callee) {
-    return this->params
-      ? this->params->toCps([this, genCall, callee](Expr *params) {
-          return genCall(compareExpr(this->callee, callee) && compareExpr(this->params, params), callee, params);
+    return this->args
+      ? this->args->toCps([this, genCall, callee](Expr *args) {
+          return genCall(compareExpr(this->callee, callee) && compareExpr(this->args, args), callee, args);
         })
-      : genCall(compareExpr(this->callee, callee), callee, this->params);
+      : genCall(compareExpr(this->callee, callee), callee, this->args);
   });
 
   return this != cpsExpr && userClassCall ? cpsExpr : k(cpsExpr);
