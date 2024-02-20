@@ -78,4 +78,6 @@ GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, std::f
 GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, Expr *body);
 GroupingExpr *makeWrapperLambda(DeclarationExpr *param, std::function<Expr*()> bodyFn);
 
+Expr *analyzeStatement(Expr *expr, Parser &parser);
+
 #endif

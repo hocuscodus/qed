@@ -580,19 +580,21 @@ Type FunctionExpr::resolve(Parser &parser) {
         fprintf(stderr, ss->str().c_str());
         parse(body, ss->str().c_str());
 
-        FunctionExpr *uiFunctionExpr = NULL;
+        Expr **uiExpr = getLastBodyExpr(&body->body, TOKEN_SEPARATOR);
 
-        for (Declaration *dec = body->declarations; dec; dec = dec->next)
-          if (!dec->next)
-            uiFunctionExpr = (FunctionExpr *) dec->expr;
+        *uiExpr = analyzeStatement(*uiExpr, parser);
+        FunctionExpr *uiFunctionExpr = (FunctionExpr *) *uiExpr;
 
+        uiFunctionExpr->findTypes(parser);
         uiFunctionExpr->resolve(parser);
         uiFunctionExpr->_function.eventFlags = exprUI->_eventFlags;
 
         _function.uiFunction = &uiFunctionExpr->_function;
         GroupingExpr group(body->name, NULL, NULL);
+        Expr **lastBodyExpr = getLastBodyExpr(&group.body, TOKEN_SEPARATOR);
 
         parse(&group, "UI_ *ui_;\n");
+        *lastBodyExpr = analyzeStatement(*lastBodyExpr, parser);
         (*getLastBodyExpr(&group.body, TOKEN_SEPARATOR))->resolve(parser);
         body->body = new BinaryExpr(group.body, buildToken(TOKEN_SEPARATOR, ";"), body->body);
 
@@ -612,13 +614,12 @@ Type FunctionExpr::resolve(Parser &parser) {
         (*ss) << "}\n";
         fprintf(stderr, ss->str().c_str());
         parse(uiFunctionExpr->body, ss->str().c_str());
+        uiExpr = getLastBodyExpr(&uiFunctionExpr->body->body, TOKEN_SEPARATOR);
 
-        FunctionExpr *layoutFunctionExpr = NULL;
+        *uiExpr = analyzeStatement(*uiExpr, parser);
+        FunctionExpr *layoutFunctionExpr = (FunctionExpr *) *uiExpr;
 
-        for (Declaration *dec = uiFunctionExpr->body->declarations; dec; dec = dec->next)
-          if (!dec->next)
-            layoutFunctionExpr = (FunctionExpr *) dec->expr;
-
+        layoutFunctionExpr->findTypes(parser);
         layoutFunctionExpr->resolve(parser);
 
         ObjFunction *layoutFunction = &layoutFunctionExpr->_function;
@@ -635,13 +636,12 @@ Type FunctionExpr::resolve(Parser &parser) {
         (*ss) << "}\n";
         fprintf(stderr, ss->str().c_str());
         parse(layoutFunctionExpr->body, ss->str().c_str());
+        uiExpr = getLastBodyExpr(&layoutFunctionExpr->body->body, TOKEN_SEPARATOR);
 
-        FunctionExpr *paintFunctionExpr = NULL;
+        *uiExpr = analyzeStatement(*uiExpr, parser);
+        FunctionExpr *paintFunctionExpr = (FunctionExpr *) *uiExpr;
 
-        for (Declaration *dec = layoutFunctionExpr->body->declarations; dec; dec = dec->next)
-          if (!dec->next)
-            paintFunctionExpr = (FunctionExpr *) dec->expr;
-
+        paintFunctionExpr->findTypes(parser);
         paintFunctionExpr->resolve(parser);
 
         ss->str("");
@@ -656,13 +656,12 @@ Type FunctionExpr::resolve(Parser &parser) {
         (*ss) << "}\n";
         fprintf(stderr, ss->str().c_str());
         parse(layoutFunctionExpr->body, ss->str().c_str());
+        uiExpr = getLastBodyExpr(&layoutFunctionExpr->body->body, TOKEN_SEPARATOR);
 
-        FunctionExpr *eventFunctionExpr = (FunctionExpr *) paintFunctionExpr->_declaration.next->expr;
-//        FunctionExpr **eventFunctionExpr = (FunctionExpr **) getLastBodyExpr(&layoutFunctionExpr->body->body, TOKEN_SEPARATOR);
-/*
-        *eventFunctionExpr = (FunctionExpr *) eventFunctionExpr[0]->toCps([](Expr *expr) {
-          return expr;
-        });*/
+        *uiExpr = analyzeStatement(*uiExpr, parser);
+        FunctionExpr *eventFunctionExpr = (FunctionExpr *) *uiExpr;
+
+        eventFunctionExpr->findTypes(parser);
         eventFunctionExpr->resolve(parser);
         popScope();
         popScope();
