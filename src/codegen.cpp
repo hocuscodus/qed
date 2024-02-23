@@ -257,7 +257,7 @@ std::string FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
   if (_function.hasInternalFields)
     line(str) << "const " << _function.getThisVariableName() << " = this;\n";
 
-  for (Expr *statementRef = getStatement(body, arity); statementRef; statementRef = cdr(statementRef, TOKEN_SEPARATOR)) {
+  for (Expr *statementRef = body->body; statementRef; statementRef = cdr(statementRef, TOKEN_SEPARATOR)) {
     Expr *statement = car(statementRef, TOKEN_SEPARATOR);
 
     line(str) << statement->toCode(parser, &_function);

@@ -50,17 +50,39 @@ bool isCpsContext() {
   return getCurrent() && getCurrent()->function && getCurrent()->group->hasSuperCalls;
 }
 
-Expr *declarationToCps(Declaration *declaration, std::function<Expr *()> genGroup) {
-  if (declaration) {
-    if (declaration->expr->type == EXPR_FUNCTION)
-      declaration->expr->toCps(idExpr);
+Expr *declarationToCps(Expr **statementRef, std::function<Expr *()> genGroup) {
+  if (statementRef) {
+    Expr *statement = car(*statementRef, TOKEN_SEPARATOR);
 
-    Expr *right = declarationToCps(declaration->next, genGroup);
+    if (statement->type == EXPR_FUNCTION) {
+      statement->toCps(idExpr);
+      statementRef = removeExpr(statementRef, TOKEN_SEPARATOR);
+    }
+    else
+      statementRef = cdrAddress(*statementRef, TOKEN_SEPARATOR);
 
-    return right ? new BinaryExpr(declaration->expr, buildToken(TOKEN_SEPARATOR, ";"), right) : declaration->expr;
+    Expr *right = declarationToCps(statementRef, genGroup);
+
+    return statement->type == EXPR_FUNCTION || statement->type == EXPR_DECLARATION ? right ? new BinaryExpr(statement, buildToken(TOKEN_SEPARATOR, ";"), right) : statement : right;
   }
   else
     return genGroup();
+}
+
+static const char *getHandlerType(Type type) {
+  switch (type.valueType) {
+    case VAL_VOID: return "voidHandler_";
+    case VAL_BOOL: return "boolHandler_";
+    case VAL_INT: return "intHandler_";
+    case VAL_FLOAT: return "floatHandler_";
+    case VAL_OBJ:
+      switch (type.objType->type) {
+        case OBJ_STRING: return "stringHandler_";
+        case OBJ_ANY: return "anyHandler_";
+        default: return NULL;
+      }
+    default: return NULL;
+  }
 }
 
 Expr *IteratorExpr::toCps(K k) {
@@ -209,16 +231,30 @@ Expr *DeclarationExpr::toCps(K k) {
 
 Expr *FunctionExpr::toCps(K k) {
   if (_declaration.name.isUserClass()) {
-    _declaration.type = VOID_TYPE;
-    arity++;
+    const char *type = getHandlerType(_declaration.type);
+    Token typeName = buildToken(TOKEN_IDENTIFIER, type);
+    Declaration *paramType = getFirstDeclarationRef(getCurrent(), typeName);
+
+    if (!paramType)
+      paramType = NULL;
+
+    if (getCurrent()) {
+      Token name = buildToken(TOKEN_IDENTIFIER, "_HandlerFn_");
+      DeclarationExpr *dec = newDeclarationExpr(OBJ_TYPE(&((FunctionExpr *) paramType->expr)->_function), name, NULL);
+
+//      checkDeclaration(dec->_declaration, dec->_declaration.name, NULL, NULL);
+      addExpr(&params, dec, buildToken(TOKEN_COMMA, ","));
+      _declaration.type = VOID_TYPE;
+      arity++;
+    }
+    else
+      arity++;
   }
 
   if (_declaration.name.isClass()) {
     pushScope(this);
-    body->body = declarationToCps(body->declarations, [this]() {
-      Expr *body = getStatement(this->body, arity);
-
-      return body ? body->toCps(idExpr) : NULL;
+    body->body = declarationToCps(initAddress(body->body), [this]() {
+      return body->body ? body->body->toCps(idExpr) : NULL;
     });
     popScope();
   }
@@ -251,7 +287,9 @@ Expr *GroupingExpr::toCps(K k) {
   if (body) {
     pushScope(this);
 
-    Expr *body = this->body->toCps(hasSuperCalls ? k : idExpr);
+    body = declarationToCps(initAddress(body), [this, k]() {
+      return body ? body->toCps(hasSuperCalls ? k : idExpr) : NULL;
+    });
 
     if (hasSuperCalls)
       this->body = body;

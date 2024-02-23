@@ -547,10 +547,8 @@ Type FunctionExpr::resolve(Parser &parser) {
       if (declaration->expr->type == EXPR_FUNCTION)
         declaration->expr->resolve(parser);
 
-    Expr *group = getStatement(body, arity + (_declaration.name.isUserClass() ? 1 : 0));
-
-    if (group) {
-      group->resolve(parser);
+    if (body->body) {
+      body->body->resolve(parser);
       body->hasSuperCalls |= _declaration.name.isClass();
 /*
       for (int index = 0; index < arity; index++)

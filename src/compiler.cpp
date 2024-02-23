@@ -407,14 +407,15 @@ Expr **addExpr(Expr **body, Expr *exp, Token op) {
   return body;
 }
 
-Expr *removeExpr(Expr *body, TokenType tokenType) {
-  BinaryExpr *group = isGroup(body, tokenType) ? (BinaryExpr *) body : NULL;
-  Expr *right = group ? group->right : NULL;
+Expr **removeExpr(Expr **body, TokenType tokenType) {
+  BinaryExpr *group = isGroup(*body, tokenType) ? (BinaryExpr *) *body : NULL;
+
+  *body = group ? group->right : NULL;
 
   if (group)
     delete group;
 
-  return right;
+  return *body ? body : NULL;
 }
 
 Expr *car(Expr *exp, TokenType tokenType) {

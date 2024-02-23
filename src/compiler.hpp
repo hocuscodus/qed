@@ -66,7 +66,7 @@ Expr **initAddress(Expr *&body);
 Expr **cdrAddress(Expr *body, TokenType tokenType);
 Expr *addToGroup(Expr **body, Expr *exp);
 Expr **addExpr(Expr **body, Expr *exp, Token op);
-Expr *removeExpr(Expr *body, TokenType tokenType);
+Expr **removeExpr(Expr **body, TokenType tokenType);
 Expr **getLastBodyExpr(Expr **body, TokenType tokenType);
 bool isGroup(Expr *exp, TokenType tokenType);
 Expr *car(Expr *exp, TokenType tokenType);
