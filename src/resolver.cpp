@@ -302,7 +302,7 @@ static Expr *createArrayExpr(Expr *iteratorExprs) {
   DeclarationExpr *handlerParam = newDeclarationExpr(resolveType(new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "anyHandler_"), NULL)), buildToken(TOKEN_IDENTIFIER, "_HandlerFn_"), NULL);
   Expr *initBody = NULL;
   Expr *body = NULL;
-  GroupingExpr *mainGroup = new GroupingExpr(buildToken(TOKEN_LEFT_BRACKET, "["), NULL, NULL);
+  GroupingExpr *mainGroup = new GroupingExpr(buildToken(TOKEN_LEFT_BRACKET, "["), NULL, NULL, NULL);
 
   pushScope(mainGroup);
   addExpr(&initBody, posParam, buildToken(TOKEN_SEPARATOR, ";"));
@@ -413,7 +413,7 @@ Type BinaryExpr::resolve(Parser &parser) {
     Expr **initBody = getLastBodyExpr(lastExpr, TOKEN_COMMA);
     Token nameToken = buildToken(TOKEN_IDENTIFIER, "l");
     GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL/ **initBody* /, NULL);
-    FunctionExpr *wrapperFunc = newFunctionExpr(anyType, nameToken, 1, *initBody, group, NULL);
+    FunctionExpr *wrapperFunc = newFunctionExpr(anyType, nameToken, 1, *initBody, group);
     GroupingExpr *initExpr = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "("), wrapperFunc, NULL);
 
     name = buildToken(TOKEN_LEFT_PAREN, "(");
@@ -864,8 +864,8 @@ Type FunctionExpr::resolve(Parser &parser) {
         getStatement(body, arity)->hasSuperCalls = hasSuperCalls;*/
     }
 
-    if (ui) {
-      UIDirectiveExpr *exprUI = (UIDirectiveExpr *) ui;
+    if (body->ui) {
+      UIDirectiveExpr *exprUI = (UIDirectiveExpr *) body->ui;
 
       if (exprUI->previous || exprUI->lastChild) {
         // Perform the UI AST magic
@@ -894,7 +894,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         uiFunctionExpr->_function.eventFlags = exprUI->_eventFlags;
 
         _function.uiFunction = &uiFunctionExpr->_function;
-        GroupingExpr group(body->name, NULL, NULL);
+        GroupingExpr group(body->name, NULL, NULL, NULL);
         Expr **lastBodyExpr = getLastBodyExpr(&group.body, TOKEN_SEPARATOR);
 
         parse(&group, "UI_ *ui_;\n");
@@ -972,7 +972,7 @@ Type FunctionExpr::resolve(Parser &parser) {
       }
 
       delete exprUI;
-//      ui = NULL;
+      body->ui = NULL;
     }
   }
 
@@ -1058,9 +1058,9 @@ Type GroupingExpr::resolve(Parser &parser) {
     Expr **lastExpr = getLastBodyExpr(&body, TOKEN_SEPARATOR);
     Expr **initBody = getLastBodyExpr(lastExpr, TOKEN_COMMA);
     Token nameToken = buildToken(TOKEN_IDENTIFIER, "l");
-    GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL/**initBody*/, NULL);
-    FunctionExpr *wrapperFunc = newFunctionExpr(anyType, nameToken, 1, *initBody, group, NULL);
-    GroupingExpr *initExpr = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "("), wrapperFunc, NULL);
+    GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL/**initBody*/, NULL, NULL);
+    FunctionExpr *wrapperFunc = newFunctionExpr(anyType, nameToken, 1, *initBody, group);
+    GroupingExpr *initExpr = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "("), wrapperFunc, NULL, NULL);
 
     name = buildToken(TOKEN_LEFT_PAREN, "(");
     pushScope(initExpr);
@@ -1090,29 +1090,35 @@ Type GroupingExpr::resolve(Parser &parser) {
 
           wrapperFunc->_declaration.name = buildToken(TOKEN_IDENTIFIER, expr->hasSuperCalls ? "L" : "l");
 
-          if (IS_INSTANCE(elementType) && ((ObjFunction *) AS_INSTANCE_TYPE(elementType)->callable)->expr->ui) {
-            GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "("), NULL, NULL);
+          if (IS_INSTANCE(elementType) && !strcmp(((ObjFunction *) AS_INSTANCE_TYPE(elementType)->callable)->expr->_declaration.name.getString().c_str(), "Ball")) {
+            GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "("), NULL, NULL, NULL);
 
             // Perform the array UI AST magic
             ss->str("");
             (*ss) << "void UI_(Ball *[] array, int[] dims) {\n";
-            (*ss) << "  for(let index = 0; index < dims[0]; index++)\n";
+            (*ss) << "  for(int index = 0; index < dims[0]; index++)\n";
             (*ss) << "    array[index].ui_ = new array[index].UI_()\n";
 //            (*ss) << "    array[index].setUI()\n";
             (*ss) << "\n";
             (*ss) << "  void Layout_() {\n";
             (*ss) << "    Layout_*[] layouts;\n";
-            (*ss) << "    for(let index = 0; index < dims[0]; index++)\n";
+            (*ss) << "    for(int index = 0; index < dims[0]; index++)\n";
             (*ss) << "      layouts[index] = new array[index].ui_.Layout_()\n";
             (*ss) << "\n";
             (*ss) << "    void paint(int pos0, int pos1, int size0, int size1) {\n";
-            (*ss) << "      for(let index = 0; index < dims[0]; index++)\n";
+            (*ss) << "      for(int index = 0; index < dims[0]; index++)\n";
             (*ss) << "        layouts[index].paint(pos0, pos1, size0, size1)\n";
             (*ss) << "    }\n";
             (*ss) << "  }\n";
             (*ss) << "}\n";
             fprintf(stderr, ss->str().c_str());
             parse(group, ss->str().c_str());
+            Expr **uiExpr = getLastBodyExpr(&group->body, TOKEN_SEPARATOR);
+
+            *uiExpr = analyzeStatement(*uiExpr, parser);
+            FunctionExpr *uiFunctionExpr = (FunctionExpr *) *uiExpr;
+
+            uiFunctionExpr->findTypes(parser);
             group->resolve(parser);
 
 /*
@@ -1464,16 +1470,18 @@ Type ReferenceExpr::resolve(Parser &parser) {
 }
 
 Type SwapExpr::resolve(Parser &parser) {
-  Type type = uiTypes.front();
+  if (!expr) {
+    Type type = uiTypes.front();
 
-  _expr = uiExprs.front();
-  uiExprs.pop_front();
-  uiTypes.pop_front();
+    expr = uiExprs.front();
+    uiExprs.pop_front();
+    uiTypes.pop_front();
+  }
 
-  if (type.valueType == VAL_UNKNOWN)
-    return _expr->resolve(parser);
+//  if (type.valueType == VAL_UNKNOWN)
+    return expr->resolve(parser);
 
-  return type;
+//  return type;
 }
 
 Type NativeExpr::resolve(Parser &parser) {
@@ -1666,7 +1674,7 @@ void processAttrs(UIDirectiveExpr *expr, Parser &parser) {
             insertTabs();
             (*ss) << "var v" << getCurrent()->vCount << " = $EXPR;\n";
             uiExprs.push_back(attExpr->handler);
-            uiTypes.push_back(type);
+            uiTypes.push_back(UNKNOWN_TYPE);
             attExpr->_index = getCurrent()->vCount++;
             attExpr->handler = NULL;
 /*
@@ -1742,7 +1750,7 @@ void processArrayAttrs(UIDirectiveExpr *expr, Parser &parser) {
             insertTabs();
             (*ss) << "var v" << getCurrent()->vCount << " = $EXPR;\n";
             uiExprs.push_back(attExpr->handler);
-            uiTypes.push_back(type);
+            uiTypes.push_back(UNKNOWN_TYPE);
             attExpr->_index = getCurrent()->vCount++;
             attExpr->handler = NULL;
 /*

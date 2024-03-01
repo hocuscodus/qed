@@ -11,7 +11,7 @@ static int nTabs = 0;
 const std::string emptyString;
 
 bool needsSemicolon(Expr *expr) {
-  return !isGroup(expr, TOKEN_SEPARATOR) && expr->type != EXPR_GROUPING && expr->type != EXPR_IF && expr->type != EXPR_WHILE && expr->type != EXPR_FUNCTION && !(expr->type == EXPR_SWAP && !needsSemicolon(((SwapExpr *) expr)->_expr));
+  return !isGroup(expr, TOKEN_SEPARATOR) && expr->type != EXPR_GROUPING && expr->type != EXPR_IF && expr->type != EXPR_WHILE && expr->type != EXPR_FUNCTION && !(expr->type == EXPR_SWAP && !needsSemicolon(((SwapExpr *) expr)->expr));
 }
 
 static ObjFunction *getFunction(Expr *callee) {
@@ -426,7 +426,7 @@ std::string ReferenceExpr::toCode(Parser &parser, ObjFunction *function) {
 }
 
 std::string SwapExpr::toCode(Parser &parser, ObjFunction *function) {
-  return _expr->toCode(parser, function);
+  return expr->toCode(parser, function);
 }
 
 std::string NativeExpr::toCode(Parser &parser, ObjFunction *function) {

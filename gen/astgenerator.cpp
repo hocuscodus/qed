@@ -276,12 +276,12 @@ int main(int argc, const char *argv[]) {
     "Assign      : Expr* varExp, Token op, Expr* value",
     "Binary      : Expr* left, Token op, Expr* right",
     "Cast        : Type type, Expr* expr",
-    "Grouping    : Token name, Expr* body, Declaration* declarations",
+    "Grouping    : Token name, Expr* body, Declaration* declarations, Expr* ui",
     "Array       : Expr* body, Declaration* _declaration",
     "Call        : bool newFlag, Expr* callee, Token paren, Expr* args, Expr* handler, Declaration* _declaration",
     "ArrayElement: Expr* callee, Token bracket, int count, Expr** indexes",
     "Declaration : Expr* initExpr, Declaration _declaration",
-    "Function    : int arity, Expr* params, GroupingExpr* body, Expr* ui, Declaration _declaration, ObjFunction _function",
+    "Function    : int arity, Expr* params, GroupingExpr* body, Declaration _declaration, ObjFunction _function",
     "Get         : Expr* object, Token name, Declaration* _declaration",
     "If          : Expr* condition, Expr* thenBranch, Expr* elseBranch",
     "Literal     : ValueType type, As as",
@@ -294,7 +294,7 @@ int main(int argc, const char *argv[]) {
     "This        : Token keyword",
     "Unary       : Token op, Expr* right",
     "While       : Expr* condition, Expr* body",
-    "Swap        : Expr* _expr",
+    "Swap        : Expr* expr",
     "Native      : Token nativeCode",
     NULL
   };

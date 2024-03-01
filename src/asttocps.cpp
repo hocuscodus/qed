@@ -259,7 +259,7 @@ Expr *FunctionExpr::toCps(K k) {
     popScope();
   }
 
-  return k(this);//compareExpr(body, bodyExpr) ? this : newExpr(newFunctionExpr(typeExpr, name, arity + 1, newParams, newBody, NULL)));
+  return k(this);//compareExpr(body, bodyExpr) ? this : newExpr(newFunctionExpr(typeExpr, name, arity + 1, newParams, newBody)));
 /*
 function cps_lambda(exp, k) {
   var cont = gensym("K");
@@ -442,7 +442,7 @@ Expr *ReturnExpr::toCps(K k) {
       }
 
       value = new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), param, NULL);
-      value = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), value, NULL);
+      value = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), value, NULL, NULL);
       addExpr(&((GroupingExpr *) value)->body, new ReturnExpr(expr->keyword, false, NULL), buildToken(TOKEN_SEPARATOR, ";"));
       return value;
     }
@@ -592,13 +592,13 @@ Expr *ReferenceExpr::toCps(K k) {
 }
 
 Expr *SwapExpr::toCps(K k) {
-  Expr *cpsExpr = _expr->toCps([this, k](Expr *_expr) -> Expr* {
-    SwapExpr *swapExpr = compareExpr(this->_expr, _expr) ? this : (SwapExpr *) idExpr(new SwapExpr());
+  Expr *cpsExpr = expr->toCps([this, k](Expr *_expr) -> Expr* {
+    SwapExpr *swapExpr = compareExpr(this->expr, _expr) ? this : (SwapExpr *) idExpr(new SwapExpr(NULL));
 
     if (swapExpr == this)
       return this;
     else {
-      swapExpr->_expr = _expr;
+      swapExpr->expr = _expr;
       return k(swapExpr);
     }
   });

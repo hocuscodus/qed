@@ -168,8 +168,9 @@ struct GroupingExpr : public Expr {
   Token name;
   Expr* body;
   Declaration* declarations;
+  Expr* ui;
 
-  GroupingExpr(Token name, Expr* body, Declaration* declarations);
+  GroupingExpr(Token name, Expr* body, Declaration* declarations, Expr* ui);
   void cleanExprs();
   void astPrint();
   int findTypes(Parser &parser);
@@ -245,11 +246,10 @@ struct FunctionExpr : public Expr {
   int arity;
   Expr* params;
   GroupingExpr* body;
-  Expr* ui;
   Declaration _declaration;
   ObjFunction _function;
 
-  FunctionExpr(int arity, Expr* params, GroupingExpr* body, Expr* ui);
+  FunctionExpr(int arity, Expr* params, GroupingExpr* body);
   void cleanExprs();
   void astPrint();
   int findTypes(Parser &parser);
@@ -436,9 +436,9 @@ struct WhileExpr : public Expr {
 };
 
 struct SwapExpr : public Expr {
-  Expr* _expr;
+  Expr* expr;
 
-  SwapExpr();
+  SwapExpr(Expr* expr);
   void cleanExprs();
   void astPrint();
   int findTypes(Parser &parser);

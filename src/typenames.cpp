@@ -160,7 +160,7 @@ Expr *analyzeBinaryStatement(BinaryExpr *expr, Parser &parser) {
             nameExpr = car(rest, TOKEN_ARRAY);
 
             if (nameExpr->type == EXPR_GROUPING) {
-              Expr *expr = newFunctionExpr(type, name, arity, (GroupingExpr *) nameExpr, NULL);
+              Expr *expr = newFunctionExpr(type, name, arity, (GroupingExpr *) nameExpr);
 
               expr->findTypes(parser);
               return expr;
@@ -231,7 +231,7 @@ Expr *analyzeBinaryStatement(BinaryExpr *expr, Parser &parser) {
                 for (Expr *paramRef = callExpr->params; paramRef; paramRef = cdr(paramRef, TOKEN_COMMA))
                   arity++;
 
-                FunctionExpr *function = newFunctionExpr(anyType, callee->name, arity, body, NULL);
+                FunctionExpr *function = newFunctionExpr(anyType, callee->name, arity, body);
 
 //                checkDeclaration(function->_declaration, function->_declaration.name, NULL, &parser);
               }
@@ -252,7 +252,7 @@ Expr *analyzeBinaryStatement(BinaryExpr *expr, Parser &parser) {
 / *
     Token nameToken = buildToken(TOKEN_IDENTIFIER, "l");
     GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), *initBody, NULL);
-    FunctionExpr *wrapperFunc = newFunctionExpr(anyType, nameToken, 1, group, NULL);
+    FunctionExpr *wrapperFunc = newFunctionExpr(anyType, nameToken, 1, group);
     GroupingExpr *initExpr = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "("), wrapperFunc, NULL);
 
     name = buildToken(TOKEN_LEFT_PAREN, "(");
@@ -449,7 +449,7 @@ Expr *analyzeStatement(Expr *expr, Parser &parser) {
 
             token = stack.getNextToken(parser);
 
-            FunctionExpr *functionExpr = newFunctionExpr(type, name, 0, NULL, (GroupingExpr *) stack.getBody(parser), NULL);
+            FunctionExpr *functionExpr = newFunctionExpr(type, name, 0, NULL, (GroupingExpr *) stack.getBody(parser));
 
             expr = functionExpr;
             checkDeclaration(functionExpr->_declaration, name, functionExpr, &parser);

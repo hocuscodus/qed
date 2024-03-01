@@ -45,7 +45,7 @@ ParseExpRule *getExpRule(TokenType type) {
 static Expr *createWhileExpr(Expr *condition, Expr *increment, Expr *body) {
   if (increment != NULL) {
     if (body->type != EXPR_GROUPING)
-      body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), body, NULL);
+      body = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), body, NULL, NULL);
 
     addExpr(&((GroupingExpr *) body)->body, increment, buildToken(TOKEN_SEPARATOR, ";"));
   }
@@ -63,7 +63,7 @@ static Expr *createArrayExpr(Expr *iteratorExprs, Expr *body) {
   DeclarationExpr *posParam = newDeclarationExpr(OBJ_TYPE(newArray(INT_TYPE)), buildToken(TOKEN_IDENTIFIER, "pos"), NULL);
   DeclarationExpr *handlerParam = newDeclarationExpr(resolveType(new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "anyHandler_"), NULL)), buildToken(TOKEN_IDENTIFIER, "_HandlerFn_"), NULL);
   Expr *initBody = NULL;
-  GroupingExpr *mainGroup = new GroupingExpr(buildToken(TOKEN_LEFT_BRACKET, "["), NULL, NULL);
+  GroupingExpr *mainGroup = new GroupingExpr(buildToken(TOKEN_LEFT_BRACKET, "["), NULL, NULL, NULL);
 
   pushScope(mainGroup);
   addExpr(&initBody, posParam, buildToken(TOKEN_SEPARATOR, ";"));
@@ -314,8 +314,8 @@ std::string Parser::compile() {
 }
 
 FunctionExpr *Parser::parse() {
-  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_EOF, ""), NULL, NULL);
-  FunctionExpr *functionExpr = newFunctionExpr(VOID_TYPE, buildToken(TOKEN_IDENTIFIER, "Main_"), 0, NULL, group, NULL);
+  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_EOF, ""), NULL, NULL, NULL);
+  FunctionExpr *functionExpr = newFunctionExpr(VOID_TYPE, buildToken(TOKEN_IDENTIFIER, "Main_"), 0, NULL, group);
 
   pushScope(functionExpr);
   expList(group, TOKEN_EOF);
@@ -326,7 +326,7 @@ FunctionExpr *Parser::parse() {
     std::array<long, NUM_DIRS> arrayDirFlags;
     ValueStack<ValueStackElement> valueStack;
 
-    functionExpr->ui = directive(TOKEN_EOF, NULL);
+    functionExpr->body->ui = directive(TOKEN_EOF, NULL);
 //		attrSets = numAttrSets != 0 ? new ChildAttrSets([0], numZones, 0, [2, 1], new ValueStack(), numAttrSets, mainFunc, this, inputStream, 0) : NULL;
 //ChildAttrSets::ChildAttrSets(int *offset, Point &zoneOffsets, int childDir, std::array<long, NUM_DIRS> &arrayDirFlags,
 //                             ValueStack<ValueStackElement> &valueStack, UIDirectiveExpr *directiveExpr, int parentRefreshFlags,
@@ -640,7 +640,7 @@ Expr *Parser::literal() {
 }
 
 Expr *Parser::swap() {
-  return new SwapExpr();
+  return new SwapExpr(NULL);
 }
 
 Expr *Parser::primitiveType() {
@@ -664,13 +664,15 @@ Expr *Parser::grouping() {
   char closingChar;
   TokenType endGroupType;
   Token op = previous;
-  GroupingExpr *group = new GroupingExpr(previous, NULL, NULL);
+  bool parenFlag = false;
+  GroupingExpr *group = new GroupingExpr(previous, NULL, NULL, NULL);
 
   switch (op.type) {
   case TOKEN_LEFT_PAREN:
   case TOKEN_CALL:
     closingChar = ')';
     endGroupType = TOKEN_RIGHT_PAREN;
+    parenFlag = true;
     break;
 
   case TOKEN_LEFT_BRACE:
@@ -688,7 +690,7 @@ Expr *Parser::grouping() {
     std::array<long, NUM_DIRS> arrayDirFlags;
     ValueStack<ValueStackElement> valueStack;
 
-    /*functionExpr->ui = */directive(/*parenFlag ? TOKEN_RIGHT_PAREN : */TOKEN_RIGHT_BRACE, NULL);
+    group->ui = directive(parenFlag ? TOKEN_RIGHT_PAREN : TOKEN_RIGHT_BRACE, NULL);
 //        ((UIDirectiveExpr *) functionExpr->ui)->_attrSet.init(&offset, zoneOffsets, arrayDirFlags, valueStack, (UIDirectiveExpr *) functionExpr->ui, 0, &functionExpr->_function);
   }
 
@@ -697,7 +699,7 @@ Expr *Parser::grouping() {
 /*
   if (op.type != TOKEN_LEFT_BRACE && group->body && isGroup(group->body, TOKEN_SEPARATOR)) {
     getCurrent()->hasSuperCalls |= group->hasSuperCalls;
-    return new CallExpr(false, new GroupingExpr(op, newFunctionExpr(VOID_TYPE, buildToken(TOKEN_IDENTIFIER, group->hasSuperCalls ? "L" : "l"), 0, group, NULL), NULL), op, NULL, NULL);
+    return new CallExpr(false, new GroupingExpr(op, newFunctionExpr(VOID_TYPE, buildToken(TOKEN_IDENTIFIER, group->hasSuperCalls ? "L" : "l"), 0, group), NULL), op, NULL, NULL);
   }
 */
   return group;
@@ -921,8 +923,8 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
     Token name = previous;
 
     if(match(TOKEN_CALL)) {
-      GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL, NULL);
-      FunctionExpr *functionExpr = newFunctionExpr(returnType, name, 0, NULL, group, NULL);
+      GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL, NULL, NULL);
+      FunctionExpr *functionExpr = newFunctionExpr(returnType, name, 0, NULL, group);
 
       pushScope(functionExpr);
       passSeparator();
@@ -984,7 +986,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
         std::array<long, NUM_DIRS> arrayDirFlags;
         ValueStack<ValueStackElement> valueStack;
 
-        functionExpr->ui = directive(parenFlag ? TOKEN_RIGHT_PAREN : TOKEN_RIGHT_BRACE, NULL);
+        functionExpr->body->ui = directive(parenFlag ? TOKEN_RIGHT_PAREN : TOKEN_RIGHT_BRACE, NULL);
 //        ((UIDirectiveExpr *) functionExpr->ui)->_attrSet.init(&offset, zoneOffsets, arrayDirFlags, valueStack, (UIDirectiveExpr *) functionExpr->ui, 0, &functionExpr->_function);
       }
 
@@ -1042,7 +1044,7 @@ Expr *Parser::forStatement(TokenType endGroupType) {
   if (!match(TOKEN_CALL))
     consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
 
-  GroupingExpr *group = match(TOKEN_SEPARATOR) ? NULL : new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL, NULL);
+  GroupingExpr *group = match(TOKEN_SEPARATOR) ? NULL : new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL, NULL, NULL);
 
   if (group) {
     pushScope(group);

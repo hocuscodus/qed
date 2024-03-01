@@ -147,8 +147,8 @@ DeclarationExpr *newDeclarationExpr(Type type, Token name, Expr* initExpr) {
   return expr;
 }
 
-FunctionExpr *newFunctionExpr(Type type, Token name, int arity, Expr* params, GroupingExpr* body, Expr* ui) {
-  FunctionExpr *expr = new FunctionExpr(arity, params, body, ui);
+FunctionExpr *newFunctionExpr(Type type, Token name, int arity, Expr* params, GroupingExpr* body) {
+  FunctionExpr *expr = new FunctionExpr(arity, params, body);
 
   expr->_declaration.type = type;
   expr->_declaration.name = name;
@@ -396,7 +396,7 @@ Expr *addToGroup(Expr **body, Expr *exp) {
     return *body;
   }
   else
-    return new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), *addExpr(body, exp, buildToken(TOKEN_SEPARATOR, ";")), NULL);
+    return new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), *addExpr(body, exp, buildToken(TOKEN_SEPARATOR, ";")), NULL, NULL);
 }
 
 Expr **addExpr(Expr **body, Expr *exp, Token op) {
@@ -454,9 +454,9 @@ char *genSymbol(std::string name) {
 GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, std::function<Expr*()> bodyFn) {
   int arity = param ? 1 : 0;
   Token nameToken = buildToken(TOKEN_IDENTIFIER, name);
-  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL, NULL);
-  FunctionExpr *wrapperFunc = newFunctionExpr(VOID_TYPE, nameToken, arity, param, group, NULL);
-  GroupingExpr *mainGroup = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "("), wrapperFunc, NULL);
+  GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL, NULL, NULL);
+  FunctionExpr *wrapperFunc = newFunctionExpr(VOID_TYPE, nameToken, arity, param, group);
+  GroupingExpr *mainGroup = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "("), wrapperFunc, NULL, NULL);
 
   pushScope(mainGroup);
   checkDeclaration(wrapperFunc->_declaration, nameToken, wrapperFunc, NULL);

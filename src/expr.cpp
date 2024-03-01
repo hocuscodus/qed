@@ -55,10 +55,11 @@ CastExpr::CastExpr(Type type, Expr* expr) : Expr(EXPR_CAST) {
   this->expr = expr;
 }
 
-GroupingExpr::GroupingExpr(Token name, Expr* body, Declaration* declarations) : Expr(EXPR_GROUPING) {
+GroupingExpr::GroupingExpr(Token name, Expr* body, Declaration* declarations, Expr* ui) : Expr(EXPR_GROUPING) {
   this->name = name;
   this->body = body;
   this->declarations = declarations;
+  this->ui = ui;
 }
 
 ArrayExpr::ArrayExpr(Expr* body) : Expr(EXPR_ARRAY) {
@@ -84,11 +85,10 @@ DeclarationExpr::DeclarationExpr(Expr* initExpr) : Expr(EXPR_DECLARATION) {
   this->initExpr = initExpr;
 }
 
-FunctionExpr::FunctionExpr(int arity, Expr* params, GroupingExpr* body, Expr* ui) : Expr(EXPR_FUNCTION) {
+FunctionExpr::FunctionExpr(int arity, Expr* params, GroupingExpr* body) : Expr(EXPR_FUNCTION) {
   this->arity = arity;
   this->params = params;
   this->body = body;
-  this->ui = ui;
 }
 
 GetExpr::GetExpr(Expr* object, Token name) : Expr(EXPR_GET) {
@@ -157,7 +157,8 @@ WhileExpr::WhileExpr(Expr* condition, Expr* body) : Expr(EXPR_WHILE) {
   this->body = body;
 }
 
-SwapExpr::SwapExpr() : Expr(EXPR_SWAP) {
+SwapExpr::SwapExpr(Expr* expr) : Expr(EXPR_SWAP) {
+  this->expr = expr;
 }
 
 NativeExpr::NativeExpr(Token nativeCode) : Expr(EXPR_NATIVE) {
