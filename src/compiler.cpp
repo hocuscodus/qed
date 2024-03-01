@@ -372,8 +372,12 @@ Expr **initAddress(Expr *&body) {
   return body ? &body : NULL;
 }
 
+bool isNext(Expr *body, TokenType tokenType) {
+  return body && isGroup(body, tokenType);
+}
+
 Expr **cdrAddress(Expr *body, TokenType tokenType) {
-  return body && isGroup(body, tokenType) ? &((BinaryExpr *) body)->right : NULL;
+  return isNext(body, tokenType) ? &((BinaryExpr *) body)->right : NULL;
 }
 
 Expr **getLastBodyExpr(Expr **body, TokenType tokenType) {

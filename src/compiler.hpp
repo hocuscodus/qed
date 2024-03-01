@@ -63,6 +63,7 @@ FunctionExpr *getFunction();
 
 Expr **carAddress(Expr **body, TokenType tokenType);
 Expr **initAddress(Expr *&body);
+bool isNext(Expr *body, TokenType tokenType);
 Expr **cdrAddress(Expr *body, TokenType tokenType);
 Expr *addToGroup(Expr **body, Expr *exp);
 Expr **addExpr(Expr **body, Expr *exp, Token op);

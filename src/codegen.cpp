@@ -360,17 +360,17 @@ std::string LogicalExpr::toCode(Parser &parser, ObjFunction *function) {
 
 std::string ReturnExpr::toCode(Parser &parser, ObjFunction *function) {
   std::stringstream str;
-
+/*
   if (isUserClass) {
     str << value->toCode(parser, function) << ";\n";
     line(str) << "return";
   }
-  else {
+  else {*/
     str << "return";
 
     if (value)
       str << " (" << value->toCode(parser, function) << ")";
-  }
+//  }
   return str.str();
 }
 

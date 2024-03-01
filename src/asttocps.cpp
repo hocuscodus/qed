@@ -52,10 +52,10 @@ bool isCpsContext() {
 
 Expr *declarationToCps(Expr **statementRef, std::function<Expr *()> genGroup) {
   if (statementRef) {
-    Expr *statement = car(*statementRef, TOKEN_SEPARATOR);
+    Expr *left = car(*statementRef, TOKEN_SEPARATOR);
 
-    if (statement->type == EXPR_FUNCTION) {
-      statement->toCps(idExpr);
+    if (left->type == EXPR_FUNCTION) {
+      left->toCps(idExpr);
       statementRef = removeExpr(statementRef, TOKEN_SEPARATOR);
     }
     else
@@ -63,7 +63,7 @@ Expr *declarationToCps(Expr **statementRef, std::function<Expr *()> genGroup) {
 
     Expr *right = declarationToCps(statementRef, genGroup);
 
-    return statement->type == EXPR_FUNCTION || statement->type == EXPR_DECLARATION ? right ? new BinaryExpr(statement, buildToken(TOKEN_SEPARATOR, ";"), right) : statement : right;
+    return left->type == EXPR_FUNCTION || left->type == EXPR_DECLARATION ? right ? new BinaryExpr(left, buildToken(TOKEN_SEPARATOR, ";"), right) : left : right;
   }
   else
     return genGroup();
@@ -429,11 +429,31 @@ Expr *WhileExpr::toCps(K k) {
 }
 
 Expr *ReturnExpr::toCps(K k) {
-  Expr *cpsExpr = !value ? this : value->toCps([this, k](Expr *value) {
-    return compareExpr(this->value, value) ? this : k(idExpr(new ReturnExpr(this->keyword, this->isUserClass, value)));
+  auto genReturn = [](ReturnExpr *expr) -> Expr * {
+    if (expr->isUserClass) {
+      ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "post_"), NULL);
+      Expr *param = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "_HandlerFn_"), NULL);
+      Expr *value = expr->value;
+
+      if (value) {
+        CallExpr *call = new CallExpr(false, param, buildToken(TOKEN_LEFT_PAREN, "("), value, NULL);
+
+        param = makeWrapperLambda("lambda_", NULL, [call]() {return call;});
+      }
+
+      value = new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), param, NULL);
+      value = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), value, NULL);
+      addExpr(&((GroupingExpr *) value)->body, new ReturnExpr(expr->keyword, false, NULL), buildToken(TOKEN_SEPARATOR, ";"));
+      return value;
+    }
+    else
+      return expr;
+  };
+  Expr *cpsExpr = !value ? this : value->toCps([this, genReturn, k](Expr *value) {
+    return compareExpr(this->value, value) ? this : k(idExpr(genReturn(new ReturnExpr(keyword, false, value))));
   });
 
-  return this == cpsExpr ? k(this) : cpsExpr;
+  return this == cpsExpr ? k(genReturn(this)) : cpsExpr;
 }
 
 Expr *SetExpr::toCps(K k) {

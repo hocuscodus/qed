@@ -22,7 +22,7 @@
 ParseExpRule expRules[] = { KEYS_DEF };
 #undef KEY_DEF
 
-int getDir(char op) {
+static int getDir(char op) {
   switch (op) {
     case '_': return 1;
     case '|': return 2;
@@ -31,7 +31,7 @@ int getDir(char op) {
   }
 }
 
-const char *newString(const char *str) {
+static const char *newString(const char *str) {
   char *newStr = new char[strlen(str) + 1];
 
   strcpy(newStr, str);
@@ -1137,20 +1137,7 @@ Expr *Parser::returnStatement(TokenType endGroupType) {
   if (!check(endGroupType))
     consume(TOKEN_SEPARATOR, "Expect ';' after return value.");
 
-  if (getFunction()->_declaration.name.isUserClass()) {
-    ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "post_"), NULL);
-    Expr *param = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "_HandlerFn_"), NULL);
-
-    if (value) {
-      CallExpr *call = new CallExpr(false, param, buildToken(TOKEN_LEFT_PAREN, "("), value, NULL);
-
-      param = makeWrapperLambda("lambda_", NULL, [call]() {return call;});
-    }
-
-    value = new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), param, NULL);
-  }
-
-  return new ReturnExpr(keyword, getFunction()->_declaration.name.isUserClass(), value);
+  return new ReturnExpr(keyword, false, value);
 }
 
 Expr *Parser::statement(TokenType endGroupType) {
