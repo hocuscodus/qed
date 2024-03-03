@@ -1012,7 +1012,7 @@ int GroupingExpr::findTypes(Parser &parser) {
 int CastExpr::findTypes(Parser &parser) {
   int exprType = expr->findTypes(parser);
 
-  hasSuperCalls = expr->hasSuperCalls;
+//  hasSuperCalls = expr->hasSuperCalls;
   return 0;
 }
 
@@ -1058,7 +1058,7 @@ int LogicalExpr::findTypes(Parser &parser) {
   int type1 = left->findTypes(parser);
   int type2 = right->findTypes(parser);
 
-  hasSuperCalls = left->hasSuperCalls || right->hasSuperCalls;
+//  hasSuperCalls = left->hasSuperCalls || right->hasSuperCalls;
 
 //  if (!IS_BOOL(type1) || !IS_BOOL(type2))
     parser.error("Value must be boolean");
@@ -1070,7 +1070,7 @@ int WhileExpr::findTypes(Parser &parser) {
   int type = condition->findTypes(parser);
 
   body->findTypes(parser);
-  hasSuperCalls = condition->hasSuperCalls || body->hasSuperCalls;
+//  hasSuperCalls = condition->hasSuperCalls || body->hasSuperCalls;
   return 0;
 }
 
@@ -1079,7 +1079,7 @@ int ReturnExpr::findTypes(Parser &parser) {
 
   if (value) {
     value->findTypes(parser);
-    hasSuperCalls = value->hasSuperCalls;
+//    hasSuperCalls = value->hasSuperCalls;
 
 //  if (!getCurrent()->isClass())
 //    Type type = removeDeclaration();
@@ -1096,7 +1096,7 @@ int SetExpr::findTypes(Parser &parser) {
   int valueType = value->findTypes(parser);
   popSignature();
 
-  hasSuperCalls = object->hasSuperCalls || value->hasSuperCalls;
+//  hasSuperCalls = object->hasSuperCalls || value->hasSuperCalls;
 /*
   if (AS_OBJ_TYPE(objectType) != OBJ_INSTANCE)
     parser.errorAt(&name, "Only instances have properties.");
@@ -1124,11 +1124,11 @@ int TernaryExpr::findTypes(Parser &parser) {
 
   int type = middle->findTypes(parser);
 
-  hasSuperCalls = left->hasSuperCalls || middle->hasSuperCalls;
+//  hasSuperCalls = left->hasSuperCalls || middle->hasSuperCalls;
 
   if (right) {
     right->findTypes(parser);
-    hasSuperCalls |= right->hasSuperCalls;
+//    hasSuperCalls |= right->hasSuperCalls;
   }
 
   return 0;
@@ -1141,7 +1141,7 @@ int ThisExpr::findTypes(Parser &parser) {
 int UnaryExpr::findTypes(Parser &parser) {
   int type = right->findTypes(parser);
 
-  hasSuperCalls = right->hasSuperCalls;
+//  hasSuperCalls = right->hasSuperCalls;
 /*
   if (IS_VOID(type))
     parser.error("Value must not be void");

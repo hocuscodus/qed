@@ -849,10 +849,6 @@ Type FunctionExpr::resolve(Parser &parser) {
   pushScope(this);
 
   if (body) {
-    for (Declaration *declaration = body->declarations; declaration; declaration = declaration->next)
-      if (declaration->expr->type == EXPR_FUNCTION)
-        declaration->expr->resolve(parser);
-
     if (body->body) {
       body->body->resolve(parser);
       body->hasSuperCalls |= _declaration.name.isClass();
@@ -1273,13 +1269,14 @@ Type GroupingExpr::resolve(Parser &parser) {
         statement = createArrayExpr(statement);
 
       type = statement->resolve(parser);
+      hasSuperCalls |= statement->hasSuperCalls;
     }
 //    Type bodyType = body ? body->resolve(parser) : VOID_TYPE;
 
 //    type = name.type != TOKEN_LEFT_BRACE ? bodyType : VOID_TYPE;
   }
 
-  hasSuperCalls = body && body->hasSuperCalls;
+  hasSuperCalls |= body && body->hasSuperCalls;
   popScope();
   return type;
 }
@@ -1477,6 +1474,8 @@ Type SwapExpr::resolve(Parser &parser) {
     uiExprs.pop_front();
     uiTypes.pop_front();
   }
+  else
+    expr = expr;
 
 //  if (type.valueType == VAL_UNKNOWN)
     return expr->resolve(parser);

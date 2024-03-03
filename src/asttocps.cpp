@@ -63,7 +63,7 @@ Expr *declarationToCps(Expr **statementRef, std::function<Expr *()> genGroup) {
 
     Expr *right = declarationToCps(statementRef, genGroup);
 
-    return left->type == EXPR_FUNCTION || left->type == EXPR_DECLARATION ? right ? new BinaryExpr(left, buildToken(TOKEN_SEPARATOR, ";"), right) : left : right;
+    return left->type == EXPR_FUNCTION ? right ? new BinaryExpr(left, buildToken(TOKEN_SEPARATOR, ";"), right) : left : right;
   }
   else
     return genGroup();
