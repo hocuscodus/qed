@@ -1456,12 +1456,18 @@ Type ReferenceExpr::resolve(Parser &parser) {
 
   declaration = resolveReference(first, name, getSignature(), &parser);
 
-  if (declaration)
+  if (declaration) {
+    Declaration *dec = getDeclaration(declaration);
+
+    if (dec && dec->function && dec->function != getFunction() && isExternalField(dec->function, dec))
+      dec->function->_function.hasInternalFields = true;
+
     switch(declaration->type) {
       case EXPR_DECLARATION: return ((DeclarationExpr *) declaration)->_declaration.type;
       case EXPR_FUNCTION: return OBJ_TYPE(&((FunctionExpr *) declaration)->_function);
       default: parser.error("Variable '%.*s' is not a call.", name.length, name.start);
     }
+  }
 
   return UNKNOWN_TYPE;
 }

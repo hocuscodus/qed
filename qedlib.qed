@@ -290,7 +290,6 @@ void Qui_(var array, int[] dims) {}
 
 void QEDArray(int[] limits, sInitFn init, Qui_ Ui_) {
   /$this.dims = new Array(this.limits.length).fill(0)$/
-  /$const QEDArray$this = this$/
   insert(/$new Array(this.limits.length).fill(0)$/ as int[], limits)
 
   int size() {
