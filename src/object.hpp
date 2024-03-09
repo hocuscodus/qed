@@ -122,7 +122,7 @@ struct Declaration {
   FunctionExpr *function;
   bool isInternalField;
   Declaration *peer;
-  Declaration *next;
+  Declaration *previous;
   bool parentFlag;
 
   Declaration();

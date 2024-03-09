@@ -142,9 +142,9 @@ void Ball() {
     }
   }
 
-  int color = rand() * 0xFFFFFF
+  int color = trunc(rand() * 0xFFFFFF)
   int size = rand() * 35 + 35
-  Vector*[] vectors = 2 new Vector(rand(), (rand() * 2%) + 0.01%)
+  Vector*[] vectors = 2 new Vector(rand(), ((rand() * 1%) + 0.025%) * (rand() > 0.5 ? 1 : -1))
 
   while (Yield(/$Ball$this$/)) {
 //    v::vectors v.move()
@@ -156,7 +156,7 @@ void Ball() {
 //  <out: oval; color: color; size: size; align: v::vectors v.pos;>
 }
 
-Ball*[] balls = 3 new Ball()
+Ball*[] balls = 300 new Ball()
 /*
 void CounterWidget() {
   Button incButton = new Button("+") -> balls++
@@ -185,7 +185,7 @@ void CounterWidget() {
 while (Animation())
   process(balls);
 
-<out:rect; size:800; color: 0;>
+<out:rect; size:[800, 480]; color: 0;>
 <out:"Bouncing"; size:130; color: 0x50FFFFFF; align: [50%, 10%];>
 <out:"Balls!!"; size:160; color: 0x30FFFFFF; align: [50%, 70%];>
 <out:balls;>

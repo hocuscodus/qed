@@ -974,9 +974,6 @@ Type FunctionExpr::resolve(Parser &parser) {
 
   popScope();
 
-  if (getCurrent())
-    getCurrent()->add(&_declaration);
-
   return OBJ_TYPE(&_function);
 }
 
@@ -1077,6 +1074,7 @@ Type GroupingExpr::resolve(Parser &parser) {
       else {
         *initBody = initExpr;
         type = OBJ_TYPE(newArray(expr->resolve(parser)));
+        removeExpr(bodyElement, TOKEN_SEPARATOR);
 
         Type elementType = AS_ARRAY_TYPE(type)->elementType;
 
@@ -1242,7 +1240,7 @@ Type GroupingExpr::resolve(Parser &parser) {
           (*lastExpr)->resolve(parser);
           (*lastExpr)->hasSuperCalls = true;
           body->hasSuperCalls = true;
-          *bodyElement = new ReturnExpr(buildToken(TOKEN_RETURN, "return"), expr->hasSuperCalls, expr);
+          group->body = new ReturnExpr(buildToken(TOKEN_RETURN, "return"), expr->hasSuperCalls, expr);
         }
         else {
           Token arrayName = buildToken(TOKEN_IDENTIFIER, expr->hasSuperCalls ? "VSQEDArray" : "vqedArray");

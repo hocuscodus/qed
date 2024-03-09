@@ -53,6 +53,9 @@ int max(int a, int b) {
 float rand() {
 /$return Math.random()$/
 }
+int trunc(float n) {
+/$return Math.trunc(n)$/
+}
 float clock() {}
 void saveContext() {
 /$ctx.save()$/

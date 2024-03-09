@@ -26,16 +26,18 @@ Scope::Scope(FunctionExpr *function, GroupingExpr *group, Scope *enclosing) {
 }
 
 void Scope::add(Declaration *declaration) {
+  declaration->previous = group->declarations;
+  group->declarations = declaration;/*
   Declaration **current = &group->declarations;
 
   while (*current)
     if (*current != declaration)
-      current = &(*current)->next;
+      current = &(*current)->previous;
     else
       return;
 
-  declaration->next = NULL;
-  *current = declaration;
+  declaration->previous = NULL;
+  *current = declaration;*/
 }
 
 Scope *getCurrent() {
@@ -203,7 +205,7 @@ Declaration *getDeclarationRef(Token name, Declaration *dec) {
     if (identifiersEqual(&name, &dec->name))
       break;
 
-    dec = dec->next;
+    dec = dec->previous;
   }
 
   return dec;
@@ -283,7 +285,7 @@ Expr *resolveReference(Declaration *decRef, Token &name, Signature *signature, P
     else
       return dec;
 
-    decRef = getDeclarationRef(name, decRef->next);
+    decRef = getDeclarationRef(name, decRef->previous);
   }
 
   if (parser)

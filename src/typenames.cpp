@@ -1119,8 +1119,9 @@ int SetExpr::findTypes(Parser &parser) {
 }
 
 int TernaryExpr::findTypes(Parser &parser) {
+  left->findTypes(parser);
 //  if (IS_VOID(left->findTypes(parser)))
-    parser.error("Value must not be void");
+//    parser.error("Value must not be void");
 
   int type = middle->findTypes(parser);
 

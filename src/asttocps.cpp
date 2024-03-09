@@ -401,20 +401,21 @@ Expr *WhileExpr::toCps(K k) {
   if (hasSuperCalls) {
     char *newSymbol = genSymbol("while");
     auto genBody = [this, k, &newSymbol](Expr *condition) {
-      Expr *body = this->body;
       Expr *elseExpr = k(NULL);
+      Expr *arg = NULL;
+      ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, newSymbol), NULL);
 
-      if (body->hasSuperCalls) {
-        ReferenceExpr *arg = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, newSymbol), NULL);
-        ReferenceExpr *callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "post_"), NULL);
-        CallExpr *call = new CallExpr(false, callee, buildToken(TOKEN_CALL, "("), arg, NULL);
-
-        call->resolve(*((Parser *) NULL));
-        this->body = addToGroup(&body, call);
-        body = this->body->toCps(idExpr);
+      if (!this->condition->hasSuperCalls && !body->hasSuperCalls) {
+        arg = callee;
+        callee = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "post_"), NULL);
       }
 
-      return new IfExpr(condition, body, elseExpr);
+      CallExpr *call = new CallExpr(false, callee, buildToken(TOKEN_CALL, "("), arg, NULL);
+
+      call->resolve(*((Parser *) NULL));
+      body = addToGroup(&body, call);
+      Expr *newBody = this->body->toCps(idExpr);
+      return new IfExpr(condition, newBody, elseExpr);
     };
     Expr *wrapperLambda = makeWrapperLambda(newSymbol, NULL, [this, genBody]() {
       return condition->hasSuperCalls

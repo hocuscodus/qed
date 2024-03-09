@@ -82,7 +82,7 @@ const char *Obj::toString() {
 Declaration::Declaration() {
   expr = NULL;
   isInternalField = false;
-  next = NULL;
+  previous = NULL;
   peer = NULL;
   parentFlag = false;
 }
