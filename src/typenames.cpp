@@ -994,7 +994,7 @@ int GroupingExpr::findTypes(Parser &parser) {
   int numChanges = 0;
 
   if (body) {
-    bool functionFlag = getCurrent()->group == this;
+    bool functionFlag = getCurrent()->getGroup() == this;
 
     if (!functionFlag)
       pushScope(this);

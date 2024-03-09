@@ -47,7 +47,7 @@ Expr *getCompareExpr(Expr *origExpr, Expr *newExpr) {
 }
 
 bool isCpsContext() {
-  return getCurrent() && getCurrent()->function && getCurrent()->group->hasSuperCalls;
+  return getFunction() && getFunction()->body->hasSuperCalls;
 }
 
 Expr *declarationToCps(Expr **statementRef, std::function<Expr *()> genGroup) {
@@ -586,7 +586,7 @@ Expr *ReferenceExpr::toCps(K k) {
 //  if (declaration && declaration->function && isExternalField(declaration->function, declaration) && declaration->function != function->expr)
   Declaration *dec = declaration ? getDeclaration(declaration) : NULL;
 
-  if (dec && dec->function && dec->function != getFunction() && isExternalField(dec->function, dec))
+  if (dec && dec->function && dec->function != getTopFunction() && isExternalField(dec->function, dec))
     dec->function->_function.hasInternalFields = true;
 
   return k(this);

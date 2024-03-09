@@ -18,16 +18,15 @@ static std::stack<Signature *> signatures;
 static Scope *currentScope = NULL;
 Declaration *arrayDeclaration = NULL;
 
-Scope::Scope(FunctionExpr *function, GroupingExpr *group, Scope *enclosing) {
-  this->function = function;
-  this->group = group;
+Scope::Scope(Expr *expr, Scope *enclosing) {
+  this->expr = expr->type == EXPR_FUNCTION || expr->type == EXPR_GROUPING ? expr : NULL;
   this->enclosing = enclosing;
   vCount = 1;
 }
 
 void Scope::add(Declaration *declaration) {
-  declaration->previous = group->declarations;
-  group->declarations = declaration;/*
+  declaration->previous = getDeclarations();
+  getDeclarations() = declaration;/*
   Declaration **current = &group->declarations;
 
   while (*current)
@@ -40,20 +39,36 @@ void Scope::add(Declaration *declaration) {
   *current = declaration;*/
 }
 
+FunctionExpr *Scope::getFunction() {
+  return expr->type == EXPR_FUNCTION ? (FunctionExpr *) expr : NULL;
+}
+
+FunctionExpr *Scope::getTopFunction() {
+  FunctionExpr *function = getFunction();
+
+  return function ? function : enclosing ? enclosing->getTopFunction() : NULL;
+}
+
+GroupingExpr *Scope::getGroup() {
+  FunctionExpr *function = getFunction();
+
+  return function ? function->body : (GroupingExpr *) expr;
+}
+
+Declaration *&Scope::getDeclarations() {
+  return getGroup()->declarations;
+}
+
 Scope *getCurrent() {
   return currentScope;
 }
 
-FunctionExpr *getFunction(Scope *scope) {
-  for (Scope *current = scope; current; current = current->enclosing)
-    if (current->function)
-      return current->function;
-
-  return NULL;
+FunctionExpr *getFunction() {
+  return getCurrent()->getFunction();
 }
 
-FunctionExpr *getFunction() {
-  return getFunction(currentScope);
+FunctionExpr *getTopFunction() {
+  return getCurrent()->getTopFunction();
 }
 
 Type resolveType(Expr *expr) {
@@ -121,12 +136,8 @@ Type resolveType(Expr *expr) {
   return type;
 }
 
-void pushScope(FunctionExpr *functionExpr) {
-  currentScope = new Scope(functionExpr, functionExpr->body, currentScope);
-}
-
-void pushScope(GroupingExpr *groupingExpr) {
-  currentScope = new Scope(NULL, groupingExpr, currentScope);
+void pushScope(Expr *expr) {
+  currentScope = new Scope(expr, currentScope);
 }
 
 void popScope() {
@@ -215,7 +226,7 @@ Declaration *getFirstDeclarationRef(Scope *current, Token &name) {
   Declaration *dec = NULL;
 
   while (!dec && current) {
-    dec = getDeclarationRef(name, current->group->declarations);
+    dec = getDeclarationRef(name, current->getDeclarations());
     current = current->enclosing;
   }
 
@@ -321,7 +332,7 @@ bool isClass(FunctionExpr *function) {
 }
 
 bool isInClass() {
-  return isClass(getCurrent()->function);
+  return isClass(getFunction());
 }
 
 bool isExternalField(FunctionExpr *function, Declaration *dec) {
@@ -339,19 +350,19 @@ bool isInRegularFunction(ObjFunction *function) {
 void checkDeclaration(Declaration &declaration, Token &name, FunctionExpr *function, Parser *parser) {
   Signature signature;
 
-  declaration.function = getCurrent()->function;
+  declaration.function = getFunction();
 
   if (function)
     for (int index = 0; index < function->arity; index++)
       signature.push_back(getParam(function, index)->_declaration.type);
 
-  Expr *expr = resolveReference(getDeclarationRef(name, getCurrent()->group->declarations), name, function ? &signature : NULL, NULL);
+  Expr *expr = resolveReference(getDeclarationRef(name, getCurrent()->getDeclarations()), name, function ? &signature : NULL, NULL);
 /*
   if (expr)
     parser->error("Identical identifier '%.*s' with this name in this scope.", name.length, name.start);
   else */{
     if (function)
-      expr = resolveReference(getDeclarationRef(name, getCurrent()->group->declarations), name, NULL, NULL);
+      expr = resolveReference(getDeclarationRef(name, getCurrent()->getDeclarations()), name, NULL, NULL);
 
     if (!expr) {
       expr = resolveReference(getFirstDeclarationRef(getCurrent()->enclosing, name), name, NULL, NULL);

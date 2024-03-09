@@ -226,7 +226,7 @@ std::string FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
   pushScope(this);
 
   if (getCurrent()->enclosing) {
-    if (isInRegularFunction(getCurrent()->enclosing->function))
+    if (isInRegularFunction(getCurrent()->enclosing->getFunction()))
       str << "this." << _declaration.getRealName() << " = function(";
     else
       str << "function " << _declaration.getRealName() << "(";
@@ -281,7 +281,7 @@ std::string GetExpr::toCode(Parser &parser, ObjFunction *function) {
 
 std::string GroupingExpr::toCode(Parser &parser, ObjFunction *function) {
   std::stringstream str;
-  bool functionFlag = getCurrent()->group == this;
+  bool functionFlag = getCurrent()->getGroup() == this;
 
   if (!functionFlag)
     pushScope(this);

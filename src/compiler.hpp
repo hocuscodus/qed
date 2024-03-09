@@ -11,13 +11,16 @@
 #include "expr.hpp"
 
 struct Scope {
-  FunctionExpr *function;
-  GroupingExpr *group;
+  Expr *expr;
   Scope *enclosing;
   int vCount;
 
-  Scope(FunctionExpr *function, GroupingExpr *group, Scope *enclosing);
+  Scope(Expr *expr, Scope *enclosing);
   void add(Declaration *declaration);
+  FunctionExpr *getFunction();
+  FunctionExpr *getTopFunction();
+  GroupingExpr *getGroup();
+  Declaration *&getDeclarations();
 };
 
 extern Declaration *arrayDeclaration;
@@ -27,8 +30,7 @@ class Parser;
 typedef std::vector<Type> Signature;
 
 Type resolveType(Expr *expr);
-void pushScope(FunctionExpr *functionExpr);
-void pushScope(GroupingExpr *groupingExpr);
+void pushScope(Expr *expr);
 void popScope();
 DeclarationExpr *newDeclarationExpr(Type type, Token name, Expr* initExpr);
 FunctionExpr *newFunctionExpr(Type type, Token name, int arity, Expr* params, GroupingExpr* body);
@@ -58,8 +60,8 @@ void pushSignature(Signature *signature);
 void popSignature();
 
 Scope *getCurrent();
-FunctionExpr *getFunction(Scope *current);
 FunctionExpr *getFunction();
+FunctionExpr *getTopFunction();
 
 Expr **carAddress(Expr **body, TokenType tokenType);
 Expr **initAddress(Expr *&body);

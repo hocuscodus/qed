@@ -490,7 +490,7 @@ Type BinaryExpr::resolve(Parser &parser) {
             nTabs++;
             processArrayAttrs(exprUI, parser);
 
-            for (int ndx2 = -1; (ndx2 = getFunction()->_function.instanceIndexes->getNext(ndx2)) != -1;)
+            for (int ndx2 = -1; (ndx2 = getTopFunction()->_function.instanceIndexes->getNext(ndx2)) != -1;)
               (*ss) << "v" << ndx2 << ".ui_ = new v" << ndx2 << ".UI_();\n";
 
             nTabs--;
@@ -871,7 +871,7 @@ Type FunctionExpr::resolve(Parser &parser) {
         nTabs++;
         processAttrs(exprUI, parser);
 
-        for (int ndx2 = -1; (ndx2 = getFunction()->_function.instanceIndexes->getNext(ndx2)) != -1;)
+        for (int ndx2 = -1; (ndx2 = getTopFunction()->_function.instanceIndexes->getNext(ndx2)) != -1;)
           (*ss) << "v" << ndx2 << ".ui_ = new v" << ndx2 << ".UI_();\n";
 
         nTabs--;
@@ -987,8 +987,8 @@ Type GetExpr::resolve(Parser &parser) {
   switch (AS_OBJ_TYPE(objectType)) {
     case OBJ_FUNCTION: {
         FunctionExpr *function = AS_FUNCTION_TYPE(objectType)->expr;
-        Scope scope(function, function->body, NULL);
-        Declaration *dec = getDeclarationRef(name, scope.group->declarations);
+        Scope scope(function, NULL);
+        Declaration *dec = getDeclarationRef(name, scope.getDeclarations());
         Expr *refExpr = dec ? resolveReference(dec, name, getSignature(), &parser) : NULL;
 
         if (refExpr) {
@@ -1003,8 +1003,8 @@ Type GetExpr::resolve(Parser &parser) {
     case OBJ_INSTANCE: {
         ObjInstance *type = AS_INSTANCE_TYPE(objectType);
         FunctionExpr *function = ((ObjFunction *) type->callable)->expr;
-        Scope scope(function, function->body, NULL);
-        Declaration *dec = getDeclarationRef(name, scope.group->declarations);
+        Scope scope(function, NULL);
+        Declaration *dec = getDeclarationRef(name, scope.getDeclarations());
         Expr *refExpr = dec ? resolveReference(dec, name, getSignature(), &parser) : NULL;
 
         if (refExpr) {
@@ -1020,8 +1020,8 @@ Type GetExpr::resolve(Parser &parser) {
         ObjArray *type = AS_ARRAY_TYPE(objectType);
         Type elementType = type->elementType;
         FunctionExpr *function = (FunctionExpr *) arrayDeclaration->expr;
-        Scope scope(function, function->body, NULL);
-        Declaration *dec = getDeclarationRef(name, scope.group->declarations);
+        Scope scope(function, NULL);
+        Declaration *dec = getDeclarationRef(name, scope.getDeclarations());
         Expr *refExpr = dec ? resolveReference(dec, name, getSignature(), &parser) : NULL;
 
         if (refExpr) {
@@ -1136,7 +1136,7 @@ Type GroupingExpr::resolve(Parser &parser) {
             nTabs++;
             processArrayAttrs(exprUI, parser);
 
-            for (int ndx2 = -1; (ndx2 = getFunction()->_function.instanceIndexes->getNext(ndx2)) != -1;)
+            for (int ndx2 = -1; (ndx2 = getTopFunction()->_function.instanceIndexes->getNext(ndx2)) != -1;)
               (*ss) << "v" << ndx2 << ".ui_ = new v" << ndx2 << ".UI_();\n";
 
             nTabs--;
@@ -1345,7 +1345,7 @@ Type WhileExpr::resolve(Parser &parser) {
 }
 
 Type ReturnExpr::resolve(Parser &parser) {
-  Token name = getFunction()->_declaration.name;
+  Token name = getTopFunction()->_declaration.name;
 
   isUserClass = name.isUserClass();
 
@@ -1377,8 +1377,8 @@ Type SetExpr::resolve(Parser &parser) {
   else {
     ObjInstance *type = AS_INSTANCE_TYPE(objectType);
     FunctionExpr *function = ((ObjFunction *) type->callable)->expr;
-    Scope scope(function, function->body, NULL);
-    Declaration *dec = getDeclarationRef(name, scope.group->declarations);
+    Scope scope(function, NULL);
+    Declaration *dec = getDeclarationRef(name, scope.getDeclarations());
     Expr *refExpr = dec ? resolveReference(dec, name, getSignature(), &parser) : NULL;
 
     if (refExpr) {
@@ -1457,7 +1457,7 @@ Type ReferenceExpr::resolve(Parser &parser) {
   if (declaration) {
     Declaration *dec = getDeclaration(declaration);
 
-    if (dec && dec->function && dec->function != getFunction() && isExternalField(dec->function, dec))
+    if (dec && dec->function && dec->function != getTopFunction() && isExternalField(dec->function, dec))
       dec->function->_function.hasInternalFields = true;
 
     switch(declaration->type) {
@@ -1660,7 +1660,7 @@ void processAttrs(UIDirectiveExpr *expr, Parser &parser) {
                 break;
 
               case OBJ_INSTANCE: {
-                  getFunction()->_function.instanceIndexes->set(getCurrent()->vCount);
+                  getTopFunction()->_function.instanceIndexes->set(getCurrent()->vCount);
 
                   ObjFunction *function = (ObjFunction *) AS_INSTANCE_TYPE(type)->callable;
 
@@ -1736,7 +1736,7 @@ void processArrayAttrs(UIDirectiveExpr *expr, Parser &parser) {
                 break;
 
               case OBJ_INSTANCE: {
-                  getFunction()->_function.instanceIndexes->set(getCurrent()->vCount);
+                  getTopFunction()->_function.instanceIndexes->set(getCurrent()->vCount);
 
                   ObjFunction *function = (ObjFunction *) AS_INSTANCE_TYPE(type)->callable;
 
