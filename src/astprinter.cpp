@@ -144,9 +144,6 @@ void FunctionExpr::astPrint() {
   if (body)
     body->astPrint();
 
-  if (body->ui)
-;//    ui->astPrint();
-
   fprintf(stderr, "}");
 }
 
@@ -162,6 +159,9 @@ void GroupingExpr::astPrint() {
 
   if (body)
     body->astPrint();
+
+  if (ui)
+;//    ui->astPrint();
 
   fprintf(stderr, ")");
 }

@@ -85,9 +85,10 @@ DeclarationExpr::DeclarationExpr(Expr* initExpr) : Expr(EXPR_DECLARATION) {
   this->initExpr = initExpr;
 }
 
-FunctionExpr::FunctionExpr(int arity, Expr* params, GroupingExpr* body) : Expr(EXPR_FUNCTION) {
+FunctionExpr::FunctionExpr(int arity, Expr* params, Declaration* declarations, GroupingExpr* body) : Expr(EXPR_FUNCTION) {
   this->arity = arity;
   this->params = params;
+  this->declarations = declarations;
   this->body = body;
 }
 

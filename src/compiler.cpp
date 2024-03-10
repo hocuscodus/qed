@@ -50,13 +50,17 @@ FunctionExpr *Scope::getTopFunction() {
 }
 
 GroupingExpr *Scope::getGroup() {
-  FunctionExpr *function = getFunction();
+  return NULL;
+//  FunctionExpr *function = getFunction();
 
-  return function ? function->body : (GroupingExpr *) expr;
+//  return function ? function->body : (GroupingExpr *) expr;
 }
 
 Declaration *&Scope::getDeclarations() {
-  return getGroup()->declarations;
+  FunctionExpr *function = getFunction();
+
+  return function ? function->declarations : ((GroupingExpr *) expr)->declarations;
+//  return getGroup()->declarations;
 }
 
 Scope *getCurrent() {
@@ -161,7 +165,7 @@ DeclarationExpr *newDeclarationExpr(Type type, Token name, Expr* initExpr) {
 }
 
 FunctionExpr *newFunctionExpr(Type type, Token name, int arity, Expr* params, GroupingExpr* body) {
-  FunctionExpr *expr = new FunctionExpr(arity, params, body);
+  FunctionExpr *expr = new FunctionExpr(arity, params, NULL, body);
 
   expr->_declaration.type = type;
   expr->_declaration.name = name;

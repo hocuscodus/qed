@@ -245,11 +245,12 @@ struct DeclarationExpr : public Expr {
 struct FunctionExpr : public Expr {
   int arity;
   Expr* params;
+  Declaration* declarations;
   GroupingExpr* body;
   Declaration _declaration;
   ObjFunction _function;
 
-  FunctionExpr(int arity, Expr* params, GroupingExpr* body);
+  FunctionExpr(int arity, Expr* params, Declaration* declarations, GroupingExpr* body);
   void cleanExprs();
   void astPrint();
   int findTypes(Parser &parser);
