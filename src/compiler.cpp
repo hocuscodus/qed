@@ -156,7 +156,7 @@ void popScope() {
 }
 
 DeclarationExpr *newDeclarationExpr(Type type, Token name, Expr* initExpr) {
-  DeclarationExpr *expr = new DeclarationExpr(initExpr);
+  DeclarationExpr *expr = new DeclarationExpr(initExpr, false);
 
   expr->_declaration.type = type;
   expr->_declaration.name = name;
@@ -231,6 +231,16 @@ Declaration *getFirstDeclarationRef(Scope *current, Token &name) {
 
   while (!dec && current) {
     dec = getDeclarationRef(name, current->getDeclarations());
+
+    if (dec && dec->expr->type == EXPR_DECLARATION && !((DeclarationExpr *) dec->expr)->declared) {
+      Declaration *dec2 = getFirstDeclarationRef(current->enclosing, name);
+
+      if (dec2)
+        dec = dec2;//        parser.error("Cannot use an undeclared variable");
+
+      break;
+    }
+
     current = current->enclosing;
   }
 

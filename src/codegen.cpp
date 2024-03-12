@@ -413,8 +413,8 @@ std::string PrimitiveExpr::toCode(Parser &parser, ObjFunction *function) {
 std::string ReferenceExpr::toCode(Parser &parser, ObjFunction *function) {
   Declaration *declaration = this->declaration ? getDeclaration(this->declaration) : NULL;
 
-  if (declaration && declaration->function)
-    if (isExternalField(declaration->function, declaration))
+  if (declaration)
+    if (declaration->function && isExternalField(declaration->function, declaration))
       if (declaration->function == function->expr)
         return (std::stringstream() << "this." << declaration->getRealName()).str();
       else

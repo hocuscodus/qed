@@ -230,9 +230,10 @@ struct ArrayElementExpr : public Expr {
 
 struct DeclarationExpr : public Expr {
   Expr* initExpr;
+  bool declared;
   Declaration _declaration;
 
-  DeclarationExpr(Expr* initExpr);
+  DeclarationExpr(Expr* initExpr, bool declared);
   void cleanExprs();
   void astPrint();
   int findTypes(Parser &parser);

@@ -280,7 +280,7 @@ int main(int argc, const char *argv[]) {
     "Array       : Expr* body, Declaration* _declaration",
     "Call        : bool newFlag, Expr* callee, Token paren, Expr* args, Expr* handler, Declaration* _declaration",
     "ArrayElement: Expr* callee, Token bracket, int count, Expr** indexes",
-    "Declaration : Expr* initExpr, Declaration _declaration",
+    "Declaration : Expr* initExpr, bool declared, Declaration _declaration",
     "Function    : int arity, Expr* params, Declaration* declarations, GroupingExpr* body, Declaration _declaration, ObjFunction _function",
     "Get         : Expr* object, Token name, Declaration* _declaration",
     "If          : Expr* condition, Expr* thenBranch, Expr* elseBranch",

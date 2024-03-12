@@ -456,8 +456,10 @@ Expr *analyzeStatement(Expr *expr, Parser &parser) {
             pushScope(functionExpr);
             analyzeStatements(params, TOKEN_COMMA, parser);
 
-            for (Expr *paramRef = params; paramRef; paramRef = cdr(paramRef, TOKEN_COMMA))
+            for (Expr *paramRef = params; paramRef; paramRef = cdr(paramRef, TOKEN_COMMA)) {
+              ((DeclarationExpr *) car(paramRef, TOKEN_COMMA))->declared = true;
               functionExpr->arity++;
+            }
 
             functionExpr->params = params;
             popScope();
@@ -1179,6 +1181,9 @@ int PrimitiveExpr::findTypes(Parser &parser) {
 
 int ReferenceExpr::findTypes(Parser &parser) {
   Declaration *first = getFirstDeclarationRef(getCurrent(), name);
+
+  if (!first)
+    return 0;
 
   declaration = resolveReference(first, name, NULL/*getSignature()*/, &parser);
 

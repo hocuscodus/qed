@@ -842,6 +842,7 @@ Type DeclarationExpr::resolve(Parser &parser) {
       break;
     }
 
+  declared = true;
   return VOID_TYPE;
 }
 
