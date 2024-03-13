@@ -1312,6 +1312,17 @@ Type GroupingExpr::resolve(Parser &parser) {
       Expr **lastBodyExpr = getLastBodyExpr(&group.body, TOKEN_SEPARATOR);
 
       parse(&group, "UI_ *ui_;\n");
+      uiExpr = getLastBodyExpr(&group.body, TOKEN_SEPARATOR);
+
+      *uiExpr = analyzeStatement(*uiExpr, parser);
+      parse(&group, "void setUI_() {\n  ui_ = new UI_();\n}\n");
+      uiExpr = getLastBodyExpr(&group.body, TOKEN_SEPARATOR);
+
+      *uiExpr = analyzeStatement(*uiExpr, parser);
+      FunctionExpr *setUIFunctionExpr = (FunctionExpr *) *uiExpr;
+
+      setUIFunctionExpr->findTypes(parser);
+      setUIFunctionExpr->resolve(parser);
       *lastBodyExpr = analyzeStatement(*lastBodyExpr, parser);
       (*getLastBodyExpr(&group.body, TOKEN_SEPARATOR))->resolve(parser);
       body = new BinaryExpr(group.body, buildToken(TOKEN_SEPARATOR, ";"), body);

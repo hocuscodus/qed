@@ -282,7 +282,7 @@ std::string compile(FunctionExpr *expr, Parser *parser) {
   line(str) << "let layout_ = null;\n";
   line(str) << "function _refresh() {\n";
   line(str) << "//  if (ui_ != undefined && --postCount == 0) {\n";
-  line(str) << "    ui_ = new UI_();\n";
+  line(str) << "    setUI_();\n";
   line(str) << "    layout_ = new ui_.Layout_();\n";
   line(str) << "    ctx.globalAlpha = 1.0;\n";
   line(str) << "    ctx.clearRect(0, 0, canvas.width, canvas.height);\n";

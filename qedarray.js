@@ -19,14 +19,6 @@ function boolHandler_(value) {
 }
 function stringHandler_(value) {
 }
-let WIDTH = null;
-let HEIGHT = null;
-let OBLIQUE = null;
-let COLOR_RED = null;
-let COLOR_GREEN = null;
-let COLOR_YELLOW = null;
-let COLOR_BLUE = null;
-let COLOR_BLACK = null;
 function Yield(obj, _HandlerFn_) {
   this.obj = obj;
   obj.yieldHandler = (function() {
@@ -67,6 +59,9 @@ function max(a, b) {
 }
 function rand() {
   return Math.random();
+}
+function trunc(n) {
+  return Math.trunc(n);
 }
 function clock() {
 }
@@ -126,7 +121,6 @@ function Timer(timeoutMillis, _HandlerFn_) {
     _HandlerFn_(true);
     _refresh();
   }, timeoutMillis);
-  this.reset;
 }
 function Time(Func, _HandlerFn_) {
   this.Func = Func;
@@ -148,6 +142,7 @@ function Animation(_HandlerFn_) {
 });;
 }
 function QEDBaseArray_() {
+  const QEDBaseArray_$this = this;
   this.size = function() {
     return (0);
   }
@@ -171,19 +166,15 @@ function QEDBaseArray_() {
   }
   this.UI_ = function() {
     this.Layout_ = function() {
-      this.size$ = null;
       this.paint = function(pos0, pos1, size0, size1) {
       }
       this.onEvent = function(event, pos0, pos1, size0, size1) {
       }
       this.size$ = 0;
-      this.onEvent;
     }
-    this.Layout_;
   }
-  this.ui_ = null;
-  this.setUI = function() {
-    this.ui_ = new this.UI_();
+  this.setUI_ = function() {
+    QEDBaseArray_$this.ui_ = new QEDBaseArray_$this.UI_();
   }
 }
 function InitFn(pos, _HandlerFn_) {
@@ -206,11 +197,10 @@ function SQEDArray(limits, Init, _HandlerFn_) {
   }
   this.insert = function(pos, size$) {
   }
-  this.Insert = function(pos, size$, _HandlerFn_$) {
+  this.Insert = function(pos, size$, _HandlerFn_) {
     this.pos = pos;
     this.size$ = size$;
     const Insert$this = this;
-    this.newSize = null;
     this.newSize = [...this.size$];
     {
       let index = SQEDArray$this.dims.length - 1;
@@ -221,11 +211,13 @@ function SQEDArray(limits, Init, _HandlerFn_) {
     }
     new SQEDArray$this.InsertLevel(SQEDArray$this, SQEDArray$this.dims, this.pos, this.size$, this.newSize, new Array(this.size$.length).fill(0), 0, (function Lambda_() {
       SQEDArray$this.dims = Insert$this.newSize;
-      post_(_HandlerFn_$);
-      return;
+      {
+        post_(_HandlerFn_);
+        return;
+      }
     }));
   }
-  this.InsertLevel = function(array, dims, pos, size$, newSize, pp, level, _HandlerFn_$) {
+  this.InsertLevel = function(array, dims, pos, size$, newSize, pp, level, _HandlerFn_) {
     this.array = array;
     this.dims = dims;
     this.pos = pos;
@@ -242,7 +234,7 @@ function SQEDArray(limits, Init, _HandlerFn_) {
             if (pp[level] < pos[level]) {
               new SQEDArray$this.InsertLevel(array[pp[level]], InsertLevel$this.dims, InsertLevel$this.pos, InsertLevel$this.size$, InsertLevel$this.newSize, InsertLevel$this.pp, InsertLevel$this.level + 1, (function Lambda_() {
                 pp[level]++;
-                post_(while2$_);
+                while2$_();
               }));
             }
             else {
@@ -260,7 +252,7 @@ function SQEDArray(limits, Init, _HandlerFn_) {
                     array[pp[level]] = [];
                     new SQEDArray$this.InsertLevel(array[pp[level]], new Array(InsertLevel$this.size$.length).fill(0), new Array(InsertLevel$this.size$.length).fill(0), InsertLevel$this.newSize, InsertLevel$this.newSize, InsertLevel$this.pp, InsertLevel$this.level + 1, (function Lambda_() {
                       pp[level]++;
-                      post_(while4$_);
+                      while4$_();
                     }));
                   }
                   else {
@@ -269,7 +261,7 @@ function SQEDArray(limits, Init, _HandlerFn_) {
                       if (pp[level] < newSize[level]) {
                         new SQEDArray$this.InsertLevel(array[pp[level]], InsertLevel$this.dims, InsertLevel$this.pos, InsertLevel$this.size$, InsertLevel$this.newSize, InsertLevel$this.pp, InsertLevel$this.level + 1, (function Lambda_() {
                           pp[level]++;
-                          post_(while5$_);
+                          while5$_();
                         }));
                       }
                       else
@@ -297,7 +289,7 @@ function SQEDArray(limits, Init, _HandlerFn_) {
               new SQEDArray$this.Init(InsertLevel$this.pp, (function Lambda_(_ret) {
                 array[pp[level]] = _ret;
                 pp[level]++;
-                post_(while7$_);
+                while7$_();
               }));
             }
             else
@@ -306,20 +298,20 @@ function SQEDArray(limits, Init, _HandlerFn_) {
         }
       }
     })((function c8$_() {
-      post_(_HandlerFn_$);
-      return;
+      {
+        post_(_HandlerFn_);
+        return;
+      }
     }));
   }
   this.dims = new Array(this.limits.length).fill(0);
   new this.Insert(new Array(this.limits.length).fill(0), this.limits, (function Lambda_() {
-    post_((function lambda_() {
-      _HandlerFn_(SQEDArray$this);
-    }));
-    return;
-    SQEDArray$this.size;
-    SQEDArray$this.insert;
-    SQEDArray$this.Insert;
-    SQEDArray$this.InsertLevel;
+    {
+      post_((function lambda_() {
+        _HandlerFn_(SQEDArray$this);
+      }));
+      return;
+    }
   }));
 }
 function VInitFn(pos, _HandlerFn_) {
@@ -342,11 +334,10 @@ function VSQEDArray(limits, Init, _HandlerFn_) {
   }
   this.insert = function(pos, size$) {
   }
-  this.Insert = function(pos, size$, _HandlerFn_$) {
+  this.Insert = function(pos, size$, _HandlerFn_) {
     this.pos = pos;
     this.size$ = size$;
     const Insert$this = this;
-    this.newSize = null;
     this.newSize = [...this.size$];
     {
       let index = VSQEDArray$this.dims.length - 1;
@@ -357,11 +348,13 @@ function VSQEDArray(limits, Init, _HandlerFn_) {
     }
     new VSQEDArray$this.InsertLevel(VSQEDArray$this.dims, this.pos, this.size$, this.newSize, new Array(this.size$.length).fill(0), 0, (function Lambda_() {
       VSQEDArray$this.dims = Insert$this.newSize;
-      post_(_HandlerFn_$);
-      return;
+      {
+        post_(_HandlerFn_);
+        return;
+      }
     }));
   }
-  this.InsertLevel = function(dims, pos, size$, newSize, pp, level, _HandlerFn_$) {
+  this.InsertLevel = function(dims, pos, size$, newSize, pp, level, _HandlerFn_) {
     this.dims = dims;
     this.pos = pos;
     this.size$ = size$;
@@ -377,7 +370,7 @@ function VSQEDArray(limits, Init, _HandlerFn_) {
             if (pp[level] < pos[level]) {
               new VSQEDArray$this.InsertLevel(InsertLevel$this.dims, InsertLevel$this.pos, InsertLevel$this.size$, InsertLevel$this.newSize, InsertLevel$this.pp, InsertLevel$this.level + 1, (function Lambda_() {
                 pp[level]++;
-                post_(while11$_);
+                while11$_();
               }));
             }
             else {
@@ -387,7 +380,7 @@ function VSQEDArray(limits, Init, _HandlerFn_) {
                   array[pp[level]] = [];
                   new VSQEDArray$this.InsertLevel(new Array(InsertLevel$this.size$.length).fill(0), new Array(InsertLevel$this.size$.length).fill(0), InsertLevel$this.newSize, InsertLevel$this.newSize, InsertLevel$this.pp, InsertLevel$this.level + 1, (function Lambda_() {
                     pp[level]++;
-                    post_(while12$_);
+                    while12$_();
                   }));
                 }
                 else {
@@ -396,7 +389,7 @@ function VSQEDArray(limits, Init, _HandlerFn_) {
                     if (pp[level] < newSize[level]) {
                       new VSQEDArray$this.InsertLevel(InsertLevel$this.dims, InsertLevel$this.pos, InsertLevel$this.size$, InsertLevel$this.newSize, InsertLevel$this.pp, InsertLevel$this.level + 1, (function Lambda_() {
                         pp[level]++;
-                        post_(while13$_);
+                        while13$_();
                       }));
                     }
                     else
@@ -414,7 +407,7 @@ function VSQEDArray(limits, Init, _HandlerFn_) {
           if (pp[level] < pos[level] + InsertLevel$this.size$[level]) {
             new VSQEDArray$this.Init(InsertLevel$this.pp, (function Lambda_() {
               pp[level]++;
-              post_(while14$_);
+              while14$_();
             }));
           }
           else
@@ -422,20 +415,20 @@ function VSQEDArray(limits, Init, _HandlerFn_) {
         })();
       }
     })((function c15$_() {
-      post_(_HandlerFn_$);
-      return;
+      {
+        post_(_HandlerFn_);
+        return;
+      }
     }));
   }
   this.dims = new Array(this.limits.length).fill(0);
   new this.Insert(new Array(this.limits.length).fill(0), this.limits, (function Lambda_() {
-    post_((function lambda_() {
-      _HandlerFn_(VSQEDArray$this);
-    }));
-    return;
-    VSQEDArray$this.size;
-    VSQEDArray$this.insert;
-    VSQEDArray$this.Insert;
-    VSQEDArray$this.InsertLevel;
+    {
+      post_((function lambda_() {
+        _HandlerFn_(VSQEDArray$this);
+      }));
+      return;
+    }
   }));
 }
 function sInitFn(pos) {
@@ -447,6 +440,7 @@ function QEDArray(limits, init, Ui_, _HandlerFn_) {
   this.limits = limits;
   this.init = init;
   this.Ui_ = Ui_;
+  const QEDArray$this = this;
   this.size = function() {
     let s = 1;
     {
@@ -522,15 +516,11 @@ function QEDArray(limits, init, Ui_, _HandlerFn_) {
     return;
   }
   this.ui_ = null;
-  this.setUI = function() {
+  this.setUI_ = function() {
     this.ui_ = new this.Ui_(QEDArray$this, QEDArray$this.dims);
   }
   this.dims = new Array(this.limits.length).fill(0);
-  const QEDArray$this = this;
   this.insert(new Array(this.limits.length).fill(0), this.limits);
-  this.size;
-  this.insert;
-  this.insertLevel;
 }
 function qedArray(limits, init, Ui_) {
   return (new QEDArray(limits, init, Ui_));
@@ -540,6 +530,7 @@ function vInitFn(pos) {
 function VQEDArray(limits, init, _HandlerFn_) {
   this.limits = limits;
   this.init = init;
+  const VQEDArray$this = this;
   this.size = function() {
     let s = 1;
     {
@@ -599,17 +590,13 @@ function VQEDArray(limits, init, _HandlerFn_) {
   }
   this.dims = new Array(this.limits.length).fill(0);
   this.insert(new Array(this.limits.length).fill(0), this.limits);
-  this.size;
-  this.insert;
-  this.insertLevel;
 }
 function vqedArray(limits, init) {
   return (new VQEDArray(limits, init));
 }
-let ar = null;
 function Ball(_HandlerFn_) {
   const Ball$this = this;
-  this.Vector = function(pos, delta, _HandlerFn_$) {
+  this.Vector = function(pos, delta, _HandlerFn_) {
     this.pos = pos;
     this.delta = delta;
     const Vector$this = this;
@@ -620,23 +607,11 @@ function Ball(_HandlerFn_) {
         Vector$this.delta = -Vector$this.delta;
       }
     }
-    this.move;
   }
-  this.color = null;
-  this.size = null;
-  this.vectors = null;
   this.UI_ = function() {
     const UI_$this = this;
-    this.v1 = null;
-    this.v2 = null;
-    this.v3 = null;
-    this.v4 = null;
     this.Layout_ = function() {
       const Layout_$this = this;
-      this.a1 = null;
-      this.u2 = null;
-      this.u3 = null;
-      this.size$ = null;
       this.paint = function(pos0, pos1, size0, size1) {
         {
           pushAttribute(10, UI_$this.v2);
@@ -659,26 +634,22 @@ function Ball(_HandlerFn_) {
       this.u2 = this.a1 >> 16;
       this.u3 = this.a1 & 65535;
       this.size$ = (this.u2 << 16) | this.u3;
-      this.onEvent;
     }
     this.v1 = oval;
     this.v2 = Ball$this.color;
     this.v3 = Ball$this.size;
     this.v4 = [Ball$this.vectors[0].pos, Ball$this.vectors[1].pos];
-    this.Layout_;
   }
-  this.ui_ = null;
-  this.setUI = function() {
-    this.ui_ = new this.UI_();
+  this.setUI_ = function() {
+    Ball$this.ui_ = new Ball$this.UI_();
   }
-  this.color = Math.trunc(rand() * 16777215);
+  this.color = trunc(rand() * 16777215);
   this.size = rand() * 35 + 35;
   {
-    this._d0 = 2;
-    this.vectors = qedArray([this._d0], (function l(pos) {
-      let _HandlerFn_$ = null;
-      return (new Ball$this.Vector(rand(), ((((rand() * 1) / 100)) + ((0.025000) / 100)) * (rand() > 0.5 ? 1 : -1)));
-    }), null);
+    let _d0 = 2;
+    this.vectors = qedArray([_d0], (function l(pos) {
+      return (new Ball$this.Vector(rand(), ((((rand() * 1) / 100)) + ((0.025000) / 100)) * (rand() > 0.500000 ? 1 : -1)));
+    }), Qui_);
     (function while17$_() {
       new Yield(Ball$this, (function Lambda_(_ret) {
         if (_ret) {
@@ -690,42 +661,10 @@ function Ball(_HandlerFn_) {
     })();
   }
 }
-let balls = null;
 function UI_() {
   const UI_$this = this;
-  this.v1 = null;
-  this.v2 = null;
-  this.v3 = null;
-  this.v4 = null;
-  this.v5 = null;
-  this.v6 = null;
-  this.v7 = null;
-  this.v8 = null;
-  this.v9 = null;
-  this.v10 = null;
-  this.v11 = null;
-  this.v12 = null;
   this.Layout_ = function() {
     const Layout_$this = this;
-    this.a1 = null;
-    this.a2 = null;
-    this.a3 = null;
-    this.a4 = null;
-    this.u5 = null;
-    this.u6 = null;
-    this.l6 = null;
-    this.u7 = null;
-    this.l7 = null;
-    this.u8 = null;
-    this.l8 = null;
-    this.u9 = null;
-    this.u10 = null;
-    this.l10 = null;
-    this.u11 = null;
-    this.l11 = null;
-    this.u12 = null;
-    this.l12 = null;
-    this.size = null;
     this.paint = function(pos0, pos1, size0, size1) {
       {
         {
@@ -767,7 +706,7 @@ function UI_() {
     this.onEvent = function(event, pos0, pos1, size0, size1) {
       let flag = false;
     }
-    this.a1 = (UI_$this.v2 << 16) | UI_$this.v2;
+    this.a1 = (UI_$this.v2 << 16) | 480;
     this.a2 = (UI_$this.v5 << 16) | UI_$this.v5;
     this.a3 = (UI_$this.v9 << 16) | UI_$this.v9;
     this.a4 = new UI_$this.v12.ui_.Layout_();
@@ -786,7 +725,6 @@ function UI_() {
     this.u12 = this.a4.size & 65535;
     this.l12 = max(this.l11, this.u12);
     this.size = (this.l8 << 16) | this.l12;
-    this.onEvent;
   }
   this.v1 = rect;
   this.v2 = 800;
@@ -800,30 +738,28 @@ function UI_() {
   this.v10 = 822083583;
   this.v11 = [((50) / 100), ((70) / 100)];
   this.v12 = balls;
-  this.v12.setUI();
-  this.Layout_;
-  ui_ = this;
+  this.v12.setUI_();
 }
 let ui_ = null;
-function setUI() {
+function setUI_() {
   ui_ = new UI_();
 }
-WIDTH = 1;
-HEIGHT = 2;
-OBLIQUE = 3;
-COLOR_RED = 16711680;
-COLOR_GREEN = 65280;
-COLOR_YELLOW = 16776960;
-COLOR_BLUE = 255;
-COLOR_BLACK = 0;
+let WIDTH = 1;
+let HEIGHT = 2;
+let OBLIQUE = 3;
+let COLOR_RED = 16711680;
+let COLOR_GREEN = 65280;
+let COLOR_YELLOW = 16776960;
+let COLOR_BLUE = 255;
+let COLOR_BLACK = 0;
 Object.setPrototypeOf(QEDBaseArray_.prototype, Array.prototype);
-Object.setPrototypeOf(SQEDArray.prototype, Array.prototype);
-Object.setPrototypeOf(QEDArray.prototype, Array.prototype);
-ar = ["Martin", "Savage"];
+Object.setPrototypeOf(SQEDArray.prototype, QEDBaseArray_.prototype);
+Object.setPrototypeOf(QEDArray.prototype, QEDBaseArray_.prototype);
+let ar = ["Martin", "Savage"];
+let balls = null;
 {
-  let _d0 = 500;
+  let _d0 = 300;
   balls = qedArray([_d0], (function l(pos) {
-    let _HandlerFn_ = null;
     return (new Ball());
   }), (function UI_(array, dims) {
     this.array = array;
@@ -856,7 +792,6 @@ ar = ["Martin", "Savage"];
         index++;
       }
     }
-    this.Layout_;
   }));
   (function while18$_() {
     new Animation((function Lambda_(_ret) {
@@ -873,7 +808,7 @@ pushAttribute(11, 1.0);
 let layout_ = null;
 function _refresh() {
 //  if (ui_ != undefined && --postCount == 0) {
-    setUI();
+    setUI_();
     layout_ = new ui_.Layout_();
     ctx.globalAlpha = 1.0;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
