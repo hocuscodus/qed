@@ -914,9 +914,9 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
   if (exp == NULL)
     error("Expect expression.");
 
-  Type returnType = resolveType(exp);
+//  Type returnType = resolveType(exp);
 
-  if (returnType.valueType != -1 &&//->type == EXPR_REFERENCE &&//) {
+  if (false &&//->type == EXPR_REFERENCE &&//) {
     /*if (*/check(TOKEN_IDENTIFIER) && (checkNext(TOKEN_EQUAL) || checkNext(TOKEN_CALL) || checkNext(TOKEN_SEPARATOR))) {
     consume(TOKEN_IDENTIFIER, "Expect name identifier after type.");
 
@@ -924,7 +924,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
 
     if(match(TOKEN_CALL)) {
       GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL, NULL, NULL);
-      FunctionExpr *functionExpr = newFunctionExpr(returnType, name, 0, NULL, group);
+      FunctionExpr *functionExpr = NULL;//newFunctionExpr(returnType, name, 0, NULL, group);
 
       pushScope(functionExpr);
       passSeparator();
@@ -948,7 +948,7 @@ Expr *Parser::expression(TokenType *endGroupTypes) {
       consume(TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
 
       if (name.isUserClass()) {
-        const char *type = getHandlerType(returnType);
+        const char *type = NULL;//getHandlerType(returnType);
         ReferenceExpr *paramTypeExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, type), NULL);
 
         if (getCurrent()) {

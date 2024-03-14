@@ -244,7 +244,7 @@ std::string FunctionExpr::toCode(Parser &parser, ObjFunction *function) {
   if (getCurrent()->enclosing)
     startBlock(str);
 
-  for (int index = 0; index < arity - 1; index++) {
+  for (int index = 0; index < arity - (_declaration.name.isUserClass() ? 1 : 0); index++) {
     DeclarationExpr *declarationExpr = getParam(this, index);
 
     if (isField(this, &declarationExpr->_declaration)) {

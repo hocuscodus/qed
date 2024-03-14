@@ -299,7 +299,7 @@ static Expr *createArrayExpr(Expr *iteratorExprs) {
   Point dirs{};
   Expr *dimDecs = NULL;
   DeclarationExpr *posParam = newDeclarationExpr(OBJ_TYPE(newArray(INT_TYPE)), buildToken(TOKEN_IDENTIFIER, "pos"), NULL);
-  DeclarationExpr *handlerParam = newDeclarationExpr(resolveType(new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "anyHandler_"), NULL)), buildToken(TOKEN_IDENTIFIER, "_HandlerFn_"), NULL);
+  DeclarationExpr *handlerParam = newDeclarationExpr((new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "anyHandler_"), NULL))->resolve(*((Parser *) NULL)), buildToken(TOKEN_IDENTIFIER, "_HandlerFn_"), NULL);
   Expr *initBody = NULL;
   Expr *body = NULL;
   GroupingExpr *mainGroup = new GroupingExpr(buildToken(TOKEN_LEFT_BRACKET, "["), NULL, NULL, NULL);
@@ -746,7 +746,7 @@ Type CallExpr::resolve(Parser &parser) {
 }
 
 Type ArrayElementExpr::resolve(Parser &parser) {
-  Type type = resolveType(callee);
+  Type type = callee->resolve(parser);
 
   hasSuperCalls = callee->hasSuperCalls;
 
@@ -1092,11 +1092,11 @@ Type GroupingExpr::resolve(Parser &parser) {
             ss->str("");
             (*ss) << "void UI_(Ball *[] array, int[] dims) {\n";
             (*ss) << "  for(int index = 0; index < dims[0]; index++)\n";
-            (*ss) << "    array[index].ui_ = new array[index].UI_()\n";
-//            (*ss) << "    array[index].setUI()\n";
+            (*ss) << "    array[index].setUI_()\n";
             (*ss) << "\n";
             (*ss) << "  void Layout_() {\n";
             (*ss) << "    Layout_*[] layouts;\n";
+            (*ss) << "\n";
             (*ss) << "    for(int index = 0; index < dims[0]; index++)\n";
             (*ss) << "      layouts[index] = new array[index].ui_.Layout_()\n";
             (*ss) << "\n";
@@ -1289,8 +1289,10 @@ Type GroupingExpr::resolve(Parser &parser) {
       nTabs++;
       processAttrs(exprUI, parser);
 
-      for (int ndx2 = -1; (ndx2 = getTopFunction()->_function.instanceIndexes->getNext(ndx2)) != -1;)
-        (*ss) << "v" << ndx2 << ".ui_ = new v" << ndx2 << ".UI_();\n";
+      for (int ndx2 = -1; (ndx2 = getTopFunction()->_function.instanceIndexes->getNext(ndx2)) != -1;) {
+        insertTabs();
+        (*ss) << "v" << ndx2 << ".setUI_();\n";
+      }
 
       nTabs--;
       insertTabs();
@@ -1780,7 +1782,19 @@ void processAttrs(UIDirectiveExpr *expr, Parser &parser) {
           if (attExpr->_uiIndex == ATTRIBUTE_OUT)
             switch (AS_OBJ_TYPE(type)) {
               case OBJ_FUNCTION:
-              case OBJ_ARRAY:
+                break;
+
+              case OBJ_ARRAY: {
+                  Type elementType = AS_ARRAY_TYPE(type)->elementType;
+
+                  if (IS_INSTANCE(elementType)) {
+                    getTopFunction()->_function.instanceIndexes->set(getCurrent()->vCount);
+
+                    ObjFunction *function = (ObjFunction *) AS_INSTANCE_TYPE(elementType)->callable;
+
+                    expr->_eventFlags |= function->uiFunction->eventFlags;
+                  }
+                }
                 break;
 
               case OBJ_INSTANCE: {

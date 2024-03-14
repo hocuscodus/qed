@@ -399,9 +399,13 @@ Expr *analyzeStatement(Expr *expr, Parser &parser) {
             type = OBJ_TYPE(&((FunctionExpr *) dec)->_function);
             break;
 
-          case EXPR_DECLARATION:
+          case EXPR_DECLARATION: {
 //            ((ReferenceExpr *) expr)->declaration = dec;
-//            type = OBJ_TYPE(((ObjFunction *) ((DeclarationExpr *) dec)->_declaration.type.objType));
+              Type type2 = ((DeclarationExpr *) dec)->_declaration.type;
+
+              if (IS_FUNCTION(type2))
+                type = type2;
+            }
             break;
         }
 //      type = resolveType(stack.top->expr);
