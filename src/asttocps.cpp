@@ -263,19 +263,6 @@ Expr *FunctionExpr::toCps(K k) {
   }
 
   return k(this);//compareExpr(body, bodyExpr) ? this : newExpr(newFunctionExpr(typeExpr, name, arity + 1, newParams, newBody)));
-/*
-function cps_lambda(exp, k) {
-  var cont = gensym("K");
-  var body = cps(exp.body, function(body){
-    return { type: "call",
-            func: { type: "var", value: cont },
-            args: [ body ] };
-  });
-  return k({ type: "lambda",
-            name: exp.name,
-            vars: [ cont ].concat(exp.vars),
-            body: body });
-}*/
 }
 
 Expr *GetExpr::toCps(K k) {
@@ -347,56 +334,6 @@ Expr *LogicalExpr::toCps(K k) {
   });
 
   return this == cpsExpr ? k(this) : cpsExpr;
-/*
-function cps_if(exp, k) {
-    return cps(exp.cond, function(cond){
-        var cvar = gensym("I");
-        function k2(ifresult) {
-            return {
-                type: "call",
-                func: { type: "var", callee: cvar },
-                args: [ ifresult ]
-            };
-        };
-        return {
-            type: "call",
-            func: {
-                type: "lambda",
-                vars: [ cvar ],
-                body: {type: "if", cond: cond, then: cps(exp.then, k2), else: cps(exp.else || FALSE, k2)}
-            },
-            args: [ make_continuation(k) ]
-        };
-    });
-}*/
-/*
-function cps_if(exp, k) {
-    return cps(exp.cond, function(cond){
-        var cvar = gensym("I");
-        var cast = make_continuation(k);
-        k = function(ifresult) {
-            return {
-                type: "call",
-                func: { type: "var", value: cvar },
-                args: [ ifresult ]
-            };
-        };
-        return {
-            type: "call",
-            func: {
-                type: "lambda",
-                vars: [ cvar ],
-                body: {
-                    type: "if",
-                    cond: cond,
-                    then: cps(exp.then, k),
-                    else: cps(exp.else || FALSE, k)
-                }
-            },
-            args: [ cast ]
-        };
-    });
-}*/
 }
 
 // (function Lambda_() {if (condition) {body; post_(Lambda_)} else {k}})();
@@ -507,28 +444,6 @@ Expr *IfExpr::toCps(K k) {
   });
 
   return this == cpsExpr ? k(this) : cpsExpr;
-/*
-function cps_if(exp, k) {
-    return cps(exp.cond, function(cond){
-        var cvar = gensym("I");
-        function k2(ifresult) {
-            return {
-                type: "call",
-                func: { type: "var", callee: cvar },
-                args: [ ifresult ]
-            };
-        };
-        return {
-            type: "call",
-            func: {
-                type: "lambda",
-                vars: [ cvar ],
-                body: {type: "if", cond: cond, then: cps(exp.then, k2), else: cps(exp.else || FALSE, k2)}
-            },
-            args: [ make_continuation(k) ]
-        };
-    });
-}*/
 }
 
 Expr *TernaryExpr::toCps(K k) {

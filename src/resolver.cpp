@@ -8,44 +8,7 @@
 #include <string.h>
 #include "parser.hpp"
 #include "compiler.hpp"
-/*
-// usage: implicitConversionTable[exprType][dstType]
-Type implicitConversionTable[][6] = {
-  {VOID_TYPE, UNKNOWN_TYPE, UNKNOWN_TYPE, UNKNOWN_TYPE, UNKNOWN_TYPE, UNKNOWN_TYPE},
-  {UNKNOWN_TYPE, BOOL_TYPE, UNKNOWN_TYPE, UNKNOWN_TYPE, anyType, UNKNOWN_TYPE},
-  {UNKNOWN_TYPE, UNKNOWN_TYPE, INT_TYPE, FLOAT_TYPE, anyType, UNKNOWN_TYPE},
-  {UNKNOWN_TYPE, UNKNOWN_TYPE, UNKNOWN_TYPE, FLOAT_TYPE, anyType, UNKNOWN_TYPE},
-  {UNKNOWN_TYPE, BOOL_TYPE, INT_TYPE, FLOAT_TYPE, anyType, stringType},
-  {UNKNOWN_TYPE, UNKNOWN_TYPE, UNKNOWN_TYPE, UNKNOWN_TYPE, anyType, stringType}
-};
-//void, bool, int, float, any, string
-//src != void && dst != void && (src == dst || (dst == any || src == int && dst == float))
-bool implicitConversionTable2[][6] = {
-  {true, false, false, false, false, false},
-  {false, true, false, false, true, false},
-  {false, false, true, true, true, false},
-  {false, false, false, true, true, false},
-  {false, false, false, false, true, false},
-  {false, false, false, false, true, true}
-};
-//src != void && dst != void && (implicit || (dst == string || (dst == int && (src == bool || src == float)) || (dst == bool && src == int)))
-bool explicitConversionTable[][6] = {
-  {false, false, false, false, false, false},
-  {false, false, true, false, false, true},
-  {false, true, false, false, false, true},
-  {false, false, true, false, false, true},
-  {false, true, true, true, false, true},
-  {false, false, false, false, false, true}
-};
-bool totalConversionTable2[][6] = {
-  {true, false, false, false, false, false},
-  {false, true, true, false, true, true},
-  {false, true, true, true, true, true},
-  {false, false, true, true, true, true},
-  {false, true, true, true, true, true},
-  {false, false, false, false, true, true}
-};
-*/
+
 static const char *getDirVar(int dir, const char *prefix) {
   static char var[20];
 
@@ -452,222 +415,7 @@ Type UIDirectiveExpr::resolve(Parser &parser) {
 }
 
 Type BinaryExpr::resolve(Parser &parser) {
-  if (op.type == TOKEN_ARRAY) {
-    op.type = TOKEN_ARRAY;
-  }/*
-    Expr **next;
-    Expr *xp = this;
-    Expr **lastExpr = getLastBodyExpr(&xp, TOKEN_SEPARATOR);
-    Expr **initBody = getLastBodyExpr(lastExpr, TOKEN_COMMA);
-    Token nameToken = buildToken(TOKEN_IDENTIFIER, "l");
-    GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL/ **initBody* /, NULL);
-    FunctionExpr *wrapperFunc = newFunctionExpr(anyType, nameToken, 1, *initBody, group);
-    GroupingExpr *initExpr = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "("), wrapperFunc, NULL);
-
-    name = buildToken(TOKEN_LEFT_PAREN, "(");
-    pushScope(initExpr);
-    checkDeclaration(wrapperFunc->_declaration, nameToken, wrapperFunc, NULL);
-    pushScope(wrapperFunc);
-
-    for (Expr **bodyElement = initBody; bodyElement; bodyElement = next) {
-      Expr *expr = car(*bodyElement, TOKEN_SEPARATOR);
-
-      next = cdrAddress(*bodyElement, TOKEN_SEPARATOR);
-
-      if (next) {
-        Declaration *dec = getDeclaration(expr);
-
-        checkDeclaration(*dec, dec->name, NULL, NULL);
-        expr->resolve(parser);
-      }
-      else {
-        *initBody = initExpr;
-        type = OBJ_TYPE(newArray(expr->resolve(parser)));
-
-        Type elementType = AS_ARRAY_TYPE(type)->elementType;
-
-        if (!IS_VOID(elementType)) {
-          Token arrayName = buildToken(TOKEN_IDENTIFIER, expr->hasSuperCalls ? "SQEDArray" : "qedArray");
-          ReferenceExpr *qedArrayExpr = new ReferenceExpr(arrayName, NULL);
-
-          wrapperFunc->_declaration.name = buildToken(TOKEN_IDENTIFIER, expr->hasSuperCalls ? "L" : "l");
-
-          if (IS_INSTANCE(elementType) && ((ObjFunction *) AS_INSTANCE_TYPE(elementType)->callable)->expr->ui) {
-            GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "("), NULL, NULL);
-
-            // Perform the array UI AST magic
-            ss->str("");
-            (*ss) << "void UI_(Ball *[] array, int[] dims) {\n";
-            (*ss) << "  for(let index = 0; index < dims[0]; index++)\n";
-            (*ss) << "    array[index].ui_ = new array[index].UI_()\n";
-//            (*ss) << "    array[index].setUI()\n";
-            (*ss) << "\n";
-            (*ss) << "  void Layout_() {\n";
-            (*ss) << "    Layout_*[] layouts;\n";
-            (*ss) << "    for(let index = 0; index < dims[0]; index++)\n";
-            (*ss) << "      layouts[index] = new array[index].ui_.Layout_()\n";
-            (*ss) << "\n";
-            (*ss) << "    void paint(int pos0, int pos1, int size0, int size1) {\n";
-            (*ss) << "      for(let index = 0; index < dims[0]; index++)\n";
-            (*ss) << "        layouts[index].paint(pos0, pos1, size0, size1)\n";
-            (*ss) << "    }\n";
-            (*ss) << "  }\n";
-            (*ss) << "}\n";
-            fprintf(stderr, ss->str().c_str());
-            parse(group, ss->str().c_str());
-            group->resolve(parser);
-
-/ *
-    this.Layout_ = function() {
-      const layouts = [];
-
-      for(let index = 0; index < dims[0]; index++)
-        layouts[index] = new array[index].ui_.Layout_();
-
-      this.size = null;
-      this.size = 0;
-      this.paint = function(pos0, pos1, size0, size1) {
-        for(let index = 0; index < dims[0]; index++)
-          layouts[index].paint(pos0, pos1, size0, size1);
-      }
-      this.onEvent = function(event, pos0, pos1, size0, size1) {
-        let flag = false;
-      }
-    }
-    this.Layout_;
-            nTabs++;
-            processArrayAttrs(exprUI, parser);
-
-            for (int ndx2 = -1; (ndx2 = getTopFunction()->_function.instanceIndexes->getNext(ndx2)) != -1;)
-              (*ss) << "v" << ndx2 << ".ui_ = new v" << ndx2 << ".UI_();\n";
-
-            nTabs--;
-            insertTabs();
-            (*ss) << "})\n";
-            fprintf(stderr, ss->str().c_str());
-            parse(body, ss->str().c_str());
-
-            FunctionExpr *uiFunctionExpr = NULL;
-
-            for (Declaration *dec = body->declarations; dec; dec = dec->next)
-              if (!dec->next)
-                uiFunctionExpr = (FunctionExpr *) dec->expr;
-
-            uiFunctionExpr->resolve(parser);
-            uiFunctionExpr->_function.eventFlags = exprUI->_eventFlags;
-
-            _function.uiFunction = &uiFunctionExpr->_function;
-            GroupingExpr group(body->name, NULL, NULL);
-
-            parse(&group, "UI_ *ui_;\n");
-            (*getLastBodyExpr(&group.body, TOKEN_SEPARATOR))->resolve(parser);
-            body->body = new BinaryExpr(group.body, buildToken(TOKEN_SEPARATOR, ";"), body->body);
-
-            pushScope(uiFunctionExpr);
-            ss->str("");
-            insertTabs();
-            (*ss) << "void Layout_() {\n";
-            nTabs++;
-            aCount = 1;
-            pushAreas(exprUI, parser);
-            recalcLayout(exprUI, parser, 0);
-            recalcLayout(exprUI, parser, 1);
-            insertTabs();
-            (*ss) << "var size = (" << getGroupName(exprUI, 0) << " << 16) | " << getGroupName(exprUI, 1) << "\n";
-            nTabs--;
-            insertTabs();
-            (*ss) << "}\n";
-            fprintf(stderr, ss->str().c_str());
-            parse(uiFunctionExpr->body, ss->str().c_str());
-
-            FunctionExpr *layoutFunctionExpr = NULL;
-
-            for (Declaration *dec = uiFunctionExpr->body->declarations; dec; dec = dec->next)
-              if (!dec->next)
-                layoutFunctionExpr = (FunctionExpr *) dec->expr;
-
-            layoutFunctionExpr->resolve(parser);
-
-            ObjFunction *layoutFunction = &layoutFunctionExpr->_function;
-
-            pushScope(layoutFunctionExpr);
-
-            ss->str("");
-            insertTabs();
-            (*ss) << "void paint(int pos0, int pos1, int size0, int size1) {\n";
-            nTabs++;
-            paint(exprUI, parser);
-            nTabs--;
-            insertTabs();
-            (*ss) << "}\n";
-            fprintf(stderr, ss->str().c_str());
-            parse(layoutFunctionExpr->body, ss->str().c_str());
-
-            FunctionExpr *paintFunctionExpr = NULL;
-
-            for (Declaration *dec = layoutFunctionExpr->body->declarations; dec; dec = dec->next)
-              if (!dec->next)
-                paintFunctionExpr = (FunctionExpr *) dec->expr;
-
-            paintFunctionExpr->resolve(parser);
-
-            ss->str("");
-            insertTabs();
-            (*ss) << "bool onEvent(int event, int pos0, int pos1, int size0, int size1) {\n";
-            nTabs++;
-            insertTabs();
-            (*ss) << "bool flag = false\n";
-            onEvent(exprUI, parser);
-            nTabs--;
-            insertTabs();
-            (*ss) << "}\n";
-            fprintf(stderr, ss->str().c_str());
-            parse(layoutFunctionExpr->body, ss->str().c_str());
-
-            FunctionExpr *eventFunctionExpr = (FunctionExpr *) paintFunctionExpr->_declaration.next->expr;
-    //        FunctionExpr **eventFunctionExpr = (FunctionExpr **) getLastBodyExpr(&layoutFunctionExpr->body->body, TOKEN_SEPARATOR);
-    / *
-            *eventFunctionExpr = (FunctionExpr *) eventFunctionExpr[0]->toCps([](Expr *expr) {
-              return expr;
-            });* /
-            eventFunctionExpr->resolve(parser);
-            popScope();
-            popScope();* /
-            lastExpr = addExpr(lastExpr, group, buildToken(TOKEN_COMMA, ","));
-          }
-          else
-            lastExpr = addExpr(lastExpr, new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "Qui_"), NULL), buildToken(TOKEN_COMMA, ","));
-
-          *lastExpr = new CallExpr(false, qedArrayExpr, buildToken(TOKEN_LEFT_PAREN, "("), *lastExpr, NULL);
-          (*lastExpr)->resolve(parser);
-          (*lastExpr)->hasSuperCalls = true;
-          body->hasSuperCalls = true;
-          *bodyElement = new ReturnExpr(buildToken(TOKEN_RETURN, "return"), expr->hasSuperCalls, expr);
-        }
-        else {
-          Token arrayName = buildToken(TOKEN_IDENTIFIER, expr->hasSuperCalls ? "VSQEDArray" : "vqedArray");
-          ReferenceExpr *qedArrayExpr = new ReferenceExpr(arrayName, NULL);
-
-          wrapperFunc->_declaration.name = buildToken(TOKEN_IDENTIFIER, expr->hasSuperCalls ? "L" : "l");
-          *lastExpr = new CallExpr(false, qedArrayExpr, buildToken(TOKEN_LEFT_PAREN, "("), *lastExpr, NULL);
-          (*lastExpr)->resolve(parser);
-          (*lastExpr)->hasSuperCalls = true;
-          body->hasSuperCalls = true;
-          *bodyElement = new ReturnExpr(buildToken(TOKEN_RETURN, "return"), expr->hasSuperCalls, expr);
-        }
-      }
-    }
-
-    popScope();
-    popScope();
-    return type;
-  }
-*/
   Type type1 = left->resolve(parser);
-
-//  if (IS_FUNCTION(type1))
-//    return OBJ_TYPE(newInstance(AS_FUNCTION_TYPE(type1)));
-
   Type type2 = right->resolve(parser);
   Type type = type1;
   bool boolVal = false;
@@ -897,129 +645,8 @@ Type DeclarationExpr::resolve(Parser &parser) {
 Type FunctionExpr::resolve(Parser &parser) {
   pushScope(this);
 
-  if (body) {
-//    if (body->body) {
-      body->resolve(parser);
-//      body->hasSuperCalls |= _declaration.name.isClass();
-/*
-      for (int index = 0; index < arity; index++)
-        getStatement(body, index)->hasSuperCalls = hasSuperCalls;
-
-      if (_declaration.name.isUserClass())
-        getStatement(body, arity)->hasSuperCalls = hasSuperCalls;*/
-//    }
-/*
-    if (body->ui) {
-      UIDirectiveExpr *exprUI = (UIDirectiveExpr *) body->ui;
-
-      if (exprUI->previous || exprUI->lastChild) {
-        // Perform the UI AST magic
-        ss->str("");
-        insertTabs();
-        (*ss) << "void UI_() {\n";
-        nTabs++;
-        processAttrs(exprUI, parser);
-
-        for (int ndx2 = -1; (ndx2 = getTopFunction()->_function.instanceIndexes->getNext(ndx2)) != -1;)
-          (*ss) << "v" << ndx2 << ".ui_ = new v" << ndx2 << ".UI_();\n";
-
-        nTabs--;
-        insertTabs();
-        (*ss) << "}\n";
-        fprintf(stderr, ss->str().c_str());
-        parse(body, ss->str().c_str());
-
-        Expr **uiExpr = getLastBodyExpr(&body->body, TOKEN_SEPARATOR);
-
-        *uiExpr = analyzeStatement(*uiExpr, parser);
-        FunctionExpr *uiFunctionExpr = (FunctionExpr *) *uiExpr;
-
-        uiFunctionExpr->findTypes(parser);
-        uiFunctionExpr->resolve(parser);
-        uiFunctionExpr->_function.eventFlags = exprUI->_eventFlags;
-
-        _function.uiFunction = &uiFunctionExpr->_function;
-        GroupingExpr group(body->name, NULL, NULL, NULL);
-        Expr **lastBodyExpr = getLastBodyExpr(&group.body, TOKEN_SEPARATOR);
-
-        parse(&group, "UI_ *ui_;\n");
-        *lastBodyExpr = analyzeStatement(*lastBodyExpr, parser);
-        (*getLastBodyExpr(&group.body, TOKEN_SEPARATOR))->resolve(parser);
-        body->body = new BinaryExpr(group.body, buildToken(TOKEN_SEPARATOR, ";"), body->body);
-
-        pushScope(uiFunctionExpr);
-        ss->str("");
-        insertTabs();
-        (*ss) << "void Layout_() {\n";
-        nTabs++;
-        aCount = 1;
-        pushAreas(exprUI, parser);
-        recalcLayout(exprUI, parser, 0);
-        recalcLayout(exprUI, parser, 1);
-        insertTabs();
-        (*ss) << "var size = (" << getGroupName(exprUI, 0) << " << 16) | " << getGroupName(exprUI, 1) << "\n";
-        nTabs--;
-        insertTabs();
-        (*ss) << "}\n";
-        fprintf(stderr, ss->str().c_str());
-        parse(uiFunctionExpr->body, ss->str().c_str());
-        uiExpr = getLastBodyExpr(&uiFunctionExpr->body->body, TOKEN_SEPARATOR);
-
-        *uiExpr = analyzeStatement(*uiExpr, parser);
-        FunctionExpr *layoutFunctionExpr = (FunctionExpr *) *uiExpr;
-
-        layoutFunctionExpr->findTypes(parser);
-        layoutFunctionExpr->resolve(parser);
-
-        ObjFunction *layoutFunction = &layoutFunctionExpr->_function;
-
-        pushScope(layoutFunctionExpr);
-
-        ss->str("");
-        insertTabs();
-        (*ss) << "void paint(int pos0, int pos1, int size0, int size1) {\n";
-        nTabs++;
-        paint(exprUI, parser);
-        nTabs--;
-        insertTabs();
-        (*ss) << "}\n";
-        fprintf(stderr, ss->str().c_str());
-        parse(layoutFunctionExpr->body, ss->str().c_str());
-        uiExpr = getLastBodyExpr(&layoutFunctionExpr->body->body, TOKEN_SEPARATOR);
-
-        *uiExpr = analyzeStatement(*uiExpr, parser);
-        FunctionExpr *paintFunctionExpr = (FunctionExpr *) *uiExpr;
-
-        paintFunctionExpr->findTypes(parser);
-        paintFunctionExpr->resolve(parser);
-
-        ss->str("");
-        insertTabs();
-        (*ss) << "bool onEvent(int event, int pos0, int pos1, int size0, int size1) {\n";
-        nTabs++;
-        insertTabs();
-        (*ss) << "bool flag = false\n";
-        onEvent(exprUI, parser);
-        nTabs--;
-        insertTabs();
-        (*ss) << "}\n";
-        fprintf(stderr, ss->str().c_str());
-        parse(layoutFunctionExpr->body, ss->str().c_str());
-        uiExpr = getLastBodyExpr(&layoutFunctionExpr->body->body, TOKEN_SEPARATOR);
-
-        *uiExpr = analyzeStatement(*uiExpr, parser);
-        FunctionExpr *eventFunctionExpr = (FunctionExpr *) *uiExpr;
-
-        eventFunctionExpr->findTypes(parser);
-        eventFunctionExpr->resolve(parser);
-        popScope();
-        popScope();
-      }
-
-      delete exprUI;
-      body->ui = NULL;
-    }*/
-  }
+  if (body)
+    body->resolve(parser);
 
   popScope();
 
@@ -1163,123 +790,6 @@ Type GroupingExpr::resolve(Parser &parser) {
 
             uiFunctionExpr->findTypes(parser);
             group->resolve(parser);
-
-/*
-    this.Layout_ = function() {
-      const layouts = [];
-
-      for(let index = 0; index < dims[0]; index++)
-        layouts[index] = new array[index].ui_.Layout_();
-
-      this.size = null;
-      this.size = 0;
-      this.paint = function(pos0, pos1, size0, size1) {
-        for(let index = 0; index < dims[0]; index++)
-          layouts[index].paint(pos0, pos1, size0, size1);
-      }
-      this.onEvent = function(event, pos0, pos1, size0, size1) {
-        let flag = false;
-      }
-    }
-    this.Layout_;
-            nTabs++;
-            processArrayAttrs(exprUI, parser);
-
-            for (int ndx2 = -1; (ndx2 = getTopFunction()->_function.instanceIndexes->getNext(ndx2)) != -1;)
-              (*ss) << "v" << ndx2 << ".ui_ = new v" << ndx2 << ".UI_();\n";
-
-            nTabs--;
-            insertTabs();
-            (*ss) << "})\n";
-            fprintf(stderr, ss->str().c_str());
-            parse(body, ss->str().c_str());
-
-            FunctionExpr *uiFunctionExpr = NULL;
-
-            for (Declaration *dec = body->declarations; dec; dec = dec->next)
-              if (!dec->next)
-                uiFunctionExpr = (FunctionExpr *) dec->expr;
-
-            uiFunctionExpr->resolve(parser);
-            uiFunctionExpr->_function.eventFlags = exprUI->_eventFlags;
-
-            _function.uiFunction = &uiFunctionExpr->_function;
-            GroupingExpr group(body->name, NULL, NULL);
-
-            parse(&group, "UI_ *ui_;\n");
-            (*getLastBodyExpr(&group.body, TOKEN_SEPARATOR))->resolve(parser);
-            body->body = new BinaryExpr(group.body, buildToken(TOKEN_SEPARATOR, ";"), body->body);
-
-            pushScope(uiFunctionExpr);
-            ss->str("");
-            insertTabs();
-            (*ss) << "void Layout_() {\n";
-            nTabs++;
-            aCount = 1;
-            pushAreas(exprUI, parser);
-            recalcLayout(exprUI, parser, 0);
-            recalcLayout(exprUI, parser, 1);
-            insertTabs();
-            (*ss) << "var size = (" << getGroupName(exprUI, 0) << " << 16) | " << getGroupName(exprUI, 1) << "\n";
-            nTabs--;
-            insertTabs();
-            (*ss) << "}\n";
-            fprintf(stderr, ss->str().c_str());
-            parse(uiFunctionExpr->body, ss->str().c_str());
-
-            FunctionExpr *layoutFunctionExpr = NULL;
-
-            for (Declaration *dec = uiFunctionExpr->body->declarations; dec; dec = dec->next)
-              if (!dec->next)
-                layoutFunctionExpr = (FunctionExpr *) dec->expr;
-
-            layoutFunctionExpr->resolve(parser);
-
-            ObjFunction *layoutFunction = &layoutFunctionExpr->_function;
-
-            pushScope(layoutFunctionExpr);
-
-            ss->str("");
-            insertTabs();
-            (*ss) << "void paint(int pos0, int pos1, int size0, int size1) {\n";
-            nTabs++;
-            paint(exprUI, parser);
-            nTabs--;
-            insertTabs();
-            (*ss) << "}\n";
-            fprintf(stderr, ss->str().c_str());
-            parse(layoutFunctionExpr->body, ss->str().c_str());
-
-            FunctionExpr *paintFunctionExpr = NULL;
-
-            for (Declaration *dec = layoutFunctionExpr->body->declarations; dec; dec = dec->next)
-              if (!dec->next)
-                paintFunctionExpr = (FunctionExpr *) dec->expr;
-
-            paintFunctionExpr->resolve(parser);
-
-            ss->str("");
-            insertTabs();
-            (*ss) << "bool onEvent(int event, int pos0, int pos1, int size0, int size1) {\n";
-            nTabs++;
-            insertTabs();
-            (*ss) << "bool flag = false\n";
-            onEvent(exprUI, parser);
-            nTabs--;
-            insertTabs();
-            (*ss) << "}\n";
-            fprintf(stderr, ss->str().c_str());
-            parse(layoutFunctionExpr->body, ss->str().c_str());
-
-            FunctionExpr *eventFunctionExpr = (FunctionExpr *) paintFunctionExpr->_declaration.next->expr;
-    //        FunctionExpr **eventFunctionExpr = (FunctionExpr **) getLastBodyExpr(&layoutFunctionExpr->body->body, TOKEN_SEPARATOR);
-    / *
-            *eventFunctionExpr = (FunctionExpr *) eventFunctionExpr[0]->toCps([](Expr *expr) {
-              return expr;
-            });* /
-            eventFunctionExpr->resolve(parser);
-            popScope();
-            popScope();*/
             lastExpr = addExpr(lastExpr, group, buildToken(TOKEN_COMMA, ","));
           }
           else
@@ -1308,7 +818,7 @@ Type GroupingExpr::resolve(Parser &parser) {
     popScope();
     popScope();
   }
-  else {
+  else
     for (Expr **statements = initAddress(body); statements; statements = cdrAddress(*statements, TOKEN_SEPARATOR)) {
       Expr *&statement = *carAddress(statements, TOKEN_SEPARATOR);
 
@@ -1318,10 +828,6 @@ Type GroupingExpr::resolve(Parser &parser) {
       type = statement->resolve(parser);
       hasSuperCalls |= statement->hasSuperCalls;
     }
-//    Type bodyType = body ? body->resolve(parser) : VOID_TYPE;
-
-//    type = name.type != TOKEN_LEFT_BRACE ? bodyType : VOID_TYPE;
-  }
 
   hasSuperCalls |= body && body->hasSuperCalls;
   popScope();
@@ -1478,24 +984,14 @@ Type IfExpr::resolve(Parser &parser) {
 Type ArrayExpr::resolve(Parser &parser) {
   ObjArray *objArray = newArray(VOID_TYPE);
   Type type = OBJ_TYPE(objArray);
-//  Compiler compiler;
-
-//  compiler.pushScope(newFunction(VOID_TYPE, NULL, 0));
 
   objArray->elementType = body ? body->resolve(parser) : UNKNOWN_TYPE;
   hasSuperCalls = body && body->hasSuperCalls;
-
-//  compiler.popScope();
-//  compiler.function->type = type;
-//  function = compiler.function;
   return type;
 }
 
 Type LiteralExpr::resolve(Parser &parser) {
-  if (type == VAL_OBJ)
-    return stringType;
-  else
-    return {type};
+  return type == VAL_OBJ ? stringType : (Type) {type};
 }
 
 Type LogicalExpr::resolve(Parser &parser) {
@@ -1862,18 +1358,9 @@ void processAttrs(UIDirectiveExpr *expr, Parser &parser) {
             uiTypes.push_back(UNKNOWN_TYPE);
             attExpr->_index = getCurrent()->vCount++;
             attExpr->handler = NULL;
-/*
-          char *name = generateInternalVarName("v", getCurrent()->getDeclarationCount());
-          DeclarationExpr *decExpr = newDeclarationExpr(type, buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1), attExpr->handler);
-
-          attExpr->handler = NULL;
-          attExpr->_index = getCurrent()->getDeclarationCount();
-          uiExprs.push_back(decExpr);
-          getCurrent()->addDeclaration(type, decExpr->name);*/
         }
         else
           parser.error("Value must not be void");
-//          attExprs.push_back(expr);
       }
     }
   }
@@ -1938,18 +1425,9 @@ void processArrayAttrs(UIDirectiveExpr *expr, Parser &parser) {
             uiTypes.push_back(UNKNOWN_TYPE);
             attExpr->_index = getCurrent()->vCount++;
             attExpr->handler = NULL;
-/*
-          char *name = generateInternalVarName("v", getCurrent()->getDeclarationCount());
-          DeclarationExpr *decExpr = newDeclarationExpr(type, buildToken(TOKEN_IDENTIFIER, name, strlen(name), -1), attExpr->handler);
-
-          attExpr->handler = NULL;
-          attExpr->_index = getCurrent()->getDeclarationCount();
-          uiExprs.push_back(decExpr);
-          getCurrent()->addDeclaration(type, decExpr->name);*/
         }
         else
           parser.error("Value must not be void");
-//          attExprs.push_back(expr);
       }
     }
   }

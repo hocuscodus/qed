@@ -338,17 +338,7 @@ std::string ArrayExpr::toCode(Parser &parser, ObjFunction *function) {
   str << "]";
   return str.str();
 }
-/*
-10 {
-	{
-		10 {
-			{
-				; @out((&1 + 1) * (&0 + 1)) @size(16) @bgcol(0xDDDDDD)
-			} @out(&0 + 1) @cdir(1) @bgcol(0x0000FF) @textcol(0xFFFFFF) @size(14)
-		} @adir(2) @apack(0)
-	} @out(&0 + 1) @cdir(2) @bgcol(0x0000FF) @textcol(0xFFFFFF) @size(14)
-} @adir(1) @apack(0)
-*/
+
 std::string LiteralExpr::toCode(Parser &parser, ObjFunction *function) {
   switch (type) {
     case VAL_BOOL: return as.boolean ? "true" : "false";
@@ -369,17 +359,12 @@ std::string LogicalExpr::toCode(Parser &parser, ObjFunction *function) {
 
 std::string ReturnExpr::toCode(Parser &parser, ObjFunction *function) {
   std::stringstream str;
-/*
-  if (isUserClass) {
-    str << value->toCode(parser, function) << ";\n";
-    line(str) << "return";
-  }
-  else {*/
-    str << "return";
 
-    if (value)
-      str << " (" << value->toCode(parser, function) << ")";
-//  }
+  str << "return";
+
+  if (value)
+    str << " (" << value->toCode(parser, function) << ")";
+
   return str.str();
 }
 

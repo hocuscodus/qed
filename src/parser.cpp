@@ -53,92 +53,6 @@ static Expr *createWhileExpr(Expr *condition, Expr *increment, Expr *body) {
   return new WhileExpr(condition, body);
 }
 
-// var dir
-// dim array
-// vars + body
-static Expr *createArrayExpr(Expr *iteratorExprs, Expr *body) {
-  int index = 0;
-  Point dirs{};
-  Expr *dimDecs = NULL;
-  DeclarationExpr *posParam = newDeclarationExpr(OBJ_TYPE(newArray(INT_TYPE)), buildToken(TOKEN_IDENTIFIER, "pos"), NULL);
-  DeclarationExpr *handlerParam = newDeclarationExpr(resolveType(new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "anyHandler_"), NULL)), buildToken(TOKEN_IDENTIFIER, "_HandlerFn_"), NULL);
-  Expr *initBody = NULL;
-  GroupingExpr *mainGroup = new GroupingExpr(buildToken(TOKEN_LEFT_BRACKET, "["), NULL, NULL, NULL);
-
-  pushScope(mainGroup);
-  addExpr(&initBody, posParam, buildToken(TOKEN_SEPARATOR, ";"));
-  addExpr(&initBody, handlerParam, buildToken(TOKEN_SEPARATOR, ";"));
-
-  for (Expr **iteratorExprPtrs = initAddress(iteratorExprs); iteratorExprPtrs; iteratorExprPtrs = cdrAddress(*iteratorExprPtrs, TOKEN_SEPARATOR)) {
-    char dimName[16];
-    Expr *expr = car(*iteratorExprPtrs, TOKEN_SEPARATOR);
-    IteratorExpr *iteratorExpr = expr->type == EXPR_ITERATOR ? (IteratorExpr *) expr : NULL;
-
-    sprintf(dimName, "_d%d", index);
-
-    if (iteratorExpr) {
-      int dir = getDir(iteratorExpr->op.start[1]);
-
-      for (int ndx = 0; ndx < NUM_DIRS; ndx++)
-        dirs[ndx] |= !!(dir & (1 << ndx)) << index;
-
-      expr = iteratorExpr->value;
-    }
-
-    Token decName = buildToken(TOKEN_IDENTIFIER, newString(dimName));
-
-    expr = newDeclarationExpr(anyType, decName, expr);
-    addExpr(&mainGroup->body, expr, buildToken(TOKEN_SEPARATOR, ";"));
-    checkDeclaration(*getDeclaration(expr), decName, NULL, NULL);
-
-    if (isGroup(*iteratorExprPtrs, TOKEN_SEPARATOR))
-      ((BinaryExpr *) *iteratorExprPtrs)->left = expr;
-    else
-      *iteratorExprPtrs = expr;
-
-    if (iteratorExpr && iteratorExpr->name.length) {
-      Expr **indexExpr = new Expr *[1];
-      indexExpr[0] = new LiteralExpr(VAL_INT, {.integer = index});
-      Expr *getExpr = new ArrayElementExpr(new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, "pos"), NULL), buildToken(TOKEN_LEFT_BRACKET, "["), 1, indexExpr);
-      Expr *initializer = newDeclarationExpr(INT_TYPE, iteratorExpr->name, getExpr);
-
-      addExpr(&initBody, initializer, buildToken(TOKEN_SEPARATOR, ";"));
-    }
-
-    if (iteratorExpr)
-      delete iteratorExpr;
-
-    addExpr(&dimDecs, new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, newString(dimName)), NULL), buildToken(TOKEN_COMMA, ","));
-    index++;
-  }
-
-  addExpr(&initBody, body, buildToken(TOKEN_SEPARATOR, ";"));
-
-  Expr *params = NULL;
-
-  addExpr(&params, new ArrayExpr(dimDecs), buildToken(TOKEN_COMMA, ","));
-  addExpr(&params, initBody, buildToken(TOKEN_COMMA, ","));
-  addExpr(&mainGroup->body, params, buildToken(TOKEN_SEPARATOR, ";"));
-  popScope();
-  return mainGroup;
-}
-
-static const char *getHandlerType(Type type) {
-  switch (type.valueType) {
-    case VAL_VOID: return "voidHandler_";
-    case VAL_BOOL: return "boolHandler_";
-    case VAL_INT: return "intHandler_";
-    case VAL_FLOAT: return "floatHandler_";
-    case VAL_OBJ:
-      switch (type.objType->type) {
-        case OBJ_STRING: return "stringHandler_";
-        case OBJ_ANY: return "anyHandler_";
-        default: return NULL;
-      }
-    default: return NULL;
-  }
-}
-
 Parser::Parser(Scanner &scanner) : scanner(scanner) {
   hadError = false;
   panicMode = false;
@@ -246,16 +160,7 @@ std::string compile(FunctionExpr *expr, Parser *parser) {
 #ifdef DEBUG_PRINT_CODE
   fprintf(stderr, "Type checking parse: ");
   expr->astPrint();
-  fprintf(stderr, "\n          ");/*
-  for (int i = 0; i < declarationCount; i++) {
-    Token *token = &declarations[i].name;
-
-    if (token != NULL)
-      fprintf(stderr, "[ %.*s ]", token->length, token->start);
-    else
-      fprintf(stderr, "[ N/A ]");
-  }*/
-  fprintf(stderr, "\n");
+  fprintf(stderr, "\n\n");
 #endif
   Expr *cpsExpr = expr->toCps([](Expr *expr) {return expr;});
 #ifdef DEBUG_PRINT_CODE
@@ -336,16 +241,6 @@ FunctionExpr *Parser::parse() {
 
   consume(TOKEN_EOF, "Expect end of file.");
   popScope();
-////////
-/*  Compiler *compiler = new Compiler;
-
-  compiler->parser = this;
-  compiler->pushScope(newFunction(VOID_TYPE, NULL, 0));
-
-  Expr *expr = grouping(TOKEN_EOF, compiler, "Expect end of file.");
-
-  compiler->popScope();
-*/
   return hadError ? NULL : functionExpr;
 }
 
@@ -477,20 +372,7 @@ Expr *Parser::binaryOrPostfix(Expr *left) {
 
   Expr *right = parsePrecedence((Precedence)(rule->precedence + 1));
 
-  return new BinaryExpr(left, op, right); /*
-   switch (op.type) {
-     case TOKEN_BANG_EQUAL:    emitBytes(OP_EQUAL, OP_NOT); break;
-     case TOKEN_EQUAL_EQUAL:   return new BinaryExpr(left, op, right);
-     case TOKEN_GREATER:       emitByte(OP_GREATER); break;
-     case TOKEN_GREATER_EQUAL: emitBytes(OP_LESS, OP_NOT); break;
-     case TOKEN_LESS:          emitByte(OP_LESS); break;
-     case TOKEN_LESS_EQUAL:    emitBytes(OP_GREATER, OP_NOT); break;
-     case TOKEN_PLUS:          emitByte(OP_ADD); break;
-     case TOKEN_MINUS:         emitByte(OP_SUBTRACT); break;
-     case TOKEN_STAR:          emitByte(OP_MULTIPLY); break;
-     case TOKEN_SLASH:         emitByte(OP_DIVIDE); break;
-     default: return NULL; // Unreachable.
-   }*/
+  return new BinaryExpr(left, op, right);
 }
 
 Expr *Parser::suffix(Expr *left) {
@@ -558,9 +440,6 @@ Expr *Parser::call(Expr *left) {
     do {
       Token comma = previous;
       Expr *expr = expression(tokens);
-
-//      if (argCount == 255)
-//        error("Can't have more than 255 arguments.");
 
       addExpr(&params, expr, comma);
     } while (match(TOKEN_COMMA));
@@ -696,12 +575,6 @@ Expr *Parser::grouping() {
 
   consume(endGroupType, "Expect '%c' after expression.", closingChar);
   popScope();
-/*
-  if (op.type != TOKEN_LEFT_BRACE && group->body && isGroup(group->body, TOKEN_SEPARATOR)) {
-    getCurrent()->hasSuperCalls |= group->hasSuperCalls;
-    return new CallExpr(false, new GroupingExpr(op, newFunctionExpr(VOID_TYPE, buildToken(TOKEN_IDENTIFIER, group->hasSuperCalls ? "L" : "l"), 0, group), NULL), op, NULL, NULL);
-  }
-*/
   return group;
 }
 
@@ -858,17 +731,7 @@ Expr *Parser::parsePrecedence(Precedence precedence) {
     return NULL;
 
   Expr *left = (this->*prefixRule)();
-/*
-  if (check(TOKEN_STAR) && checkNext(TOKEN_IDENTIFIER)) {
-    Type type = resolveType(left);
 
-    if (IS_FUNCTION(type)) {
-      type = OBJ_TYPE(newInstance(AS_FUNCTION_TYPE(type)));
-      advance();
-      return left;
-    }
-  }
-*/
   while (true) {
     ParseExpRule *rule = getExpRule(current.type);
     bool isIdentifier = rule->prefix && !rule->infix;
@@ -911,112 +774,10 @@ DeclarationExpr *Parser::parseVariable(TokenType *endGroupTypes, const char *err
 Expr *Parser::expression(TokenType *endGroupTypes) {
   Expr *exp = parsePrecedence((Precedence)(PREC_NONE + 1));
 
-  if (exp == NULL)
+  if (!exp)
     error("Expect expression.");
 
-//  Type returnType = resolveType(exp);
-
-  if (false &&//->type == EXPR_REFERENCE &&//) {
-    /*if (*/check(TOKEN_IDENTIFIER) && (checkNext(TOKEN_EQUAL) || checkNext(TOKEN_CALL) || checkNext(TOKEN_SEPARATOR))) {
-    consume(TOKEN_IDENTIFIER, "Expect name identifier after type.");
-
-    Token name = previous;
-
-    if(match(TOKEN_CALL)) {
-      GroupingExpr *group = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), NULL, NULL, NULL);
-      FunctionExpr *functionExpr = NULL;//newFunctionExpr(returnType, name, 0, NULL, group);
-
-      pushScope(functionExpr);
-      passSeparator();
-
-      if (!check(TOKEN_RIGHT_PAREN))
-        do {
-          DeclarationExpr *param = parseVariable(endGroupTypes, "Expect parameter name.");
-
-          if (!IS_UNKNOWN(param->_declaration.type)) {
-            addExpr(&group->body, param, buildToken(TOKEN_SEPARATOR, ";"));
-            functionExpr->arity++;
-//            checkDeclaration(param->_declaration, param->_declaration.name, NULL, this);
-//            functionExpr->params = RESIZE_ARRAY(DeclarationExpr *, functionExpr->params, functionExpr->arity, functionExpr->arity + 1);
-//            functionExpr->params[functionExpr->arity++] = param;
-//            param->_declaration = group->_compiler.addDeclaration(paramType, param->name, NULL, false, this);
-          }
-          else
-            error("Parameter %d not typed correctly", functionExpr->arity + 1);
-        } while (match(TOKEN_COMMA));
-
-      consume(TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
-
-      if (name.isUserClass()) {
-        const char *type = NULL;//getHandlerType(returnType);
-        ReferenceExpr *paramTypeExpr = new ReferenceExpr(buildToken(TOKEN_IDENTIFIER, type), NULL);
-
-        if (getCurrent()) {
-          Token name = buildToken(TOKEN_IDENTIFIER, "_HandlerFn_");
-          Type paramType = resolveType(paramTypeExpr);
-
-          if (!IS_UNKNOWN(paramType)) {
-            DeclarationExpr *dec = newDeclarationExpr(paramType, name, NULL);
-
-            checkDeclaration(dec->_declaration, dec->_declaration.name, NULL, this);
-            addExpr(&group->body, dec, buildToken(TOKEN_SEPARATOR, ";"));
-          }
-          else
-            error("Parameter %d not typed correctly", functionExpr->arity + 1);
-        }
-        else
-          functionExpr->arity++;
-      }
-
-      bool parenFlag = match(TOKEN_LEFT_PAREN) || match(TOKEN_CALL);
-      TokenType endGroupType = parenFlag ? TOKEN_RIGHT_PAREN : TOKEN_RIGHT_BRACE;
-
-      if (!parenFlag)
-        consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.");
-
-      group->name = previous;
-      popScope();
-      checkDeclaration(functionExpr->_declaration, name, functionExpr, this);
-      pushScope(functionExpr);
-      expList(group, endGroupType);
-
-      if (check(TOKEN_LESS)) {
-        int offset = 0;
-        Point zoneOffsets;
-        std::array<long, NUM_DIRS> arrayDirFlags;
-        ValueStack<ValueStackElement> valueStack;
-
-        functionExpr->body->ui = directive(parenFlag ? TOKEN_RIGHT_PAREN : TOKEN_RIGHT_BRACE, NULL);
-//        ((UIDirectiveExpr *) functionExpr->ui)->_attrSet.init(&offset, zoneOffsets, arrayDirFlags, valueStack, (UIDirectiveExpr *) functionExpr->ui, 0, &functionExpr->_function);
-      }
-
-      consume(endGroupType, "Expect '%c' after expression.", parenFlag ? ')' : '}');
-      popScope();
-      return isInClass() ? (Expr *) new ReferenceExpr(name, NULL) : functionExpr;
-    }
-    else
-      return declareVariable(exp, endGroupTypes);
-//    }
-  }
-  else {
-    Expr *iteratorExprs = NULL;
-
-    while (!check(endGroupTypes) && !check(TOKEN_EOF)) {
-      addExpr(&iteratorExprs, exp, buildToken(TOKEN_SEPARATOR, ","));
-      exp = parsePrecedence((Precedence)(PREC_NONE + 1));
-
-      if (!exp)
-        error("Expect expression.");
-    }
-
-    if ((*getLastBodyExpr(&exp, TOKEN_SEPARATOR))->type == EXPR_ITERATOR)
-      error("Cannot define an iterator list without a body expression.");
-
-    if (iteratorExprs)
-      exp = createArrayExpr(iteratorExprs, exp);
-
-    return exp;
-  }
+  return exp;
 }
 
 Expr *Parser::varDeclaration(TokenType endGroupType) {
@@ -1101,26 +862,7 @@ Expr *Parser::whileStatement(TokenType endGroupType) {
 }
 
 Expr *Parser::declaration(TokenType endGroupType) {
-  Expr *exp = NULL;
-
-//  passSeparator();
-/*
-  if (check(TOKEN_IDENTIFIER))
-    switch (next.type) {
-      case TOKEN_IDENTIFIER: {
-      }
-      case TOKEN_STAR:
-        advance();
-      case TOKEN_LEFT_BRACKET:
-    }
-*//*
-  if (match(TOKEN_FUN))
-    exp = funDeclaration(endGroupType);
-  else if (match(TOKEN_VAR))
-    exp = varDeclaration(endGroupType);
-  else*/
-  if (!exp)
-    exp = statement(endGroupType);
+  Expr *exp = statement(endGroupType);
 
   if (panicMode)
     synchronize();
