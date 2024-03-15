@@ -46,6 +46,54 @@ bool totalConversionTable2[][6] = {
   {false, false, false, false, true, true}
 };
 */
+static const char *getDirVar(int dir, const char *prefix) {
+  static char var[20];
+
+  sprintf(var, "%s", prefix);
+
+  Token name = buildToken(TOKEN_IDENTIFIER, var);
+  Expr *expr = resolveReferenceExpr(name, NULL);
+  Declaration *dec = getDeclaration(expr);
+
+  if (IS_ARRAY(dec->type))
+    sprintf(&var[strlen(var)], "[%d]", dir);
+
+  return var;
+}
+
+static const char *getIndexedVariableName(const char *prefix, int index) {
+  static char name[20];
+
+  sprintf(name, "v%d", index);
+  return name;
+}
+
+static bool isEventHandler(UIAttributeExpr *attExpr) {
+  return !memcmp(attExpr->name.getString().c_str(), "on", strlen("on"));
+}
+
+static UIAttributeExpr *findAttr(UIDirectiveExpr *expr, Attribute uiIndex) {
+  static char name[20];
+
+  for (int index = 0; index < expr->attCount; index++)
+    if (!isEventHandler(expr->attributes[index]) && expr->attributes[index]->_uiIndex == uiIndex)
+      return expr->attributes[index];
+
+  return NULL;
+}
+
+static int findAttrName(UIDirectiveExpr *expr, Attribute uiIndex) {
+  UIAttributeExpr *attrExp = findAttr(expr, uiIndex);
+
+  return attrExp ? attrExp->_index : -1;
+}
+
+static const char *getValueVariableName(UIDirectiveExpr *expr, Attribute uiIndex) {
+  UIAttributeExpr *attrExpr = findAttr(expr, uiIndex);
+
+  return attrExpr ? getIndexedVariableName("v", attrExpr->_index) : NULL;
+}
+
 struct ValueStack3 {
   int max;
 	std::stack<int> *map;
@@ -1744,10 +1792,6 @@ static char *generateInternalVarName(const char *prefix, int suffix) {
   return str;
 }
 
-static bool isEventHandler(UIAttributeExpr *attExpr) {
-  return !memcmp(attExpr->name.getString().c_str(), "on", strlen("on"));
-}
-
 UIDirectiveExpr *parent = NULL;
 
 void processAttrs(UIDirectiveExpr *expr, Parser &parser) {
@@ -1917,49 +1961,6 @@ void processArrayAttrs(UIDirectiveExpr *expr, Parser &parser) {
 ValueStack3 valueStackSize(ATTRIBUTE_ALIGN);
 ValueStack3 valueStackPaint(ATTRIBUTE_COLOR);
 
-static const char *getDirVar(int dir, const char *prefix, int varNum) {
-  static char var[20];
-
-  sprintf(var, "%s%d", prefix, varNum);
-
-  Token name = buildToken(TOKEN_IDENTIFIER, var);
-  Expr *expr = resolveReferenceExpr(name, NULL);
-  Declaration *dec = getDeclaration(expr);
-
-  if (IS_ARRAY(dec->type))
-    sprintf(&var[strlen(var)], "[%d]", dir);
-
-  return var;
-}
-
-static UIAttributeExpr *findAttr(UIDirectiveExpr *expr, Attribute uiIndex) {
-  static char name[20];
-
-  for (int index = 0; index < expr->attCount; index++)
-    if (!isEventHandler(expr->attributes[index]) && expr->attributes[index]->_uiIndex == uiIndex)
-      return expr->attributes[index];
-
-  return NULL;
-}
-
-static int findAttrName(UIDirectiveExpr *expr, Attribute uiIndex) {
-  UIAttributeExpr *attrExp = findAttr(expr, uiIndex);
-
-  return attrExp ? attrExp->_index : -1;
-}
-
-static const char *getValueVariableName(UIDirectiveExpr *expr, Attribute uiIndex) {
-  static char name[20];
-  UIAttributeExpr *attrExpr = findAttr(expr, uiIndex);
-
-  if (attrExpr) {
-    sprintf(name, "v%d", attrExpr->_index);
-    return name;
-  }
-  else
-    return NULL;
-}
-
 static bool hasAreas(UIDirectiveExpr *expr) {
   return expr->childrenViewFlag || expr->viewIndex;
 }
@@ -2003,7 +2004,7 @@ void pushAreas(UIDirectiveExpr *expr, Parser &parser) {
 
   if (size != NULL) {
     expr->viewIndex = aCount;
-    (*ss) << "  var a" << aCount++ << " = (" << size << " << 16) | " << size << "\n";
+    (*ss) << "  var a" << aCount++ << " = (" << getDirVar(0, size) << " << 16) | " << getDirVar(1, size) << "\n";
   }
   else {
     const char *name = getValueVariableName(expr, ATTRIBUTE_OUT);
@@ -2172,7 +2173,7 @@ int adjustLayout(UIDirectiveExpr *expr, Parser &parser) {
 // 11 int childSize = unitX + (sizeX - unitX) * vExpand
         if (align != -1) {
           insertTabs();
-          (*ss) << "int posDiff" << dir << " = (size" << dir << " - childSize" << dir << ") * " << getDirVar(dir, "v", align) << "\n";
+          (*ss) << "int posDiff" << dir << " = (size" << dir << " - childSize" << dir << ") * " << getDirVar(dir, getIndexedVariableName("v", align)) << "\n";
           posDiffDirs |= 1 << dir;
         }
 
@@ -2232,6 +2233,7 @@ void paint(UIDirectiveExpr *expr, Parser &parser) {
 //    Type outType = getCurrent()->enclosing->getDeclaration().type;
     Type outType = dec->_declaration.type;
     switch (AS_OBJ_TYPE(outType)) {
+      case OBJ_ARRAY:
       case OBJ_INSTANCE:
         insertTabs();
         (*ss) << "a" << abs(expr->viewIndex) << ".paint(pos0, pos1, size0, size1)\n";

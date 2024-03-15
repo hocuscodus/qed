@@ -361,12 +361,12 @@ void QEDArray(int[] limits, sInitFn init, Qui_ Ui_) {
     size[0] = 1;
     remove(pos, size);
     return;
-  }*//*
-  Ui_ *ui_
-
-  void setUI() {
-    ui_ = new Ui_(/$QEDArray$this$/, /$this.dims$/);
   }*/
+  Qui_ *ui_
+
+  void setUI_() {
+    ui_ = new Ui_(/$QEDArray$this$/, /$QEDArray$this.dims$/ as int[]);
+  }
 }
 
 QEDArray *qedArray(int[] limits, sInitFn init, Qui_ Ui_) {

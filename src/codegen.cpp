@@ -95,14 +95,19 @@ static void blockToCode(std::stringstream &str, Parser &parser, ObjFunction *fun
     endBlock(str);
   }
   else {
-    nTabs++;
-    str << "\n";
-    line(str) << statementRef->toCode(parser, function);
+    if (statementFlag) {
+      nTabs++;
+      str << "\n";
+      line(str);
+    }
+
+    str << statementRef->toCode(parser, function);
 
     if (needsSemicolon(statementRef))
       str << ";";
 
-    nTabs--;
+    if (statementFlag)
+      nTabs--;
   }
 }
 
@@ -209,6 +214,10 @@ std::string DeclarationExpr::toCode(Parser &parser, ObjFunction *function) {
   std::stringstream str;
 
 //  if (initExpr) {
+//    if (!_declaration.function || _declaration.function == function->expr)
+//      str << "this.";
+//    else
+//      str << _declaration.function->_function.getThisVariableName() << ".";
     if (_declaration.function && isExternalField(_declaration.function, &_declaration))
       str << "this.";
     else

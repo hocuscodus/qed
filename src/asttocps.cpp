@@ -210,10 +210,13 @@ Expr *ArrayElementExpr::toCps(K k) {
 Expr *DeclarationExpr::toCps(K k) {
   if (isCpsContext() && initExpr) {
     auto genAssign = [this, k](Expr *initExpr) {
-      AssignExpr *assignExpr = new AssignExpr(new ReferenceExpr(_declaration.name, this), buildToken(TOKEN_EQUAL, "="), initExpr);
+//      AssignExpr *assignExpr = new AssignExpr(new ReferenceExpr(_declaration.name, this), buildToken(TOKEN_EQUAL, "="), initExpr);
+      DeclarationExpr *declarationExpr = new DeclarationExpr(initExpr, true);
 
+      declarationExpr->_declaration = _declaration;
+      declarationExpr->_declaration.expr = declarationExpr;
       this->initExpr = NULL;
-      return k(assignExpr);
+      return k(declarationExpr);
     };
 
     if (initExpr->hasSuperCalls)
