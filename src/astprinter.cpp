@@ -298,17 +298,4 @@ void SwapExpr::astPrint() {
 void NativeExpr::astPrint() {
   fprintf(stderr, "<native>");
 }
-//< omit
-/* Representing Code printer-main < Representing Code omit
-public static void main(String[] args) {
-  Expr expression = new Binary(
-      new Unary(
-          new Token(TokenType.MINUS, "-", null, 1),
-          new Literal(123)),
-      new Token(TokenType.STAR, "*", null, 1),
-      new Grouping(
-          new Literal(45.67)));
 
-  System.out.println(new AstPrinter().print(expression));
-}
-*/

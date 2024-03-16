@@ -338,7 +338,7 @@ Expr *resolveReferenceExpr(Token &name, Parser *parser) {
 }
 
 bool isInRegularFunction(FunctionExpr *function) {
-  return function && function->body->name.type == TOKEN_LEFT_BRACE;
+  return function && (function->body->name.type == TOKEN_LEFT_BRACE || function->body->name.type == TOKEN_EOF);
 }
 
 bool isClass(FunctionExpr *function) {

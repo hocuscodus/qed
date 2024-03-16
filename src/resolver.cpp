@@ -770,7 +770,7 @@ Type GroupingExpr::resolve(Parser &parser) {
             (*ss) << "    array[index].setUI_()\n";
             (*ss) << "\n";
             (*ss) << "  void Layout_() {\n";
-            (*ss) << "    Layout_*[] layouts;\n";
+            (*ss) << "    Layout_*[] layouts = /$[]$/;\n";
             (*ss) << "\n";
             (*ss) << "    for(int index = 0; index < dims[0]; index++)\n";
             (*ss) << "      layouts[index] = new array[index].ui_.Layout_()\n";

@@ -111,6 +111,19 @@ static void blockToCode(std::stringstream &str, Parser &parser, ObjFunction *fun
   }
 }
 
+static std::string variableToCode(Declaration *declaration, ObjFunction *function) {
+  if (declaration)
+    if (declaration->function && isExternalField(declaration->function, declaration))
+      if (declaration->function == function->expr)
+        return (std::stringstream() << "this." << declaration->getRealName()).str();
+      else
+        return (std::stringstream() << declaration->function->_function.getThisVariableName() << "." << declaration->getRealName()).str();
+    else
+      return declaration->getRealName();
+  else
+    return NULL;
+}
+
 std::string IteratorExpr::toCode(Parser &parser, ObjFunction *function) {
   return value->toCode(parser, function);
 }
@@ -214,16 +227,12 @@ std::string DeclarationExpr::toCode(Parser &parser, ObjFunction *function) {
   std::stringstream str;
 
 //  if (initExpr) {
-//    if (!_declaration.function || _declaration.function == function->expr)
-//      str << "this.";
-//    else
-//      str << _declaration.function->_function.getThisVariableName() << ".";
     if (_declaration.function && isExternalField(_declaration.function, &_declaration))
-      str << "this.";
+      str << variableToCode(&_declaration, function);
     else
-      str << /*_declaration->function->isClass() ? "const " : */"let ";
+      str << /*_declaration->function->isClass() ? "const " : */"let " << _declaration.getRealName();
 
-    str << _declaration.getRealName() << " = " << (initExpr ? initExpr->toCode(parser, function) : "null");
+    str << " = " << (initExpr ? initExpr->toCode(parser, function) : "null");
 //  }
 
   return str.str();
@@ -407,16 +416,7 @@ std::string PrimitiveExpr::toCode(Parser &parser, ObjFunction *function) {
 std::string ReferenceExpr::toCode(Parser &parser, ObjFunction *function) {
   Declaration *declaration = this->declaration ? getDeclaration(this->declaration) : NULL;
 
-  if (declaration)
-    if (declaration->function && isExternalField(declaration->function, declaration))
-      if (declaration->function == function->expr)
-        return (std::stringstream() << "this." << declaration->getRealName()).str();
-      else
-        return (std::stringstream() << declaration->function->_function.getThisVariableName() << "." << declaration->getRealName()).str();
-    else
-      return declaration->getRealName();
-  else
-    return name.getString();
+  return declaration ? variableToCode(declaration, function) : name.getString();
 }
 
 std::string SwapExpr::toCode(Parser &parser, ObjFunction *function) {
