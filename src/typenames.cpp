@@ -184,9 +184,11 @@ Expr *ExprStack::getBody(Parser &parser) {
   Expr *expr = NULL;
 
   while (top) {
+    ExprInfo *parent = top->parent;
+
     expr = top->expr;
     delete top;
-    top = top->parent;
+    top = parent;
   }
 
   return expr;

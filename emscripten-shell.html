@@ -53,37 +53,52 @@
   </head>
   <body>
     <textarea id="editor">
-void Button(String text) {
-  float shade = 20%
+void Ball() {
+  void Vector(float pos, float delta) {
+    void move() {
+      pos += delta
 
-  <out: rect; opacity: shade; size: 35
-    onPress: shade = 35%
-    onRelease: {shade = 20%; return()}>
-  <out: text; opacity: 60%; align: 50%; fontSize: 40;>
+      if (pos > 1 || pos < 0) {
+        pos = delta > 0 ? 2 - pos : -pos
+        delta = -delta
+      }
+    }
+  }
+
+  int color = trunc(rand() * 0xFFFFFF)
+  int size = rand() * 35 + 35
+  Vector*[] vectors = 2 new Vector(rand(), ((rand() * 1%) + 0.025%) * (rand() > 0.5 ? 1 : -1))
+
+  while (Yield(/$Ball$this$/)) {
+//    v::vectors v.move()
+    vectors[0].move();
+    vectors[1].move();
+  }
+
+  <out: oval; color: color; size: size; align: [vectors[0].pos, vectors[1].pos];>
+//  <out: oval; color: color; size: size; align: v::vectors v.pos;>
 }
 
-int count = 0
-var decButton = new Button("-") -> count--
-var incButton = new Button("+") -> count++
+Ball*[] balls = 300 new Ball()
+while (Animation())
+  process(balls);
 
-<out: oval; color: count > 0 ? COLOR_GREEN : count < 0 ? COLOR_RED : COLOR_YELLOW;
-  <_ color: COLOR_BLACK;
-    <out: decButton;>
-    <size: 80;
-      <out: count; opacity: 70%; align: 50%; fontSize: 50;>
-    >
-    <out: incButton;>
-  >
->
-    </textarea>
+<out:rect; size:[800, 480]; color: 0;>
+<out:"Bouncing"; size:130; color: 0x50FFFFFF; align: [50%, 10%];>
+<out:"Balls!!"; size:160; color: 0x30FFFFFF; align: [50%, 70%];>
+<out:balls;>
+          </textarea>
     <script>
-      var editor = CodeMirror.fromTextArea(document.getElementById("editor"), {
-        mode: "xml",
-        theme: "dracula",
-        lineNumbers: true,
-        autoCloseBrackets: true
-      });
-    </script>
+      var editor = document.getElementById("editor");
+      function runQED() {
+        let codeStr = Module.ccall('runSource', null, ['string'], [editor.value]);
+//        Module['runSource'](editor.value);
+        let str = UTF8ToString(codeStr);
+        let js = new Function(str);
+        let obj = new Object();
+        js.apply(obj);
+      }
+    </script>      
     <hr/>
     <figure style="overflow:visible;" id="spinner"><div class="spinner"></div><center style="margin-top:0.5em"><strong>emscripten</strong></center></figure>
     <div class="emscripten" id="status">Downloading...</div>
@@ -95,7 +110,7 @@ var incButton = new Button("+") -> count++
     </div>
     <hr/>
     <div class="emscripten">
-      <input type="button" value="Run" onclick="Module.ccall('runSource', null, ['string'], [editor.getValue()])">
+      <input type="button" value="Run" onclick="runQED()">
     </div>
     
     <hr/>

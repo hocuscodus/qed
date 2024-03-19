@@ -23,7 +23,7 @@ void process(var obj) {
     let size = obj.size();
 
     for (let index = 0; index < size; index++)
-      process(obj[index]);
+      this.process(obj[index]);
   }
   else
     obj.yieldHandler()$/
@@ -155,7 +155,7 @@ void QEDBaseArray_() {
     ui_ = new UI_()
   }
 }
-/$Object.setPrototypeOf(QEDBaseArray_.prototype, Array.prototype)$/
+/$Object.setPrototypeOf(this.QEDBaseArray_.prototype, Array.prototype)$/
 
 var InitFn(int[] pos) {}
 
@@ -235,7 +235,7 @@ var SQEDArray(int[] limits, InitFn Init) {
     return;
   }*/
 }
-/$Object.setPrototypeOf(SQEDArray.prototype, Array.prototype)$/
+/$Object.setPrototypeOf(this.SQEDArray.prototype, Array.prototype)$/
 
 void VInitFn(int[] pos) {}
 
@@ -372,7 +372,7 @@ void QEDArray(int[] limits, sInitFn init, Qui_ Ui_) {
 QEDArray *qedArray(int[] limits, sInitFn init, Qui_ Ui_) {
   return new QEDArray(limits, init, Ui_);
 }
-/$Object.setPrototypeOf(QEDArray.prototype, Array.prototype)$/
+/$Object.setPrototypeOf(this.QEDArray.prototype, Array.prototype)$/
 
 void vInitFn(int[] pos) {}
 

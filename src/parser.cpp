@@ -181,20 +181,20 @@ std::string compile(FunctionExpr *expr, Parser *parser) {
 
   str << cpsExpr->toCode(*parser, &expr->_function);
 
-  line(str) << "pushAttribute(4, 20);\n";
-  line(str) << "pushAttribute(10, 0);\n";
-  line(str) << "pushAttribute(11, 1.0);\n";
+  line(str) << "Main_$this.pushAttribute(4, 20);\n";
+  line(str) << "Main_$this.pushAttribute(10, 0);\n";
+  line(str) << "Main_$this.pushAttribute(11, 1.0);\n";
   line(str) << "let layout_ = null;\n";
   line(str) << "function _refresh() {\n";
   line(str) << "//  if (ui_ != undefined && --postCount == 0) {\n";
-  line(str) << "    setUI_();\n";
-  line(str) << "    layout_ = new ui_.Layout_();\n";
+  line(str) << "    Main_$this.setUI_();\n";
+  line(str) << "    layout_ = new Main_$this.ui_.Layout_();\n";
   line(str) << "    ctx.globalAlpha = 1.0;\n";
   line(str) << "    ctx.clearRect(0, 0, canvas.width, canvas.height);\n";
   line(str) << "    layout_.paint(0, 0, layout_.size >> 16, layout_.size & 65535);\n";
   line(str) << "//  }\n";
   line(str) << "}\n";
-  line(str) << "executeEvents_();\n";
+  line(str) << "Main_$this.executeEvents_();\n";
   line(str) << "canvas.addEventListener(\"mousedown\", function(ev) {\n";
   line(str) << "  postCount++;\n";
   line(str) << "  var rect = canvas.getBoundingClientRect();\n";

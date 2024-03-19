@@ -133,14 +133,23 @@ int main(int argc, const char *argv[]) {
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/bind.h>
+#include <string.h>
 
 using namespace emscripten;
 
-std::string runSource(std::string source) {
-  return runSrc(source.c_str());
-}
+extern "C" {
+const char *runSource(const char *source) {
+  std::string str = runSrc(source);
+  const char *output = str.c_str();
+  int len = strlen(output) + 1;
+  char *ret = new char[len + 1];
 
-EMSCRIPTEN_BINDINGS(module) {
-  function("runSource", &runSource);
+  strcpy(ret, output);
+  return ret;
 }
+}
+//EMSCRIPTEN_BINDINGS(module) {
+//  function("runSource", &runSource);
+//}
+
 #endif
