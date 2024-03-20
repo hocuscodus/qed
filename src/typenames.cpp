@@ -395,7 +395,12 @@ int BinaryExpr::findTypes(Parser &parser) {
 }
 
 int CallExpr::findTypes(Parser &parser) {
-  return callee->findTypes(parser);
+  int numTypes = callee->findTypes(parser);
+
+  for (Expr *args = this->args; args; args = cdr(args, TOKEN_COMMA))
+    numTypes += car(args, TOKEN_COMMA)->findTypes(parser);
+
+  return numTypes;
 }
 
 int ArrayElementExpr::findTypes(Parser &parser) {

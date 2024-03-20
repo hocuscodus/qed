@@ -196,16 +196,14 @@ std::string compile(FunctionExpr *expr, Parser *parser) {
   line(str) << "}\n";
   line(str) << "Main_$this.executeEvents_();\n";
   line(str) << "canvas.addEventListener(\"mousedown\", function(ev) {\n";
-  line(str) << "  postCount++;\n";
   line(str) << "  var rect = canvas.getBoundingClientRect();\n";
   line(str) << "  layout_.onEvent(0, ev.clientX - rect.left, ev.clientY - rect.top, layout_.size >> 16, layout_.size & 65535);\n";
-  line(str) << "  _refresh();\n";
+  line(str) << "  Main_$this.executeEvents_();\n";
   line(str) << "  });\n";
   line(str) << "canvas.addEventListener(\"mouseup\", function(ev) {\n";
-  line(str) << "  postCount++;\n";
   line(str) << "  var rect = canvas.getBoundingClientRect();\n";
   line(str) << "  layout_.onEvent(1, ev.clientX - rect.left, ev.clientY - rect.top, layout_.size >> 16, layout_.size & 65535);\n";
-  line(str) << "  _refresh();\n";
+  line(str) << "  Main_$this.executeEvents_();\n";
   line(str) << "});\n";
   line(str) << "canvas.onselectstart = function () { return false; }\n";
 
