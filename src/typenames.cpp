@@ -46,7 +46,7 @@ Expr *analyzeStatement(Expr *expr, Parser &parser) {
       break;
 
     case TOKEN_IDENTIFIER:
-      Expr *dec = resolveReferenceExpr(token, NULL);
+      Expr *dec = resolveReferenceExpr(token, NULL, 3);
 
       if (dec)
         switch(dec->type) {
@@ -95,12 +95,12 @@ Expr *analyzeStatement(Expr *expr, Parser &parser) {
       switch (token.type) {
         case TOKEN_SUPER:
           expr = newDeclarationExpr(type, name, NULL);
-          checkDeclaration(((DeclarationExpr *) expr)->_declaration, name, NULL, &parser);
+          checkDeclaration(((DeclarationExpr *) expr)->_declaration, name, NULL, &parser, 1);
           break;
 
         case TOKEN_EQUAL:
           expr = newDeclarationExpr(type, name, stack.getBody(parser));
-          checkDeclaration(((DeclarationExpr *) expr)->_declaration, name, NULL, &parser);
+          checkDeclaration(((DeclarationExpr *) expr)->_declaration, name, NULL, &parser, 1);
           break;
 
         case TOKEN_CALL: {
@@ -112,12 +112,12 @@ Expr *analyzeStatement(Expr *expr, Parser &parser) {
             FunctionExpr *functionExpr = newFunctionExpr(type, name, 0, NULL, (GroupingExpr *) stack.getBody(parser));
 
             expr = functionExpr;
-            checkDeclaration(functionExpr->_declaration, name, functionExpr, &parser);
+            checkDeclaration(functionExpr->_declaration, name, functionExpr, &parser, 1);
             pushScope(functionExpr);
             analyzeStatements(params, TOKEN_COMMA, parser);
 
             for (Expr *paramRef = params; paramRef; paramRef = cdr(paramRef, TOKEN_COMMA)) {
-              ((DeclarationExpr *) car(paramRef, TOKEN_COMMA))->declared = true;
+              ((DeclarationExpr *) car(paramRef, TOKEN_COMMA))->declarationLevel = 2;
               functionExpr->arity++;
             }
 
@@ -413,7 +413,10 @@ int ArrayElementExpr::findTypes(Parser &parser) {
 }
 
 int DeclarationExpr::findTypes(Parser &parser) {
-  return initExpr ? initExpr->findTypes(parser) : 0;
+  int numTypes = initExpr ? initExpr->findTypes(parser) : 0;
+
+  declarationLevel++;
+  return numTypes;
 }
 
 int FunctionExpr::findTypes(Parser &parser) {
@@ -539,7 +542,7 @@ int PrimitiveExpr::findTypes(Parser &parser) {
 }
 
 int ReferenceExpr::findTypes(Parser &parser) {
-  Declaration *first = getFirstDeclarationRef(getCurrent(), name);
+  Declaration *first = getFirstDeclarationRef(getCurrent(), name, 1);
 
   if (!first)
     return 0;

@@ -15,7 +15,7 @@ static const char *getDirVar(int dir, const char *prefix) {
   sprintf(var, "%s", prefix);
 
   Token name = buildToken(TOKEN_IDENTIFIER, var);
-  Expr *expr = resolveReferenceExpr(name, NULL);
+  Expr *expr = resolveReferenceExpr(name, NULL, 2);
   Declaration *dec = getDeclaration(expr);
 
   if (IS_ARRAY(dec->type))
@@ -340,7 +340,7 @@ static Expr *createArrayExpr(Expr *iteratorExprs) {
 
       expr = newDeclarationExpr(anyType, decName, expr);
       addExpr(&mainGroup->body, expr, buildToken(TOKEN_SEPARATOR, ";"));
-      checkDeclaration(*getDeclaration(expr), decName, NULL, NULL);
+      checkDeclaration(*getDeclaration(expr), decName, NULL, NULL, 0);
 
       Expr **next = cdrAddress(*iteratorExprPtrs, TOKEN_ARRAY);
 
@@ -638,7 +638,7 @@ Type DeclarationExpr::resolve(Parser &parser) {
       break;
     }
 
-  declared = true;
+  declarationLevel++;
   return VOID_TYPE;
 }
 
@@ -733,7 +733,7 @@ Type GroupingExpr::resolve(Parser &parser) {
 
     name = buildToken(TOKEN_LEFT_PAREN, "(");
     pushScope(initExpr);
-    checkDeclaration(wrapperFunc->_declaration, nameToken, wrapperFunc, NULL);
+    checkDeclaration(wrapperFunc->_declaration, nameToken, wrapperFunc, NULL, 0);
     pushScope(wrapperFunc);
 
     for (Expr **bodyElement = initBody; bodyElement; bodyElement = next) {
@@ -744,7 +744,7 @@ Type GroupingExpr::resolve(Parser &parser) {
       if (next) {
         Declaration *dec = getDeclaration(expr);
 
-        checkDeclaration(*dec, dec->name, NULL, NULL);
+        checkDeclaration(*dec, dec->name, NULL, NULL, 0);
         expr->resolve(parser);
       }
       else {
@@ -1017,7 +1017,7 @@ Type WhileExpr::resolve(Parser &parser) {
 Type ReturnExpr::resolve(Parser &parser) {
   Token name = getTopFunction()->_declaration.name;
 
-  isUserClass = name.isUserClass();
+  isUserClass = name.isClass();
 
   // sync processing below
 
@@ -1120,7 +1120,7 @@ Type PrimitiveExpr::resolve(Parser &parser) {
 }
 
 Type ReferenceExpr::resolve(Parser &parser) {
-  Declaration *first = getFirstDeclarationRef(getCurrent(), name);
+  Declaration *first = getFirstDeclarationRef(getCurrent(), name, 2);
 
   declaration = resolveReference(first, name, getSignature(), &parser);
 
@@ -1489,7 +1489,7 @@ void pushAreas(UIDirectiveExpr *expr, Parser &parser) {
 
     if (name != NULL) {
       Token token = buildToken(TOKEN_IDENTIFIER, name);
-      Type outType = ((DeclarationExpr *) resolveReferenceExpr(token, &parser))->_declaration.type;
+      Type outType = ((DeclarationExpr *) resolveReferenceExpr(token, &parser, 0))->_declaration.type;
       char *callee = NULL;
 
       switch (AS_OBJ_TYPE(outType)) {
@@ -1701,13 +1701,8 @@ void paint(UIDirectiveExpr *expr, Parser &parser) {
   const char *callee = NULL;
 
   if (name) {
-    if (expr->lastChild) {
-      insertTabs();
-      (*ss) << "saveContext()\n";
-    }
-
     Token token = buildToken(TOKEN_IDENTIFIER, name);
-    DeclarationExpr *dec = (DeclarationExpr *) resolveReferenceExpr(/*getCurrent()->enclosing, &*/token, &parser);
+    DeclarationExpr *dec = (DeclarationExpr *) resolveReferenceExpr(/*getCurrent()->enclosing, &*/token, &parser, 0);
 //    Type outType = getCurrent()->enclosing->getDeclaration().type;
     Type outType = dec->_declaration.type;
     switch (AS_OBJ_TYPE(outType)) {
@@ -1743,16 +1738,21 @@ void paint(UIDirectiveExpr *expr, Parser &parser) {
   }
 
   if (expr->lastChild) {
+    if (name && callee) {
+      insertTabs();
+      (*ss) << "saveContext()\n";
+    }
+
     UIDirectiveExpr *oldParent = parent;
 
     parent = expr;
     paint(expr->lastChild, parser);
     parent = oldParent;
-  }
 
-  if (name && callee && expr->lastChild) {
-    insertTabs();
-    (*ss) << "restoreContext()\n";
+    if (name && callee) {
+      insertTabs();
+      (*ss) << "restoreContext()\n";
+    }
   }
 
   for (int index = expr->attCount - 1; index >= 0; index--)
@@ -1820,7 +1820,7 @@ void onEvent(UIDirectiveExpr *expr, Parser &parser) {
     else {
       const char *name = getValueVariableName(expr, ATTRIBUTE_OUT);
       Token token = buildToken(TOKEN_IDENTIFIER, name);
-      DeclarationExpr *dec = (DeclarationExpr *) resolveReferenceExpr(/*getCurrent()->enclosing, &*/token, &parser);
+      DeclarationExpr *dec = (DeclarationExpr *) resolveReferenceExpr(/*getCurrent()->enclosing, &*/token, &parser, 0);
       Type outType = dec->_declaration.type;
 
       switch (AS_OBJ_TYPE(outType)) {

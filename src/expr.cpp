@@ -81,9 +81,9 @@ ArrayElementExpr::ArrayElementExpr(Expr* callee, Token bracket, int count, Expr*
   this->indexes = indexes;
 }
 
-DeclarationExpr::DeclarationExpr(Expr* initExpr, bool declared) : Expr(EXPR_DECLARATION) {
+DeclarationExpr::DeclarationExpr(Expr* initExpr, int declarationLevel) : Expr(EXPR_DECLARATION) {
   this->initExpr = initExpr;
-  this->declared = declared;
+  this->declarationLevel = declarationLevel;
 }
 
 FunctionExpr::FunctionExpr(int arity, Expr* params, Declaration* declarations, GroupingExpr* body) : Expr(EXPR_FUNCTION) {

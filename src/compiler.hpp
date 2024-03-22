@@ -37,11 +37,11 @@ FunctionExpr *newFunctionExpr(Type type, Token name, int arity, Expr* params, Gr
 Expr *getDeclarationExpr(Expr *body);
 Signature *getSignature();
 Declaration *getDeclarationRef(Token name, Declaration *dec);
-Declaration *getFirstDeclarationRef(Scope *current, Token &name);
+Declaration *getFirstDeclarationRef(Scope *current, Token &name, int level);
 Expr *getStatement(GroupingExpr *expr, int index);
 DeclarationExpr *getParam(FunctionExpr *expr, int index);
 Expr *resolveReference(Declaration *decRef, Token &name, Signature *signature, Parser *parser);
-Expr *resolveReferenceExpr(Token &name, Parser *parser);
+Expr *resolveReferenceExpr(Token &name, Parser *parser, int level);
 std::string getRealName(ObjFunction *function);
 bool isInRegularFunction(FunctionExpr *function);
 bool isClass(FunctionExpr *function);
@@ -49,7 +49,7 @@ bool isInClass();
 bool isExternalField(FunctionExpr *function, Declaration *dec);
 bool isField(FunctionExpr *function, Declaration *dec);
 bool isInRegularFunction(ObjFunction *function);
-void checkDeclaration(Declaration &declaration, Token &name, FunctionExpr *function, Parser *parser);
+void checkDeclaration(Declaration &declaration, Token &name, FunctionExpr *function, Parser *parser, int level);
 
 std::string compile(FunctionExpr *expr, Parser *parser);
 

@@ -758,7 +758,7 @@ DeclarationExpr *Parser::declareVariable(Expr *typeExpr, TokenType *endGroupType
   Type decType = resolveType(typeExpr);
   DeclarationExpr *dec = newDeclarationExpr(decType, name, expr);
 
-  checkDeclaration(dec->_declaration, name, NULL, this);
+  checkDeclaration(dec->_declaration, name, NULL, this, 0);
   return dec;
 }
 

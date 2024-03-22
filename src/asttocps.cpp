@@ -211,7 +211,7 @@ Expr *DeclarationExpr::toCps(K k) {
   if (isCpsContext() && initExpr) {
     auto genAssign = [this, k](Expr *initExpr) {
 //      AssignExpr *assignExpr = new AssignExpr(new ReferenceExpr(_declaration.name, this), buildToken(TOKEN_EQUAL, "="), initExpr);
-      DeclarationExpr *declarationExpr = new DeclarationExpr(initExpr, true);
+      DeclarationExpr *declarationExpr = new DeclarationExpr(initExpr, 2);
 
       declarationExpr->_declaration = _declaration;
       declarationExpr->_declaration.expr = declarationExpr;
@@ -236,7 +236,7 @@ Expr *FunctionExpr::toCps(K k) {
   if (_declaration.name.isUserClass()) {
     const char *type = getHandlerType(_declaration.type);
     Token typeName = buildToken(TOKEN_IDENTIFIER, type);
-    Declaration *paramType = getFirstDeclarationRef(getCurrent(), typeName);
+    Declaration *paramType = getFirstDeclarationRef(getCurrent(), typeName, 2);
 
     if (!paramType)
       paramType = NULL;
@@ -254,13 +254,13 @@ Expr *FunctionExpr::toCps(K k) {
       arity++;
   }
 
-  if (_declaration.name.isClass()) {
+//  if (_declaration.name.isClass()) {
     pushScope(this);
     body->body = declarationToCps(initAddress(body->body), [this]() {
       return body->body ? body->body->toCps(idExpr) : NULL;
     });
     popScope();
-  }
+//  }
 
   return k(this);//compareExpr(body, bodyExpr) ? this : newExpr(newFunctionExpr(typeExpr, name, arity + 1, newParams, newBody)));
 }

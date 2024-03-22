@@ -96,7 +96,7 @@ Type resolveType(Expr *expr) {
         break;
 
       case EXPR_REFERENCE: {
-          Expr *dec = resolveReferenceExpr(((ReferenceExpr *) expr)->name, NULL);
+          Expr *dec = resolveReferenceExpr(((ReferenceExpr *) expr)->name, NULL, 0);
 
           if (dec)
             switch(dec->type) {
@@ -156,7 +156,7 @@ void popScope() {
 }
 
 DeclarationExpr *newDeclarationExpr(Type type, Token name, Expr* initExpr) {
-  DeclarationExpr *expr = new DeclarationExpr(initExpr, false);
+  DeclarationExpr *expr = new DeclarationExpr(initExpr, 0);
 
   expr->_declaration.type = type;
   expr->_declaration.name = name;
@@ -226,14 +226,14 @@ Declaration *getDeclarationRef(Token name, Declaration *dec) {
   return dec;
 }
 
-Declaration *getFirstDeclarationRef(Scope *current, Token &name) {
+Declaration *getFirstDeclarationRef(Scope *current, Token &name, int level) {
   Declaration *dec = NULL;
 
   while (!dec && current) {
     dec = getDeclarationRef(name, current->getDeclarations());
 
-    if (dec && dec->expr->type == EXPR_DECLARATION && !((DeclarationExpr *) dec->expr)->declared) {
-      Declaration *dec2 = getFirstDeclarationRef(current->enclosing, name);
+    if (dec && dec->expr->type == EXPR_DECLARATION && ((DeclarationExpr *) dec->expr)->declarationLevel < level) {
+      Declaration *dec2 = getFirstDeclarationRef(current->enclosing, name, level);
 
       if (dec2)
         dec = dec2;//        parser.error("Cannot use an undeclared variable");
@@ -331,8 +331,8 @@ Expr *resolveReference(Declaration *decRef, Token &name, Signature *signature, P
   return NULL;
 }
 
-Expr *resolveReferenceExpr(Token &name, Parser *parser) {
-  Declaration *decRef = getFirstDeclarationRef(getCurrent(), name);
+Expr *resolveReferenceExpr(Token &name, Parser *parser, int level) {
+  Declaration *decRef = getFirstDeclarationRef(getCurrent(), name, level);
 
   return resolveReference(decRef, name, getSignature(), parser);
 }
@@ -361,7 +361,7 @@ bool isInRegularFunction(ObjFunction *function) {
   return function->expr->body->name.type == TOKEN_LEFT_BRACE;
 }
 
-void checkDeclaration(Declaration &declaration, Token &name, FunctionExpr *function, Parser *parser) {
+void checkDeclaration(Declaration &declaration, Token &name, FunctionExpr *function, Parser *parser, int level) {
   Signature signature;
 
   declaration.function = getFunction();
@@ -379,7 +379,7 @@ void checkDeclaration(Declaration &declaration, Token &name, FunctionExpr *funct
       expr = resolveReference(getDeclarationRef(name, getCurrent()->getDeclarations()), name, NULL, NULL);
 
     if (!expr) {
-      expr = resolveReference(getFirstDeclarationRef(getCurrent()->enclosing, name), name, NULL, NULL);
+      expr = resolveReference(getFirstDeclarationRef(getCurrent()->enclosing, name, level), name, NULL, NULL);
       declaration.parentFlag = !!expr;
     }
 
@@ -486,11 +486,11 @@ GroupingExpr *makeWrapperLambda(const char *name, DeclarationExpr *param, std::f
   GroupingExpr *mainGroup = new GroupingExpr(buildToken(TOKEN_LEFT_PAREN, "("), wrapperFunc, NULL, NULL);
 
   pushScope(mainGroup);
-  checkDeclaration(wrapperFunc->_declaration, nameToken, wrapperFunc, NULL);
+  checkDeclaration(wrapperFunc->_declaration, nameToken, wrapperFunc, NULL, 0);
   pushScope(wrapperFunc);
 
   if (param)
-    checkDeclaration(param->_declaration, param->_declaration.name, NULL, NULL);
+    checkDeclaration(param->_declaration, param->_declaration.name, NULL, NULL, 0);
 
   addExpr(&group->body, bodyFn(), buildToken(TOKEN_SEPARATOR, ";"));
   popScope();
