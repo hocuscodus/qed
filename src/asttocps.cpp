@@ -382,6 +382,7 @@ Expr *ReturnExpr::toCps(K k) {
         param = makeWrapperLambda("lambda_", NULL, [call]() {return call;});
       }
 
+      callee->resolve(*((Parser *) NULL));
       value = new CallExpr(false, callee, buildToken(TOKEN_LEFT_PAREN, "("), param, NULL);
       value = new GroupingExpr(buildToken(TOKEN_LEFT_BRACE, "{"), value, NULL, NULL);
       addExpr(&((GroupingExpr *) value)->body, new ReturnExpr(expr->keyword, false, NULL), buildToken(TOKEN_SEPARATOR, ";"));

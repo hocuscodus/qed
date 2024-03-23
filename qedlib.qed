@@ -58,7 +58,8 @@ int trunc(float n) {
 }
 float clock() {}
 void saveContext() {
-/$ctx.save()$/
+/$ctx.save();
+  ctx.clip();$/
 }
 void restoreContext() {
 /$ctx.restore()$/
@@ -68,14 +69,20 @@ void oval(int pos, int size) {
   ctx.globalAlpha = "" + getAttribute(11);
   ctx.beginPath();
   ctx.ellipse((pos >> 16) + (size >> 17), (pos & 65535) + ((size & 65535) >> 1), size >> 17, (size & 65535) >> 1, 0, 0, 2*Math.PI);
-  ctx.fill();
-//  ctx.clip()$/
+  ctx.fill();$/
 }
 void rect(int pos, int size) {
 /$ctx.fillStyle = toColor(getAttribute(10));
   ctx.globalAlpha = "" + getAttribute(11);
   ctx.beginPath();
   ctx.fillRect((pos >> 16), (pos & 65535), size >> 16, size & 65535)$/
+}
+void roundRect(int pos, int size) {
+/$ctx.fillStyle = toColor(getAttribute(10));
+  ctx.globalAlpha = "" + getAttribute(11);
+  ctx.beginPath();
+  ctx.roundRect((pos >> 16), (pos & 65535), size >> 16, size & 65535, 30);
+  ctx.fill();$/
 }
 void pushAttribute(int index, int value) {
 /$if (attributeStacks[index] == undefined)
@@ -84,7 +91,7 @@ void pushAttribute(int index, int value) {
   attributeStacks[index].push(value)$/
 }
 void pushAttribute(int index, float value) {
-/$pushAttribute(index, value)$/
+/$this.pushAttribute(index, value)$/
 }
 void popAttribute(int index) {
 /$attributeStacks[index].pop()$/

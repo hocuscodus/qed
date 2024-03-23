@@ -529,6 +529,9 @@ Type CallExpr::resolve(Parser &parser) {
   Type type = callee->resolve(parser);
   popSignature();
 
+  if (handler)
+    handler->resolve(parser);
+
   if (IS_FUNCTION(type)) {
     ObjFunction *callable = AS_FUNCTION_TYPE(type);
 
