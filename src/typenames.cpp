@@ -46,7 +46,7 @@ Expr *analyzeStatement(Expr *expr, Parser &parser) {
       break;
 
     case TOKEN_IDENTIFIER:
-      Expr *dec = resolveReferenceExpr(token, NULL, 3);
+      Expr *dec = resolveReferenceExpr(token, NULL, 0);
 
       if (dec)
         switch(dec->type) {
@@ -95,11 +95,13 @@ Expr *analyzeStatement(Expr *expr, Parser &parser) {
       switch (token.type) {
         case TOKEN_SUPER:
           expr = newDeclarationExpr(type, name, NULL);
+//          ((DeclarationExpr *) expr)->declarationLevel = 1;
           checkDeclaration(((DeclarationExpr *) expr)->_declaration, name, NULL, &parser, 1);
           break;
 
         case TOKEN_EQUAL:
           expr = newDeclarationExpr(type, name, stack.getBody(parser));
+//          ((DeclarationExpr *) expr)->declarationLevel = 1;
           checkDeclaration(((DeclarationExpr *) expr)->_declaration, name, NULL, &parser, 1);
           break;
 

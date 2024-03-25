@@ -144,6 +144,7 @@ void QEDBaseArray_() {
   int size() {return 0;}
   void insert(int[] pos, int[] size) {}
   void Insert(int[] pos, int[] size) {}
+  void push() {}
   void Push() {}
   void pop() {}
   var get(int[] pos) {}
@@ -181,6 +182,11 @@ var SQEDArray(int[] limits, InitFn Init) {
   }
 
   void insert(int[] pos, int[] size) {
+    // runtime error
+  }
+
+  void remove(int[] pos, int[] size) {
+    // runtime error
   }
 
   void Insert(int[] pos, int[] size) {
@@ -221,26 +227,30 @@ var SQEDArray(int[] limits, InitFn Init) {
     }
     return;
   }
-/*
-  void Push() {
-    let pos = new Array(SQEDArray$this.dims.length).fill(0);
-    let size = new Array(SQEDArray$this.dims.length).fill(0);
 
-    pos[0] = SQEDArray$this.dims[0];
-    size[0] = 1;
-    Insert(pos, size);
-    return;
+  void push() {
+    // runtime error
+  }
+
+  void Push() {
+    int[] pos = /$new Array(SQEDArray$this.dims.length).fill(0)$/ as int[]
+    int[] size = /$new Array(SQEDArray$this.dims.length).fill(0)$/ as int[]
+
+    pos[0] = /$SQEDArray$this.dims[0]$/
+    size[0] = 1
+    Insert(pos, size)
+    return
   }
 
   void pop() {
-    let pos = new Array(SQEDArray$this.dims.length).fill(0);
-    let size = new Array(SQEDArray$this.dims.length).fill(0);
+    int[] pos = /$new Array(SQEDArray$this.dims.length).fill(0)$/ as int[]
+    int[] size = /$new Array(SQEDArray$this.dims.length).fill(0)$/ as int[]
 
-    pos[0] = SQEDArray$this.dims[0] - 1;
-    size[0] = 1;
-    remove(pos, size);
-    return;
-  }*/
+    pos[0] = /$SQEDArray$this.dims[0] - 1$/
+    size[0] = 1
+    remove(pos, size)
+    return
+  }
 }
 /$Object.setPrototypeOf(this.SQEDArray.prototype, Array.prototype)$/
 
@@ -261,6 +271,7 @@ var VSQEDArray(int[] limits, VInitFn Init) {
   }
 
   void insert(int[] pos, int[] size) {
+    // runtime error
   }
 
   void Insert(int[] pos, int[] size) {
@@ -322,6 +333,17 @@ void QEDArray(int[] limits, sInitFn init, Qui_ Ui_) {
     return
   }
 
+  void remove(int[] pos, int[] size) {
+    int[] newSize = /$[...size$]$/
+
+    for (int index = /$QEDArray$this.dims.length - 1$/; index >= 0; index--)
+      newSize[index] += /$QEDArray$this.dims[index]$/ as int;
+
+    insertLevel(/$QEDArray$this$/, /$QEDArray$this.dims$/, pos, size, newSize, /$new Array(size$.length).fill(0)$/, 0)
+    /$QEDArray$this.dims$/ = newSize
+    return
+  }
+
   void insertLevel(var array, var dims, int[] pos, int[] size, int[] newSize, var pp, int level) {
     if (level < /$QEDArray$this.dims.length - 1$/) {
       for (/$pp[level] = 0$/; /$pp[level] < pos[level]$/; /$pp[level]++$/)
@@ -349,26 +371,32 @@ void QEDArray(int[] limits, sInitFn init, Qui_ Ui_) {
     }
     return;
   }
-/*
-  void Push() {
-    let pos = new Array(QEDArray$this.dims.length).fill(0);
-    let size = new Array(QEDArray$this.dims.length).fill(0);
 
-    pos[0] = QEDArray$this.dims[0];
-    size[0] = 1;
-    Insert(pos, size);
-    return;
+  void push() {
+    int[] pos = /$new Array(QEDArray$this.dims.length).fill(0)$/ as int[]
+    int[] size = /$new Array(QEDArray$this.dims.length).fill(0)$/ as int[]
+
+    pos[0] = /$QEDArray$this.dims[0]$/
+    size[0] = 1
+    insert(pos, size)
+    return
+  }
+
+  void Push() {
+    push()
+    return
   }
 
   void pop() {
-    let pos = new Array(QEDArray$this.dims.length).fill(0);
-    let size = new Array(QEDArray$this.dims.length).fill(0);
+    int[] pos = /$new Array(QEDArray$this.dims.length).fill(0)$/ as int[]
+    int[] size = /$new Array(QEDArray$this.dims.length).fill(0)$/ as int[]
 
-    pos[0] = QEDArray$this.dims[0] - 1;
-    size[0] = 1;
-    remove(pos, size);
-    return;
-  }*/
+    pos[0] = /$QEDArray$this.dims[0] - 1$/
+    size[0] = 1
+    remove(pos, size)
+    return
+  }
+
   Qui_ *ui_
 
   void setUI_() {
