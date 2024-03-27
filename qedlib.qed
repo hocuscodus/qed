@@ -185,10 +185,6 @@ var SQEDArray(int[] limits, InitFn Init) {
     // runtime error
   }
 
-  void remove(int[] pos, int[] size) {
-    // runtime error
-  }
-
   void Insert(int[] pos, int[] size) {
     int[] newSize = /$[...this.size$]$/
 
@@ -196,6 +192,17 @@ var SQEDArray(int[] limits, InitFn Init) {
       newSize[index] += /$SQEDArray$this.dims[index]$/ as int;
 
     InsertLevel(/$SQEDArray$this$/, /$SQEDArray$this.dims$/, pos, size, newSize, /$new Array(this.size$.length).fill(0)$/, 0)
+    /$SQEDArray$this.dims$/ = newSize
+    return
+  }
+
+  void remove(int[] pos, int[] size) {
+    int[] newSize = /$[...SQEDArray$this.dims]$/
+
+    for (int index = /$SQEDArray$this.dims.length - 1$/; index >= 0; index--)
+      newSize[index] -= /$size$[index]$/ as int;
+
+    removeLevel(/$SQEDArray$this$/, /$SQEDArray$this.dims$/, pos, size, newSize, /$new Array(size$.length).fill(0)$/, 0)
     /$SQEDArray$this.dims$/ = newSize
     return
   }
@@ -225,6 +232,26 @@ var SQEDArray(int[] limits, InitFn Init) {
       for (/$pp[level] = pos[level]$/; /$pp[level] < pos[level] + InsertLevel$this.size$[level]$/; /$pp[level]++$/)
         /$array[pp[level]]$/ = Init(pp as int[]) as var
     }
+    return;
+  }
+
+  void removeLevel(var array, var dims, int[] pos, int[] size, int[] newSize, var pp, int level) {
+    if (level < /$SQEDArray$this.dims.length - 1$/) {
+      for (/$pp[level] = dims[level] - 1$/; /$pp[level] >= pos[level] + size$[level]$/; /$pp[level]--$/)
+        removeLevel(/$array[pp[level]]$/, dims, pos, size, newSize, pp, level + 1)
+
+      if (size[level] != 0)
+        for (/$pp[level] = pos[level]$/; /$pp[level] < newSize[level]$/; /$pp[level]++$/)
+          /$array[pp[level]] = array[pp[level] + size$[level]]$/
+
+      for (/$pp[level] = pos[level] - 1$/; /$pp[level] >= 0$/; /$pp[level]--$/)
+        removeLevel(/$array[pp[level]]$/, dims, pos, size, newSize, pp, level + 1)
+    }
+    else
+      if (size[level] != 0)
+        for (/$pp[level] = pos[level]$/; /$pp[level] < newSize[level]$/; /$pp[level]++$/)
+          /$array[pp[level]] = array[pp[level] + size$[level]]$/
+
     return;
   }
 
@@ -334,12 +361,12 @@ void QEDArray(int[] limits, sInitFn init, Qui_ Ui_) {
   }
 
   void remove(int[] pos, int[] size) {
-    int[] newSize = /$[...size$]$/
+    int[] newSize = /$[...QEDArray$this.dims]$/
 
     for (int index = /$QEDArray$this.dims.length - 1$/; index >= 0; index--)
-      newSize[index] += /$QEDArray$this.dims[index]$/ as int;
+      newSize[index] -= /$size$[index]$/ as int;
 
-    insertLevel(/$QEDArray$this$/, /$QEDArray$this.dims$/, pos, size, newSize, /$new Array(size$.length).fill(0)$/, 0)
+    removeLevel(/$QEDArray$this$/, /$QEDArray$this.dims$/, pos, size, newSize, /$new Array(size$.length).fill(0)$/, 0)
     /$QEDArray$this.dims$/ = newSize
     return
   }
@@ -369,6 +396,26 @@ void QEDArray(int[] limits, sInitFn init, Qui_ Ui_) {
       for (/$pp[level] = pos[level]$/; /$pp[level] < pos[level] + size$[level]$/; /$pp[level]++$/)
         /$array[pp[level]]$/ = init(pp as int[]) as var
     }
+    return;
+  }
+
+  void removeLevel(var array, var dims, int[] pos, int[] size, int[] newSize, var pp, int level) {
+    if (level < /$QEDArray$this.dims.length - 1$/) {
+      for (/$pp[level] = dims[level] - 1$/; /$pp[level] >= pos[level] + size$[level]$/; /$pp[level]--$/)
+        removeLevel(/$array[pp[level]]$/, dims, pos, size, newSize, pp, level + 1)
+
+      if (size[level] != 0)
+        for (/$pp[level] = pos[level]$/; /$pp[level] < newSize[level]$/; /$pp[level]++$/)
+          /$array[pp[level]] = array[pp[level] + size$[level]]$/
+
+      for (/$pp[level] = pos[level] - 1$/; /$pp[level] >= 0$/; /$pp[level]--$/)
+        removeLevel(/$array[pp[level]]$/, dims, pos, size, newSize, pp, level + 1)
+    }
+    else
+      if (size[level] != 0)
+        for (/$pp[level] = pos[level]$/; /$pp[level] < newSize[level]$/; /$pp[level]++$/)
+          /$array[pp[level]] = array[pp[level] + size$[level]]$/
+
     return;
   }
 

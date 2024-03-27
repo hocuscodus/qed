@@ -57,6 +57,17 @@ static const char *getValueVariableName(UIDirectiveExpr *expr, Attribute uiIndex
   return attrExpr ? getIndexedVariableName("v", attrExpr->_index) : NULL;
 }
 
+static Type resolveExpr(Expr *&expr, Parser &parser) {
+  Expr **oldExpr = currentExpr;
+
+  currentExpr = &expr;
+
+  Type type = expr->resolve(parser);
+
+  currentExpr = oldExpr;
+  return type;
+}
+
 struct ValueStack3 {
   int max;
 	std::stack<int> *map;
@@ -122,7 +133,7 @@ bool isExplicitConvert(Type srcType, Type dstType) {
 }
 
 Expr *resolveImplicit(Type type, Expr *expr, Parser &parser) {
-  Type exprType = expr->resolve(parser);
+  Type exprType = resolveExpr(expr, parser);
   bool convertFlag = isImplicitConvert(exprType, type);
 
   return convertFlag ? type.valueType != exprType.valueType ? new CastExpr(type, expr) : expr : NULL;
@@ -379,27 +390,42 @@ static Expr *createArrayExpr(Expr *iteratorExprs) {
 }
 
 Type IteratorExpr::resolve(Parser &parser) {
-  Type type = value->resolve(parser);
+  Type type = resolveExpr(value, parser);
 
   hasSuperCalls = value->hasSuperCalls;
   return type;
 }
 
 Type AssignExpr::resolve(Parser &parser) {
-  Type type1 = varExp->resolve(parser);
-  Type type2 = value ? value->resolve(parser) : type1;
+  Type type1 = resolveExpr(varExp, parser);
+  Type type2 = value ? resolveExpr(value, parser) : type1;
 
   hasSuperCalls = varExp->hasSuperCalls || (value && value->hasSuperCalls);
 
-  if (IS_VOID(type1))
-    parser.error("Variable not found");
-  else if (!type1.equals(type2)) {
-    value = convertToType(type1, value, type2, parser);
+  if (IS_ARRAY(type1))
+    switch(op.type) {
+      case TOKEN_PLUS_PLUS:
+        setCurrentExpr(new CallExpr(false, new GetExpr(varExp, buildToken(TOKEN_IDENTIFIER, "Push")), buildToken(TOKEN_CALL, "("), NULL, NULL));
+        return getCurrentExpr()->resolve(parser);
 
-    if (!value) {
-      parser.error("Value must match the variable type");
+      case TOKEN_MINUS_MINUS:
+        setCurrentExpr(new CallExpr(false, new GetExpr(varExp, buildToken(TOKEN_IDENTIFIER, "pop")), buildToken(TOKEN_CALL, "("), NULL, NULL));
+        return getCurrentExpr()->resolve(parser);
+
+      default:
+        parser.error("Operator not allowed on array");
+        break;
     }
-  }
+  else
+    if (IS_VOID(type1))
+      parser.error("Variable not found");
+    else if (!type1.equals(type2)) {
+      value = convertToType(type1, value, type2, parser);
+
+      if (!value) {
+        parser.error("Value must match the variable type");
+      }
+    }
 
   return type1;
 }
@@ -415,8 +441,8 @@ Type UIDirectiveExpr::resolve(Parser &parser) {
 }
 
 Type BinaryExpr::resolve(Parser &parser) {
-  Type type1 = left->resolve(parser);
-  Type type2 = right->resolve(parser);
+  Type type1 = resolveExpr(left, parser);
+  Type type2 = resolveExpr(right, parser);
   Type type = type1;
   bool boolVal = false;
 
@@ -526,11 +552,11 @@ Type CallExpr::resolve(Parser &parser) {
   }
 
   pushSignature(&signature);
-  Type type = callee->resolve(parser);
+  Type type = resolveExpr(callee, parser);
   popSignature();
 
   if (handler)
-    handler->resolve(parser);
+    resolveExpr(handler, parser);
 
   if (IS_FUNCTION(type)) {
     ObjFunction *callable = AS_FUNCTION_TYPE(type);
@@ -545,7 +571,7 @@ Type CallExpr::resolve(Parser &parser) {
 }
 
 Type ArrayElementExpr::resolve(Parser &parser) {
-  Type type = callee->resolve(parser);
+  Type type = resolveExpr(callee, parser);
 
   hasSuperCalls = callee->hasSuperCalls;
 
@@ -567,7 +593,7 @@ Type ArrayElementExpr::resolve(Parser &parser) {
         ObjArray *array = AS_ARRAY_TYPE(type);
 
         for (int index = 0; index < count; index++) {
-          indexes[index]->resolve(parser);
+          resolveExpr(indexes[index], parser);
           hasSuperCalls |= indexes[index]->hasSuperCalls;
         }
 
@@ -582,7 +608,7 @@ Type ArrayElementExpr::resolve(Parser &parser) {
         getCurrent()->addDeclaration(string->type.valueType);
 
         for (int index = 0; index < count; index++) {
-          indexes[index]->resolve(parser);
+          resolveExpr(indexes[index], parser);
           Type argType = removeDeclaration();
 
           argType = argType;
@@ -600,7 +626,7 @@ Type DeclarationExpr::resolve(Parser &parser) {
     if (initExpr->type == EXPR_BINARY && ((BinaryExpr *) initExpr)->op.type == TOKEN_ARRAY)
       initExpr = createArrayExpr(initExpr);
 
-    Type type1 = initExpr->resolve(parser);
+    Type type1 = resolveExpr(initExpr, parser);
 
     hasSuperCalls = initExpr->hasSuperCalls;
 
@@ -658,7 +684,7 @@ Type FunctionExpr::resolve(Parser &parser) {
 
 Type GetExpr::resolve(Parser &parser) {
   pushSignature(NULL);
-  Type objectType = object->resolve(parser);
+  Type objectType = resolveExpr(object, parser);
   popSignature();
 
   hasSuperCalls = object->hasSuperCalls;
@@ -828,7 +854,7 @@ Type GroupingExpr::resolve(Parser &parser) {
       if (statement->type == EXPR_BINARY && ((BinaryExpr *) statement)->op.type == TOKEN_ARRAY)
         statement = createArrayExpr(statement);
 
-      type = statement->resolve(parser);
+      type = resolveExpr(statement, parser);
       hasSuperCalls |= statement->hasSuperCalls;
     }
 
@@ -963,21 +989,21 @@ Type GroupingExpr::resolve(Parser &parser) {
 }
 
 Type CastExpr::resolve(Parser &parser) {
-  Type exprType = expr->resolve(parser);
+  Type exprType = resolveExpr(expr, parser);
 
   hasSuperCalls = expr->hasSuperCalls;
   return isExplicitConvert(exprType, type) ? type : UNKNOWN_TYPE;
 }
 
 Type IfExpr::resolve(Parser &parser) {
-  if (IS_VOID(condition->resolve(parser)))
+  if (IS_VOID(resolveExpr(condition, parser)))
     parser.error("Value must not be void");
 
-  thenBranch->resolve(parser);
+  resolveExpr(thenBranch, parser);
   hasSuperCalls = condition->hasSuperCalls || thenBranch->hasSuperCalls;
 
   if (elseBranch) {
-    elseBranch->resolve(parser);
+    resolveExpr(elseBranch, parser);
     hasSuperCalls |= elseBranch->hasSuperCalls;
   }
 
@@ -988,7 +1014,7 @@ Type ArrayExpr::resolve(Parser &parser) {
   ObjArray *objArray = newArray(VOID_TYPE);
   Type type = OBJ_TYPE(objArray);
 
-  objArray->elementType = body ? body->resolve(parser) : UNKNOWN_TYPE;
+  objArray->elementType = body ? resolveExpr(body, parser) : UNKNOWN_TYPE;
   hasSuperCalls = body && body->hasSuperCalls;
   return type;
 }
@@ -998,8 +1024,8 @@ Type LiteralExpr::resolve(Parser &parser) {
 }
 
 Type LogicalExpr::resolve(Parser &parser) {
-  Type type1 = left->resolve(parser);
-  Type type2 = right->resolve(parser);
+  Type type1 = resolveExpr(left, parser);
+  Type type2 = resolveExpr(right, parser);
 
   hasSuperCalls = left->hasSuperCalls || right->hasSuperCalls;
 
@@ -1010,9 +1036,9 @@ Type LogicalExpr::resolve(Parser &parser) {
 }
 
 Type WhileExpr::resolve(Parser &parser) {
-  Type type = condition->resolve(parser);
+  Type type = resolveExpr(condition, parser);
 
-  body->resolve(parser);
+  resolveExpr(body, parser);
   hasSuperCalls = condition->hasSuperCalls || body->hasSuperCalls;
   return VOID_TYPE;
 }
@@ -1025,7 +1051,7 @@ Type ReturnExpr::resolve(Parser &parser) {
   // sync processing below
 
   if (value) {
-    value->resolve(parser);
+    resolveExpr(value, parser);
     hasSuperCalls = value->hasSuperCalls;
 
 //  if (!getCurrent()->isClass())
@@ -1039,8 +1065,8 @@ Type ReturnExpr::resolve(Parser &parser) {
 
 Type SetExpr::resolve(Parser &parser) {
   pushSignature(NULL);
-  Type objectType = object->resolve(parser);
-  Type valueType = value->resolve(parser);
+  Type objectType = resolveExpr(object, parser);
+  Type valueType = resolveExpr(value, parser);
   popSignature();
 
   hasSuperCalls = object->hasSuperCalls || value->hasSuperCalls;
@@ -1066,15 +1092,15 @@ Type SetExpr::resolve(Parser &parser) {
 }
 
 Type TernaryExpr::resolve(Parser &parser) {
-  if (IS_VOID(left->resolve(parser)))
+  if (IS_VOID(resolveExpr(left, parser)))
     parser.error("Value must not be void");
 
-  Type type = middle->resolve(parser);
+  Type type = resolveExpr(middle, parser);
 
   hasSuperCalls = left->hasSuperCalls || middle->hasSuperCalls;
 
   if (right) {
-    right->resolve(parser);
+    resolveExpr(right, parser);
     hasSuperCalls |= right->hasSuperCalls;
   }
 
@@ -1086,7 +1112,7 @@ Type ThisExpr::resolve(Parser &parser) {
 }
 
 Type UnaryExpr::resolve(Parser &parser) {
-  Type type = right->resolve(parser);
+  Type type = resolveExpr(right, parser);
 
   hasSuperCalls = right->hasSuperCalls;
 
@@ -1155,7 +1181,7 @@ Type SwapExpr::resolve(Parser &parser) {
     expr = expr;
 
 //  if (type.valueType == VAL_UNKNOWN)
-    return expr->resolve(parser);
+    return resolveExpr(expr, parser);
 
 //  return type;
 }

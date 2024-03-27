@@ -167,7 +167,7 @@ void CounterWidget() {
   }
 
   Button *incButton = new Button("+") -> balls++
-  Button *decButton = new Button("-") -> /*if (balls.size() > 0) */balls--
+  Button *decButton = new Button("-") -> if (balls.size() > 0) balls--
 
   <out: roundRect; color: 0xFFFFFF; opacity: 80%;
     <_ color: COLOR_BLACK;

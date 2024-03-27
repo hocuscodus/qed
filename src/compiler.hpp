@@ -24,6 +24,10 @@ struct Scope {
 };
 
 extern Declaration *arrayDeclaration;
+extern Expr **currentExpr;
+
+Expr *getCurrentExpr();
+void setCurrentExpr(Expr *expr);
 
 class Parser;
 

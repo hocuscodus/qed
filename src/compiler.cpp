@@ -17,6 +17,7 @@ Type anyType = {VAL_OBJ, &objAny};
 static std::stack<Signature *> signatures;
 static Scope *currentScope = NULL;
 Declaration *arrayDeclaration = NULL;
+Expr **currentExpr = NULL;
 
 Scope::Scope(Expr *expr, Scope *enclosing) {
   this->expr = expr->type == EXPR_FUNCTION || expr->type == EXPR_GROUPING ? expr : NULL;
@@ -73,6 +74,14 @@ FunctionExpr *getFunction() {
 
 FunctionExpr *getTopFunction() {
   return getCurrent()->getTopFunction();
+}
+
+Expr *getCurrentExpr() {
+  return *currentExpr;
+}
+
+void setCurrentExpr(Expr *expr) {
+  *currentExpr = expr;
 }
 
 Type resolveType(Expr *expr) {
